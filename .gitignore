@@ -1,0 +1,16 @@
+node_modules/
+web/node_modules/
+internal/ui/dist/*
+!internal/ui/dist/.gitkeep
+bin/
+.shipper*/
+.env
+.env.*
+!.env.example
+coverage*
+test-results/
+playwright-report/
+*.db
+*.db-shm
+*.db-wal
+

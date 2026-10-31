@@ -1,0 +1,10 @@
+.git
+node_modules
+web/node_modules
+internal/ui/dist
+bin
+.shipper*
+.env*
+test-results
+playwright-report
+
