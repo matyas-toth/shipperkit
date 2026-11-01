@@ -8,15 +8,18 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/mail"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	"golang.org/x/term"
 	"shipper/internal/auth"
+	"shipper/internal/deploy"
 	"shipper/internal/engine"
 	"shipper/internal/events"
 	"shipper/internal/httpapi"
@@ -25,7 +28,7 @@ import (
 	"shipper/internal/ui"
 )
 
-var version = "0.1.0-dev"
+var version = "0.2.0-dev"
 
 func main() {
 	if err := run(); err != nil {
@@ -89,12 +92,39 @@ func run() error {
 	defer docker.Close()
 	hub := events.New()
 	monitor := inventory.New(docker, db, hub)
+	instance, err := db.Setting(context.Background(), "instance_id", auth.Token())
+	if err != nil {
+		return err
+	}
+	docker.Instance = instance
+	httpPort, err := strconv.Atoi(env("SHIPPER_HTTP_PORT", "8780"))
+	if err != nil || httpPort < 1 || httpPort > 65535 {
+		return errors.New("SHIPPER_HTTP_PORT must be between 1 and 65535")
+	}
+	httpsPort, err := strconv.Atoi(env("SHIPPER_HTTPS_PORT", "8743"))
+	if err != nil || httpsPort < 1 || httpsPort > 65535 || httpPort == httpsPort {
+		return errors.New("SHIPPER_HTTPS_PORT must be a distinct port between 1 and 65535")
+	}
+	proxyConfig := deploy.ProxyConfig{BindIP: env("SHIPPER_PROXY_BIND", "127.0.0.1"), HTTPPort: httpPort, HTTPSPort: httpsPort, ACMEEmail: os.Getenv("SHIPPER_ACME_EMAIL"), ACMECA: os.Getenv("SHIPPER_ACME_CA")}
+	if proxyConfig.ACMEEmail != "" {
+		address, e := mail.ParseAddress(proxyConfig.ACMEEmail)
+		if e != nil || address.Address != proxyConfig.ACMEEmail {
+			return errors.New("SHIPPER_ACME_EMAIL must be a valid email address")
+		}
+	}
+	if net.ParseIP(proxyConfig.BindIP) == nil {
+		return errors.New("SHIPPER_PROXY_BIND must be an IP address")
+	}
+	worker := deploy.NewWorker(db, &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig}, hub, dataDir)
+	worker.Refresh = monitor.Trigger
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	monitorDone := make(chan struct{})
 	go func() { defer close(monitorDone); monitor.Run(ctx) }()
+	workerDone := make(chan struct{})
+	go func() { defer close(workerDone); worker.Run(ctx) }()
 	addr := env("SHIPPER_ADDR", "127.0.0.1:8080")
-	server := &http.Server{Addr: addr, Handler: httpapi.New(db, monitor, hub, httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version}), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: addr, Handler: httpapi.New(db, monitor, hub, httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig}), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	serverErrors := make(chan error, 1)
 	go func() { serverErrors <- server.ListenAndServe() }()
 	slog.Info("Shipper is listening", "address", addr, "version", version)
@@ -103,6 +133,7 @@ func run() error {
 		if !errors.Is(err, http.ErrServerClosed) {
 			cancel()
 			<-monitorDone
+			<-workerDone
 			return err
 		}
 	case <-ctx.Done():
@@ -114,6 +145,7 @@ func run() error {
 	server.Close()
 	_ = server.Shutdown(shutdownCtx)
 	<-monitorDone
+	<-workerDone
 	return nil
 }
 

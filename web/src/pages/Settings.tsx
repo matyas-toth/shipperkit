@@ -1,7 +1,7 @@
 import { For, Show, createSignal, onMount } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
-import type { SystemInfo } from "../types";
+import type { SystemInfo, ProxyConfig } from "../types";
 import { useAuth } from "../context";
 import { bytes } from "../data";
 import { Button, ErrorNotice } from "../components/Controls";
@@ -17,6 +17,7 @@ export default function Settings() {
     try { await auth.logout(); } catch (error) { setActionError((error as Error).message); }
   }
   const query = createQuery(() => ({ queryKey: ["system"], queryFn: () => api<SystemInfo>("/system"), staleTime: 30_000 }));
+  const proxy = createQuery(() => ({ queryKey: ["proxy"], queryFn: () => api<ProxyConfig>("/proxy") }));
   const dockerRows = () => {
     const value = query.data?.docker;
     return [["Connection", value?.connected ? "Connected" : "Disconnected"], ["Host", value?.engine.name || "Unavailable"],
@@ -29,6 +30,7 @@ export default function Settings() {
       <aside class="settings-navigation"><a href="#general" class="settings-link" classList={{ active: section() === "general" }} onClick={() => setSection("general")}><Icon name="sliders" />General</a>
         <a href="#docker" class="settings-link" classList={{ active: section() === "docker" }} onClick={() => setSection("docker")}><Icon name="plug" />Docker</a>
         <a href="#storage" class="settings-link" classList={{ active: section() === "storage" }} onClick={() => setSection("storage")}><Icon name="database" />Storage</a>
+        <a href="#proxy" class="settings-link" classList={{ active: section() === "proxy" }} onClick={() => setSection("proxy")}><Icon name="globe" />Proxy</a>
         <a href="#account" class="settings-link" classList={{ active: section() === "account" }} onClick={() => setSection("account")}><Icon name="settings" />Account</a>
       </aside>
       <div class="settings-content" id="general">
@@ -47,6 +49,9 @@ export default function Settings() {
         <section class="settings-section" id="account"><h2>Account</h2><dl class="settings-group">
           <div class="setting-row"><dt>Email</dt><dd>{auth.session()?.user?.email}</dd></div>
           <div class="setting-row"><dt>Session</dt><dd><Button small onClick={() => void logout()}>Sign out</Button></dd></div>
+        </dl></section>
+        <section class="settings-section" id="proxy"><h2>Proxy</h2><dl class="settings-group">
+          <div class="setting-row"><dt>Proxy</dt><dd>Traefik</dd></div><div class="setting-row"><dt>HTTP port</dt><dd>{proxy.data?.httpPort ?? "Loading"}</dd></div><div class="setting-row"><dt>HTTPS port</dt><dd>{proxy.data?.httpsPort ?? "Loading"}</dd></div><div class="setting-row"><dt>Bind address</dt><dd>{proxy.data?.bindIP ?? "Loading"}</dd></div><div class="setting-row"><dt>ACME email</dt><dd>{proxy.data?.acmeEmail || "Not configured"}</dd></div>
         </dl></section>
         <section class="settings-section"><h2>Shipper</h2><dl class="settings-group">
           <div class="setting-row"><dt>Version</dt><dd>{query.data?.version ?? "Loading"}</dd></div>

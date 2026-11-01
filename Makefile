@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: dev build test test-e2e test-docker check
+.PHONY: dev build test test-e2e test-docker test-deploy test-package check
 
 dev:
 	npm run dev
@@ -17,6 +17,12 @@ test-e2e:
 
 test-docker:
 	npm run test:docker
+
+test-deploy:
+	npm run test:deploy
+
+test-package:
+	npm run test:package
 
 check:
 	$(GO) vet ./...

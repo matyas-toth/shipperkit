@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 jobs:
-  foundation:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,5 +30,9 @@ jobs:
           CGO_ENABLED: "1"
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:deploy
       - run: docker build -t shipper:ci .
+      - run: npm run test:package
+        env:
+          SHIPPER_TEST_IMAGE: shipper:ci
 

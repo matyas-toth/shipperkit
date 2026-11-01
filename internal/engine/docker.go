@@ -27,7 +27,10 @@ type Source interface {
 	Snapshot(context.Context) (Snapshot, error)
 	Subscribe(context.Context) (<-chan struct{}, <-chan error)
 }
-type Docker struct{ client *client.Client }
+type Docker struct {
+	client   *client.Client
+	Instance string
+}
 
 func New() (*Docker, error) {
 	host := os.Getenv("DOCKER_HOST")
@@ -36,7 +39,7 @@ func New() (*Docker, error) {
 			return nil, errors.New("remote Docker requires tcp:// with DOCKER_TLS_VERIFY=1 and valid certificates")
 		}
 	}
-	cli, err := client.New(client.FromEnv, client.WithUserAgent("shipper/0.1.0"))
+	cli, err := client.New(client.FromEnv, client.WithUserAgent("shipper/0.2.0"))
 	if err != nil {
 		return nil, err
 	}
@@ -46,9 +49,14 @@ func New() (*Docker, error) {
 // NewWithClient allows tests to exercise the real SDK against an isolated HTTP fixture.
 func NewWithClient(cli *client.Client) *Docker { return &Docker{client: cli} }
 func (d *Docker) Close() error                 { return d.client.Close() }
+func (d *Docker) Client() *client.Client       { return d.client }
 
 func (d *Docker) Snapshot(ctx context.Context) (Snapshot, error) {
-	list, err := d.client.ContainerList(ctx, client.ContainerListOptions{All: true})
+	opts := client.ContainerListOptions{All: true}
+	if d.Instance != "" {
+		opts.Filters = make(client.Filters).Add("label", "io.shipper.managed=true")
+	}
+	list, err := d.client.ContainerList(ctx, opts)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -58,7 +66,7 @@ func (d *Docker) Snapshot(ctx context.Context) (Snapshot, error) {
 	}
 	snapshot := Snapshot{Containers: []store.Container{}, Info: Info{Name: info.Info.Name, Version: info.Info.ServerVersion, OS: info.Info.OperatingSystem, Architecture: info.Info.Architecture, CPUs: info.Info.NCPU, Memory: info.Info.MemTotal}}
 	for _, item := range list.Items {
-		if item.Labels["io.shipper.control-plane"] == "true" {
+		if item.Labels["io.shipper.control-plane"] == "true" || item.Labels["io.shipper.infrastructure"] != "" {
 			continue
 		}
 		name := item.ID[:min(12, len(item.ID))]
@@ -82,6 +90,9 @@ func (d *Docker) Snapshot(ctx context.Context) (Snapshot, error) {
 		if !managed {
 			appID = ""
 		}
+		if d.Instance != "" && (!managed || (item.Labels["io.shipper.instance"] != "" && item.Labels["io.shipper.instance"] != d.Instance)) {
+			continue
+		}
 		c := store.Container{ID: item.ID, Name: name, Image: item.Image, State: string(item.State), Status: item.Status, Health: health, CreatedAt: item.Created, Managed: managed, ApplicationID: appID, Ports: []store.Port{}, Project: item.Labels["com.docker.compose.project"], Service: item.Labels["com.docker.compose.service"]}
 		for _, p := range item.Ports {
 			ip := ""
@@ -90,6 +101,7 @@ func (d *Docker) Snapshot(ctx context.Context) (Snapshot, error) {
 			}
 			c.Ports = append(c.Ports, store.Port{IP: ip, Private: p.PrivatePort, Public: p.PublicPort, Protocol: p.Type})
 		}
+		c.DeploymentID = item.Labels["io.shipper.deployment.id"]
 		snapshot.Containers = append(snapshot.Containers, c)
 	}
 	return snapshot, nil

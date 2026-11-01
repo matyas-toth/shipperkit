@@ -4,77 +4,33 @@ import { tmpdir } from "node:os";
 
 const token = "shipper-browser-test-setup-token-00000000000000000000000000000000";
 const account = { email: "owner@example.test", password: "shipper-browser-test-password" };
-
-test("first administrator, live inventory, filtering, detail, settings, and logout", async ({ page, request, browser }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  const errors: string[] = [];
-  page.on("pageerror", error => errors.push(error.message));
-  await page.goto("/");
-  const staleContext = await browser.newContext();
-  const stalePage = await staleContext.newPage();
-  await stalePage.goto("/");
-  await expect(stalePage.getByRole("heading", { name: "Create administrator" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Create administrator" })).toBeVisible();
-  await page.getByLabel("Setup token").fill(token);
-  await page.getByLabel("Email", { exact: true }).fill(account.email);
-  await page.getByLabel("Password", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: "Create administrator", exact: true }).click();
+const screenshot = (name: string) => join(tmpdir(), "shipper-phase2-" + name + ".png");
+async function login(page: import("@playwright/test").Page) {
+  await page.goto("/");await page.getByLabel("Email", { exact: true }).fill(account.email);await page.getByLabel("Password", { exact: true }).fill(account.password);await page.getByRole("button", { name: "Sign in", exact: true }).click();
+}
+test("secure setup, application grouping, deployment logs, settings, and failure feedback", async ({ page, request, browser }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });const errors: string[] = [];page.on("pageerror", e => errors.push(e.message));
+  await page.goto("/");const stale = await browser.newContext(), stalePage = await stale.newPage();await stalePage.goto("/");
+  await page.getByLabel("Setup token").fill(token);await page.getByLabel("Email", { exact: true }).fill(account.email);await page.getByLabel("Password", { exact: true }).fill(account.password);await page.getByRole("button", { name: "Create administrator", exact: true }).click();
   await expect(page.getByRole("button", { name: "View api", exact: true })).toBeVisible();
-  await stalePage.getByLabel("Setup token", { exact: true }).fill(token);
-  await stalePage.getByLabel("Email", { exact: true }).fill(account.email);
-  await stalePage.getByLabel("Password", { exact: true }).fill(account.password);
-  await stalePage.getByRole("button", { name: "Create administrator", exact: true }).click();
-  await expect(stalePage.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
-  await staleContext.close();
-  await expect(page.getByText("Connected", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "View postgres", exact: true })).toContainText("Stopped");
-  await page.screenshot({ path: join(tmpdir(), "shipper-desktop.png") });
-  await page.getByRole("textbox", { name: "Search applications", exact: true }).fill("postgres");
-  await expect(page.getByRole("button", { name: "View api", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "View postgres", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Clear search" }).click();
-  await page.getByRole("button", { name: "View api", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("dialog")).toContainText("ghcr.io/example/api:v1.4");
-  await page.screenshot({ path: join(tmpdir(), "shipper-drawer.png") });
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "View api", exact: true })).toBeFocused();
-  await request.post("http://127.0.0.1:9083/state", { data: { state: "exited" } });
-  await expect(page.getByRole("button", { name: "View api", exact: true })).toContainText("Stopped", { timeout: 5000 });
-  await expect(page.getByRole("button", { name: "View api", exact: true })).toBeFocused();
-  await page.getByRole("link", { name: "Settings", exact: true }).first().click();
-  await expect(page.getByText("29.8.2", { exact: true })).toBeVisible();
-  await page.screenshot({ path: join(tmpdir(), "shipper-settings.png") });
-  await page.getByRole("link", { name: "Applications", exact: true }).click();
-  await page.getByRole("button", { name: "Account", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
-  await page.getByLabel("Email", { exact: true }).fill(account.email);
-  await page.getByLabel("Password", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("button", { name: "View api", exact: true })).toBeVisible();
-  expect(errors).toEqual([]);
+  await stalePage.getByLabel("Setup token").fill(token);await stalePage.getByLabel("Email", { exact: true }).fill(account.email);await stalePage.getByLabel("Password", { exact: true }).fill(account.password);await stalePage.getByRole("button", { name: "Create administrator", exact: true }).click();await expect(stalePage.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();await stale.close();
+  await expect(page.getByRole("button", { name: "View postgres", exact: true })).toHaveCount(0);await expect(page.getByText("2 applications", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "View api", exact: true }).click();await expect(page.getByRole("button", { name: "Inspect api", exact: true })).toBeVisible();await expect(page.getByRole("button", { name: "Inspect api-worker", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Inspect api", exact: true }).click();await expect(page.getByRole("dialog")).toContainText("ghcr.io/example/api:v1.4");await page.keyboard.press("Escape");await expect(page.getByRole("button", { name: "Inspect api", exact: true })).toBeFocused();
+  await request.post("http://127.0.0.1:9083/state", { data: { state: "exited" } });await expect(page.getByRole("button", { name: "Inspect api", exact: true })).toContainText("Stopped", { timeout: 5000 });await expect(page.getByRole("button", { name: "Inspect api", exact: true })).toBeFocused();
+  await request.post("http://127.0.0.1:9083/seed");await page.getByRole("link", { name: "Applications", exact: true }).first().click();await expect(page.getByRole("button", { name: "View Website", exact: true })).toBeVisible();await page.mouse.move(1300,100);await page.screenshot({ path: screenshot("applications") });
+  await page.getByRole("button", { name: "View Website", exact: true }).click();await expect(page.getByRole("heading", { name: "Website", exact: true })).toBeVisible();await expect(page.locator(".application-title")).toContainText("Running");await page.screenshot({ path: screenshot("overview") });
+  await page.getByRole("button", { name: "Deployments", exact: true }).click();await expect(page.getByRole("log")).toContainText("Serving website.localhost");await expect(page.getByRole("link", { name: "Applications", exact: true }).first()).toHaveAttribute("aria-current","page");await page.screenshot({ path: screenshot("deployments") });
+  await page.getByRole("textbox", { name: "Search logs", exact: true }).fill("HTTP check");await expect(page.locator(".log-line")).toHaveCount(1);await expect(page.getByRole("log")).toContainText("Candidate HTTP check passed");
+  await page.getByRole("button", { name: "Domains", exact: true }).click();await expect(page.getByLabel("Domain", { exact: true })).toHaveValue("website.localhost");await page.getByRole("button", { name: "Verify domain", exact: true }).click();await expect(page.getByRole("status")).toContainText(/domain|Verified/);await page.screenshot({ path: screenshot("domains") });
+  await page.getByRole("button", { name: "Settings", exact: true }).click();await page.getByRole("button", { name: "Delete application", exact: true }).click();await expect(page.getByRole("dialog")).toBeVisible();await expect(page.getByRole("dialog").getByRole("button", { name: "Delete application", exact: true })).toBeDisabled();await page.getByLabel("Application name", { exact: true }).fill("Website");await expect(page.getByRole("dialog").getByRole("button", { name: "Delete application", exact: true })).toBeEnabled();await page.keyboard.press("Escape");await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("link", { name: "Applications", exact: true }).first().click();await page.getByRole("button", { name: "New application", exact: true }).click();await page.getByLabel("Name", { exact: true }).fill("Portfolio");await page.getByLabel("Git repository", { exact: true }).fill("https://github.com/mdn/beginner-html-site.git");await page.getByText("Configuration", { exact: true }).click();await expect(page.getByLabel("Publish directory", { exact: true })).toHaveValue(".");await page.screenshot({ path: screenshot("new") });
+  await page.getByRole("button", { name: "Deploy", exact: true }).click();await expect(page.getByRole("heading", { name: "Portfolio", exact: true })).toBeVisible();await expect(page.getByRole("log")).toContainText("Proxy setup failed", { timeout: 15000 });await page.screenshot({ path: screenshot("failure") });
+  await page.getByRole("link", { name: "Settings", exact: true }).first().click();await expect(page.getByText("29.8.2", { exact: true })).toBeVisible();await page.getByRole("button", { name: "Account", exact: true }).click();await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();expect(errors).toEqual([]);
 });
-
-test("mobile layout and large inventory stay usable", async ({ page, request }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
-  await page.getByLabel("Email", { exact: true }).fill(account.email);
-  await page.getByLabel("Password", { exact: true }).fill(account.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("button", { name: "View api", exact: true })).toBeVisible();
-  await page.screenshot({ path: join(tmpdir(), "shipper-mobile.png") });
-  expect(await page.locator("body").evaluate(element => element.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("button", { name: "View api", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect.poll(() => page.getByRole("dialog").evaluate(element => element.getBoundingClientRect().right <= innerWidth)).toBe(true);
-  await page.keyboard.press("Escape");
-  await request.post("http://127.0.0.1:9083/state", { data: { large: true } });
-  await expect(page.getByText("600 containers", { exact: true })).toBeAttached();
-  expect(await page.locator(".container-row").count()).toBeLessThanOrEqual(32);
-  await page.getByRole("textbox", { name: "Search applications", exact: true }).fill("app-599");
-  await expect(page.getByRole("button", { name: "View app-599", exact: true })).toBeVisible();
-  await expect(page.getByText("1 container", { exact: true })).toBeVisible();
+test("mobile application views, bounded logs, and large application search", async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 844 });await login(page);await expect(page.getByRole("button", { name: "View Website", exact: true })).toBeVisible();await page.screenshot({ path: screenshot("mobile") });expect(await page.locator("body").evaluate(e => e.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "View Website", exact: true }).getByText("Website", { exact: true }).click();await page.getByRole("button", { name: "Deployments", exact: true }).click();await expect(page.getByRole("log")).toContainText("Serving website.localhost");await page.screenshot({ path: screenshot("mobile-deployments") });expect(await page.locator("body").evaluate(e => e.scrollWidth <= innerWidth)).toBe(true);
+  await request.post("http://127.0.0.1:9083/logs");await page.getByRole("textbox", { name: "Search logs", exact: true }).fill("Build output line 1499");await expect(page.getByRole("log")).toContainText("Build output line 1499");expect(await page.locator(".log-line").count()).toBeLessThanOrEqual(64);
+  await page.getByRole("link", { name: "Applications", exact: true }).first().click();await request.post("http://127.0.0.1:9083/state", { data: { large: true } });await expect(page.getByRole("button", { name: "View app-000", exact: true })).toBeVisible();expect(await page.locator(".container-row").count()).toBeLessThanOrEqual(32);await page.getByRole("textbox", { name: "Search applications", exact: true }).fill("app-599");await expect(page.getByRole("button", { name: "View app-599", exact: true })).toBeVisible();await expect(page.getByText("1 application", { exact: true })).toBeVisible();
 });
-

@@ -1,4 +1,4 @@
-import { A, useNavigate, type RouteSectionProps } from "@solidjs/router";
+import { A, useLocation, useNavigate, type RouteSectionProps } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { Show, createSignal, onCleanup, onMount } from "solid-js";
 import { api, post } from "../api";
@@ -11,7 +11,8 @@ export default function Shell(props: RouteSectionProps) {
   const auth = useAuth();
   const client = useQueryClient();
   const navigate = useNavigate();
-  const query = createQuery(() => ({ queryKey: ["inventory"], queryFn: () => api<Inventory>("/containers"), staleTime: 60_000, reconcile: "id" }));
+  const location = useLocation();
+  const query = createQuery(() => ({ queryKey: ["inventory"], queryFn: () => api<Inventory>("/applications"), staleTime: 60_000, reconcile: "id" }));
   const [live, setLive] = createSignal(false);
   const [menu, setMenu] = createSignal(false);
   const [refreshing, setRefreshing] = createSignal(false);
@@ -23,6 +24,7 @@ export default function Shell(props: RouteSectionProps) {
     void client.invalidateQueries({ queryKey: ["inventory"] });
     void client.invalidateQueries({ queryKey: ["system"] });
     void client.invalidateQueries({ queryKey: ["applications"] });
+    void client.invalidateQueries({ queryKey: ["deployment-logs"] });
   };
   const closeMenu = () => { setMenu(false); accountButton?.focus(); };
   onMount(() => {
@@ -95,7 +97,7 @@ export default function Shell(props: RouteSectionProps) {
       </header>
       <div class="app-panel">
         <nav class="primary-navigation" aria-label="Main navigation">
-          <A href="/" end activeClass="active" class="nav-link">Applications</A>
+          <a href="/" class="nav-link" classList={{ active: location.pathname !== "/settings" }} aria-current={location.pathname !== "/settings" ? "page" : undefined} onClick={event => { event.preventDefault();navigate("/"); }}>Applications</a>
           <A href="/settings" activeClass="active" class="nav-link">Settings</A>
         </nav>
         <main class="page-scroll">{props.children}</main>

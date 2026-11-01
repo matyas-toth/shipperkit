@@ -21,6 +21,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"shipper/internal/auth"
+	"shipper/internal/deploy"
 	"shipper/internal/events"
 	"shipper/internal/inventory"
 	"shipper/internal/store"
@@ -33,6 +34,9 @@ type Config struct {
 	SetupToken string
 	Assets     http.Handler
 	Version    string
+	InstanceID string
+	Worker     *deploy.Worker
+	Proxy      deploy.ProxyConfig
 }
 type Server struct {
 	db        *store.Store
@@ -62,6 +66,13 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.Use(s.requireSession)
 			r.Get("/containers", s.containers)
 			r.Get("/applications", s.applications)
+			r.Get("/applications/{id}", s.application)
+			r.Get("/applications/{id}/deployments/{deployment}/logs", s.deploymentLogs)
+			r.Get("/proxy", s.proxyInfo)
+			r.With(s.csrf, s.limit).Post("/applications", s.createApplication)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments", s.redeploy)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/delete", s.deleteApplication)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/domain-check", s.checkDomain)
 			r.Get("/system", s.system)
 			r.Get("/events", s.stream)
 			r.With(s.csrf).Post("/auth/logout", s.logout)
@@ -279,7 +290,13 @@ func (s *Server) containers(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
-	s.json(w, 200, map[string]any{"items": items, "docker": s.monitor.Health()})
+	managed := []store.Container{}
+	for _, c := range items {
+		if c.Managed {
+			managed = append(managed, c)
+		}
+	}
+	s.json(w, 200, map[string]any{"items": managed, "docker": s.monitor.Health()})
 }
 func (s *Server) applications(w http.ResponseWriter, r *http.Request) {
 	items, err := s.db.Applications(r.Context())
@@ -297,7 +314,7 @@ func (s *Server) system(w http.ResponseWriter, r *http.Request) {
 	}
 	var memory runtime.MemStats
 	runtime.ReadMemStats(&memory)
-	s.json(w, 200, map[string]any{"version": s.cfg.Version, "docker": s.monitor.Health(), "database": map[string]any{"engine": "SQLite", "journal": "WAL", "counts": counts}, "runtime": map[string]any{"go": runtime.Version(), "heapBytes": memory.HeapAlloc, "goroutines": runtime.NumGoroutine()}})
+	s.json(w, 200, map[string]any{"version": s.cfg.Version, "instanceId": s.cfg.InstanceID, "docker": s.monitor.Health(), "database": map[string]any{"engine": "SQLite", "journal": "WAL", "counts": counts}, "runtime": map[string]any{"go": runtime.Version(), "heapBytes": memory.HeapAlloc, "goroutines": runtime.NumGoroutine()}})
 }
 func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)

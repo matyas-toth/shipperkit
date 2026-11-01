@@ -6,14 +6,16 @@ import { basename, join, resolve, sep } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { goCommand } from "./go.mjs";
+import { DatabaseSync } from "node:sqlite";
 
 const token = "shipper-browser-test-setup-token-00000000000000000000000000000000";
 const directory = await mkdtemp(join(tmpdir(), "shipper-browser-"));
 const socket = process.platform === "win32" ? "\\\\.\\pipe\\shipper-test-" + randomUUID() : join(directory, "docker.sock");
 let containers = [
   { Id: "a".repeat(64), Names: ["/api"], Image: "ghcr.io/example/api:v1.4", State: "running", Status: "Up 2 hours", Created: 1793376000, Ports: [{ IP: "127.0.0.1", PrivatePort: 3000, PublicPort: 3000, Type: "tcp" }], Labels: { "io.shipper.managed": "true", "io.shipper.application.id": "application-api" } },
-  { Id: "b".repeat(64), Names: ["/web"], Image: "httpd:2.4-alpine", State: "running", Status: "Up 2 hours (healthy)", Created: 1793376000, Ports: [{ IP: "127.0.0.1", PrivatePort: 80, PublicPort: 8088, Type: "tcp" }], Labels: { "io.shipper.managed": "true", "io.shipper.application.id": "application-web" } },
+  { Id: "b".repeat(64), Names: ["/web"], Image: "httpd:2.4-alpine", State: "running", Status: "Up 2 hours (healthy)", Created: 1793376000, Ports: [{ IP: "127.0.0.1", PrivatePort: 80, PublicPort: 8088, Type: "tcp" }], Labels: { "io.shipper.managed": "true", "io.shipper.application.id": "application-web", "io.shipper.deployment.id": "deployment-web-2" } },
   { Id: "c".repeat(64), Names: ["/postgres"], Image: "postgres:17-alpine", State: "exited", Status: "Exited (0) 1 hour ago", Created: 1793289600, Ports: [{ IP: "", PrivatePort: 5432, Type: "tcp" }], Labels: {} },
+  { Id: "d".repeat(64), Names: ["/api-worker"], Image: "ghcr.io/example/worker:v1.4", State: "running", Status: "Up 2 hours", Created: 1793376000, Ports: [], Labels: { "io.shipper.managed": "true", "io.shipper.application.id": "application-api" } },
 ];
 const streams = new Set();
 const engine = http.createServer((request, response) => {
@@ -31,13 +33,32 @@ const engine = http.createServer((request, response) => {
 await new Promise((ready, reject) => { engine.once("error", reject); engine.listen(socket, ready); });
 const control = http.createServer(async (request, response) => {
   response.setHeader("Content-Type", "application/json");
+  if (request.method === "POST" && request.url === "/logs") {
+    const db = new DatabaseSync(join(directory,"shipper.db"));db.exec("PRAGMA busy_timeout=5000; BEGIN");
+    const insert = db.prepare("INSERT INTO deployment_logs(deployment_id,step,line,created_at) VALUES ('deployment-web-2','packaging',?,?)");
+    for(let index=0;index<1500;index++) insert.run("Build output line " + index,1793531000);
+    db.exec("COMMIT");db.close();for(const stream of streams)stream.write(JSON.stringify({Type:"container",Action:"start",Actor:{ID:containers[0].Id}})+"\n");response.end("{}");return;
+  }
+  if (request.method === "POST" && request.url === "/seed") {
+    const db = new DatabaseSync(join(directory, "shipper.db"));
+    db.exec("PRAGMA busy_timeout=5000");
+    const config = { repository: "https://github.com/mdn/beginner-html-site.git", branch: "main", publishDirectory: ".", routing: "files", htaccess: true, domain: "website.localhost", https: false };
+    db.prepare("UPDATE applications SET name=?,source_kind='git',source_ref=?,method='static',config_json=?,active_deployment_id=? WHERE id='application-web'").run("Website", config.repository, JSON.stringify(config), "deployment-web-2");
+    db.prepare("INSERT OR IGNORE INTO deployments(id,application_id,operation,state,config_json,commit_sha,image_id,container_id,created_at,started_at,finished_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").run("deployment-web-2", "application-web", "deploy", "succeeded", JSON.stringify(config), "d6a4f792a0ce4d2cf5197aa9e54972be35f24a10", "sha256:apache-fixture", "b".repeat(64), 1793531000, 1793531000, 1793531015);
+    const insert = db.prepare("INSERT INTO deployment_logs(deployment_id,step,line,created_at) VALUES ('deployment-web-2',?,?,?)");
+    db.exec("BEGIN");
+    for (const [step, line] of [["cloning", "Cloning https://github.com/mdn/beginner-html-site.git"], ["cloning", "Checked out d6a4f792 on main"], ["packaging", "Packaging Apache image"], ["starting", "Starting candidate container"], ["checking", "Candidate HTTP check passed"], ["promoting", "Traefik acknowledged the routing update"], ["promoting", "Serving website.localhost"]]) insert.run(step, line, 1793531000);
+    db.exec("COMMIT");db.close();
+    for (const stream of streams) stream.write(JSON.stringify({ Type: "container", Action: "start", Actor: { ID: containers[0].Id } }) + "\n");
+    response.end("{}");return;
+  }
   if (request.method === "POST" && request.url === "/state") {
     let data = ""; for await (const part of request) data += part;
     const input = JSON.parse(data);
     if (input.large) {
       containers = Array.from({ length: 600 }, (_, index) => ({
         Id: String(index).padStart(64, "0"), Names: ["/app-" + String(index).padStart(3, "0")],
-        Image: "example/service:v1", State: "running", Status: "Up", Created: 1793376000, Ports: [], Labels: {},
+        Image: "example/service:v1", State: "running", Status: "Up", Created: 1793376000, Ports: [], Labels: { "io.shipper.managed": "true", "io.shipper.application.id": "application-" + String(index).padStart(3,"0") },
       }));
     } else { containers[0].State = input.state ?? "running"; containers[0].Status = input.state === "exited" ? "Exited (0)" : "Up 2 hours"; }
     for (const stream of streams) stream.write(JSON.stringify({ Type: "container", Action: "start", Actor: { ID: containers[0].Id } }) + "\n");

@@ -2,18 +2,20 @@
 
 A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
 
-**Phase 1: Foundation.** The local dashboard supports secure administrator setup,
-login/logout, persistent sessions, Docker inventory, application ownership,
-event-driven state reconciliation, and embedded frontend assets.
+**Phase 2: Static sites.** Deploy a public Git repository as a versioned Apache
+image, check the candidate, and route it through Traefik. Shipper persists the
+deployment queue, history, and logs, preserves a serving release when a redeploy
+fails, and groups multiple containers under one application.
 
-Deployment creation, builds, lifecycle actions, domains, and HTTPS provisioning
-are planned for subsequent phases. Shipper currently observes Docker; it does
-not start, stop, adopt, or delete your workloads.
+The dashboard shows Shipper applications. Unrelated Docker containers are excluded.
+Railpack, Dockerfile builds, build commands, and Compose deployments follow in
+later phases.
 
 ## Run locally
 
 Requirements: Go 1.26+, Node.js 22.12+ (24 LTS recommended), and a running Docker
-Engine or Docker Desktop using Linux containers.
+Engine or Docker Desktop using Linux containers. Native development also needs
+Git 2.36+; the production image includes Git.
 
 ```sh
 npm ci
@@ -65,9 +67,9 @@ default socket group generally works.
 The image runs as UID/GID 65532, drops Linux capabilities, has a read-only root
 filesystem, and stores metadata in the `shipper-data` volume.
 A Docker socket still grants host-level control even when its mount uses `:ro`.
-Keep the dashboard private. Docker Desktop users should use this read-only
-foundation against personal workloads; deployment testing belongs on a
-disposable Linux host.
+Keep the dashboard private. Run integration tests on a disposable Docker host.
+Shipper's mutations check application and instance ownership before removing
+containers. It never adopts unrelated workloads or removes application volumes.
 
 `docker compose down` stops Shipper without removing its metadata volume or
 application data. Avoid `down -v` unless you deliberately want to erase Shipper's
@@ -86,16 +88,23 @@ administrator and metadata.
 | `DOCKER_CERT_PATH` | SDK default | Docker TLS certificates |
 | `SHIPPER_PORT` | `8080` | Compose host port |
 | `DOCKER_GID` | `0` | Compose supplementary group for the Docker socket |
+| `SHIPPER_PROXY_BIND` | `127.0.0.1` | Address on the Docker host for Traefik's published ports |
+| `SHIPPER_HTTP_PORT` | `8780` | Traefik HTTP port on the Docker host |
+| `SHIPPER_HTTPS_PORT` | `8743` | Traefik HTTPS port on the Docker host |
+| `SHIPPER_ACME_EMAIL` | unset | Enable the Let's Encrypt resolver for custom domains |
+| `SHIPPER_ACME_CA` | Let's Encrypt production | Optional ACME directory, including staging |
 
 When putting Shipper behind an HTTPS reverse proxy, set `SHIPPER_PUBLIC_URL` to
 its exact external origin. This enables Secure cookies and canonical origin
 checks. Forwarded headers are intentionally not trusted. The default loopback
-listener is for local operation, and no installer or proxy is provisioned yet.
+listener is for local operation. Traefik is provisioned lazily for the first
+deployment; no public installer is published yet.
 
 ## What the dashboard shows
 
-All containers are visible except Shipper's own control plane. The Shipper
-filter selects only containers with both ownership labels:
+The application is the primary object. Its containers and deployment history
+live in its detail screen. A Compose stack can have several containers without
+becoming several applications. Legacy ownership discovery recognizes:
 
 ```yaml
 labels:
@@ -103,8 +112,10 @@ labels:
   io.shipper.application.id: "a-stable-application-id"
 ```
 
-Use these only for workloads intentionally owned by Shipper. Discovery does not
-change Docker labels. Ordinary existing containers remain external.
+New resources also carry `io.shipper.instance` and `io.shipper.deployment.id`.
+The instance identity is persisted in SQLite. Another Shipper installation's
+resources are excluded; legacy discovered records remain inspectable but cannot
+be redeployed or deleted through this static-site pipeline.
 
 SQLite retains a stable application record if its container disappears.
 Container state, health, and application-level state are separate. A disconnected
@@ -112,8 +123,22 @@ daemon leaves the last complete inventory visible with an explicit warning.
 Reconnects and periodic reconciliation repair missed Docker events.
 
 The inventory window is virtualized, and search/status filters run locally.
-Selecting a row opens a read-only drawer. Navigation retains the query cache and
-application shell.
+Selecting an application opens Overview, Deployments, Domains, and Settings.
+Container inspection uses a drawer. Navigation retains the query cache and shell.
+
+## Deploy a static site
+
+Choose **New application**, enter a public HTTPS Git URL, and choose **Deploy**.
+The default publish directory is the repository root, which must contain
+`index.html`. Configuration exposes branch, publish directory, file/SPA/strict
+routing, and opt-in `.htaccess` rewrites. Repository code is never executed on the
+control plane. Build commands and dependency installation are deferred to Phase 3.
+
+A local application gets `http://<application-id>.localhost:8780`. Use **Visit**
+to open it. Use **Redeploy** to ship the current branch again, and **Deployments**
+to inspect the exact commit, operation state, and persisted logs.
+
+For public DNS and automatic HTTPS, see [static site operations](docs/static-sites.md).
 
 ## Password recovery
 
@@ -140,6 +165,9 @@ npm run build
 npx playwright install chromium
 npm run test:e2e
 npm run test:docker
+npm run test:deploy
+# After building shipper:local:
+npm run test:package
 ```
 
 - Go tests cover setup races, session persistence/revocation, CSRF/origin checks,
@@ -155,6 +183,16 @@ npm run test:docker
 Run the real-engine smoke test on a disposable Docker host. A second Shipper
 instance watching that same host can discover its ownership-labeled fixture
 and retain a missing-application record after the fixture is removed.
+
+`test:deploy` exercises public Git, real Apache and Traefik, routing modes,
+`.htaccess`, trusted local TLS, failed deployment preservation, proxy restart,
+and scoped deletion. Local TLS uses a generated trust anchor; public ACME issuance
+requires a reachable test domain and is a separate operator check.
+
+`test:package` runs the built image with disposable data, tests the authenticated
+API and public Git pipeline, verifies the domain from inside the container,
+restarts the control plane, and checks failed-redeploy preservation and deletion.
+It removes only this run's explicitly labeled test resources.
 
 Browser screenshots and test data go to the system temporary directory.
 Production data and generated builds are ignored by Git.

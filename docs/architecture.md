@@ -1,108 +1,142 @@
 # Architecture
 
-Phase 1 is a single Go process with an embedded SolidJS SPA, SQLite metadata,
-a read-only Docker SDK adapter, a reconciliation loop, and authenticated SSE.
-Deployment creation and lifecycle mutations begin in later phases.
+Shipper is one Go control-plane process with an embedded SolidJS SPA, SQLite WAL,
+an official Docker SDK adapter, durable deployment jobs, and authenticated SSE.
+Apache site containers and Traefik run independently on the Docker host.
 
 ## Boundaries
 
-- `cmd/shipper`: configuration, process lifecycle, local password recovery.
-- `internal/store`: versioned SQL migrations, administrator/session persistence,
-  observed container snapshots, and independently persisted application identities.
-- `internal/auth`: password hashing, random tokens, setup token lifecycle.
-- `internal/engine`: the official Docker SDK and a narrow inventory/events interface.
-- `internal/inventory`: bounded, coalesced reconciliation and connection health.
-- `internal/events`: bounded nonblocking fan-out with slow-client disconnection.
-- `internal/httpapi`: authenticated REST resources, CSRF/origin enforcement, SSE.
-- `internal/ui`: embedded production assets with SPA fallback.
-- `web/src`: persistent shell, routed pages, query cache, shared UI primitives.
+- `cmd/shipper`: configuration, lifecycle, local password recovery.
+- `internal/store`: transactional SQL migrations, identities, sessions, observed
+  snapshots, application configuration, deployments, logs, and worker lease.
+- `internal/auth`: bcrypt, random capabilities/session tokens, constant-time checks.
+- `internal/engine`: official SDK inventory/event projection, instance filtering.
+- `internal/inventory`: debounced reconciliation, reconnect, connection health.
+- `internal/deploy`: hardened public Git checkout, Apache archive/image strategy,
+  candidate lifecycle, proxy adapter, durable worker, recovery and deletion.
+- `internal/events`: bounded nonblocking SSE invalidations.
+- `internal/httpapi`: authenticated REST contract, CSRF/origin checks, domain probes.
+- `internal/ui`: embedded production assets and SPA fallback.
+- `web/src`: persistent shell, cached routed application views, virtual tables/logs.
 
-SQLite uses WAL, foreign keys, a busy timeout, and one pooled connection.
-Migrations run transactionally before serving HTTP. Snapshot replacement and
-application reconciliation commit together. A failed Docker request preserves the
-last complete snapshot and marks it stale. A successful empty snapshot clears
-the inventory. Application records survive container disappearance.
+## Persistence and identity
 
-Container ownership is explicit: `io.shipper.managed=true` and
-`io.shipper.application.id=<stable-id>`. Discovery never adopts an unlabeled
-container. Phase 1 performs no Docker mutations. Container environment values,
-arbitrary labels, registry credentials, and raw inspect responses are not exposed.
+SQLite uses WAL, foreign keys, busy timeout, and one pooled connection. Migrations
+are transactional and additive. Application source (`git`) and method (`static`)
+remain separate from each other and from observed containers. Multiple containers
+share one application ID. Snapshot replacement and state aggregation commit
+together; a failed Docker read retains the last complete snapshot.
 
-## Authentication
+Each installation persists an instance ID. Mutations verify both instance and
+application ownership. New Docker resources also carry deployment IDs, making
+candidate/active/retired releases distinguishable. Legacy ownership-labeled
+applications remain inspectable. Unrelated workloads, infrastructure containers,
+and other installations' resources are excluded from the dashboard.
 
-First-admin setup needs a random token stored in the private data directory.
-Creating the singleton administrator and consuming setup access is atomic.
-Passwords use bcrypt. Random session tokens are stored only as SHA-256 hashes.
-Sessions have an absolute expiry, HttpOnly/SameSite=Strict cookies, and a separate
-CSRF token. HTTPS public URLs enable Secure cookies. State-changing browser
-requests validate the origin and require JSON; authenticated mutations also
-require the CSRF header. Rate limiting applies before expensive password work.
-Password recovery requires local access and revokes every existing session.
+An application's desired configuration may differ from its serving release after
+a failed update. Routing always uses the active deployment's immutable snapshot.
+Domain reservations cover both configurations so a failed domain change cannot
+allow another application to steal the still-serving hostname. Deletion leaves a
+tombstone, preventing late inventory events from recreating the application.
 
-The default listener is loopback. Reverse-proxy operators must set the canonical
-public URL. Forwarded headers are not trusted. Docker TCP connections require TLS
-verification; unauthenticated plaintext endpoints are rejected outside tests.
-Mounting a Docker socket read-only does not make its API read-only. The socket
-still grants host-level power, so keep this management interface private.
+## Durable operations
 
-## State and event flow
+Application creation/configuration and job enqueue are one transaction. A partial
+unique index allows at most one unfinished operation per application. Optional
+request keys provide idempotent retries. A renewable SQLite lease fences workers
+sharing a metadata database; a replacement waits for an expired lease.
 
-Docker event stream -> short debounce -> complete inventory -> SQLite transaction
--> small SSE invalidation -> TanStack Query refetch -> targeted Solid updates.
+```text
+queued -> cloning -> packaging -> starting -> checking -> promoting -> succeeded
+   \---------------------------------------------------------------> failed
+queued -> deleting -> succeeded / failed
+```
 
-Subscribe before the first list, relist on reconnect, and periodically reconcile
-to repair missed events. Reconnect with bounded exponential backoff and jitter.
-Events are invalidations rather than a second database. Reconnection and missed
-SSE delivery trigger a fresh snapshot. Slow browser subscribers are disconnected
-instead of blocking Docker or growing an unbounded queue.
+One worker processes the persisted queue. Stages, commit SHA, image/container IDs,
+previous release, timestamps, and text logs are persisted. Shutdown leaves the
+current stage resumable. Names/tags are deterministic within a deployment, and
+recovery checks ownership before reusing side effects. A changed branch during
+incomplete packaging fails explicitly rather than relabeling a different commit.
 
-The UI retains cached rows during refresh, reports stale/disconnected state, and
-uses a fixed-height virtual window for large inventories. Local search/filtering
-does not wait for the network. The shell survives route transitions. No timers
-poll Docker from the browser.
+The static strategy creates a bounded, filtered tar archive of the publish root
+and a generated Apache configuration. It copies these into a stopped, networkless
+container based on a digest-pinned Apache image and commits a versioned image
+through the official SDK. This avoids invoking a builder or executing repository
+code for plain static files. There is no dependency on BuildKit in Phase 2.
 
-## Future deployment boundary
+The candidate runs without host ports, host mounts, root privileges, or Linux
+capabilities. An HTTP check exercises the real root page, including `.htaccess`.
+Promotion persists intent, atomically publishes the complete Traefik routing
+snapshot, and waits for proxy acknowledgment. Only then is the previous container
+removed. Clone/package/health failures leave the active release untouched; failed
+routing attempts restore its active pointer and configuration.
 
-Source (`git`, `compose`, eventually `image`) is independent from build method
-(`static`, `railpack`, `dockerfile`, `compose`). The initial application schema
-stores these separately; Phase 1 does not pretend it can deploy them.
+Deletion withdraws routing first, then removes only ownership-verified containers,
+then soft-deletes the application. Volumes and image/history records are retained.
+There is no automatic volume deletion, image pruning, stateful rollback, or
+zero-downtime guarantee.
 
-Phase 2 will add SQLite-backed operations with transitions:
-queued -> cloning -> building -> starting -> verifying -> succeeded.
-Cancellation and failure are terminal, with explicit recovery after interruption.
-Keep the healthy container until the candidate passes verification, and never
-remove persistent volumes during ordinary updates.
+## Proxy and certificates
 
-Build strategies should implement a small image-producing interface only when
-the first static-site pipeline needs it. Compose should delegate to its official
-implementation. Traefik routing should be isolated behind domain configuration
-and use ownership labels. Neither is provisioned during Phase 1.
+Traefik uses its file provider, with a persistent instance-owned Docker volume for
+routing and ACME data. The worker uploads a temporary file and atomically renames
+it inside the watched directory. JSON is emitted as valid YAML with a `.yaml`
+extension; empty router/service maps are omitted for Traefik's decoder.
 
-## Local and release packaging
+Traefik needs no Docker socket. Its API is reachable only inside the proxy
+container and is used through the Docker SDK to verify routing. Only HTTP/HTTPS
+entry points are published. Static proxy configuration is fingerprinted and an
+unexpected configuration change fails explicitly instead of being silently ignored.
 
-Vite builds into the Go embed directory. Production has no Node server.
-The development runner starts Go and Vite with same-origin API proxying.
-The multi-stage Dockerfile builds both and runs a non-root, filesystem-restricted
-control plane. Compose binds the UI to loopback, persists only Shipper metadata,
-and maps the Docker socket group. Distribution scripts and a hosted installer
-are deferred until the local foundation is proven.
+Local defaults bind to loopback and allocate `.localhost` HTTP domains. Public
+domains can use the configured ACME HTTP-01 resolver. Public DNS, reachable ports
+80/443, and a valid email are operator prerequisites. Domain verification pins
+public DNS addresses, forbids redirects/private destinations, verifies TLS
+normally, and checks the active release's response identity. A ready route and a
+publicly issued certificate are separate states.
 
-## Validation
+## Authentication and isolation
 
-Go tests use isolated SQLite directories and an HTTP Docker API fixture through
-the real SDK. Browser tests cover setup, login, filtering, drawers, settings,
-CSRF, event-driven updates, and reconnect states. A separate opt-in real-Docker
-smoke test creates and removes only its own labeled container.
+First-admin creation requires a local capability and is atomic. Passwords use
+bcrypt; session tokens are stored only as SHA-256 hashes. Cookies are HttpOnly,
+SameSite Strict, and Secure under a canonical HTTPS URL. Mutations require JSON,
+same-origin requests, and CSRF tokens. Expensive password work and mutation rates
+are bounded. Local password recovery revokes all sessions.
 
-Real Linux VPS deployment, TLS/ACME, build failure recovery, durable build jobs,
-and upgrade migrations remain later-phase work. Memory and navigation targets
-are aspirations until measured on representative hardware.
+The management listener defaults to loopback and does not trust forwarded headers.
+Remote Docker requires verified TLS. A mounted Docker socket grants host-level
+control even when mounted `:ro`; keep the management plane private. The Git and
+publish isolation policy is documented in [static site operations](static-sites.md).
 
-## Reference
+## Realtime and perceived speed
 
-Coolify's ownership labels, status aggregation, and preservation of ordinary
-Docker workloads are useful concepts. Shipper's code is original; its control
-plane uses the Docker Engine API directly rather than adopting Coolify's stack.
-See the upstream [repository](https://github.com/coollabsio/coolify) and
-[Docker SDK examples](https://docs.docker.com/reference/api/engine/sdk/examples/).
+Docker events -> debounce -> complete snapshot -> SQLite -> SSE invalidation ->
+cached query refetch -> targeted Solid updates. Subscription precedes the initial
+list. Reconnect and periodic reconciliation repair missed events. Slow SSE clients
+are disconnected rather than blocking writers. Cached rows remain during refresh.
 
+Deployment stages and logs use the same invalidation stream. Logs are fetched
+incrementally by cursor, with a small polling fallback. SQLite bounds lines per
+job, and the UI renders a virtual window. Application search/filtering happens
+locally across cached records; list rows retain identity and keyboard focus during
+live updates. The frontend uses Tabler Solid components with tree-shaken imports.
+
+## Packaging and validation
+
+Vite produces embedded assets; production requires no Node server. Docker builds
+both layers and runs the control plane as UID/GID 65532 with a read-only root.
+Native development uses Go, Node, and Git; runtime Docker packaging includes Git.
+
+Tests cover auth/origin/CSRF, additive migrations, worker/domain exclusivity,
+ownership, failure preservation, recovery, inventory events, and bounded streams.
+Browser tests cover application grouping, creation, logs, errors, domain and
+deletion flows, mobile layout, 600 applications, and paginated logs. Opt-in Docker
+tests exercise public Git, real Apache/Traefik routing, trusted local TLS, proxy
+restart, and scoped deletion. Public ACME issuance and host reboot/upgrade tests
+still need a disposable Linux VPS and dedicated DNS.
+
+Coolify was studied for concepts such as ownership and workload preservation;
+Shipper includes no Coolify source. References: [Coolify](https://github.com/coollabsio/coolify),
+[Docker SDK](https://docs.docker.com/reference/api/engine/sdk/examples/),
+[Traefik file provider](https://doc.traefik.io/traefik/reference/install-configuration/providers/others/file/),
+[Apache overrides](https://httpd.apache.org/docs/2.4/howto/htaccess.html).

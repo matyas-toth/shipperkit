@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"shipper/internal/auth"
+	"shipper/internal/deploy"
 	"shipper/internal/engine"
 	"shipper/internal/events"
 	"shipper/internal/inventory"
@@ -20,7 +21,7 @@ import (
 type testEngine struct{}
 
 func (testEngine) Snapshot(context.Context) (engine.Snapshot, error) {
-	return engine.Snapshot{Containers: []store.Container{{ID: "abc", Name: "api", State: "running", Image: "test:v1", Ports: []store.Port{}}}, Info: engine.Info{Name: "fixture"}}, nil
+	return engine.Snapshot{Containers: []store.Container{{ID: "abc", Name: "api", State: "running", Image: "test:v1", Ports: []store.Port{}, Managed: true, ApplicationID: "app-api"}, {ID: "external", Name: "unrelated", State: "running", Ports: []store.Port{}}}, Info: engine.Info{Name: "fixture"}}, nil
 }
 func (testEngine) Subscribe(context.Context) (<-chan struct{}, <-chan error) {
 	return make(chan struct{}), make(chan error)
@@ -38,7 +39,8 @@ func TestAuthenticationCSRFAndReadOnlyAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	token := auth.Token()
-	handler := New(db, monitor, hub, Config{SetupToken: token, Version: "test", Assets: http.NotFoundHandler()})
+	worker := deploy.NewWorker(db, nil, hub, t.TempDir())
+	handler := New(db, monitor, hub, Config{SetupToken: token, Version: "test", Assets: http.NotFoundHandler(), Worker: worker})
 	server := httptest.NewServer(handler)
 	defer server.Close()
 	jar, _ := cookiejar.New(nil)
@@ -107,6 +109,37 @@ func TestAuthenticationCSRFAndReadOnlyAPI(t *testing.T) {
 	resp, body = request("GET", "/api/containers", nil, "", "")
 	if resp.StatusCode != 200 || len(body["items"].([]any)) != 1 {
 		t.Fatal(body)
+	}
+	config := store.StaticConfig{Repository: "https://github.com/mdn/beginner-html-site.git", PublishDirectory: ".", Routing: "files"}
+	create := map[string]any{"name": "Website", "config": config}
+	resp, _ = request("POST", "/api/applications", create, "", "")
+	if resp.StatusCode != 403 {
+		t.Fatal("deployment accepted without CSRF")
+	}
+	resp, body = request("POST", "/api/applications", create, csrf, "")
+	if resp.StatusCode != 202 {
+		t.Fatal("create", resp.StatusCode, body)
+	}
+	appID := body["applicationId"].(string)
+	jobID := body["id"].(string)
+	resp, body = request("GET", "/api/applications/"+appID, nil, "", "")
+	if resp.StatusCode != 200 || body["application"].(map[string]any)["name"] != "Website" {
+		t.Fatal("application resource", body)
+	}
+	resp, _ = request("POST", "/api/applications/"+appID+"/deployments", map[string]any{}, csrf, "")
+	if resp.StatusCode != 409 {
+		t.Fatal("duplicate operation accepted")
+	}
+	resp, _ = request("POST", "/api/applications/"+appID+"/delete", map[string]string{"confirmName": "wrong"}, csrf, "")
+	if resp.StatusCode != 422 {
+		t.Fatal("delete accepted without name confirmation")
+	}
+	job, _ := db.Deployment(context.Background(), jobID)
+	job.State = "failed"
+	db.SaveDeployment(context.Background(), job)
+	resp, body = request("POST", "/api/applications/"+appID+"/delete", map[string]string{"confirmName": "Website"}, csrf, "")
+	if resp.StatusCode != 202 || body["operation"] != "delete" {
+		t.Fatal("delete did not enqueue", body)
 	}
 	resp, _ = request("POST", "/api/refresh", map[string]any{}, "", "")
 	if resp.StatusCode != 403 {

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -197,7 +198,7 @@ func (s *Store) ReplaceInventory(ctx context.Context, items []Container) error {
 		if err != nil {
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO containers VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, c.ID, c.Name, c.Image, c.State, c.Status, c.Health, c.CreatedAt, string(ports), c.Managed, c.ApplicationID, c.Project, c.Service); err != nil {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO containers VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, c.ID, c.Name, c.Image, c.State, c.Status, c.Health, c.CreatedAt, string(ports), c.Managed, c.ApplicationID, c.Project, c.Service, c.DeploymentID); err != nil {
 			return err
 		}
 		if c.Managed && c.ApplicationID != "" {
@@ -205,6 +206,25 @@ func (s *Store) ReplaceInventory(ctx context.Context, items []Container) error {
 		}
 	}
 	for id, containers := range owned {
+		var active string
+		var deleted int64
+		if e := tx.QueryRowContext(ctx, "SELECT active_deployment_id,deleted_at FROM applications WHERE id=?", id).Scan(&active, &deleted); e == nil {
+			if deleted != 0 {
+				continue
+			}
+			if active != "" {
+				filtered := []Container{}
+				for _, c := range containers {
+					if c.DeploymentID == active {
+						filtered = append(filtered, c)
+					}
+				}
+				containers = filtered
+			}
+		}
+		if len(containers) == 0 {
+			continue
+		}
 		sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
 		name := containers[0].Name
 		if containers[0].Project != "" {
@@ -253,7 +273,10 @@ func aggregate(items []Container) string {
 }
 
 func (s *Store) Containers(ctx context.Context) ([]Container, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id,name,image,state,status,health,created_at,ports_json,managed,application_id,project,service FROM containers ORDER BY name COLLATE NOCASE,id")
+	return s.containers(ctx, "")
+}
+func (s *Store) containers(ctx context.Context, appID string) ([]Container, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id,name,image,state,status,health,created_at,ports_json,managed,application_id,project,service,deployment_id FROM containers WHERE (?='' OR application_id=?) ORDER BY name COLLATE NOCASE,id", appID, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +285,7 @@ func (s *Store) Containers(ctx context.Context) ([]Container, error) {
 	for rows.Next() {
 		var c Container
 		var ports string
-		if err = rows.Scan(&c.ID, &c.Name, &c.Image, &c.State, &c.Status, &c.Health, &c.CreatedAt, &ports, &c.Managed, &c.ApplicationID, &c.Project, &c.Service); err != nil {
+		if err = rows.Scan(&c.ID, &c.Name, &c.Image, &c.State, &c.Status, &c.Health, &c.CreatedAt, &ports, &c.Managed, &c.ApplicationID, &c.Project, &c.Service, &c.DeploymentID); err != nil {
 			return nil, err
 		}
 		if err = json.Unmarshal([]byte(ports), &c.Ports); err != nil {
@@ -277,15 +300,23 @@ func (s *Store) Containers(ctx context.Context) ([]Container, error) {
 }
 
 func (s *Store) Applications(ctx context.Context) ([]Application, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id,name,source_kind,source_ref,method,state,created_at,updated_at FROM applications ORDER BY name COLLATE NOCASE,id")
+	return s.applications(ctx, "")
+}
+func (s *Store) applications(ctx context.Context, appID string) ([]Application, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id,name,source_kind,source_ref,method,state,created_at,updated_at,config_json,active_deployment_id FROM applications WHERE deleted_at=0 AND (?='' OR id=?) ORDER BY name COLLATE NOCASE,id", appID, appID)
 	if err != nil {
 		return nil, err
 	}
 	apps := []Application{}
 	for rows.Next() {
 		var a Application
+		var config string
 		a.Containers = []Container{}
-		if err = rows.Scan(&a.ID, &a.Name, &a.SourceKind, &a.SourceRef, &a.Method, &a.State, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err = rows.Scan(&a.ID, &a.Name, &a.SourceKind, &a.SourceRef, &a.Method, &a.State, &a.CreatedAt, &a.UpdatedAt, &config, &a.ActiveDeploymentID); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if err = json.Unmarshal([]byte(config), &a.Config); err != nil {
 			rows.Close()
 			return nil, err
 		}
@@ -296,7 +327,7 @@ func (s *Store) Applications(ctx context.Context) ([]Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	containers, err := s.Containers(ctx)
+	containers, err := s.containers(ctx, appID)
 	if err != nil {
 		return nil, err
 	}
@@ -309,14 +340,51 @@ func (s *Store) Applications(ctx context.Context) ([]Application, error) {
 			apps[i].Containers = append(apps[i].Containers, c)
 		}
 	}
+	latest, err := s.db.QueryContext(ctx, "SELECT d."+strings.ReplaceAll(deploymentColumns, ",", ",d.")+" FROM deployments d WHERE d.rowid IN (SELECT MAX(rowid) FROM deployments WHERE (?='' OR application_id=?) GROUP BY application_id)", appID, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer latest.Close()
+	for latest.Next() {
+		d, e := scanDeployment(latest)
+		if e != nil {
+			return nil, e
+		}
+		if i, ok := index[d.ApplicationID]; ok {
+			apps[i].LatestDeployment = &d
+		}
+	}
+	if err = latest.Err(); err != nil {
+		return nil, err
+	}
 	return apps, nil
+}
+
+func (s *Store) Application(ctx context.Context, id string) (Application, error) {
+	apps, err := s.applications(ctx, id)
+	if err != nil {
+		return Application{}, err
+	}
+	for _, a := range apps {
+		if a.ID == id {
+			return a, nil
+		}
+	}
+	return Application{}, sql.ErrNoRows
 }
 
 func (s *Store) Counts(ctx context.Context) (map[string]int, error) {
 	out := map[string]int{}
 	for _, table := range []string{"applications", "containers", "sessions"} {
 		var n int
-		if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table).Scan(&n); err != nil {
+		query := "SELECT COUNT(*) FROM " + table
+		if table == "applications" {
+			query += " WHERE deleted_at=0"
+		}
+		if table == "containers" {
+			query += " WHERE managed=1"
+		}
+		if err := s.db.QueryRowContext(ctx, query).Scan(&n); err != nil {
 			return nil, err
 		}
 		out[table] = n

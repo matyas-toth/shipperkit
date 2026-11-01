@@ -211,3 +211,101 @@ input::placeholder { color: var(--muted); }
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
 
+.muted { color: var(--muted); }
+.success { color: var(--success); }
+.warning { color: var(--warning); }
+.app-toolbar .search-field { margin-left: 0; margin-right: auto; width: 280px; }
+.applications-table th:nth-child(3) { min-width: 220px; }
+.applications-table th:nth-child(4) { min-width: 110px; }
+.applications-table th:nth-child(5) { min-width: 150px; }
+.domain-cell { color: var(--secondary); }
+.domain-cell .truncate { max-width: 240px; }
+.deployment-cell { display: flex; align-items: center; gap: 12px; }
+.deployment-cell .status { font-size: 12px; }
+.status-succeeded { color: var(--success); }
+.status-failed, .status-degraded { color: var(--danger); }
+.status-queued, .status-cloning, .status-packaging, .status-checking, .status-promoting, .status-deleting { color: var(--warning); }
+.content-form { width: min(calc(100% - 64px),560px); margin-inline: auto; padding: 48px 0 64px; }
+.back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); height: 28px; margin-bottom: 20px; }
+.back-link:hover { color: var(--text); }
+.content-form .page-heading { margin-bottom: 32px; }
+.method-label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.form-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 24px; }
+.configuration { border-top: .5px solid var(--border-muted); margin-top: 8px; }
+.configuration summary { display: flex; align-items: center; justify-content: space-between; height: 44px; cursor: pointer; font-weight: 530; list-style: none; }
+.configuration summary::-webkit-details-marker { display: none; }
+.configuration summary .icon { color: var(--muted); transition: transform 150ms ease-out; }
+.configuration[open] summary .icon { transform: rotate(180deg); }
+.configuration-fields { padding-top: 12px; }
+.form-fields > select { margin-bottom: 24px; }
+.form-fields .check-field { display: flex; align-items: center; gap: 8px; font-weight: 440; margin: 0 0 16px; min-height: 28px; }
+.check-field input { accent-color: var(--text); width: 14px; height: 14px; margin: 0; }
+.check-field:has(input:disabled) { color: var(--muted); }
+.app-heading { margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+.application-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.application-title h1 { overflow-wrap: anywhere; }
+.application-title > .icon { color: var(--secondary); }
+.application-title .status { margin-left: 8px; font-size: 12px; }
+.heading-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.application-tabs { display: flex; gap: 24px; border-bottom: .5px solid var(--border); margin-bottom: 32px; overflow-x: auto; scrollbar-width: none; }
+.application-tabs button { height: 40px; border: 0; background: none; color: var(--muted); padding: 0; font-weight: 530; white-space: nowrap; }
+.application-tabs button.active { color: var(--text); box-shadow: inset 0 -1px var(--text); }
+.application-tabs button:hover { color: var(--text); }
+.application-overview { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; margin-bottom: 40px; }
+.application-overview > div { display: grid; grid-template-columns: 92px minmax(0,1fr); gap: 16px; padding: 16px 0; border-bottom: .5px solid var(--border-muted); }
+.application-overview dt { color: var(--muted); }
+.application-overview dd { overflow-wrap: anywhere; min-width: 0; }
+.inline-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow-wrap: anywhere; }
+.inline-link:hover { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.inline-link > .icon { color: var(--muted); width: 14px; height: 14px; }
+.containers-section h2 { margin-bottom: 16px; }
+.services-table th:nth-child(4) { min-width: 32px; }
+.services-table .empty-row td { height: 120px; color: var(--muted); }
+.application-detail { padding-top: 40px; }
+.deployments-layout { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 20px; align-items: start; }
+.deployment-history { display: flex; flex-direction: column; gap: 4px; max-height: 500px; overflow-y: auto; scrollbar-width: thin; }
+.deployment-entry { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; min-height: 70px; text-align: left; padding: 12px; border: 0; border-radius: 6px; background: transparent; color: var(--secondary); }
+.deployment-entry .status { font-weight: 530; }
+.deployment-entry time { font-size: 12px; color: var(--muted); grid-column: 1/-1; }
+.deployment-entry.selected { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 .5px var(--border-muted); }
+.deployment-entry:hover { background: var(--surface); }
+.log-panel { border-radius: 6px; background: var(--deep); box-shadow: var(--raised); overflow: hidden; min-width: 0; }
+.log-heading { min-height: 40px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; background: var(--surface); border-bottom: .5px solid var(--border-muted); }
+.log-heading .icon-button { margin-left: auto; }
+.log-commit { color: var(--secondary); }
+.log-date { font-size: 12px; white-space: nowrap; }
+.log-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; color: var(--muted); border-bottom: .5px solid var(--border-muted); }
+.log-toolbar .search-field { width: 220px; box-shadow: none; background: transparent; }
+.log-viewport { height: 380px; min-height: 160px; max-height: calc(100dvh - 380px); overflow: auto; padding: 12px 0; scrollbar-width: thin; scrollbar-color: #ffffff33 transparent; color: var(--secondary); outline-offset: -2px; }
+.log-line { display: flex; height: 22px; line-height: 22px; white-space: pre; padding-right: 16px; min-width: max-content; }
+.log-number { width: 44px; padding-right: 12px; flex-shrink: 0; color: #5c5c5c; text-align: right; user-select: none; }
+.log-step { width: 86px; flex-shrink: 0; color: var(--muted); }
+.log-empty { color: var(--muted); padding: 16px; }
+.deployment-error { display: flex; gap: 8px; color: var(--danger); padding: 12px; line-height: 20px; border-bottom: .5px solid var(--border-muted); overflow-wrap: anywhere; }
+.deployment-error .icon { margin-top: 2px; }
+.domain-settings { max-width: 560px; }
+.domain-check { display: flex; align-items: center; gap: 16px; justify-content: space-between; border-top: .5px solid var(--border-muted); margin-top: 32px; padding-top: 24px; }
+.domain-result { display: flex; align-items: center; gap: 8px; margin-top: 20px; line-height: 20px; }
+.app-config-form { max-width: 560px; }
+.application-settings .configuration { margin-top: 0; }
+.delete-section { border-top: .5px solid var(--border-muted); margin-top: 40px; padding-top: 24px; display: flex; align-items: center; justify-content: space-between; }
+.danger-button { color: var(--danger); }
+.confirm-dialog { position: fixed; z-index: 51; top: 50%; left: 50%; transform: translate(-50%,-50%); width: min(440px,calc(100vw - 32px)); border-radius: 6px; background: var(--surface); box-shadow: var(--overlay); padding: 20px; }
+.confirm-dialog > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.confirm-dialog > p { color: var(--secondary); line-height: 20px; margin-bottom: 24px; }
+.confirm-dialog .form-fields .input { margin-bottom: 0; }
+@media (width < 48rem) {
+  .content-form { width: calc(100% - 32px); padding-top: 24px; }
+  .application-detail { padding-top: 24px; }
+  .application-overview { grid-template-columns: minmax(0,1fr); }
+  .application-title .status { margin-left: 0; }
+  .application-tabs { gap: 20px; }
+  .deployments-layout { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .deployment-history { flex-direction: row; max-height: none; overflow-x: auto; }
+  .deployment-entry { min-width: 180px; }
+  .log-viewport { max-height: none; height: 320px; }
+  .log-date { display: none; }
+  .domain-check { align-items: flex-start; flex-direction: column; }
+  .app-toolbar .search-field { flex-basis: auto; }
+}
+

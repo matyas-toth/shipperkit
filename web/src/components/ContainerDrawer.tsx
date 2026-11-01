@@ -2,10 +2,12 @@ import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { Container } from "../types";
 import { createdDate, portLabel, statusOf } from "../data";
-import { IconButton, Status } from "./Controls";
+import { ErrorNotice, IconButton, Status } from "./Controls";
+import { Icon } from "./Icon";
 
 export default function ContainerDrawer(props: { container: Container; close: () => void }) {
   const [copied, setCopied] = createSignal(false);
+  const [copyError, setCopyError] = createSignal("");
   let panel!: HTMLDivElement;
   let closeButton!: HTMLButtonElement;
   const previous = document.activeElement as HTMLElement | null;
@@ -35,7 +37,7 @@ export default function ContainerDrawer(props: { container: Container; close: ()
     ...(props.container.service ? [["Service", props.container.service]] : []),
     ...(props.container.applicationId ? [["Application ID", props.container.applicationId]] : []),
   ];
-  async function copy() { await navigator.clipboard.writeText(props.container.id); setCopied(true); }
+  async function copy() { try { await navigator.clipboard.writeText(props.container.id); setCopied(true); } catch { setCopyError("The container ID could not be copied"); } }
   return <Portal>
     <div class="drawer-scrim" onClick={props.close} />
     <div ref={panel} class="drawer" role="dialog" aria-modal="true" aria-labelledby="container-title">
@@ -44,11 +46,12 @@ export default function ContainerDrawer(props: { container: Container; close: ()
         <div class="drawer-actions">
           <IconButton icon={copied() ? "check" : "copy"} label={copied() ? "Container ID copied" : "Copy container ID"} ghost onClick={() => void copy()} />
           <button ref={closeButton} class="button icon-button ghost" aria-label="Close container details" onClick={props.close}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" /></svg>
+            <Icon name="close" />
           </button>
         </div>
       </div>
       <div class="drawer-scroll">
+        <Show when={copyError()}><ErrorNotice message={copyError()} /></Show>
         <h2 id="container-title">{props.container.name}</h2>
         <dl class="details-list"><For each={rows()}>{([label, value]) =>
           <div><dt>{label}</dt><dd classList={{ mono: label === "Container ID" || label === "Application ID" }}>{value}</dd></div>

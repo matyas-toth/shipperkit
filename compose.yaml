@@ -7,6 +7,11 @@ services:
       - "127.0.0.1:${SHIPPER_PORT:-8080}:8080"
     environment:
       SHIPPER_PUBLIC_URL: "${SHIPPER_PUBLIC_URL:-}"
+      SHIPPER_PROXY_BIND: "${SHIPPER_PROXY_BIND:-127.0.0.1}"
+      SHIPPER_HTTP_PORT: "${SHIPPER_HTTP_PORT:-8780}"
+      SHIPPER_HTTPS_PORT: "${SHIPPER_HTTPS_PORT:-8743}"
+      SHIPPER_ACME_EMAIL: "${SHIPPER_ACME_EMAIL:-}"
+      SHIPPER_ACME_CA: "${SHIPPER_ACME_CA:-}"
     volumes:
       - shipper-data:/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
