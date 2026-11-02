@@ -10,11 +10,16 @@ export interface DockerHealth {
   connected: boolean; checkedAt: number; observedAt: number; error?: string;
   engine: { name: string; version: string; os: string; architecture: string; cpus: number; memory: number };
 }
-export interface StaticConfig { repository: string; branch: string; publishDirectory: string; routing: string; htaccess: boolean; domain: string; https: boolean }
-export interface Deployment { id: string; applicationId: string; operation: string; state: string; config: StaticConfig; commit: string; imageId: string; containerId: string; previousId: string; error: string; createdAt: number; startedAt: number; finishedAt: number }
-export interface Application { id: string; name: string; sourceKind: string; sourceRef: string; method: string; state: string; createdAt: number; updatedAt: number; containers: Container[]; config: StaticConfig; activeDeploymentId: string; latestDeployment?: Deployment }
-export interface ApplicationDetail { application: Application; deployments: Deployment[] }
-export interface LogLine { sequence: number; step: string; line: string; createdAt: number }
+export interface Variable { name: string; value: string; secret: boolean; scope: "runtime" | "build" | "both"; keep?: boolean; keepFrom?: string; hasValue?: boolean }
+export interface PersistentVolume { name: string; path: string }
+export interface ServiceConfig { name: string; port?: number; healthPath: string; memoryMB: number; variables: Variable[]; unsetVariables?: string[] }
+export interface Service { oneShot?: boolean; name: string; image: string; port: number; healthPath: string; volumes: PersistentVolume[]; variables?: Variable[] }
+export interface Domain { service?: string; id: string; hostname: string; https: boolean; primary: boolean; redirect: boolean; verificationState?: string; message?: string; checkedAt?: number }
+export interface StaticConfig { repository: string; branch: string; publishDirectory: string; routing: string; htaccess: boolean; domain: string; https: boolean; method: "auto" | "static" | "dockerfile" | "railpack" | "compose"; rootDirectory: string; dockerfile: string; installCommand: string; buildCommand: string; startCommand: string; port: number; healthPath: string; variables: Variable[]; volumes: PersistentVolume[]; memoryMB: number; domains?: Domain[]; composeSource?: "git" | "paste"; composeFile?: string; composeYAML?: string; composeKeep?: boolean; composeHasValue?: boolean; services?: ServiceConfig[] }
+export interface Deployment { services?: Service[]; applicationName: string; id: string; applicationId: string; operation: string; state: string; config: StaticConfig; commit: string; imageId: string; containerId: string; previousId: string; error: string; createdAt: number; startedAt: number; finishedAt: number; resolvedMethod: string; runtimePort: number; noCache: boolean }
+export interface Application { id: string; name: string; sourceKind: string; sourceRef: string; method: string; state: string; createdAt: number; updatedAt: number; containers: Container[]; config: StaticConfig; activeDeploymentId: string; latestDeployment?: Deployment; domains: Domain[]; desiredState: string; activeMethod?: string }
+export interface ApplicationDetail { application: Application; deployments: Deployment[]; activeDeployment?: Deployment | null }
+export interface LogLine { number: number; sequence: number; step: string; line: string; createdAt: number }
 export interface ProxyConfig { bindIP: string; httpPort: number; httpsPort: number; acmeEmail: string; acmeCA: string }
 export interface Inventory { items: Application[]; docker: DockerHealth }
 export interface SystemInfo {

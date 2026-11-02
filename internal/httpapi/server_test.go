@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -19,6 +20,12 @@ import (
 )
 
 type testEngine struct{}
+
+type testLogRuntime struct{ deploy.Runtime }
+
+func (testLogRuntime) Logs(ctx context.Context, appID, containerID string, tail int, emit func(string) error) error {
+	return emit("runtime-api-private-value is masked")
+}
 
 func (testEngine) Snapshot(context.Context) (engine.Snapshot, error) {
 	return engine.Snapshot{Containers: []store.Container{{ID: "abc", Name: "api", State: "running", Image: "test:v1", Ports: []store.Port{}, Managed: true, ApplicationID: "app-api"}, {ID: "external", Name: "unrelated", State: "running", Ports: []store.Port{}}}, Info: engine.Info{Name: "fixture"}}, nil
@@ -110,7 +117,7 @@ func TestAuthenticationCSRFAndReadOnlyAPI(t *testing.T) {
 	if resp.StatusCode != 200 || len(body["items"].([]any)) != 1 {
 		t.Fatal(body)
 	}
-	config := store.StaticConfig{Repository: "https://github.com/mdn/beginner-html-site.git", PublishDirectory: ".", Routing: "files"}
+	config := store.StaticConfig{Repository: "https://github.com/mdn/beginner-html-site.git", PublishDirectory: ".", Routing: "files", Variables: []store.Variable{{Name: "TOKEN", Value: "runtime-api-private-value", Secret: true, Scope: "runtime"}}}
 	create := map[string]any{"name": "Website", "config": config}
 	resp, _ = request("POST", "/api/applications", create, "", "")
 	if resp.StatusCode != 403 {
@@ -122,9 +129,29 @@ func TestAuthenticationCSRFAndReadOnlyAPI(t *testing.T) {
 	}
 	appID := body["applicationId"].(string)
 	jobID := body["id"].(string)
+	if strings.Contains(string(mustJSON(body)), "runtime-api-private-value") {
+		t.Fatal("creation response exposed a secret")
+	}
 	resp, body = request("GET", "/api/applications/"+appID, nil, "", "")
 	if resp.StatusCode != 200 || body["application"].(map[string]any)["name"] != "Website" {
 		t.Fatal("application resource", body)
+	}
+	if strings.Contains(string(mustJSON(body)), "runtime-api-private-value") {
+		t.Fatal("detail exposed a secret")
+	}
+	resp, body = request("POST", "/api/applications/"+appID+"/variables/reveal", map[string]string{"name": "TOKEN"}, csrf, "")
+	if resp.StatusCode != 200 || body["value"] != "runtime-api-private-value" || resp.Header.Get("Cache-Control") != "no-store" {
+		t.Fatal("explicit reveal failed", body)
+	}
+	worker.Runtime = testLogRuntime{}
+	runtimeStream, err := client.Get(server.URL + "/api/applications/" + appID + "/logs?container=runtime-fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeBody, err := io.ReadAll(runtimeStream.Body)
+	runtimeStream.Body.Close()
+	if err != nil || !strings.Contains(string(runtimeBody), "[REDACTED]") || strings.Contains(string(runtimeBody), "runtime-api-private-value") || !strings.Contains(string(runtimeBody), "event: end") {
+		t.Fatal("runtime stream leaked or did not complete", string(runtimeBody), err)
 	}
 	resp, _ = request("POST", "/api/applications/"+appID+"/deployments", map[string]any{}, csrf, "")
 	if resp.StatusCode != 409 {

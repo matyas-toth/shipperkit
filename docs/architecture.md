@@ -22,7 +22,7 @@ Apache site containers and Traefik run independently on the Docker host.
 ## Persistence and identity
 
 SQLite uses WAL, foreign keys, busy timeout, and one pooled connection. Migrations
-are transactional and additive. Application source (`git`) and method (`static`)
+are transactional and additive. Application source (`git`) and method (`static`, `dockerfile`, `railpack`, `auto`)
 remain separate from each other and from observed containers. Multiple containers
 share one application ID. Snapshot replacement and state aggregation commit
 together; a failed Docker read retains the last complete snapshot.
@@ -34,9 +34,9 @@ applications remain inspectable. Unrelated workloads, infrastructure containers,
 and other installations' resources are excluded from the dashboard.
 
 An application's desired configuration may differ from its serving release after
-a failed update. Routing always uses the active deployment's immutable snapshot.
-Domain reservations cover both configurations so a failed domain change cannot
-allow another application to steal the still-serving hostname. Deletion leaves a
+a failed update. Runtime routing points to the active deployment's immutable image/port snapshot.
+Domain policies are independent authoritative routing metadata with unique claims;
+route-only jobs reserve both old and proposed hosts until acknowledgment or rollback. Deletion leaves a
 tombstone, preventing late inventory events from recreating the application.
 
 ## Durable operations
@@ -125,7 +125,8 @@ live updates. The frontend uses Tabler Solid components with tree-shaken imports
 
 Vite produces embedded assets; production requires no Node server. Docker builds
 both layers and runs the control plane as UID/GID 65532 with a read-only root.
-Native development uses Go, Node, and Git; runtime Docker packaging includes Git.
+Native development uses Go, Node, Git, and Docker CLI/Buildx; runtime Docker
+packaging includes Git and Docker CLI/Buildx.
 
 Tests cover auth/origin/CSRF, additive migrations, worker/domain exclusivity,
 ownership, failure preservation, recovery, inventory events, and bounded streams.
@@ -140,3 +141,32 @@ Shipper includes no Coolify source. References: [Coolify](https://github.com/coo
 [Docker SDK](https://docs.docker.com/reference/api/engine/sdk/examples/),
 [Traefik file provider](https://doc.traefik.io/traefik/reference/install-configuration/providers/others/file/),
 [Apache overrides](https://httpd.apache.org/docs/2.4/howto/htaccess.html).
+
+## Full application extensions
+
+Phase 3 reuses the durable queue for deploy, domains, start, stop, restart and
+Delete operations. The application stores authoritative domain policies and a
+desired running/stopped state separately from immutable deployment configuration.
+Domain changes wait for proxy acknowledgment without replacing the serving image.
+
+BuildKit has a private instance-owned daemon/cache and private Buildx configuration.
+The CLI handles the BuildKit client protocol; inventory/lifecycle/ownership checks
+use the official Docker SDK. Railpack prepares a pinned plan in an unprivileged
+helper and builds it through a matching frontend. Runtime image configuration is
+preserved while Shipper adds ownership labels. Secret mounts keep build values out
+of host command arguments. Variables use AES-GCM at rest; API masking, explicit
+reveal and runtime/deployment log redaction are separate boundaries. See
+[Phase 3 decisions](phase-3-decisions.md) and [operations](full-applications.md).
+
+## Compose applications
+
+The reference compose-go loader validates and normalizes a source with a closed
+interpolation environment. Referenced paths are checked before environment files
+are opened. The official CLI performs builds and project orchestration; SDK
+checks enforce resource ownership and populate portable file volumes. Project
+identity stays fixed for the lifetime of an application. Runtime plans use pinned
+image IDs and volume names, are AES-GCM encrypted in SQLite, and do not appear in
+public deployment responses. A failed build preserves the serving stack. Apply
+failures attempt to restore the previous model without touching persistent data.
+The service UI addresses stable Compose service names rather than container IDs.
+See [Compose operations](compose.md) for stateful update and isolation boundaries.

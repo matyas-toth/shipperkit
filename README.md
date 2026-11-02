@@ -2,20 +2,22 @@
 
 A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
 
-**Phase 2: Static sites.** Deploy a public Git repository as a versioned Apache
-image, check the candidate, and route it through Traefik. Shipper persists the
-deployment queue, history, and logs, preserves a serving release when a redeploy
-fails, and groups multiple containers under one application.
+**Phase 4: Docker Compose.** Deploy public Git repositories or pasted Compose
+YAML as one application with inspectable services. Dockerfile, Railpack, and
+static Apache deployments remain supported.
 
-The dashboard shows Shipper applications. Unrelated Docker containers are excluded.
-Railpack, Dockerfile builds, build commands, and Compose deployments follow in
-later phases.
+Service logs, editable environments, domain routing, health checks, persistent
+volumes, and application lifecycle controls are available from the dashboard.
+Compose builds finish before updates begin, and failed startup attempts restore
+the previous pinned container configuration where possible. Persistent data is
+retained; database migrations require their own backup/recovery strategy.
+See [Compose operations](docs/compose.md).
 
 ## Run locally
 
 Requirements: Go 1.26+, Node.js 22.12+ (24 LTS recommended), and a running Docker
 Engine or Docker Desktop using Linux containers. Native development also needs
-Git 2.36+; the production image includes Git.
+Git 2.36+ and Docker CLI with Buildx and Compose; the production image includes them.
 
 ```sh
 npm ci
@@ -115,7 +117,7 @@ labels:
 New resources also carry `io.shipper.instance` and `io.shipper.deployment.id`.
 The instance identity is persisted in SQLite. Another Shipper installation's
 resources are excluded; legacy discovered records remain inspectable but cannot
-be redeployed or deleted through this static-site pipeline.
+be redeployed or deleted through the deployment pipeline.
 
 SQLite retains a stable application record if its container disappears.
 Container state, health, and application-level state are separate. A disconnected
@@ -123,22 +125,37 @@ daemon leaves the last complete inventory visible with an explicit warning.
 Reconnects and periodic reconciliation repair missed Docker events.
 
 The inventory window is virtualized, and search/status filters run locally.
-Selecting an application opens Overview, Deployments, Domains, and Settings.
+Selecting an application opens Overview, Deployments, Logs, Domains, .env, and Settings.
 Container inspection uses a drawer. Navigation retains the query cache and shell.
 
-## Deploy a static site
+## Deploy an application
 
-Choose **New application**, enter a public HTTPS Git URL, and choose **Deploy**.
-The default publish directory is the repository root, which must contain
-`index.html`. Configuration exposes branch, publish directory, file/SPA/strict
-routing, and opt-in `.htaccess` rewrites. Repository code is never executed on the
-control plane. Build commands and dependency installation are deferred to Phase 3.
+Choose **New application**, enter a public HTTPS Git URL, select a branch or use
+the remote default, and choose **Deploy**. Automatic mode prefers a root Dockerfile,
+then a supported language manifest through Railpack, then a plain `index.html`.
+The deployment records the resolved method. Explicit method selection overrides
+this choice. Configuration supports a repository subdirectory, commands, health
+path, memory limit, and container port. Variables can be supplied before the first
+deployment and later through the .env tab.
 
-A local application gets `http://<application-id>.localhost:8780`. Use **Visit**
-to open it. Use **Redeploy** to ship the current branch again, and **Deployments**
-to inspect the exact commit, operation state, and persisted logs.
+Static sites can deploy an existing publish directory directly or run an optional
+Node build before Apache packaging. Dockerfile install/build steps belong in the
+Dockerfile. Railpack detects its toolchain and accepts command overrides. A runtime
+must listen on `0.0.0.0`; the port comes from the explicit setting, runtime `PORT`,
+a sole image EXPOSE declaration, or 3000. Apache uses 8080 internally.
 
-For public DNS and automatic HTTPS, see [static site operations](docs/static-sites.md).
+A local application gets `http://<application-id>.localhost:8780`. **Redeploy**
+builds the current branch. The adjacent actions menu supports an uncached rebuild,
+start, stop, and restart. **Deployments** records build and routing operations;
+**Logs** streams runtime output separately. **Settings** saves a new name without
+redeploying and applies build/runtime changes with **Save and deploy**.
+
+**Domains** supports up to 32 hostnames with independent HTTPS and verification,
+one primary hostname, and optional aliases redirected to it. Root domains can add
+`www` automatically. **Save domains** only updates routing. HTTPS requires an ACME
+email, public DNS, and reachable ports; local addresses use HTTP. See
+[application operations](docs/full-applications.md) and
+[static site operations](docs/static-sites.md).
 
 ## Password recovery
 
@@ -166,6 +183,8 @@ npx playwright install chromium
 npm run test:e2e
 npm run test:docker
 npm run test:deploy
+npm run test:full
+npm run test:compose
 # After building shipper:local:
 npm run test:package
 ```
@@ -193,6 +212,11 @@ requires a reachable test domain and is a separate operator check.
 API and public Git pipeline, verifies the domain from inside the container,
 restarts the control plane, and checks failed-redeploy preservation and deletion.
 It removes only this run's explicitly labeled test resources.
+
+`test:full` runs real BuildKit Dockerfile and Railpack deployments, build secret
+mounts, encrypted variable round trips, multi-domain routing without replacement,
+failed-build preservation, runtime logs, and lifecycle actions. It removes only
+resources carrying its random instance identity.
 
 Browser screenshots and test data go to the system temporary directory.
 Production data and generated builds are ignored by Git.

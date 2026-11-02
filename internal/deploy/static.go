@@ -24,9 +24,25 @@ import (
 )
 
 var domainPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$`)
+var commitPattern = regexp.MustCompile(`^(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$`)
 var branchPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$`)
 
 func Validate(c *store.StaticConfig) error {
+	if e := ValidateBuild(c); e != nil {
+		return e
+	}
+	if c.Method == "compose" && c.ComposeSource == "paste" {
+		c.Repository = ""
+		c.Branch = ""
+		c.RootDirectory = "."
+		if c.Domain == "" {
+			return nil
+		}
+		if !domainPattern.MatchString(c.Domain) || strings.HasSuffix(c.Domain, ".localhost") && c.HTTPS {
+			return errors.New("Enter a valid domain and use HTTP for local addresses")
+		}
+		return nil
+	}
 	c.Repository = strings.TrimSpace(c.Repository)
 	u, e := url.Parse(c.Repository)
 	if e != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Port() != "" && u.Port() != "443") || len(c.Repository) > 2048 {
@@ -45,7 +61,7 @@ func Validate(c *store.StaticConfig) error {
 	}
 	c.Branch = strings.TrimSpace(c.Branch)
 	if c.Branch != "" && (!branchPattern.MatchString(c.Branch) || strings.Contains(c.Branch, "..") || strings.Contains(c.Branch, "//") || strings.HasSuffix(c.Branch, "/") || strings.HasSuffix(c.Branch, ".lock")) {
-		return errors.New("Enter a valid Git branch")
+		return errors.New("Enter a valid Git branch or full commit SHA")
 	}
 	c.PublishDirectory = strings.TrimSpace(c.PublishDirectory)
 	if c.PublishDirectory == "" {
@@ -65,6 +81,9 @@ func Validate(c *store.StaticConfig) error {
 		return errors.New("Choose a valid routing mode")
 	}
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
+	if c.Method == "compose" && c.Domain == "" {
+		return nil
+	}
 	if len(c.Domain) > 253 || !domainPattern.MatchString(c.Domain) || net.ParseIP(c.Domain) != nil {
 		return errors.New("Enter a domain without a protocol, port, or path")
 	}
@@ -111,17 +130,26 @@ func (GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, lo
 	if addresses[0].Is6() {
 		ip = "[" + ip + "]"
 	}
-	args := []string{"-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "credential.helper=", "-c", "http.followRedirects=false", "-c", "http.curloptResolve=" + u.Hostname() + ":443:" + ip, "-c", "core.hooksPath=" + filepath.Join(dir, "disabled-hooks"), "-c", "core.symlinks=false", "clone", "--depth=1", "--single-branch", "--no-tags", "--no-recurse-submodules"}
-	if c.Branch != "" {
+	options := []string{"-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "credential.helper=", "-c", "http.followRedirects=false", "-c", "http.curloptResolve=" + u.Hostname() + ":443:" + ip, "-c", "core.hooksPath=" + filepath.Join(dir, "disabled-hooks"), "-c", "core.symlinks=false"}
+	args := append(append([]string(nil), options...), "clone", "--depth=1", "--single-branch", "--no-tags", "--no-recurse-submodules")
+	if c.Branch != "" && !commitPattern.MatchString(c.Branch) {
 		args = append(args, "--branch", c.Branch)
 	}
 	args = append(args, "--", c.Repository, filepath.Join(dir, "repository"))
-	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Env = gitEnvironment()
-	cmd.WaitDelay = 2 * time.Second
+	commands := [][]string{args}
+	if commitPattern.MatchString(c.Branch) {
+		repository := filepath.Join(dir, "repository")
+		init := append(append([]string(nil), options...), "init", "--quiet")
+		if len(c.Branch) == 64 {
+			init = append(init, "--object-format=sha256")
+		}
+		init = append(init, repository)
+		fetch := append(append([]string(nil), options...), "-C", repository, "fetch", "--depth=1", "--no-tags", "--no-recurse-submodules", "--", c.Repository, c.Branch)
+		checkout := append(append([]string(nil), options...), "-C", repository, "checkout", "--detach", "FETCH_HEAD")
+		commands = [][]string{init, fetch, checkout}
+	}
 	output := &gitLogWriter{log: log}
-	cmd.Stdout = output
-	cmd.Stderr = output
+	var cmd *exec.Cmd
 	guardDone := make(chan struct{})
 	go func() {
 		ticker := time.NewTicker(250 * time.Millisecond)
@@ -152,7 +180,16 @@ func (GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, lo
 			}
 		}
 	}()
-	err = cmd.Run()
+	for _, arguments := range commands {
+		cmd = exec.CommandContext(ctx, "git", arguments...)
+		cmd.Env = gitEnvironment()
+		cmd.WaitDelay = 2 * time.Second
+		cmd.Stdout = output
+		cmd.Stderr = output
+		if err = cmd.Run(); err != nil {
+			break
+		}
+	}
 	close(guardDone)
 	output.flush()
 	if err != nil {
@@ -167,10 +204,18 @@ func (GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, lo
 type gitLogWriter struct {
 	mu      sync.Mutex
 	pending string
+	discard bool
 	lines   int
+	Limit   int
 	log     func(string)
 }
 
+func (w *gitLogWriter) limit() int {
+	if w.Limit > 0 {
+		return w.Limit
+	}
+	return 512
+}
 func (w *gitLogWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -179,14 +224,19 @@ func (w *gitLogWriter) Write(p []byte) (int, error) {
 	for {
 		line, rest, ok := strings.Cut(w.pending, "\n")
 		if !ok {
-			if len(w.pending) > 2048 {
-				w.pending = w.pending[:2048]
+			if len(w.pending) > 65536 {
+				w.pending = ""
+				w.discard = true
 			}
 			break
 		}
 		w.pending = rest
-		if line != "" && w.lines < 512 {
-			w.log(line[:min(len(line), 2048)])
+		if w.discard || len(line) > 65536 {
+			line = "[Log line exceeded 64 KiB]"
+			w.discard = false
+		}
+		if line != "" && w.lines < w.limit() {
+			w.log(line)
 			w.lines++
 		}
 	}
@@ -195,8 +245,12 @@ func (w *gitLogWriter) Write(p []byte) (int, error) {
 func (w *gitLogWriter) flush() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if w.pending != "" && w.lines < 512 {
-		w.log(w.pending)
+	if w.pending != "" && w.lines < w.limit() {
+		if w.discard {
+			w.log("[Log line exceeded 64 KiB]")
+		} else {
+			w.log(w.pending)
+		}
 	}
 	w.pending = ""
 }

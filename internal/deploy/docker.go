@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/netip"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -47,6 +48,7 @@ type DockerRuntime struct {
 	Client   *client.Client
 	Instance string
 	Config   ProxyConfig
+	DataDir  string
 }
 
 func (r *DockerRuntime) prefix() string  { return "shipper-" + r.Instance[:12] }
@@ -204,26 +206,83 @@ func (r *DockerRuntime) Package(ctx context.Context, d store.Deployment, archive
 	if _, e = r.Client.CopyToContainer(ctx, created.ID, client.CopyToContainerOptions{DestinationPath: "/", Content: bytes.NewReader(archive)}); e != nil {
 		return "", e
 	}
-	delete(cfg.Labels, "io.shipper.infrastructure")
+	// Commit merges container labels; an explicit empty value clears the helper role.
+	cfg.Labels["io.shipper.infrastructure"] = ""
 	log("Packaging Apache image for commit " + d.Commit)
 	image, e := r.Client.ContainerCommit(ctx, created.ID, client.ContainerCommitOptions{Reference: tag, Config: cfg, Comment: "Shipper static deployment " + d.ID})
 	return image.ID, e
 }
 func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, error) {
-	name := r.prefix() + "-site-" + d.ID
-	if old, e := r.Client.ContainerInspect(ctx, name, client.ContainerInspectOptions{}); e == nil {
-		if !owned(old.Container.Config.Labels, r.Instance, d.ApplicationID) {
+	name := runtimeName(d)
+	for _, existing := range []string{d.ContainerID, name, r.prefix() + "-site-" + d.ID} {
+		if existing == "" {
+			continue
+		}
+		old, e := r.Client.ContainerInspect(ctx, existing, client.ContainerInspectOptions{})
+		if errdefs.IsNotFound(e) {
+			continue
+		}
+		if e != nil {
+			return "", e
+		}
+		if !owned(old.Container.Config.Labels, r.Instance, d.ApplicationID) || old.Container.Config.Labels["io.shipper.deployment.id"] != d.ID {
 			return "", errors.New("Container ownership check failed")
 		}
 		if !old.Container.State.Running {
-			_, e = r.Client.ContainerStart(ctx, name, client.ContainerStartOptions{})
+			_, e = r.Client.ContainerStart(ctx, old.Container.ID, client.ContainerStartOptions{})
 			if e != nil {
 				return "", e
 			}
 		}
 		return old.Container.ID, nil
 	}
-	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: &container.Config{Image: d.ImageID, Labels: r.labels(d.ApplicationID, d.ID)}, HostConfig: &container.HostConfig{ReadonlyRootfs: true, Tmpfs: map[string]string{"/tmp": "rw,nosuid,noexec,size=16777216,mode=1777"}, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: container.Resources{Memory: 128 << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(128))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
+	configuration := &container.Config{Image: d.ImageID, Labels: r.labels(d.ApplicationID, d.ID), Env: []string{"PORT=" + strconv.Itoa(ReleasePort(d))}}
+	configuration.Labels["io.shipper.infrastructure"] = ""
+	configuration.Labels["io.shipper.resource"] = "application"
+	for _, v := range d.Config.Variables {
+		if v.Scope == "runtime" || v.Scope == "both" || v.Scope == "" {
+			if v.Name == "PORT" {
+				configuration.Env[0] = "PORT=" + v.Value
+			} else {
+				configuration.Env = append(configuration.Env, v.Name+"="+v.Value)
+			}
+		}
+	}
+	if d.Config.StartCommand != "" && ReleaseMethod(d) == "dockerfile" {
+		configuration.Entrypoint = []string{"/bin/sh", "-c", d.Config.StartCommand}
+		configuration.Cmd = []string{}
+	}
+	mounts := []mount.Mount{}
+	for _, v := range d.Config.Volumes {
+		volume := r.prefix() + "-" + d.ApplicationID + "-" + v.Name
+		existing, e := r.Client.VolumeInspect(ctx, volume, client.VolumeInspectOptions{})
+		if e == nil {
+			if !owned(existing.Volume.Labels, r.Instance, d.ApplicationID) {
+				return "", errors.New("Persistent volume ownership check failed")
+			}
+		} else if errdefs.IsNotFound(e) {
+			labels := r.labels(d.ApplicationID, "")
+			labels["io.shipper.resource"] = "data"
+			if _, e = r.Client.VolumeCreate(ctx, client.VolumeCreateOptions{Name: volume, Labels: labels}); e != nil {
+				return "", e
+			}
+		} else {
+			return "", e
+		}
+		mounts = append(mounts, mount.Mount{Type: mount.TypeVolume, Source: volume, Target: v.Path})
+	}
+	memory := d.Config.MemoryMB
+	if memory == 0 {
+		memory = 512
+		if ReleaseMethod(d) == "static" {
+			memory = 128
+		}
+	}
+	temporary := "rw,nosuid,noexec,size=16777216,mode=1777"
+	if ReleaseMethod(d) != "static" {
+		temporary = "rw,nosuid,exec,size=67108864,mode=1777"
+	}
+	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: container.Resources{Memory: memory << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(256))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
 	if e != nil {
 		return "", e
 	}
@@ -231,7 +290,16 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 	return c.ID, e
 }
 func (r *DockerRuntime) exec(ctx context.Context, id string, cmd []string) ([]byte, error) {
-	e, err := r.Client.ExecCreate(ctx, id, client.ExecCreateOptions{Cmd: cmd, AttachStdout: true, AttachStderr: true})
+	return r.execEnv(ctx, id, cmd, nil)
+}
+func (r *DockerRuntime) execEnv(ctx context.Context, id string, cmd, environment []string) ([]byte, error) {
+	return r.execInput(ctx, id, cmd, environment, nil)
+}
+func (r *DockerRuntime) execInput(ctx context.Context, id string, cmd, environment []string, input io.Reader) ([]byte, error) {
+	return r.execPipe(ctx, id, cmd, environment, input, true)
+}
+func (r *DockerRuntime) execPipe(ctx context.Context, id string, cmd, environment []string, input io.Reader, closeInput bool) ([]byte, error) {
+	e, err := r.Client.ExecCreate(ctx, id, client.ExecCreateOptions{Cmd: cmd, Env: environment, AttachStdin: input != nil, AttachStdout: true, AttachStderr: true})
 	if err != nil {
 		return nil, err
 	}
@@ -249,6 +317,18 @@ func (r *DockerRuntime) exec(ctx context.Context, id string, cmd []string) ([]by
 		case <-done:
 		}
 	}()
+	if input != nil {
+		if _, err = io.Copy(stream.Conn, input); err != nil {
+			close(done)
+			return nil, err
+		}
+		if closeInput {
+			if err = stream.CloseWrite(); err != nil {
+				close(done)
+				return nil, err
+			}
+		}
+	}
 	_, err = stdcopy.StdCopy(&out, &out, stream.Reader)
 	close(done)
 	if err != nil {
@@ -272,6 +352,9 @@ func (b *cappedBuffer) Write(p []byte) (int, error) {
 	return n, nil
 }
 func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
+	if ReleaseMethod(d) == "compose" && d.ContainerID == "" {
+		return r.ComposeHealthy(ctx, d)
+	}
 	deadline, stop := context.WithTimeout(ctx, 45*time.Second)
 	defer stop()
 	var last error
@@ -284,13 +367,33 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 			return errors.New("Candidate ownership check failed")
 		}
 		if info.Container.State.Running {
-			_, e = r.exec(deadline, d.ContainerID, []string{"wget", "-q", "-T", "2", "-O", "/dev/null", "http://127.0.0.1:8080/"})
+			healthPath := d.Config.HealthPath
+			if healthPath == "" {
+				healthPath = "/"
+			}
+			target := "site-" + d.ID
+			if ReleaseMethod(d) == "compose" {
+				target = composeAlias(d.ApplicationID, info.Container.Config.Labels["com.docker.compose.service"])
+			}
+			out, probeError := r.probeHTTP(deadline, target, ReleasePort(d), target, healthPath)
+			e = probeError
 			if e == nil {
-				return nil
+				line, _, _ := strings.Cut(string(out), "\r\n")
+				parts := strings.Fields(line)
+				if len(parts) > 1 {
+					code, _ := strconv.Atoi(parts[1])
+					if code >= 200 && code < 400 && (info.Container.State.Health == nil || string(info.Container.State.Health.Status) != "unhealthy") {
+						return nil
+					}
+					e = fmt.Errorf("Health endpoint returned HTTP %d", code)
+				} else {
+					e = errors.New("The health endpoint did not return an HTTP response")
+				}
 			}
 		} else {
-			e = errors.New("Apache exited before its health check")
+			e = errors.New("The application exited before its health check")
 		}
+
 		last = e
 		select {
 		case <-deadline.Done():
@@ -301,8 +404,15 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 	defer cancelDiagnostic()
 	if logs, e := r.Client.ContainerLogs(diagnostic, d.ContainerID, client.ContainerLogsOptions{ShowStderr: true, Tail: "4"}); e == nil {
 		defer logs.Close()
-		var output cappedBuffer
-		stdcopy.StdCopy(&output, &output, io.LimitReader(logs, 64<<10))
+		var output strings.Builder
+		writer := &logWriter{emit: func(line string) error {
+			if output.Len() < 4096 {
+				output.WriteString(RedactDeployment(d, line) + "\n")
+			}
+			return nil
+		}}
+		// Emit only complete lines so a read limit cannot expose part of a secret.
+		stdcopy.StdCopy(writer, writer, io.LimitReader(logs, 256<<10))
 		text := strings.TrimSpace(output.String())
 		if text != "" {
 			return fmt.Errorf("The candidate did not pass its HTTP health check: %w\n%s", last, text[:min(len(text), 2048)])
@@ -319,19 +429,83 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 	middlewares := map[string]any{"https-redirect": map[string]any{"redirectScheme": map[string]any{"scheme": "https", "permanent": true}}}
 	for _, a := range apps {
 		d, ok := active[a.ID]
-		if !ok || d.ID == "" || d.Config.Domain == "" {
+		if !ok || d.ID == "" {
 			continue
 		}
-		rule := "Host(`" + d.Config.Domain + "`)"
-		key := "app-" + a.ID
-		services[key] = map[string]any{"loadBalancer": map[string]any{"servers": []any{map[string]string{"url": "http://site-" + d.ID + ":8080"}}}}
-		router := map[string]any{"rule": rule, "service": key, "entryPoints": []string{"web"}}
-		if d.Config.HTTPS {
-			routers[key+"-http"] = map[string]any{"rule": rule, "service": key, "entryPoints": []string{"web"}, "middlewares": []string{"https-redirect"}}
-			router["entryPoints"] = []string{"websecure"}
-			router["tls"] = map[string]any{"certResolver": "letsencrypt"}
+		domains := a.Domains
+		if domains == nil && d.Config.Domain != "" {
+			domains = []store.Domain{{ID: "primary", Hostname: d.Config.Domain, HTTPS: d.Config.HTTPS, Primary: true}}
 		}
-		routers[key] = router
+		if len(domains) == 0 {
+			continue
+		}
+		key := "app-" + a.ID
+		if ReleaseMethod(d) != "compose" {
+			services[key] = map[string]any{"loadBalancer": map[string]any{"servers": []any{map[string]string{"url": "http://site-" + d.ID + ":" + strconv.Itoa(ReleasePort(d))}}}}
+		}
+		domains = append([]store.Domain(nil), domains...)
+		for i := range domains {
+			domains[i].VerificationState = ""
+			domains[i].Message = ""
+			domains[i].CheckedAt = 0
+		}
+		payload, _ := json.Marshal(struct {
+			Domains []store.Domain
+			Release string
+			Port    int
+		}{domains, d.ID, ReleasePort(d)})
+		revision := fmt.Sprintf("%x", sha256.Sum256(payload))
+		identity := "identity-" + a.ID + "-" + revision[:12]
+		middlewares[identity] = map[string]any{"headers": map[string]any{"customResponseHeaders": map[string]string{"X-Shipper-Deployment": d.ID}}}
+		for _, domain := range domains {
+			serviceKey := key
+			group := []store.Domain{}
+			for _, other := range domains {
+				if other.Service == domain.Service {
+					group = append(group, other)
+				}
+			}
+			primary := store.PrimaryDomain(group)
+			if ReleaseMethod(d) == "compose" {
+				port := 0
+				for _, svc := range d.Services {
+					if svc.Name == domain.Service {
+						port = svc.Port
+					}
+				}
+				if port == 0 {
+					continue
+				}
+				serviceKey = key + "-svc-" + domain.Service
+				services[serviceKey] = map[string]any{"loadBalancer": map[string]any{"servers": []any{map[string]string{"url": "http://" + composeAlias(a.ID, domain.Service) + ":" + strconv.Itoa(port)}}}}
+			}
+			routerKey := serviceKey
+			if !domain.Primary {
+				routerKey += "-" + domain.ID
+			}
+			rule := "Host(`" + domain.Hostname + "`)"
+			chain := []string{identity}
+			if domain.Redirect && !domain.Primary && primary.Hostname != "" {
+				redirect := "redirect-" + routerKey + "-" + revision[:12]
+				scheme := "http"
+				if primary.HTTPS {
+					scheme = "https"
+				}
+				middlewares[redirect] = map[string]any{"redirectRegex": map[string]any{"regex": "^https?://" + regexp.QuoteMeta(domain.Hostname) + "(?::[0-9]+)?(.*)", "replacement": scheme + "://" + primary.Hostname + "${1}", "permanent": true}}
+				chain = append(chain, redirect)
+			}
+			router := map[string]any{"rule": rule, "service": serviceKey, "entryPoints": []string{"web"}, "middlewares": chain}
+			if domain.HTTPS {
+				httpChain := append([]string{}, chain...)
+				if !domain.Redirect {
+					httpChain = append(httpChain, "https-redirect")
+				}
+				routers[routerKey+"-http"] = map[string]any{"rule": rule, "service": serviceKey, "entryPoints": []string{"web"}, "middlewares": httpChain}
+				router["entryPoints"] = []string{"websecure"}
+				router["tls"] = map[string]any{"certResolver": "letsencrypt"}
+			}
+			routers[routerKey] = router
+		}
 	}
 	httpConfig := map[string]any{"middlewares": middlewares}
 	if len(routers) > 0 {
@@ -342,8 +516,10 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 	}
 	return map[string]any{"http": httpConfig}
 }
+
 func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, active map[string]store.Deployment) error {
-	data, e := json.Marshal(Routes(apps, active))
+	configuration := Routes(apps, active)
+	data, e := json.Marshal(configuration)
 	if e != nil {
 		return e
 	}
@@ -384,37 +560,65 @@ func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, ac
 					}
 				}
 				complete := true
+				expectedServices, _ := configuration["http"].(map[string]any)["services"].(map[string]any)
 				for name := range found {
 					if strings.HasPrefix(name, "app-") && strings.HasSuffix(name, "@file") {
-						id := strings.TrimSuffix(strings.TrimPrefix(name, "app-"), "@file")
-						if _, ok := active[id]; !ok {
+						if _, ok := expectedServices[strings.TrimSuffix(name, "@file")]; !ok {
 							complete = false
 						}
 					}
 				}
-				for id, d := range active {
-					if found["app-"+id+"@file"] != "http://site-"+d.ID+":8080" {
+				for name, value := range expectedServices {
+					servers := value.(map[string]any)["loadBalancer"].(map[string]any)["servers"].([]any)
+					if found[name+"@file"] != servers[0].(map[string]string)["url"] {
 						complete = false
-						break
 					}
 				}
 				if complete {
 					raw, routerError := r.exec(until, r.proxy(), []string{"wget", "-q", "-O", "-", "http://127.0.0.1:9000/api/http/routers"})
 					var routers []struct {
-						Name   string `json:"name"`
-						Status string `json:"status"`
+						Name        string   `json:"name"`
+						Status      string   `json:"status"`
+						Rule        string   `json:"rule"`
+						Middlewares []string `json:"middlewares"`
 					}
 					if routerError == nil && json.Unmarshal(raw, &routers) == nil {
-						enabled := map[string]bool{}
+						expected, _ := configuration["http"].(map[string]any)["routers"].(map[string]any)
+						seen := map[string]bool{}
 						for _, router := range routers {
-							enabled[router.Name] = router.Status == "enabled"
-						}
-						for id, d := range active {
-							if !enabled["app-"+id+"@file"] || (d.Config.HTTPS && !enabled["app-"+id+"-http@file"]) {
+							if !strings.HasSuffix(router.Name, "@file") || !strings.HasPrefix(router.Name, "app-") {
+								continue
+							}
+							name := strings.TrimSuffix(router.Name, "@file")
+							value, ok := expected[name]
+							if !ok {
 								complete = false
-								break
+								continue
+							}
+							want := value.(map[string]any)
+							if router.Status != "enabled" || router.Rule != want["rule"].(string) {
+								complete = false
+								continue
+							}
+							for _, middleware := range want["middlewares"].([]string) {
+								match := false
+								for _, actual := range router.Middlewares {
+									if actual == middleware+"@file" {
+										match = true
+									}
+								}
+								if !match {
+									complete = false
+								}
+							}
+							seen[name] = true
+						}
+						for name := range expected {
+							if !seen[name] {
+								complete = false
 							}
 						}
+
 						if complete {
 							return nil
 						}
@@ -446,8 +650,15 @@ func (r *DockerRuntime) removeOwned(ctx context.Context, id, app string) error {
 	return e
 }
 func (r *DockerRuntime) RemoveDeployment(ctx context.Context, d store.Deployment) error {
-	for _, name := range []string{r.prefix() + "-site-" + d.ID, r.prefix() + "-package-" + d.ID} {
-		if e := r.removeOwned(ctx, name, d.ApplicationID); e != nil {
+	if ReleaseMethod(d) == "compose" {
+		return nil
+	}
+	items, e := r.Client.ContainerList(ctx, client.ContainerListOptions{All: true, Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.application.id="+d.ApplicationID).Add("label", "io.shipper.deployment.id="+d.ID)})
+	if e != nil {
+		return e
+	}
+	for _, item := range items.Items {
+		if e := r.removeOwned(ctx, item.ID, d.ApplicationID); e != nil {
 			return e
 		}
 	}
@@ -466,13 +677,30 @@ func (r *DockerRuntime) RemoveApplication(ctx context.Context, app string) error
 	return nil
 }
 
+func (r *DockerRuntime) probeHTTP(ctx context.Context, target string, port int, host, requestPath string) ([]byte, error) {
+	request := "GET " + requestPath + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n"
+	return r.execPipe(ctx, r.proxy(), []string{"nc", "-w", "3", target, strconv.Itoa(port)}, nil, strings.NewReader(request), false)
+}
 func (r *DockerRuntime) ProbeLocal(ctx context.Context, d store.Deployment) (bool, error) {
-	out, e := r.exec(ctx, r.proxy(), []string{"wget", "-q", "-S", "-T", "4", "-O", "/dev/null", "--header", "Host: " + d.Config.Domain, "http://127.0.0.1:8080/"})
+	out, e := r.probeHTTP(ctx, "127.0.0.1", 8080, d.Config.Domain, "/")
 	if e != nil {
 		return false, e
 	}
-	for _, line := range strings.Split(string(out), "\n") {
-		key, value, ok := strings.Cut(strings.TrimSpace(line), ":")
+	header, _, _ := strings.Cut(string(out), "\r\n\r\n")
+	lines := strings.Split(header, "\r\n")
+	if len(lines) == 0 {
+		return false, nil
+	}
+	parts := strings.Fields(lines[0])
+	if len(parts) < 2 {
+		return false, nil
+	}
+	code, _ := strconv.Atoi(parts[1])
+	if code != 200 && (code < 300 || code > 399) {
+		return false, nil
+	}
+	for _, line := range lines[1:] {
+		key, value, ok := strings.Cut(line, ":")
 		if ok && strings.EqualFold(key, "X-Shipper-Deployment") {
 			return strings.TrimSpace(value) == d.ID, nil
 		}

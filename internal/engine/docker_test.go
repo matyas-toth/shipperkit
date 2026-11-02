@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -87,5 +88,42 @@ func TestRejectsPlaintextRemoteDocker(t *testing.T) {
 	t.Setenv("DOCKER_TLS_VERIFY", "")
 	if _, err := New(); err == nil {
 		t.Fatal("accepted unverified remote Docker")
+	}
+}
+
+func TestLegacyStaticRuntimeIsVisibleWhileHelpersRemainHidden(t *testing.T) {
+	instance, release := "1234567890abcdef1234567890abcdef", "abcdef1234567890abcdef12"
+	labels := func(role string) map[string]string {
+		return map[string]string{"io.shipper.managed": "true", "io.shipper.instance": instance, "io.shipper.application.id": "app", "io.shipper.deployment.id": release, "io.shipper.infrastructure": role}
+	}
+	items := []map[string]any{}
+	for index, name := range []string{"shipper-1234567890ab-site-" + release, "shp-my-app-abcdef123456", "shipper-1234567890ab-package-" + release, "manual-helper"} {
+		items = append(items, map[string]any{"Id": fmt.Sprint(index), "Names": []string{"/" + name}, "Image": "httpd", "State": "running", "Labels": labels("packaging")})
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/_ping"):
+			w.Header().Set("API-Version", "1.56")
+			w.Write([]byte("OK"))
+		case strings.HasSuffix(r.URL.Path, "/containers/json"):
+			json.NewEncoder(w).Encode(items)
+		case strings.HasSuffix(r.URL.Path, "/info"):
+			w.Write([]byte(`{"Architecture":"x86_64"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	cli, e := client.New(client.WithHost(server.URL))
+	if e != nil {
+		t.Fatal(e)
+	}
+	docker := NewWithClient(cli)
+	docker.Instance = instance
+	defer docker.Close()
+	snapshot, e := docker.Snapshot(context.Background())
+	if e != nil || len(snapshot.Containers) != 2 {
+		t.Fatal("legacy runtimes/helper filtering", snapshot, e)
 	}
 }

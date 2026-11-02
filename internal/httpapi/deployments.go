@@ -35,7 +35,17 @@ func (s *Server) application(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, e)
 		return
 	}
-	s.json(w, 200, map[string]any{"application": a, "deployments": ds})
+	for i := range ds {
+		ds[i] = store.PublicDeployment(ds[i])
+	}
+	var active *store.Deployment
+	if a.ActiveDeploymentID != "" {
+		if d, e := s.db.Deployment(r.Context(), a.ActiveDeploymentID); e == nil {
+			public := store.PublicDeployment(d)
+			active = &public
+		}
+	}
+	s.json(w, 200, map[string]any{"application": store.PublicApplication(a), "deployments": ds, "activeDeployment": active})
 }
 func (s *Server) resourceError(w http.ResponseWriter, e error) {
 	if errors.Is(e, sql.ErrNoRows) {
@@ -78,13 +88,31 @@ func (s *Server) mutationAvailable(w http.ResponseWriter) bool {
 	return true
 }
 func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id string) bool {
-	if c.Domain == "" {
+	if len(c.Domains) > 0 {
+		domains, e := deploy.NormalizeDomains(c.Domains)
+		if e != nil {
+			s.problem(w, 422, "invalid_domains", e.Error())
+			return false
+		}
+		c.Domains = domains
+		primary := store.PrimaryDomain(domains)
+		c.Domain = primary.Hostname
+		c.HTTPS = primary.HTTPS
+	}
+
+	if c.Domain == "" && c.Method != "compose" {
 		c.Domain = id + ".localhost"
 		c.HTTPS = false
 	}
 	if e := deploy.Validate(c); e != nil {
 		s.problem(w, 422, "invalid_configuration", e.Error())
 		return false
+	}
+	for _, d := range c.Domains {
+		if d.HTTPS && s.cfg.Proxy.ACMEEmail == "" {
+			s.problem(w, 422, "https_unconfigured", "Set SHIPPER_ACME_EMAIL before enabling HTTPS")
+			return false
+		}
 	}
 	if c.HTTPS && s.cfg.Proxy.ACMEEmail == "" {
 		s.problem(w, 422, "https_unconfigured", "Set SHIPPER_ACME_EMAIL before enabling HTTPS")
@@ -95,13 +123,13 @@ func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id
 
 var keyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
-func (s *Server) enqueue(w http.ResponseWriter, r *http.Request, a store.Application, operation string, create bool) {
+func (s *Server) enqueue(w http.ResponseWriter, r *http.Request, a store.Application, operation string, create bool, noCache ...bool) {
 	key := r.Header.Get("Idempotency-Key")
 	if key != "" && !keyPattern.MatchString(key) {
 		s.problem(w, 422, "invalid_idempotency_key", "Use an idempotency key of at most 128 letters, numbers, or ._:-")
 		return
 	}
-	d, e := s.db.Enqueue(r.Context(), a, store.Deployment{ID: auth.Token()[:24], Operation: operation}, key, create)
+	d, e := s.db.Enqueue(r.Context(), a, store.Deployment{ID: auth.Token()[:24], Operation: operation, NoCache: len(noCache) > 0 && noCache[0]}, key, create)
 	if e != nil {
 		switch {
 		case errors.Is(e, store.ErrBusy):
@@ -118,7 +146,7 @@ func (s *Server) enqueue(w http.ResponseWriter, r *http.Request, a store.Applica
 	s.cfg.Worker.Trigger()
 	s.hub.Publish()
 	w.Header().Set("Location", "/api/applications/"+d.ApplicationID)
-	s.json(w, 202, d)
+	s.json(w, 202, store.PublicDeployment(d))
 }
 func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 	if !s.mutationAvailable(w) {
@@ -129,6 +157,13 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a := store.Application{ID: auth.Token()[:24], Name: strings.TrimSpace(input.Name), Config: input.Config}
+	if e := store.MergeVariables(&a.Config, store.Config{}); e != nil {
+		s.problem(w, 422, "invalid_variables", e.Error())
+		return
+	}
+	if a.Name == "" && a.Config.Method == "compose" && a.Config.ComposeSource == "paste" {
+		a.Name = "Compose application"
+	}
 	if a.Name == "" {
 		u, e := url.Parse(a.Config.Repository)
 		if e == nil {
@@ -142,6 +177,9 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 	if !s.validateConfig(w, &a.Config, a.ID) {
 		return
 	}
+	if !s.validateComposeDomains(w, r, a.Config, a.Config.Domains, "") {
+		return
+	}
 	s.enqueue(w, r, a, "deploy", true)
 }
 func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
@@ -153,19 +191,40 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if a.Method != "static" {
-		s.problem(w, 422, "unsupported_method", "Only static sites can be deployed in this phase")
+	if (a.SourceKind != "git" && a.SourceKind != "compose") || a.Method == "" {
+		s.problem(w, 422, "unsupported_method", "Only applications deployed by Shipper can be redeployed")
 		return
 	}
 	var input struct {
-		Config *store.StaticConfig `json:"config"`
-		Name   *string             `json:"name"`
+		Config  *store.StaticConfig `json:"config"`
+		Name    *string             `json:"name"`
+		NoCache bool                `json:"noCache"`
 	}
 	if !s.decode(w, r, &input) {
 		return
 	}
 	if input.Config != nil {
-		a.Config = *input.Config
+		next := *input.Config
+		if (a.Config.Method == "compose") != (next.Method == "compose") {
+			s.problem(w, 422, "incompatible_method", "Create a new application to switch between Compose and a single-container deployment")
+			return
+		}
+		var release store.Deployment
+		if a.ActiveDeploymentID != "" {
+			release, e = s.db.Deployment(r.Context(), a.ActiveDeploymentID)
+			if e != nil {
+				s.internal(w, e)
+				return
+			}
+		}
+		if e := store.MergeReleaseVariables(&next, a.Config, release); e != nil {
+			s.problem(w, 422, "invalid_variables", e.Error())
+			return
+		}
+		next.Domain = a.Config.Domain
+		next.HTTPS = a.Config.HTTPS
+		next.Domains = nil
+		a.Config = next
 	}
 	if input.Name != nil {
 		a.Name = strings.TrimSpace(*input.Name)
@@ -177,7 +236,14 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 	if !s.validateConfig(w, &a.Config, a.ID) {
 		return
 	}
-	s.enqueue(w, r, a, "deploy", false)
+	if a.Domains != nil && len(a.Domains) == 0 {
+		a.Config.Domain = ""
+		a.Config.HTTPS = false
+	}
+	if !s.validateComposeDomains(w, r, a.Config, a.Domains, a.ActiveDeploymentID) {
+		return
+	}
+	s.enqueue(w, r, a, "deploy", false, input.NoCache)
 }
 func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 	if !s.mutationAvailable(w) {
@@ -198,7 +264,7 @@ func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 422, "confirmation_required", "Enter the application name to confirm deletion")
 		return
 	}
-	if a.Method != "static" {
+	if (a.SourceKind != "git" && a.SourceKind != "compose") || a.Method == "" {
 		s.problem(w, 422, "unsupported_method", "This application was discovered from Docker and cannot be deleted here")
 		return
 	}
@@ -222,6 +288,37 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, e)
 		return
 	}
+	var input struct {
+		DomainID string `json:"domainId"`
+	}
+	if !s.decode(w, r, &input) {
+		return
+	}
+	domain := store.PrimaryDomain(a.Domains)
+	if input.DomainID != "" {
+		found := false
+		for _, item := range a.Domains {
+			if item.ID == input.DomainID {
+				domain = item
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.problem(w, 404, "not_found", "The domain was not found")
+			return
+		}
+	}
+	if domain.Hostname == "" {
+		domain = store.Domain{ID: "primary", Hostname: d.Config.Domain, HTTPS: d.Config.HTTPS, Primary: true}
+	}
+	d.Config.Domain = domain.Hostname
+	d.Config.HTTPS = domain.HTTPS
+	respond := func(state, message string) {
+		s.db.SetDomainCheck(r.Context(), a.ID, domain, state, message)
+		s.hub.Publish()
+		s.json(w, 200, map[string]string{"state": state, "message": message, "domain": domain.Hostname})
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
 	scheme := "http"
@@ -238,14 +335,14 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 		}
 		verified, err := s.cfg.Worker.Runtime.ProbeLocal(ctx, d)
 		if err != nil {
-			s.json(w, 200, map[string]string{"state": "unreachable", "message": "The domain is not reachable through this server"})
+			respond("unreachable", "The domain is not reachable through this server")
 			return
 		}
 		if !verified {
-			s.json(w, 200, map[string]string{"state": "route_error", "message": "The domain is not serving this deployment"})
+			respond("route_error", "The domain is not serving this deployment")
 			return
 		}
-		s.json(w, 200, map[string]string{"state": "verified", "message": "Verified", "domain": d.Config.Domain})
+		respond("verified", "Verified")
 		return
 	}
 	var addresses []netip.Addr
@@ -255,12 +352,12 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 	} else {
 		addresses, e = net.DefaultResolver.LookupNetIP(ctx, "ip", d.Config.Domain)
 		if e != nil || len(addresses) == 0 {
-			s.json(w, 200, map[string]string{"state": "dns_pending", "message": "Point the domain's A or AAAA record to this server"})
+			respond("dns_pending", "Point the domain's A or AAAA record to this server")
 			return
 		}
 		for _, ip := range addresses {
 			if !deploy.PublicAddress(ip) {
-				s.json(w, 200, map[string]string{"state": "dns_error", "message": "The domain must resolve to a public server address"})
+				respond("dns_error", "The domain must resolve to a public server address")
 				return
 			}
 		}
@@ -279,14 +376,14 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 			state = "tls_pending"
 			message = "HTTPS verification failed; check DNS and Traefik certificate logs"
 		}
-		s.json(w, 200, map[string]string{"state": state, "message": message})
+		respond(state, message)
 		return
 	}
 	defer res.Body.Close()
 	io.Copy(io.Discard, io.LimitReader(res.Body, 4096))
-	if res.StatusCode != 200 || res.Header.Get("X-Shipper-Deployment") != d.ID {
-		s.json(w, 200, map[string]string{"state": "route_error", "message": fmt.Sprintf("The domain is not serving this deployment (HTTP %d)", res.StatusCode)})
+	if (res.StatusCode < 200 || res.StatusCode >= 400) || res.Header.Get("X-Shipper-Deployment") != d.ID {
+		respond("route_error", fmt.Sprintf("The domain is not serving this deployment (HTTP %d)", res.StatusCode))
 		return
 	}
-	s.json(w, 200, map[string]string{"state": "verified", "message": "Verified", "domain": d.Config.Domain})
+	respond("verified", "Verified")
 }

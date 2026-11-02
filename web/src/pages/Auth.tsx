@@ -1,6 +1,6 @@
+import Logo from "../components/Logo";
 import { Show, createSignal, createEffect } from "solid-js";
 import { Button, ErrorNotice, IconButton } from "../components/Controls";
-import { Icon } from "../components/Icon";
 import { post, APIError } from "../api";
 import type { Session } from "../types";
 
@@ -27,7 +27,7 @@ export default function AuthPage(props: { setup: boolean; onAuthenticated: (sess
     finally { setPending(false); }
   }
   return <div class="app-frame auth-frame">
-    <div class="topbar"><a class="brand" href="/" aria-label="Shipper"><Icon name="ship" /><span>Shipper</span></a></div>
+    <div class="topbar"><a class="brand" href="/" aria-label="Shipper"><Logo /><span>Shipper</span></a></div>
     <main class="app-panel auth-panel">
       <form class="auth-form" onSubmit={submit}>
         <h1>{props.setup ? "Create administrator" : "Sign in"}</h1>

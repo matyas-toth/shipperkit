@@ -13,8 +13,8 @@ export function IconButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement> & 
   return <button type="button" class={"button icon-button " + (local.ghost ? "ghost" : "neutral") + " " + (local.class ?? "")}
     aria-label={local.label} title={local.label} {...rest}><Icon name={local.icon} /></button>;
 }
-export function Status(props: { value: string }) {
-  return <span class={"status status-" + props.value}><span class="status-dot" />{statusLabel(props.value)}</span>;
+export function Status(props: { value: string; label?: string }) {
+  return <span class={"status status-" + props.value}><span class="status-dot" />{props.label ?? statusLabel(props.value)}</span>;
 }
 export function ErrorNotice(props: { message: string; retry?: () => void }) {
   return <div class="error-notice" role="alert"><Icon name="warning" /><span>{props.message}</span>

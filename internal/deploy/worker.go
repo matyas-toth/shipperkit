@@ -113,6 +113,21 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 				initCtx, cancel := context.WithTimeout(work, 3*time.Minute)
 				e = w.Runtime.Ensure(initCtx)
 				if e == nil {
+					if naming, ok := w.Runtime.(interface {
+						ReconcileName(context.Context, store.Deployment) error
+					}); ok {
+						for _, app := range apps {
+							if app.ActiveDeploymentID != "" {
+								if release, err := w.DB.Deployment(initCtx, app.ActiveDeploymentID); err == nil {
+									if err = naming.ReconcileName(initCtx, release); err != nil {
+										slog.Warn("Container naming update failed", "error", err)
+									}
+								}
+							}
+						}
+					}
+				}
+				if e == nil {
 					e = w.routes(initCtx, "", nil)
 				}
 				cancel()
@@ -164,6 +179,7 @@ func (w *Worker) cleanWorkspaces() error {
 	return nil
 }
 func (w *Worker) log(d store.Deployment, line string) {
+	line = RedactDeployment(d, line)
 	// Tool output is text only, bounded in SQLite and never interpreted as markup.
 	line = strings.Map(func(r rune) rune {
 		if r < 32 && r != '\t' {
@@ -191,12 +207,15 @@ func (w *Worker) routes(ctx context.Context, exclude string, override *store.Dep
 	}
 	active := map[string]store.Deployment{}
 	for _, a := range apps {
-		if a.ID == exclude || a.ActiveDeploymentID == "" {
+		if a.ID == exclude || a.ActiveDeploymentID == "" || a.DesiredState == "stopped" || (a.Domains != nil && len(a.Domains) == 0) {
 			continue
 		}
 		d, e := w.DB.Deployment(ctx, a.ActiveDeploymentID)
 		if e != nil {
 			return e
+		}
+		if a.LatestDeployment != nil && a.LatestDeployment.ID != d.ID && Method(a.LatestDeployment.Config) == "compose" && (a.LatestDeployment.State == "starting" || a.LatestDeployment.State == "checking" || a.LatestDeployment.State == "promoting") {
+			continue
 		}
 		active[a.ID] = d
 	}
@@ -206,7 +225,7 @@ func (w *Worker) routes(ctx context.Context, exclude string, override *store.Dep
 	return w.Runtime.Routes(ctx, apps, active)
 }
 func (w *Worker) process(parent context.Context, d store.Deployment) {
-	ctx, cancel := context.WithTimeout(parent, 10*time.Minute)
+	ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
 	defer cancel()
 	if d.StartedAt == 0 {
 		d.StartedAt = time.Now().Unix()
@@ -214,6 +233,67 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 	err := func() error {
 		if e := w.Runtime.Ensure(ctx); e != nil {
 			return fmt.Errorf("Proxy setup failed: %w", e)
+		}
+		if d.Operation == "domains" {
+			if e := w.stage(ctx, &d, "routing"); e != nil {
+				return e
+			}
+			w.log(d, "Updating domains without rebuilding the application")
+			if e := w.DB.SetDomains(ctx, d.ApplicationID, d.Config.Domains); e != nil {
+				return e
+			}
+			if e := w.routes(ctx, "", nil); e != nil {
+				rollback, stop := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+				defer stop()
+				w.DB.SetDomains(rollback, d.ApplicationID, d.PreviousDomains)
+				w.routes(rollback, "", nil)
+				w.DB.ReleaseDomainClaims(rollback, d.ApplicationID)
+				return e
+			}
+			if e := w.DB.ReleaseDomainClaims(ctx, d.ApplicationID); e != nil {
+				return e
+			}
+			w.log(d, "Application domains updated")
+			return nil
+		}
+		if d.Operation == "start" || d.Operation == "stop" || d.Operation == "restart" {
+			if e := w.stage(ctx, &d, "operating"); e != nil {
+				return e
+			}
+			release, e := w.DB.Deployment(ctx, d.PreviousID)
+			if e != nil {
+				return e
+			}
+			operator, ok := w.Runtime.(interface {
+				Lifecycle(context.Context, store.Deployment, string) error
+			})
+			if !ok {
+				return errors.New("Lifecycle operations are unavailable")
+			}
+			if d.Operation != "start" {
+				if e = w.DB.SetDesiredState(ctx, d.ApplicationID, "stopped"); e != nil {
+					return e
+				}
+				if e = w.routes(ctx, "", nil); e != nil {
+					return e
+				}
+			}
+			if e = operator.Lifecycle(ctx, release, d.Operation); e != nil {
+				return e
+			}
+			if d.Operation != "stop" {
+				if e = w.Runtime.Healthy(ctx, release); e != nil {
+					return e
+				}
+				if e = w.DB.SetDesiredState(ctx, d.ApplicationID, "running"); e != nil {
+					return e
+				}
+				if e = w.routes(ctx, "", nil); e != nil {
+					return e
+				}
+			}
+			w.log(d, "Application "+map[string]string{"start": "started", "stop": "stopped", "restart": "restarted"}[d.Operation])
+			return nil
 		}
 		if d.Operation == "delete" {
 			if e := w.stage(ctx, &d, "deleting"); e != nil {
@@ -229,8 +309,12 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			if e := w.DB.MarkDeleted(ctx, d.ApplicationID); e != nil {
 				return e
 			}
+			w.DB.ReleaseDomainClaims(ctx, d.ApplicationID)
 			w.log(d, "Application containers removed; volumes and image history retained")
 			return nil
+		}
+		if Method(d.Config) == "compose" {
+			return w.deployCompose(ctx, &d)
 		}
 		if d.ImageID == "" {
 			if e := w.stage(ctx, &d, "cloning"); e != nil {
@@ -254,15 +338,39 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				return errors.New("The branch changed during recovery; redeploy to use the new revision")
 			}
 			d.Commit = commit
-			if e = w.stage(ctx, &d, "packaging"); e != nil {
-				return e
-			}
-			archive, e := StaticArchive(filepath.Join(dir, "repository"), d.Config, d.ID)
+			appRoot, e := SourceRoot(filepath.Join(dir, "repository"), d.Config)
 			if e != nil {
 				return e
 			}
-			d.ImageID, e = w.Runtime.Package(ctx, d, archive, func(line string) { w.log(d, line) })
+			if Method(d.Config) == "auto" {
+				d.ResolvedMethod = DetectMethod(appRoot)
+			} else {
+				d.ResolvedMethod = Method(d.Config)
+			}
+			stage := "building"
+			if d.ResolvedMethod == "static" && d.Config.BuildCommand == "" {
+				stage = "packaging"
+			}
+			if e = w.stage(ctx, &d, stage); e != nil {
+				return e
+			}
+			if builder, ok := w.Runtime.(Builder); ok {
+				d.ImageID, e = builder.Build(ctx, d, appRoot, func(line string) { w.log(d, line) })
+			} else {
+				archive, err := StaticArchive(appRoot, d.Config, d.ID)
+				if err != nil {
+					return err
+				}
+				d.ImageID, e = w.Runtime.Package(ctx, d, archive, func(line string) { w.log(d, line) })
+			}
 			if e != nil {
+				return e
+			}
+		}
+		if resolver, ok := w.Runtime.(interface {
+			ResolveRuntime(context.Context, *store.Deployment) error
+		}); ok {
+			if e := resolver.ResolveRuntime(ctx, &d); e != nil {
 				return e
 			}
 		}
@@ -290,9 +398,17 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		if e = w.DB.SetActive(ctx, d.ApplicationID, d.ID); e != nil {
 			return e
 		}
+		application, e := w.DB.Application(ctx, d.ApplicationID)
+		if e != nil {
+			return e
+		}
+		if e = w.DB.SetDesiredState(ctx, d.ApplicationID, "running"); e != nil {
+			return e
+		}
 		if e = w.routes(ctx, "", nil); e != nil {
 			rollbackCtx, stop := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 			defer stop()
+			w.DB.SetDesiredState(rollbackCtx, d.ApplicationID, application.DesiredState)
 			if rollback := w.DB.SetActive(rollbackCtx, d.ApplicationID, d.PreviousID); rollback != nil {
 				return fmt.Errorf("%w; routing recovery required: %v", e, rollback)
 			}
@@ -301,7 +417,11 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			}
 			return e
 		}
-		w.log(d, "Application is serving at "+d.Config.Domain)
+		if d.Config.Domain != "" {
+			w.log(d, "Application is serving at "+d.Config.Domain)
+		} else {
+			w.log(d, "Application is running without public domains")
+		}
 		if d.PreviousID != "" && d.PreviousID != d.ID {
 			if old, e := w.DB.Deployment(ctx, d.PreviousID); e == nil {
 				if e = w.Runtime.RemoveDeployment(ctx, old); e != nil {
@@ -317,9 +437,9 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 	d.FinishedAt = time.Now().Unix()
 	if err != nil {
 		d.State = "failed"
-		d.Error = err.Error()
+		d.Error = RedactDeployment(d, err.Error())
 		w.log(d, err.Error())
-		if d.Operation != "delete" {
+		if d.Operation == "deploy" && Method(d.Config) != "compose" {
 			cleanup, stop := context.WithTimeout(context.Background(), 20*time.Second)
 			if a, e := w.DB.Application(cleanup, d.ApplicationID); e == nil && a.ActiveDeploymentID != d.ID {
 				if e = w.Runtime.RemoveDeployment(cleanup, d); e != nil {

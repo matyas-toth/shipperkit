@@ -54,6 +54,7 @@ func TestDockerStaticPipeline(t *testing.T) {
 	}
 	runtime := &DockerRuntime{Client: docker.Client(), Instance: instance, Config: ProxyConfig{BindIP: "127.0.0.1", HTTPPort: freePort(), HTTPSPort: freePort()}}
 	dir := t.TempDir()
+	runtime.DataDir = dir
 	db, e := store.Open(dir)
 	if e != nil {
 		t.Fatal(e)
@@ -132,7 +133,28 @@ func TestDockerStaticPipeline(t *testing.T) {
 		return response.StatusCode, string(b), response.Header.Get("X-Shipper-Deployment")
 	}
 	first := deploySite(app.Config)
+	info, e := runtime.Client.ContainerInspect(ctx, first.ContainerID, client.ContainerInspectOptions{})
+	if e != nil || info.Container.Name != "/"+runtimeName(first) || info.Container.Config.Labels["io.shipper.infrastructure"] != "" {
+		t.Fatal("runtime name or inherited helper label", e)
+	}
+	docker.Instance = instance
+	snapshot, e := docker.Snapshot(ctx)
+	if e != nil || len(snapshot.Containers) != 1 || snapshot.Containers[0].ID != first.ContainerID {
+		t.Fatal("static runtime missing from inventory", snapshot, e)
+	}
+	// Upgrade old names without restarting or replacing the serving container.
+	if _, e = runtime.Client.ContainerRename(ctx, first.ContainerID, client.ContainerRenameOptions{NewName: runtime.prefix() + "-site-" + first.ID}); e != nil {
+		t.Fatal(e)
+	}
+	if e = runtime.ReconcileName(ctx, first); e != nil {
+		t.Fatal(e)
+	}
+	if id, e := runtime.Start(ctx, first); e != nil || id != first.ContainerID {
+		t.Fatal("recovery replaced the running container", id, e)
+	}
 	if ok, e := runtime.ProbeLocal(ctx, first); e != nil || !ok {
+		out, err := runtime.probeHTTP(ctx, "127.0.0.1", 8080, first.Config.Domain, "/")
+		t.Logf("probe response %q, %v", string(out), err)
 		t.Fatal("local domain verification failed", ok, e)
 	}
 	// A disposable, intentionally unmanaged sentinel proves deletion cannot sweep
@@ -239,7 +261,12 @@ func TestDockerStaticPipeline(t *testing.T) {
 	}
 	secure := fromGit
 	secure.Config.HTTPS = true
-	config := Routes([]store.Application{current}, map[string]store.Deployment{app.ID: secure})
+	secureApp := current
+	secureApp.Domains = append([]store.Domain(nil), current.Domains...)
+	for i := range secureApp.Domains {
+		secureApp.Domains[i].HTTPS = true
+	}
+	config := Routes([]store.Application{secureApp}, map[string]store.Deployment{app.ID: secure})
 	for _, v := range config["http"].(map[string]any)["routers"].(map[string]any) {
 		router := v.(map[string]any)
 		if router["tls"] != nil {

@@ -7,11 +7,12 @@ export function statusOf(container: Container): string {
 }
 export function statusLabel(value: string): string {
   const labels: Record<string, string> = {
-    running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
+    completed: "Completed", serving: "Serving", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
     restarting: "Restarting", dead: "Failed", removing: "Removing",
     unhealthy: "Unhealthy", starting: "Starting", missing: "Missing", failed: "Failed", degraded: "Degraded",
     queued: "Queued", cloning: "Cloning", packaging: "Packaging", checking: "Checking", promoting: "Promoting",
     succeeded: "Deployed", interrupted: "Interrupted", deleting: "Deleting",
+    building: "Building", routing: "Updating domains", operating: "Applying action", rolling_back: "Restoring services", verified: "Verified",
   };
   return labels[value] ?? value;
 }
@@ -20,12 +21,17 @@ export const operationPending = (state?: string) => !!state && !["succeeded", "f
 export function applicationState(app: import("./types").Application) {
   if (operationPending(app.latestDeployment?.state)) return app.latestDeployment!.state;
   if (!app.activeDeploymentId && app.latestDeployment?.state === "failed") return "failed";
+  if (app.state === "missing" && app.activeDeploymentId && (app.sourceKind === "git" || app.sourceKind === "compose")) return "unavailable";
+  if (app.state === "running" && isStaticApplication(app)) return "serving";
   return app.state;
 }
 export function methodLabel(app: import("./types").Application) {
   const methods: Record<string, string> = { static: "Static site", compose: "Compose", dockerfile: "Dockerfile", railpack: "Railpack" };
-  return methods[app.method] ?? (app.containers.some(c => c.project) ? "Compose" : "Docker");
+  return methods[app.method] ?? methods[app.latestDeployment?.resolvedMethod ?? ""] ?? (app.method === "auto" ? "Automatic" : app.containers.some(c => c.project) ? "Compose" : "Docker");
 }
+export function deploymentLabel(d: import("./types").Deployment) { return d.state !== "succeeded" ? statusLabel(d.state) : ({ deploy: "Deployed", domains: "Domains updated", start: "Started", stop: "Stopped", restart: "Restarted", delete: "Deleted" }[d.operation] ?? "Completed"); }
+export function primaryDomain(app: import("./types").Application) { return app.domains?.find(d => d.primary) ?? app.domains?.[0]; }
+export function domainURL(domain: import("./types").Domain, proxy?: import("./types").ProxyConfig) { const port = domain.https ? proxy?.httpsPort : proxy?.httpPort; return (domain.https ? "https://" : "http://") + domain.hostname + (domain.hostname.endsWith(".localhost") && port && port !== (domain.https ? 443 : 80) ? ":" + port : ""); }
 export function applicationURL(config: import("./types").StaticConfig, proxy?: import("./types").ProxyConfig) {
   if (!config.domain) return "";
   const port = config.https ? proxy?.httpsPort : proxy?.httpPort;
@@ -52,3 +58,19 @@ export function createdDate(seconds: number): string {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(seconds * 1000));
 }
 
+
+export function isStaticApplication(app: import("./types").Application) { return app.method === "static" || app.activeMethod === "static" || (app.method === "auto" && app.latestDeployment?.resolvedMethod === "static"); }
+export function deploymentSeconds(deployment: import("./types").Deployment, now: number): number {
+  const end = operationPending(deployment.state) ? now : deployment.finishedAt || deployment.startedAt || deployment.createdAt;
+  return Math.max(0, Math.floor(end - deployment.createdAt));
+}
+export function formatDuration(seconds: number): string {
+  seconds = Math.max(0, Math.floor(seconds));
+  if (seconds < 60) return seconds + "s";
+  const minutes = Math.floor(seconds / 60), remainder = String(seconds % 60).padStart(2,"0");
+  return minutes < 60 ? minutes + "m " + remainder + "s" : Math.floor(minutes / 60) + "h " + String(minutes % 60).padStart(2,"0") + "m " + remainder + "s";
+}
+export function logDateTime(seconds: number): string {
+  const date = new Date(seconds * 1000), pad = (value: number) => String(value).padStart(2,"0");
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}

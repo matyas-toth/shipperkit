@@ -3,6 +3,7 @@ package store
 
 import (
 	"context"
+	"crypto/cipher"
 	"database/sql"
 	"embed"
 	"encoding/json"
@@ -22,7 +23,11 @@ var migrations embed.FS
 
 var ErrAlreadyConfigured = errors.New("administrator already configured")
 
-type Store struct{ db *sql.DB }
+type Store struct {
+	db         *sql.DB
+	key        cipher.AEAD
+	signingKey []byte
+}
 
 func Open(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
@@ -50,6 +55,26 @@ func Open(dir string) (*Store, error) {
 		}
 	}
 	if err := s.migrate(); err != nil {
+		db.Close()
+		return nil, err
+	}
+	keyFile := filepath.Join(dir, "encryption.key")
+	_, keyError := os.Stat(keyFile)
+	if os.IsNotExist(keyError) {
+		var encrypted int
+		_ = db.QueryRow("SELECT (SELECT COUNT(*) FROM applications WHERE instr(config_json,'sealed:v1:')>0)+(SELECT COUNT(*) FROM deployments WHERE instr(config_json,'sealed:v1:')>0 OR instr(compose_plan,'sealed:v1:')>0)").Scan(&encrypted)
+		if encrypted > 0 {
+			db.Close()
+			return nil, errors.New("Restore encryption.key before opening encrypted application configuration")
+		}
+	}
+	s.key, err = configKey(dir)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	s.signingKey, err = os.ReadFile(keyFile)
+	if err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -208,14 +233,19 @@ func (s *Store) ReplaceInventory(ctx context.Context, items []Container) error {
 	for id, containers := range owned {
 		var active string
 		var deleted int64
-		if e := tx.QueryRowContext(ctx, "SELECT active_deployment_id,deleted_at FROM applications WHERE id=?", id).Scan(&active, &deleted); e == nil {
+		var serviceJSON string
+		var expected []Service
+		if e := tx.QueryRowContext(ctx, "SELECT active_deployment_id,deleted_at,COALESCE((SELECT services_json FROM deployments WHERE id=applications.active_deployment_id),'[]') FROM applications WHERE id=?", id).Scan(&active, &deleted, &serviceJSON); e == nil {
+			if e = json.Unmarshal([]byte(serviceJSON), &expected); e != nil {
+				return e
+			}
 			if deleted != 0 {
 				continue
 			}
 			if active != "" {
 				filtered := []Container{}
 				for _, c := range containers {
-					if c.DeploymentID == active {
+					if c.DeploymentID == active || (c.DeploymentID == "" && c.Project != "") {
 						filtered = append(filtered, c)
 					}
 				}
@@ -230,7 +260,33 @@ func (s *Store) ReplaceInventory(ctx context.Context, items []Container) error {
 		if containers[0].Project != "" {
 			name = containers[0].Project
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO applications(id,name,state,created_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated_at=excluded.updated_at`, id, name, aggregate(containers), now, now)
+		state := aggregate(containers)
+		if len(expected) > 0 {
+			runtime := []Container{}
+			missing := false
+			for _, svc := range expected {
+				found := false
+				for _, c := range containers {
+					if c.Service == svc.Name {
+						found = true
+						if svc.OneShot && c.State == "exited" && strings.HasPrefix(c.Status, "Exited (0)") {
+							continue
+						}
+						runtime = append(runtime, c)
+					}
+				}
+				if !found {
+					missing = true
+				}
+			}
+			if len(runtime) > 0 {
+				state = aggregate(runtime)
+			}
+			if missing {
+				state = "degraded"
+			}
+		}
+		_, err = tx.ExecContext(ctx, `INSERT INTO applications(id,name,state,created_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET state=excluded.state,updated_at=excluded.updated_at`, id, name, state, now, now)
 		if err != nil {
 			return err
 		}
@@ -303,22 +359,29 @@ func (s *Store) Applications(ctx context.Context) ([]Application, error) {
 	return s.applications(ctx, "")
 }
 func (s *Store) applications(ctx context.Context, appID string) ([]Application, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id,name,source_kind,source_ref,method,state,created_at,updated_at,config_json,active_deployment_id FROM applications WHERE deleted_at=0 AND (?='' OR id=?) ORDER BY name COLLATE NOCASE,id", appID, appID)
+	rows, err := s.db.QueryContext(ctx, "SELECT id,name,source_kind,source_ref,method,state,created_at,updated_at,config_json,active_deployment_id,domains_json,desired_state,COALESCE((SELECT COALESCE(NULLIF(d.resolved_method,''),NULLIF(json_extract(d.config_json,'$.method'),''),'static') FROM deployments d WHERE d.id=applications.active_deployment_id),'') FROM applications WHERE deleted_at=0 AND (?='' OR id=?) ORDER BY name COLLATE NOCASE,id", appID, appID)
 	if err != nil {
 		return nil, err
 	}
 	apps := []Application{}
 	for rows.Next() {
 		var a Application
-		var config string
+		var config, domains string
 		a.Containers = []Container{}
-		if err = rows.Scan(&a.ID, &a.Name, &a.SourceKind, &a.SourceRef, &a.Method, &a.State, &a.CreatedAt, &a.UpdatedAt, &config, &a.ActiveDeploymentID); err != nil {
+		if err = rows.Scan(&a.ID, &a.Name, &a.SourceKind, &a.SourceRef, &a.Method, &a.State, &a.CreatedAt, &a.UpdatedAt, &config, &a.ActiveDeploymentID, &domains, &a.DesiredState, &a.ActiveMethod); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		if err = json.Unmarshal([]byte(config), &a.Config); err != nil {
+		if err = s.unmarshalConfig(config, &a.Config); err != nil {
 			rows.Close()
 			return nil, err
+		}
+		if err = json.Unmarshal([]byte(domains), &a.Domains); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if a.Domains == nil {
+			a.Domains = []Domain{}
 		}
 		apps = append(apps, a)
 	}
@@ -346,7 +409,7 @@ func (s *Store) applications(ctx context.Context, appID string) ([]Application, 
 	}
 	defer latest.Close()
 	for latest.Next() {
-		d, e := scanDeployment(latest)
+		d, e := s.scanDeployment(latest)
 		if e != nil {
 			return nil, e
 		}

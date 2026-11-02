@@ -46,6 +46,7 @@ type Server struct {
 	limiter   *limiter
 	dummyHash string
 	authSlots chan struct{}
+	logSlots  chan struct{}
 }
 type contextKey int
 
@@ -53,7 +54,7 @@ const sessionKey contextKey = 0
 
 func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Config) http.Handler {
 	dummy, _ := auth.Password(auth.Token()[:32])
-	s := &Server{db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2)}
+	s := &Server{db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8)}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, s.headers)
 	r.Route("/api", func(r chi.Router) {
@@ -69,6 +70,17 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.Get("/applications/{id}", s.application)
 			r.Get("/applications/{id}/deployments/{deployment}/logs", s.deploymentLogs)
 			r.Get("/proxy", s.proxyInfo)
+			r.Get("/domain-options", s.domainOptions)
+			r.With(s.csrf, s.limit).Post("/compose/preview", s.previewCompose)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/compose/source", s.composeSource)
+			r.With(s.csrf, s.limit).Post("/repositories/branches", s.branches)
+			r.With(s.csrf, s.limit).Post("/variables/parse", s.parseVariables)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/name", s.renameApplication)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/domains", s.updateDomains)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/lifecycle", s.lifecycle)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/variables/reveal", s.revealVariable)
+			r.Get("/applications/{id}/logs", s.runtimeLogs)
+
 			r.With(s.csrf, s.limit).Post("/applications", s.createApplication)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments", s.redeploy)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/delete", s.deleteApplication)
@@ -189,7 +201,7 @@ type credentials struct {
 }
 
 func (s *Server) decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+	r.Body = http.MaxBytesReader(w, r.Body, 256<<10)
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
 	if err := d.Decode(v); err != nil {
@@ -304,6 +316,9 @@ func (s *Server) applications(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
+	for i := range items {
+		items[i] = store.PublicApplication(items[i])
+	}
 	s.json(w, 200, map[string]any{"items": items, "docker": s.monitor.Health()})
 }
 func (s *Server) system(w http.ResponseWriter, r *http.Request) {
@@ -369,6 +384,9 @@ func (s *Server) problem(w http.ResponseWriter, status int, code, message string
 	s.json(w, status, map[string]any{"error": map[string]string{"code": code, "message": message}})
 }
 func (s *Server) internal(w http.ResponseWriter, err error) {
+	if errors.Is(err, context.Canceled) {
+		return
+	}
 	slog.Error("API storage failure", "error", err)
 	s.problem(w, 500, "internal_error", "The request could not be completed")
 }

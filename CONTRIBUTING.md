@@ -6,7 +6,8 @@ the measured design system, and the concise-copy rules in AGENTS.md.
 
 ## Development
 
-Use Go 1.26+, Node 22.12+, Git 2.36+, and Docker for opt-in real-engine tests.
+Use Go 1.26+, Node 22.12+, Git 2.36+, and Docker CLI/Buildx/Compose for full builds
+and opt-in real-engine tests.
 Install dependencies with `npm ci` and `npm ci --prefix web`.
 Run `npm run dev` for the backend and frontend together.
 
@@ -17,6 +18,9 @@ Run `npm run test:docker` when Docker integration changes.
 Run `npm run test:deploy` on a disposable Docker host when orchestration, Apache,
 or Traefik behavior changes. Public ACME tests require dedicated reachable DNS;
 the local suite verifies TLS against its own generated trust anchor.
+Run `npm run test:full` for BuildKit/Railpack or runtime configuration changes,
+`npm run test:compose` for Compose orchestration, and `npm run test:package`
+after building the production image.
 
 Go code is formatted with gofmt. Keep exported APIs narrow, use contexts for
 operations, and test security, ownership, persistence, and failure behavior.

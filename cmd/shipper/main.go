@@ -28,7 +28,7 @@ import (
 	"shipper/internal/ui"
 )
 
-var version = "0.2.0-dev"
+var version = "0.4.0-dev"
 
 func main() {
 	if err := run(); err != nil {
@@ -115,7 +115,7 @@ func run() error {
 	if net.ParseIP(proxyConfig.BindIP) == nil {
 		return errors.New("SHIPPER_PROXY_BIND must be an IP address")
 	}
-	worker := deploy.NewWorker(db, &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig}, hub, dataDir)
+	worker := deploy.NewWorker(db, &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig, DataDir: dataDir}, hub, dataDir)
 	worker.Refresh = monitor.Trigger
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

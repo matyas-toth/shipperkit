@@ -4,7 +4,8 @@
 
 Start Docker, then `npm run dev` or the embedded Go binary. Create an application
 from a public HTTPS Git repository. The publish directory must contain
-`index.html`; no package installation or build command runs during Phase 2.
+`index.html`. Without a build command, no dependency installation runs. Optional
+Node builds and their settings are covered in [full application operations](full-applications.md).
 
 The first deployment provisions one instance-scoped Traefik container, a bridge
 network, and a proxy data volume on the Docker host. Port defaults are loopback
@@ -38,7 +39,7 @@ AAAA record only if that server is reachable over IPv6 as well. Allow inbound
 TCP 80 and 443. Keep Shipper's management port private. Enter the domain without
 a scheme/path/port, enable HTTPS, and deploy. Traefik uses HTTP-01 on port 80,
 persists certificates in its own volume, and redirects the application's HTTP
-traffic to HTTPS. Wildcards and DNS API automation are not supported in Phase 2.
+traffic to HTTPS. Wildcards and DNS API automation are not supported.
 
 Staging certificates are deliberately not publicly trusted. Use the production
 CA directory (or unset `SHIPPER_ACME_CA`) for a trusted public certificate after
@@ -120,7 +121,7 @@ resurrect it. No volumes are removed. Images and history are deliberately
 retained; automatic image retention/garbage collection is not implemented yet.
 
 Back up the SQLite database using a SQLite-aware backup (or stop Shipper before
-copying all database state), and retain the proxy volume separately for ACME
+copying all database state), retain `encryption.key` unchanged, and retain the proxy volume separately for ACME
 account/certificate data. Do not delete either during a normal upgrade.
 
 ## Integration verification

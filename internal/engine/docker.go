@@ -66,12 +66,22 @@ func (d *Docker) Snapshot(ctx context.Context) (Snapshot, error) {
 	}
 	snapshot := Snapshot{Containers: []store.Container{}, Info: Info{Name: info.Info.Name, Version: info.Info.ServerVersion, OS: info.Info.OperatingSystem, Architecture: info.Info.Architecture, CPUs: info.Info.NCPU, Memory: info.Info.MemTotal}}
 	for _, item := range list.Items {
-		if item.Labels["io.shipper.control-plane"] == "true" || item.Labels["io.shipper.infrastructure"] != "" {
+		if item.Labels["io.shipper.control-plane"] == "true" {
 			continue
 		}
 		name := item.ID[:min(12, len(item.ID))]
 		if len(item.Names) > 0 {
 			name = strings.TrimPrefix(item.Names[0], "/")
+		}
+		if infrastructure := item.Labels["io.shipper.infrastructure"]; infrastructure != "" {
+			// Older Apache releases inherited the packaging helper label. Include
+			// only their exact generated runtime names, never packaging helpers.
+			instance, release := item.Labels["io.shipper.instance"], item.Labels["io.shipper.deployment.id"]
+			legacy := infrastructure == "packaging" && instance != "" && release != "" && item.Labels["io.shipper.managed"] == "true" &&
+				(name == "shipper-"+instance[:min(12, len(instance))]+"-site-"+release || (strings.HasPrefix(name, "shp-") && strings.HasSuffix(name, "-"+release[:min(12, len(release))])))
+			if !legacy {
+				continue
+			}
 		}
 		health := ""
 		if item.Health != nil {

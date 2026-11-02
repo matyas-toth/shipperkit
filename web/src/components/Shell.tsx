@@ -1,3 +1,4 @@
+import Logo from "./Logo";
 import { A, useLocation, useNavigate, type RouteSectionProps } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { Show, createSignal, onCleanup, onMount } from "solid-js";
@@ -65,7 +66,7 @@ export default function Shell(props: RouteSectionProps) {
     live, refresh, refreshing }}>
     <div class="app-frame">
       <header class="topbar">
-        <a class="brand" href="/" aria-label="Shipper" onClick={event => { event.preventDefault(); navigate("/"); }}><Icon name="ship" /></a>
+        <a class="brand" href="/" aria-label="Shipper" onClick={event => { event.preventDefault(); navigate("/"); }}><Logo /></a>
         <span class="topbar-divider" />
         <span class="host-name">Shipper</span>
         <div class="topbar-actions">

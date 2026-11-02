@@ -28,3 +28,16 @@ Apache and Traefik run in their upstream images; their licenses and source remai
 with the respective upstream distributions. The base-image digests are recorded
 in `internal/deploy/docker.go`.
 
+The runtime package also includes Docker CLI and Buildx (Apache-2.0) through
+Alpine's unmodified packages. BuildKit (Apache-2.0) runs in its upstream container.
+Railpack (MIT) is downloaded from its official release with a pinned checksum;
+its matching frontend runs as an upstream BuildKit frontend. Versions and digests
+are recorded in `internal/deploy/build.go`. See [BuildKit](https://github.com/moby/buildkit),
+[Buildx](https://github.com/docker/buildx), and [Railpack](https://github.com/railwayapp/railpack).
+
+
+Docker Compose and compose-go (Apache-2.0) provide Compose orchestration and
+reference schema loading. The runtime uses Alpine's unmodified Docker Compose
+package; the Go reference loader version is recorded in go.mod. See
+[Docker Compose](https://github.com/docker/compose) and
+[compose-go](https://github.com/compose-spec/compose-go).

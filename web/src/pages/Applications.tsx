@@ -1,7 +1,7 @@
 import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { useInventory } from "../context";
-import { applicationState, methodLabel, createdDate } from "../data";
+import { applicationState, methodLabel, createdDate, primaryDomain, deploymentLabel } from "../data";
 import { Icon } from "../components/Icon";
 import { Button, ErrorNotice, IconButton, Status } from "../components/Controls";
 
@@ -12,7 +12,7 @@ export default function Applications() {
   let viewport!: HTMLDivElement;
   onMount(() => { document.title = "Applications | Shipper"; });
   const items = createMemo(() => (inventory.data()?.items ?? []).filter(app =>
-    (status() === "all" || applicationState(app) === status()) && (!search().trim() || [app.name, app.config.domain, app.sourceRef].some(value => value?.toLowerCase().includes(search().trim().toLowerCase())))));
+    (status() === "all" || applicationState(app) === status()) && (!search().trim() || [app.name, app.config.domain, app.sourceRef, ...(app.domains ?? []).map(d => d.hostname)].some(value => value?.toLowerCase().includes(search().trim().toLowerCase())))));
   const start = createMemo(() => Math.min(Math.max(0, Math.floor((scrollTop() - 32) / ROW_HEIGHT) - 5), Math.max(0, items().length - WINDOW_ROWS)));
   const visible = createMemo(() => items().slice(start(), start() + WINDOW_ROWS));
   function resetScroll() { if (viewport) viewport.scrollTop = 0; setScrollTop(0); }
@@ -25,16 +25,16 @@ export default function Applications() {
         <Show when={search()}><IconButton icon="close" label="Clear search" ghost onClick={() => { setSearch(""); resetScroll(); }} /></Show>
       </div>
       <select class="input status-filter" aria-label="Filter by status" value={status()} onChange={e => { setStatus(e.currentTarget.value); resetScroll(); }}>
-        <option value="all">All statuses</option><option value="running">Running</option><option value="exited">Stopped</option><option value="failed">Failed</option><option value="degraded">Degraded</option><option value="queued">Queued</option><option value="cloning">Cloning</option><option value="packaging">Packaging</option><option value="starting">Starting</option><option value="checking">Checking</option><option value="promoting">Promoting</option><option value="missing">Missing</option>
+        <option value="all">All statuses</option><option value="serving">Serving</option><option value="running">Running</option><option value="exited">Stopped</option><option value="failed">Failed</option><option value="degraded">Degraded</option><option value="queued">Queued</option><option value="cloning">Cloning</option><option value="building">Building</option><option value="routing">Updating domains</option><option value="operating">Applying action</option><option value="packaging">Packaging</option><option value="starting">Starting</option><option value="checking">Checking</option><option value="promoting">Promoting</option><option value="unavailable">Unavailable</option><option value="missing">Missing</option>
       </select>
     </div>
     <div ref={viewport} class="table-tray" onScroll={e => setScrollTop(e.currentTarget.scrollTop)} aria-busy={inventory.pending()}>
-      <table class="inventory-table applications-table"><thead><tr><th>Application</th><th>Status</th><th>Domain</th><th>Method</th><th>Last deployment</th><th aria-label="Details" /></tr></thead><tbody>
+      <table class="inventory-table applications-table"><thead><tr><th>Application</th><th>Status</th><th>Domain</th><th>Method</th><th>Last activity</th><th aria-label="Details" /></tr></thead><tbody>
         <Show when={start() > 0}><tr class="virtual-spacer" aria-hidden="true"><td colspan="6" style={{ height: start() * ROW_HEIGHT + "px" }} /></tr></Show>
         <For each={visible()}>{app => <tr class="container-row" role="button" tabindex="0" aria-label={"View " + app.name} onClick={() => navigate("/applications/" + app.id)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate("/applications/" + app.id); } }}>
           <td><span class="identity"><Icon name={app.method === "static" ? "code" : "box"} /><span class="truncate" title={app.name}>{app.name}</span></span></td>
-          <td><Status value={applicationState(app)} /></td><td class="domain-cell"><span class="truncate">{app.config.domain || "None"}</span></td><td class="muted">{methodLabel(app)}</td>
-          <td class="date-cell"><Show when={app.latestDeployment} fallback="None">{d => <span class="deployment-cell"><Status value={d().state} /><span>{createdDate(d().createdAt)}</span></span>}</Show></td><td class="row-chevron"><Icon name="chevron" /></td>
+          <td><Status value={applicationState(app)} /></td><td class="domain-cell"><span class="truncate">{primaryDomain(app)?.hostname || "None"}</span></td><td class="muted">{methodLabel(app)}</td>
+          <td class="date-cell"><Show when={app.latestDeployment} fallback="None">{d => <span class="deployment-cell"><Status value={d().state} label={deploymentLabel(d())} /><span>{createdDate(d().createdAt)}</span></span>}</Show></td><td class="row-chevron"><Icon name="chevron" /></td>
         </tr>}</For>
         <Show when={items().length > start() + WINDOW_ROWS}><tr class="virtual-spacer" aria-hidden="true"><td colspan="6" style={{ height: (items().length - start() - WINDOW_ROWS) * ROW_HEIGHT + "px" }} /></tr></Show>
         <Show when={!items().length}><tr class="empty-row"><td colspan="6"><Show when={!inventory.pending()} fallback={<span class="loading-line" aria-label="Loading applications" />}><div class="empty-state"><Icon name={search() ? "search" : "code"} /><span>{search() || status() !== "all" ? "No matching applications" : "No applications"}</span></div></Show></td></tr></Show>

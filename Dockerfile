@@ -13,11 +13,11 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 COPY --from=frontend /src/internal/ui/dist ./internal/ui/dist
-ARG VERSION=0.2.0-dev
+ARG VERSION=0.4.0-dev
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg/mod CGO_ENABLED=0 go build -p 2 -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /shipper ./cmd/shipper
 
 FROM alpine:3.23
-RUN apk add --no-cache ca-certificates git && mkdir /data && chown 65532:65532 /data
+RUN apk add --no-cache ca-certificates git docker-cli docker-cli-buildx docker-cli-compose && mkdir /data && chown 65532:65532 /data
 COPY --from=backend /shipper /usr/local/bin/shipper
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/shipper/
 USER 65532:65532

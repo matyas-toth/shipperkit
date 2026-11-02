@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
@@ -41,12 +42,14 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 	}
 	payload, _ := json.Marshal(struct {
 		Name, ApplicationID, Operation string
-		Create                         bool
+		Create, NoCache                bool
 		Config                         StaticConfig
-	}{a.Name, scope, d.Operation, create, canonical})
-	fingerprint := fmt.Sprintf("%x", sha256.Sum256(payload))
+	}{a.Name, scope, d.Operation, create, d.NoCache, canonical})
+	mac := hmac.New(sha256.New, s.signingKey)
+	mac.Write(payload)
+	fingerprint := fmt.Sprintf("%x", mac.Sum(nil))
 	if requestKey != "" {
-		old, e := scanDeployment(tx.QueryRowContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE request_key=?", requestKey))
+		old, e := s.scanDeployment(tx.QueryRowContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE request_key=?", requestKey))
 		if e == nil {
 			var original string
 			if err = tx.QueryRowContext(ctx, "SELECT request_fingerprint FROM deployments WHERE id=?", old.ID).Scan(&original); err != nil {
@@ -62,19 +65,46 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		}
 	}
 	now := time.Now().Unix()
-	cfg, _ := json.Marshal(a.Config)
-	if a.Config.Domain != "" && d.Operation != "delete" {
-		var count int
-		err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM applications a LEFT JOIN deployments d ON d.id=a.active_deployment_id WHERE a.deleted_at=0 AND a.id<>? AND (json_extract(a.config_json,'$.domain')=? OR json_extract(d.config_json,'$.domain')=?)", a.ID, a.Config.Domain, a.Config.Domain).Scan(&count)
-		if err != nil {
-			return d, err
-		}
-		if count > 0 {
-			return d, ErrDomainInUse
+	cfg, err := s.marshalConfig(a.Config)
+	if err != nil {
+		return d, err
+	}
+	requested := a.Domains
+	if create && len(requested) == 0 {
+		requested = a.Config.Domains
+		if len(requested) == 0 && a.Config.Domain != "" {
+			requested = []Domain{{ID: "primary", Hostname: a.Config.Domain, HTTPS: a.Config.HTTPS, Primary: true}}
 		}
 	}
+	if d.Operation == "domains" {
+		requested = a.Config.Domains
+	}
+	if d.Operation != "delete" {
+		for _, domain := range requested {
+			var owner string
+			e := tx.QueryRowContext(ctx, "SELECT application_id FROM domain_claims WHERE hostname=?", domain.Hostname).Scan(&owner)
+			if e == nil && owner != a.ID {
+				return d, ErrDomainInUse
+			}
+			if e != nil && !errors.Is(e, sql.ErrNoRows) {
+				return d, e
+			}
+
+		}
+	}
+
 	if create {
-		_, err = tx.ExecContext(ctx, "INSERT INTO applications(id,name,source_kind,source_ref,method,state,created_at,updated_at,config_json) VALUES (?,?, 'git',?,'static','missing',?,?,?)", a.ID, a.Name, a.Config.Repository, now, now, string(cfg))
+		domains, _ := json.Marshal(requested)
+		method := a.Config.Method
+		if method == "" {
+			method = "static"
+		}
+		_, err = tx.ExecContext(ctx, "INSERT INTO applications(id,name,source_kind,source_ref,method,state,created_at,updated_at,config_json,domains_json) VALUES (?,?,?,?,?,'missing',?,?,?,?)", a.ID, a.Name, func() string {
+			if a.Config.Method == "compose" && a.Config.ComposeSource == "paste" {
+				return "compose"
+			}
+			return "git"
+		}(), a.Config.Repository, method, now, now, cfg, string(domains))
 	} else {
 		var busy int
 		err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM deployments WHERE application_id=? AND state NOT IN ('succeeded','failed','interrupted')", a.ID).Scan(&busy)
@@ -88,7 +118,12 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 			return d, err
 		}
 		var result sql.Result
-		result, err = tx.ExecContext(ctx, "UPDATE applications SET name=?,source_ref=?,config_json=?,updated_at=? WHERE id=? AND deleted_at=0", a.Name, a.Config.Repository, string(cfg), now, a.ID)
+		result, err = tx.ExecContext(ctx, "UPDATE applications SET name=?,source_kind=?,source_ref=?,method=?,config_json=?,updated_at=? WHERE id=? AND deleted_at=0", a.Name, sourceKind(a.Config), a.Config.Repository, func() string {
+			if a.Config.Method == "" {
+				return "static"
+			}
+			return a.Config.Method
+		}(), cfg, now, a.ID)
 		if err == nil {
 			n, _ := result.RowsAffected()
 			if n != 1 {
@@ -99,37 +134,57 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 	if err != nil {
 		return d, err
 	}
+	if d.Operation != "delete" {
+		for _, domain := range requested {
+			if _, err = tx.ExecContext(ctx, "INSERT INTO domain_claims(hostname,application_id) VALUES (?,?) ON CONFLICT(hostname) DO NOTHING", domain.Hostname, a.ID); err != nil {
+				return d, err
+			}
+		}
+	}
 	var key any
 	if requestKey != "" {
 		key = requestKey
 	}
 	d.ApplicationID = a.ID
+	d.ApplicationName = a.Name
 	d.PreviousID = a.ActiveDeploymentID
 	d.State = "queued"
 	d.Config = a.Config
 	d.CreatedAt = now
-	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint) VALUES (?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint)
+	d.PreviousDomains = append([]Domain(nil), a.Domains...)
+	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint,previous_domains_json,no_cache,application_name) VALUES (?,?,?,?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint, func() string { b, _ := json.Marshal(a.Domains); return string(b) }(), d.NoCache, a.Name)
 	if err != nil {
 		return d, err
 	}
 	return d, tx.Commit()
 }
 
-const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at"
+const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at,previous_domains_json,no_cache,resolved_method,runtime_port,application_name,compose_plan,services_json"
 
 type scanner interface{ Scan(...any) error }
 
-func scanDeployment(row scanner) (Deployment, error) {
+func (s *Store) scanDeployment(row scanner) (Deployment, error) {
 	var d Deployment
-	var cfg string
-	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt)
+	var cfg, previous, services string
+	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &previous, &d.NoCache, &d.ResolvedMethod, &d.RuntimePort, &d.ApplicationName, &d.ComposePlan, &services)
 	if err == nil {
-		err = json.Unmarshal([]byte(cfg), &d.Config)
+		d.ComposePlan, err = s.unseal(d.ComposePlan, "compose-plan")
+		if err != nil {
+			return d, err
+		}
+		err = json.Unmarshal([]byte(services), &d.Services)
+		if err != nil {
+			return d, err
+		}
+		err = s.unmarshalConfig(cfg, &d.Config)
+		if err == nil {
+			err = json.Unmarshal([]byte(previous), &d.PreviousDomains)
+		}
 	}
 	return d, err
 }
 func (s *Store) Deployment(ctx context.Context, id string) (Deployment, error) {
-	return scanDeployment(s.db.QueryRowContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE id=?", id))
+	return s.scanDeployment(s.db.QueryRowContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE id=?", id))
 }
 func (s *Store) Deployments(ctx context.Context, appID string) ([]Deployment, error) {
 	rows, err := s.db.QueryContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE application_id=? ORDER BY created_at DESC,rowid DESC LIMIT 100", appID)
@@ -139,7 +194,7 @@ func (s *Store) Deployments(ctx context.Context, appID string) ([]Deployment, er
 	defer rows.Close()
 	out := []Deployment{}
 	for rows.Next() {
-		d, e := scanDeployment(rows)
+		d, e := s.scanDeployment(rows)
 		if e != nil {
 			return nil, e
 		}
@@ -155,7 +210,7 @@ func (s *Store) Pending(ctx context.Context) ([]Deployment, error) {
 	defer rows.Close()
 	out := []Deployment{}
 	for rows.Next() {
-		d, e := scanDeployment(rows)
+		d, e := s.scanDeployment(rows)
 		if e != nil {
 			return nil, e
 		}
@@ -164,7 +219,15 @@ func (s *Store) Pending(ctx context.Context) ([]Deployment, error) {
 	return out, rows.Err()
 }
 func (s *Store) SaveDeployment(ctx context.Context, d Deployment) error {
-	_, err := s.db.ExecContext(ctx, "UPDATE deployments SET state=?,commit_sha=?,image_id=?,container_id=?,previous_id=?,error=?,started_at=?,finished_at=? WHERE id=?", d.State, d.Commit, d.ImageID, d.ContainerID, d.PreviousID, d.Error, d.StartedAt, d.FinishedAt, d.ID)
+	plan, e := s.seal(d.ComposePlan, "compose-plan")
+	if e != nil {
+		return e
+	}
+	services, e := json.Marshal(d.Services)
+	if e != nil {
+		return e
+	}
+	_, err := s.db.ExecContext(ctx, "UPDATE deployments SET state=?,commit_sha=?,image_id=?,container_id=?,previous_id=?,error=?,started_at=?,finished_at=?,resolved_method=?,runtime_port=?,compose_plan=?,services_json=? WHERE id=?", d.State, d.Commit, d.ImageID, d.ContainerID, d.PreviousID, d.Error, d.StartedAt, d.FinishedAt, d.ResolvedMethod, d.RuntimePort, plan, string(services), d.ID)
 	return err
 }
 func (s *Store) SetActive(ctx context.Context, appID, deploymentID string) error {
@@ -185,7 +248,9 @@ func (s *Store) AppendLog(ctx context.Context, id, step, line string) error {
 	return err
 }
 func (s *Store) Logs(ctx context.Context, id string, after int64) ([]LogLine, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT seq,step,line,created_at FROM deployment_logs WHERE deployment_id=? AND seq>? ORDER BY seq LIMIT 500", id, after)
+	rows, err := s.db.QueryContext(ctx, `SELECT seq,step,line,created_at,number FROM (
+ SELECT seq,step,line,created_at,ROW_NUMBER() OVER (ORDER BY seq) AS number
+ FROM deployment_logs WHERE deployment_id=?) WHERE seq>? ORDER BY seq LIMIT 500`, id, after)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +258,7 @@ func (s *Store) Logs(ctx context.Context, id string, after int64) ([]LogLine, er
 	out := []LogLine{}
 	for rows.Next() {
 		var l LogLine
-		if err = rows.Scan(&l.Sequence, &l.Step, &l.Line, &l.CreatedAt); err != nil {
+		if err = rows.Scan(&l.Sequence, &l.Step, &l.Line, &l.CreatedAt, &l.Number); err != nil {
 			return nil, err
 		}
 		out = append(out, l)
@@ -213,4 +278,11 @@ func (s *Store) Lease(ctx context.Context, owner string) (bool, error) {
 }
 func (s *Store) ReleaseLease(ctx context.Context, owner string) {
 	s.db.ExecContext(ctx, "DELETE FROM worker_lease WHERE owner=?", owner)
+}
+
+func sourceKind(c Config) string {
+	if c.Method == "compose" && c.ComposeSource == "paste" {
+		return "compose"
+	}
+	return "git"
 }

@@ -31,6 +31,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run test:deploy
+      - run: npm run test:full
+      - run: npm run test:compose
       - run: docker build -t shipper:ci .
       - run: npm run test:package
         env:
