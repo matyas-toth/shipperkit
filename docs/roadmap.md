@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 1–5 describe completed implementation. Phases 6–14 are planned and follow
+Phases 1–5 and the Phase 6 1.0 core are implemented. Later milestones follow
 the [Coolify parity audit and acceptance milestones](../feature_parity.md).
 Capability parity is an eventual goal; optional integrations must not enlarge the
 default application workflow or require extra platform services.
@@ -62,7 +62,8 @@ certificate validation.
 - [x] Live deployment duration, timestamped logs and per-deployment line numbers
 - [x] Static serving state, legacy runtime visibility and readable container names
 
-Git provider login/private repositories and signed push webhooks remain planned.
+GitHub private repositories and signed push webhooks are available in Phase 6.
+Provider login remains separate from connecting deployment sources.
 Public ACME issuance needs the routing and reachable VPS/domain checks in Phases 7 and 10.
 
 ## Phase 4: Compose
@@ -115,15 +116,18 @@ acceptance scenario before it counts toward the release gate.
 
 ## Phase 6: Sources, images and Git automation
 
-- [ ] P6.1: private GitHub/GitLab, deploy keys, provider/repository/revision pickers
-- [ ] Direct image and inline Dockerfile workflows, registry authentication/push
-- [ ] Submodules, LFS, clone-depth controls and explicit trusted source hosts
-- [ ] P6.2: signed webhooks, narrow deploy tokens, path filters, queue cancellation
-- [ ] P6.3: isolated trusted previews, separate credentials/storage and cleanup
-- [ ] Optional GitHub sign-in remains separate from connecting source credentials
+- [x] GitHub App/token connections, private repository and revision pickers
+- [x] Direct images, inline Dockerfiles, registry authentication and digest recording
+- [x] Signed push webhooks, durable coalescing, path filters and pause controls
+- [x] Application-scoped deploy tokens, cancellation and pinned retries
+- [x] Isolated Docker source workflows and desktop/mobile browser checks
+- [ ] Later parity: GitLab/SSH/private Git hosts, submodules, LFS, publishing
+- [ ] Later parity: isolated trusted PR previews and optional provider sign-in
 
-Exit: private source/image deployments and push triggers are reproducible,
-duplicate events are controlled, and previews do not inherit production data.
+The 1.0 core is implemented. See [sources and triggers](sources.md) for behavior
+and the verification boundary: real GitHub onboarding/private-clone and public
+webhook delivery still need a reachable installation and an operator account.
+Full P6 parity, especially preview isolation, is not claimed.
 
 ## Phase 7: Routing, Compose compatibility and release control
 

@@ -12,6 +12,7 @@ import (
 
 	"shipper/internal/auth"
 	"shipper/internal/events"
+	"shipper/internal/gitprovider"
 	"shipper/internal/store"
 )
 
@@ -26,7 +27,7 @@ type Worker struct {
 }
 
 func NewWorker(db *store.Store, r Runtime, hub *events.Hub, dir string) *Worker {
-	return &Worker{DB: db, Runtime: r, Source: GitSource{}, Hub: hub, DataDir: dir, wake: make(chan struct{}, 1)}
+	return &Worker{DB: db, Runtime: r, Source: ConnectedSource{DB: db, GitHub: gitprovider.New()}, Hub: hub, DataDir: dir, wake: make(chan struct{}, 1)}
 }
 func (w *Worker) Trigger() {
 	select {
@@ -141,6 +142,7 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 			}
 		}
 		w.scheduled(work)
+		w.triggered(work)
 		if len(pending) > 0 {
 			w.process(work, pending[0])
 			continue
@@ -226,16 +228,46 @@ func (w *Worker) routes(ctx context.Context, exclude string, override *store.Dep
 	return w.Runtime.Routes(ctx, apps, active)
 }
 func (w *Worker) process(parent context.Context, d store.Deployment) {
+	if current, e := w.DB.Deployment(parent, d.ID); e == nil {
+		d = current
+		if d.State == "cancelled" {
+			return
+		}
+	}
 	timeout := 30 * time.Minute
 	if d.Operation == "task" && d.TaskCommand != nil {
 		timeout = time.Duration(d.TaskCommand.Timeout)*time.Second + time.Minute
 	}
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
+	deploymentID := d.ID
+	cancellationDone := make(chan struct{})
+	defer close(cancellationDone)
+	go func() {
+		tick := time.NewTicker(200 * time.Millisecond)
+		defer tick.Stop()
+		for {
+			select {
+			case <-cancellationDone:
+				return
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+				if w.DB.CancellationRequested(parent, deploymentID) {
+					cancel()
+					return
+				}
+			}
+		}
+	}()
 	if d.StartedAt == 0 {
 		d.StartedAt = time.Now().Unix()
 	}
 	err := func() error {
+		if d.Operation == "configure" {
+			w.log(d, "Automatic deployment settings updated")
+			return nil
+		}
 		if e := w.Runtime.Ensure(ctx); e != nil {
 			return fmt.Errorf("Proxy setup failed: %w", e)
 		}
@@ -407,8 +439,31 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 					}
 				} else {
 					d.ImageID = previous.ImageID
+					d.Digest = previous.Digest
 				}
 				w.log(d, "Reusing the current release image without cloning or rebuilding")
+			}
+		}
+		if Method(d.Config) == "image" && d.ImageID == "" {
+			if e := w.stage(ctx, &d, "pulling"); e != nil {
+				return e
+			}
+			resolver, ok := w.Runtime.(interface {
+				PullImage(context.Context, *store.Deployment, *store.Connection, func(string)) error
+			})
+			if !ok {
+				return errors.New("Image deployments are unavailable")
+			}
+			var registry *store.Connection
+			if d.Config.RegistryID != "" {
+				c, e := w.DB.Connection(ctx, d.Config.RegistryID)
+				if e != nil {
+					return errors.New("Registry connection is unavailable")
+				}
+				registry = &c
+			}
+			if e := resolver.PullImage(ctx, &d, registry, func(line string) { w.log(d, line) }); e != nil {
+				return e
 			}
 		}
 		if Method(d.Config) == "compose" {
@@ -428,7 +483,7 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				return e
 			}
 			defer os.RemoveAll(dir)
-			commit, e := w.Source.Clone(ctx, d.Config, dir, func(line string) { w.log(d, line) })
+			commit, e := w.Source.Clone(ctx, cloneConfig(d), dir, func(line string) { w.log(d, line) })
 			if e != nil {
 				return e
 			}
@@ -444,6 +499,9 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				d.ResolvedMethod = DetectMethod(appRoot)
 			} else {
 				d.ResolvedMethod = Method(d.Config)
+				if d.ResolvedMethod == "inline" {
+					d.ResolvedMethod = "dockerfile"
+				}
 			}
 			stage := "building"
 			if d.ResolvedMethod == "static" && d.Config.BuildCommand == "" {
@@ -549,6 +607,10 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 	d.FinishedAt = time.Now().Unix()
 	if err != nil {
 		d.State = "failed"
+		if w.DB.CancellationRequested(context.Background(), d.ID) {
+			d.State = "cancelled"
+			err = store.ErrCancelled
+		}
 		d.Error = RedactDeployment(d, err.Error())
 		w.log(d, err.Error())
 		if (d.Operation == "deploy" || d.Operation == "apply") && Method(d.Config) != "compose" {

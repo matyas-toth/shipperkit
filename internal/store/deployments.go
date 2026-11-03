@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+var ErrCancelled = errors.New("Deployment cancelled before updating the application")
 var ErrBusy = errors.New("An operation is already running for this application")
 var ErrDomainInUse = errors.New("This domain is already assigned to an application")
 var ErrIdempotencyConflict = errors.New("This idempotency key was used for a different request")
@@ -41,12 +42,12 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		}
 	}
 	payload, _ := json.Marshal(struct {
-		Name, ApplicationID, Operation, Service string
-		Create, NoCache                         bool
-		TaskID                                  string
-		TaskCommand                             *Command
-		Config                                  StaticConfig
-	}{a.Name, scope, d.Operation, d.Service, create, d.NoCache, d.TaskID, d.TaskCommand, canonical})
+		Name, ApplicationID, Operation, Service, Revision string
+		Create, NoCache                                   bool
+		TaskID                                            string
+		TaskCommand                                       *Command
+		Config                                            StaticConfig
+	}{a.Name, scope, d.Operation, d.Service, d.Commit, create, d.NoCache, d.TaskID, d.TaskCommand, canonical})
 	mac := hmac.New(sha256.New, s.signingKey)
 	mac.Write(payload)
 	fingerprint := fmt.Sprintf("%x", mac.Sum(nil))
@@ -102,14 +103,11 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 			method = "static"
 		}
 		_, err = tx.ExecContext(ctx, "INSERT INTO applications(id,name,source_kind,source_ref,method,state,created_at,updated_at,config_json,domains_json) VALUES (?,?,?,?,?,'missing',?,?,?,?)", a.ID, a.Name, func() string {
-			if a.Config.Method == "compose" && a.Config.ComposeSource == "paste" {
-				return "compose"
-			}
-			return "git"
-		}(), a.Config.Repository, method, now, now, cfg, string(domains))
+			return sourceKind(a.Config)
+		}(), sourceRef(a.Config), method, now, now, cfg, string(domains))
 	} else {
 		var busy int
-		err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM deployments WHERE application_id=? AND state NOT IN ('succeeded','failed','interrupted')", a.ID).Scan(&busy)
+		err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM deployments WHERE application_id=? AND state NOT IN ('succeeded','failed','interrupted','cancelled')", a.ID).Scan(&busy)
 		if err != nil {
 			return d, err
 		}
@@ -123,7 +121,7 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		if d.Operation == "task" {
 			result, err = tx.ExecContext(ctx, "UPDATE applications SET updated_at=updated_at WHERE id=? AND deleted_at=0", a.ID)
 		} else {
-			result, err = tx.ExecContext(ctx, "UPDATE applications SET name=?,source_kind=?,source_ref=?,method=?,config_json=?,updated_at=? WHERE id=? AND deleted_at=0", a.Name, sourceKind(a.Config), a.Config.Repository, func() string {
+			result, err = tx.ExecContext(ctx, "UPDATE applications SET name=?,source_kind=?,source_ref=?,method=?,config_json=?,updated_at=? WHERE id=? AND deleted_at=0", a.Name, sourceKind(a.Config), sourceRef(a.Config), func() string {
 				if a.Config.Method == "" {
 					return "static"
 				}
@@ -162,21 +160,21 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 	if err != nil {
 		return d, err
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint,previous_domains_json,no_cache,application_name,task_id,task_command,actor,service) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint, func() string { b, _ := json.Marshal(a.Domains); return string(b) }(), d.NoCache, a.Name, d.TaskID, taskCommand, d.Actor, d.Service)
+	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint,previous_domains_json,no_cache,application_name,task_id,task_command,actor,service,commit_sha) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint, func() string { b, _ := json.Marshal(a.Domains); return string(b) }(), d.NoCache, a.Name, d.TaskID, taskCommand, d.Actor, d.Service, d.Commit)
 	if err != nil {
 		return d, err
 	}
 	return d, tx.Commit()
 }
 
-const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at,previous_domains_json,no_cache,resolved_method,runtime_port,application_name,compose_plan,services_json,task_id,task_command,actor,service"
+const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at,previous_domains_json,no_cache,resolved_method,runtime_port,application_name,compose_plan,services_json,task_id,task_command,actor,service,digest,cancel_requested"
 
 type scanner interface{ Scan(...any) error }
 
 func (s *Store) scanDeployment(row scanner) (Deployment, error) {
 	var d Deployment
 	var cfg, previous, services, taskCommand string
-	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &previous, &d.NoCache, &d.ResolvedMethod, &d.RuntimePort, &d.ApplicationName, &d.ComposePlan, &services, &d.TaskID, &taskCommand, &d.Actor, &d.Service)
+	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &previous, &d.NoCache, &d.ResolvedMethod, &d.RuntimePort, &d.ApplicationName, &d.ComposePlan, &services, &d.TaskID, &taskCommand, &d.Actor, &d.Service, &d.Digest, &d.CancelRequested)
 	if err == nil {
 		if taskCommand != "" {
 			if err = s.unsealJSON(taskCommand, "task-command", &d.TaskCommand); err != nil {
@@ -218,7 +216,7 @@ func (s *Store) Deployments(ctx context.Context, appID string) ([]Deployment, er
 	return out, rows.Err()
 }
 func (s *Store) Pending(ctx context.Context) ([]Deployment, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE state NOT IN ('succeeded','failed','interrupted') ORDER BY created_at,rowid")
+	rows, err := s.db.QueryContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE state NOT IN ('succeeded','failed','interrupted','cancelled') ORDER BY created_at,rowid")
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +240,13 @@ func (s *Store) SaveDeployment(ctx context.Context, d Deployment) error {
 	if e != nil {
 		return e
 	}
-	_, err := s.db.ExecContext(ctx, "UPDATE deployments SET state=?,commit_sha=?,image_id=?,container_id=?,previous_id=?,error=?,started_at=?,finished_at=?,resolved_method=?,runtime_port=?,compose_plan=?,services_json=? WHERE id=?", d.State, d.Commit, d.ImageID, d.ContainerID, d.PreviousID, d.Error, d.StartedAt, d.FinishedAt, d.ResolvedMethod, d.RuntimePort, plan, string(services), d.ID)
+	result, err := s.db.ExecContext(ctx, "UPDATE deployments SET state=?,commit_sha=?,image_id=?,container_id=?,previous_id=?,error=?,started_at=?,finished_at=?,resolved_method=?,runtime_port=?,compose_plan=?,services_json=?,digest=? WHERE id=? AND (cancel_requested=0 OR ? IN ('succeeded','failed','cancelled'))", d.State, d.Commit, d.ImageID, d.ContainerID, d.PreviousID, d.Error, d.StartedAt, d.FinishedAt, d.ResolvedMethod, d.RuntimePort, plan, string(services), d.Digest, d.ID, d.State)
+	if err == nil {
+		n, _ := result.RowsAffected()
+		if n == 0 {
+			return ErrCancelled
+		}
+	}
 	return err
 }
 func (s *Store) SetActive(ctx context.Context, appID, deploymentID string) error {
@@ -296,6 +300,12 @@ func (s *Store) ReleaseLease(ctx context.Context, owner string) {
 }
 
 func sourceKind(c Config) string {
+	if c.Method == "image" {
+		return "image"
+	}
+	if c.Method == "inline" {
+		return "inline"
+	}
 	if c.Method == "compose" && c.ComposeSource == "paste" {
 		return "compose"
 	}
@@ -310,4 +320,11 @@ func (s *Store) ConfigRevision(a Application) string {
 	mac := hmac.New(sha256.New, s.signingKey)
 	mac.Write(data)
 	return fmt.Sprintf("%x", mac.Sum(nil))
+}
+
+func sourceRef(c Config) string {
+	if c.Method == "image" {
+		return c.Image
+	}
+	return c.Repository
 }

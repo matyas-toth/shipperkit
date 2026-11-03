@@ -133,7 +133,9 @@ Container inspection uses a drawer. Navigation retains the query cache and shell
 
 ## Deploy an application
 
-Choose **New application**, enter a public HTTPS Git URL, select a branch or use
+Connect GitHub in Settings to choose private repositories, or enter a public HTTPS
+Git URL in **New application**. Direct images and inline Dockerfiles are also
+available. See [sources and deployment triggers](docs/sources.md). Select a branch or use
 the remote default, and choose **Deploy**. Automatic mode prefers a root Dockerfile,
 then a supported language manifest through Railpack, then a plain `index.html`.
 The deployment records the resolved method. Explicit method selection overrides

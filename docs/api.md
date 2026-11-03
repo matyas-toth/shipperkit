@@ -1,6 +1,7 @@
 # HTTP API
 
-All routes are same-origin and prefixed with `/api`. JSON errors have the shape:
+Session routes are same-origin and prefixed with `/api`. Public provider callbacks,
+signed webhooks and Bearer deployment requests are documented in [sources](sources.md). JSON errors have the shape:
 
 ```json
 {"error":{"code":"unauthenticated","message":"Sign in to continue"}}
@@ -210,3 +211,30 @@ container/exec identity, exit code (`-1` when unknown), timestamps and a redacte
 error. Their deployment logs use the existing cursor endpoint. Deployment records
 include actor, optional task ID and optional service identity. Definitions are
 application-scoped; an ID from another application returns 404.
+
+## Sources and triggers (0.6)
+
+| Method | Route | Contract |
+| --- | --- | --- |
+| GET | /connections | Connection metadata; credentials excluded. |
+| POST | /connections | Create/update GitHub App, GitHub token or registry credentials; blank credentials retain saved values. |
+| POST | /connections/{connection}/delete | Disconnect an unused source. |
+| POST | /connections/{connection}/webhook | Explicit signing-secret and path reveal. |
+| GET | /connections/{connection}/repositories?page=1 | Up to 100 authorized GitHub repositories and nextPage. |
+| POST | /connections/github | Manifest/action for native GitHub App onboarding. |
+| POST | /repositories/branches | Optional sourceId selects private GitHub branches/tags. |
+| POST | /applications/{id}/inline/source | Explicit saved Dockerfile reveal. |
+| POST | /applications/{id}/deploy-token | Rotate token; `{revoke:true}` revokes it. |
+| POST | /applications/{id}/deployments/{deployment}/cancel | Cancel before state-changing steps; otherwise 409. |
+| POST | /applications/{id}/deployments/{deployment}/retry | Retry failed/cancelled deploy/apply with recorded revision. |
+
+POST session routes require CSRF. Outside this session namespace:
+`POST /hooks/github/{connection}` verifies GitHub's HMAC-SHA256 signature;
+`POST /api/v1/applications/{id}/deploy` verifies its application-scoped Bearer token.
+Provider callbacks live at `/connect/github/manifest` and `/connect/github/installed`.
+
+Config adds `sourceId`, `repositoryId`, `autoDeploy:{enabled,paths,supersede}`,
+`method:image|inline`, `image`, `registryId`, `platform`, and encrypted
+`inlineDockerfile` with `inlineKeep` retention metadata. Deployment responses add
+`digest` and `cancelRequested`; `cancelled` is terminal. Auto-deploy-only changes
+use a reviewed `configure` operation without rebuilding or recreating containers.

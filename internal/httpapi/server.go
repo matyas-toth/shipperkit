@@ -23,6 +23,7 @@ import (
 	"shipper/internal/auth"
 	"shipper/internal/deploy"
 	"shipper/internal/events"
+	"shipper/internal/gitprovider"
 	"shipper/internal/inventory"
 	"shipper/internal/store"
 )
@@ -30,6 +31,7 @@ import (
 const cookieName = "shipper_session"
 
 type Config struct {
+	GitHub     *gitprovider.GitHub
 	PublicURL  string
 	SetupToken string
 	Assets     http.Handler
@@ -39,6 +41,7 @@ type Config struct {
 	Proxy      deploy.ProxyConfig
 }
 type Server struct {
+	github    *gitprovider.GitHub
 	db        *store.Store
 	monitor   *inventory.Monitor
 	hub       *events.Hub
@@ -53,10 +56,17 @@ type contextKey int
 const sessionKey contextKey = 0
 
 func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Config) http.Handler {
+	if cfg.GitHub == nil {
+		cfg.GitHub = gitprovider.New()
+	}
 	dummy, _ := auth.Password(auth.Token()[:32])
-	s := &Server{db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8)}
+	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8)}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, s.headers)
+	r.Get("/connect/github/manifest", s.githubManifest)
+	r.Get("/connect/github/installed", s.githubInstalled)
+	r.Post("/hooks/github/{connection}", s.githubWebhook)
+	r.Post("/api/v1/applications/{id}/deploy", s.tokenDeploy)
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.origin)
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) { s.json(w, 200, map[string]string{"status": "ok"}) })
@@ -76,11 +86,21 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.With(s.csrf, s.limit).Post("/applications/{id}/tasks/{task}/delete", s.deleteTask)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/schedule-preview", s.schedulePreview)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/changes", s.redeploy)
+			r.Get("/connections", s.connections)
+			r.Get("/connections/{connection}/repositories", s.repositories)
+			r.With(s.csrf, s.limit).Post("/connections", s.saveConnection)
+			r.With(s.csrf, s.limit).Post("/connections/{connection}/delete", s.deleteConnection)
+			r.With(s.csrf, s.limit).Post("/connections/{connection}/webhook", s.connectionWebhook)
+			r.With(s.csrf, s.limit).Post("/connections/github", s.beginGitHub)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/inline/source", s.inlineSource)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/deploy-token", s.deployToken)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/cancel", s.cancelDeployment)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/retry", s.retryDeployment)
 			r.Get("/proxy", s.proxyInfo)
 			r.Get("/domain-options", s.domainOptions)
 			r.With(s.csrf, s.limit).Post("/compose/preview", s.previewCompose)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/compose/source", s.composeSource)
-			r.With(s.csrf, s.limit).Post("/repositories/branches", s.branches)
+			r.With(s.csrf, s.limit).Post("/repositories/branches", s.sourceBranches)
 			r.With(s.csrf, s.limit).Post("/repositories/inspect", s.inspectSource)
 			r.With(s.csrf, s.limit).Post("/variables/parse", s.parseVariables)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/name", s.renameApplication)
@@ -117,7 +137,7 @@ func (s *Server) headers(next http.Handler) http.Handler {
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com")
 		if strings.HasPrefix(s.cfg.PublicURL, "https://") {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000")
 		}

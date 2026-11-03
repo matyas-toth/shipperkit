@@ -7,7 +7,7 @@ export function statusOf(container: Container): string {
 }
 export function statusLabel(value: string): string {
   const labels: Record<string, string> = {
-    before_deploy: "Before deploy", prepared: "Preparing", uncertain: "Uncertain", completed: "Completed", serving: "Serving", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
+    before_deploy: "Before deploy", prepared: "Preparing", uncertain: "Uncertain", cancelled:"Cancelled",pulling:"Pulling image",completed: "Completed", serving: "Serving", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
     restarting: "Restarting", dead: "Failed", removing: "Removing",
     unhealthy: "Unhealthy", starting: "Starting", missing: "Missing", failed: "Failed", degraded: "Degraded",
     queued: "Queued", cloning: "Cloning", packaging: "Packaging", checking: "Checking", promoting: "Promoting",
@@ -17,16 +17,17 @@ export function statusLabel(value: string): string {
   return labels[value] ?? value;
 }
 
-export const operationPending = (state?: string) => !!state && !["succeeded", "failed", "interrupted"].includes(state);
+export const operationPending = (state?: string) => !!state && !["succeeded", "failed", "interrupted","cancelled"].includes(state);
 export function applicationState(app: import("./types").Application) {
   if (operationPending(app.latestDeployment?.state)) return app.latestDeployment!.state;
+  if(!app.activeDeploymentId&&app.latestDeployment?.state==="cancelled")return "created";
   if (!app.activeDeploymentId && app.latestDeployment?.state === "failed") return "failed";
   if (app.state === "missing" && app.activeDeploymentId && (app.sourceKind === "git" || app.sourceKind === "compose")) return "unavailable";
   if (app.state === "running" && isStaticApplication(app)) return "serving";
   return app.state;
 }
 export function methodLabel(app: import("./types").Application) {
-  const methods: Record<string, string> = { static: "Static site", compose: "Compose", dockerfile: "Dockerfile", railpack: "Railpack" };
+  const methods: Record<string, string> = { image:"Container image",inline:"Dockerfile",static: "Static site", compose: "Compose", dockerfile: "Dockerfile", railpack: "Railpack" };
   return methods[app.method] ?? methods[app.latestDeployment?.resolvedMethod ?? ""] ?? (app.method === "auto" ? "Automatic" : app.containers.some(c => c.project) ? "Compose" : "Docker");
 }
 export function deploymentLabel(d: import("./types").Deployment) { return d.state !== "succeeded" ? statusLabel(d.state) : ({ deploy: "Deployed", domains: "Domains updated", start: "Started", stop: "Stopped", restart: "Restarted", delete: "Deleted", apply: "Applied", task: "Task completed", service_start:"Service started",service_stop:"Service stopped",service_restart:"Service restarted" }[d.operation] ?? "Completed"); }

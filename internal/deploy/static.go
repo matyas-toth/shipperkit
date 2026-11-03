@@ -5,6 +5,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -40,6 +41,35 @@ func Validate(c *store.StaticConfig) error {
 		}
 		if !domainPattern.MatchString(c.Domain) || strings.HasSuffix(c.Domain, ".localhost") && c.HTTPS {
 			return errors.New("Enter a valid domain and use HTTP for local addresses")
+		}
+		return nil
+	}
+	if c.Method == "image" || c.Method == "inline" {
+		c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
+		if strings.HasSuffix(c.Domain, ".localhost") && c.HTTPS {
+			return errors.New("Use HTTP for local addresses")
+		}
+		if c.Method == "image" {
+			if _, e := ImageReference(c.Image); e != nil {
+				return e
+			}
+			if c.Platform != "" && c.Platform != "linux/amd64" && c.Platform != "linux/arm64" {
+				return errors.New("Choose an available Linux platform")
+			}
+		}
+		if c.Method == "inline" && (c.InlineDockerfile == "" || len(c.InlineDockerfile) > 128<<10) {
+			return errors.New("Enter a Dockerfile of up to 128 KiB")
+		}
+		c.Repository = ""
+		c.SourceID = ""
+		c.RepositoryID = 0
+		c.RootDirectory = "."
+		c.Dockerfile = "Dockerfile"
+		if c.Domain == "" && c.StartupPolicy == "process" {
+			return nil
+		}
+		if !domainPattern.MatchString(c.Domain) {
+			return errors.New("Enter a valid domain")
 		}
 		return nil
 	}
@@ -81,7 +111,7 @@ func Validate(c *store.StaticConfig) error {
 		return errors.New("Choose a valid routing mode")
 	}
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
-	if (c.Method == "compose" || c.StartupPolicy=="process") && c.Domain == "" {
+	if (c.Method == "compose" || c.StartupPolicy == "process") && c.Domain == "" {
 		return nil
 	}
 	if len(c.Domain) > 253 || !domainPattern.MatchString(c.Domain) || net.ParseIP(c.Domain) != nil {
@@ -109,11 +139,11 @@ func PublicAddress(a netip.Addr) bool { return publicAddress(a) }
 type Source interface {
 	Clone(context.Context, store.StaticConfig, string, func(string)) (string, error)
 }
-type GitSource struct{}
+type GitSource struct{ Token string }
 
 // HTTPS-only, pinned public DNS and disabled redirects/submodules prevent Git from
 // becoming a path to local files, credentials, hooks, or private network services.
-func (GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, log func(string)) (string, error) {
+func (source GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, log func(string)) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 	u, _ := url.Parse(c.Repository)
@@ -148,7 +178,14 @@ func (GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, lo
 		checkout := append(append([]string(nil), options...), "-C", repository, "checkout", "--detach", "FETCH_HEAD")
 		commands = [][]string{init, fetch, checkout}
 	}
-	output := &gitLogWriter{log: log}
+	safeLog := func(line string) {
+		if source.Token != "" {
+			line = strings.ReplaceAll(line, source.Token, "[REDACTED]")
+			line = strings.ReplaceAll(line, base64.StdEncoding.EncodeToString([]byte("x-access-token:"+source.Token)), "[REDACTED]")
+		}
+		log(line)
+	}
+	output := &gitLogWriter{log: safeLog}
 	var cmd *exec.Cmd
 	guardDone := make(chan struct{})
 	go func() {
@@ -182,7 +219,7 @@ func (GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, lo
 	}()
 	for _, arguments := range commands {
 		cmd = exec.CommandContext(ctx, "git", arguments...)
-		cmd.Env = gitEnvironment()
+		cmd.Env = source.environment()
 		cmd.WaitDelay = 2 * time.Second
 		cmd.Stdout = output
 		cmd.Stderr = output
@@ -196,7 +233,7 @@ func (GitSource) Clone(ctx context.Context, c store.StaticConfig, dir string, lo
 		return "", fmt.Errorf("Git clone failed: %w", err)
 	}
 	cmd = exec.CommandContext(ctx, "git", "-C", filepath.Join(dir, "repository"), "rev-parse", "HEAD")
-	cmd.Env = gitEnvironment()
+	cmd.Env = source.environment()
 	out, err := cmd.Output()
 	return strings.TrimSpace(string(out)), err
 }
@@ -412,4 +449,12 @@ func StaticArchive(repository string, c store.StaticConfig, deploymentID string)
 	tw.Write([]byte(conf))
 	err = tw.Close()
 	return buf.Bytes(), err
+}
+
+func (s GitSource) environment() []string {
+	env := gitEnvironment()
+	if s.Token != "" {
+		env = append(env, "GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.https://github.com/.extraheader", "GIT_CONFIG_VALUE_0=Authorization: Basic "+base64.StdEncoding.EncodeToString([]byte("x-access-token:"+s.Token)))
+	}
+	return env
 }

@@ -67,7 +67,21 @@ type Hook struct {
 	Command Command `json:"command"`
 }
 
+type AutoDeploy struct {
+	Enabled   bool     `json:"enabled"`
+	Paths     []string `json:"paths,omitempty"`
+	Supersede bool     `json:"supersede"`
+}
 type StaticConfig struct {
+	SourceID         string          `json:"sourceId,omitempty"`
+	RepositoryID     int64           `json:"repositoryId,omitempty"`
+	AutoDeploy       AutoDeploy      `json:"autoDeploy"`
+	Image            string          `json:"image,omitempty"`
+	RegistryID       string          `json:"registryId,omitempty"`
+	Platform         string          `json:"platform,omitempty"`
+	InlineDockerfile string          `json:"inlineDockerfile,omitempty"`
+	InlineKeep       bool            `json:"inlineKeep,omitempty"`
+	InlineHasValue   bool            `json:"inlineHasValue,omitempty"`
 	Hooks            []Hook          `json:"hooks,omitempty"`
 	StartupPolicy    string          `json:"startupPolicy,omitempty"`
 	Repository       string          `json:"repository"`
@@ -140,6 +154,8 @@ type Domain struct {
 }
 
 type Deployment struct {
+	Digest          string       `json:"digest,omitempty"`
+	CancelRequested bool         `json:"cancelRequested,omitempty"`
 	ID              string       `json:"id"`
 	ApplicationName string       `json:"applicationName"`
 	ApplicationID   string       `json:"applicationId"`

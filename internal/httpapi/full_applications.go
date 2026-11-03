@@ -133,7 +133,7 @@ func (s *Server) updateDomains(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if (a.SourceKind != "git" && a.SourceKind != "compose") || a.Method == "" {
+	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") || a.Method == "" {
 		s.problem(w, 422, "unsupported_application", "Domains can be changed for applications deployed by Shipper")
 		return
 	}
@@ -196,7 +196,7 @@ func (s *Server) lifecycle(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if a.ActiveDeploymentID == "" || (a.SourceKind != "git" && a.SourceKind != "compose") {
+	if a.ActiveDeploymentID == "" || (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") {
 		s.problem(w, 409, "no_active_deployment", "Deploy the application before using lifecycle controls")
 		return
 	}

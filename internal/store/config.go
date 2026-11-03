@@ -47,6 +47,15 @@ func configKey(dir string) (cipher.AEAD, error) {
 	return cipher.NewGCM(block)
 }
 func (s *Store) marshalConfig(c Config) (string, error) {
+	if c.InlineDockerfile != "" {
+		sealed, e := s.seal(c.InlineDockerfile, "inline-dockerfile")
+		if e != nil {
+			return "", e
+		}
+		c.InlineDockerfile = sealed
+	}
+	c.InlineKeep = false
+	c.InlineHasValue = false
 	c.Variables = append([]Variable(nil), c.Variables...)
 	for i := range c.Variables {
 		v := &c.Variables[i]
@@ -122,6 +131,13 @@ func (s *Store) unmarshalConfig(raw string, c *Config) error {
 	if e := json.Unmarshal([]byte(raw), c); e != nil {
 		return e
 	}
+	if c.InlineDockerfile != "" {
+		plain, e := s.unseal(c.InlineDockerfile, "inline-dockerfile")
+		if e != nil {
+			return e
+		}
+		c.InlineDockerfile = plain
+	}
 	for i := range c.Variables {
 		v := &c.Variables[i]
 		if !strings.HasPrefix(v.Value, "sealed:v1:") {
@@ -185,6 +201,11 @@ func (s *Store) unseal(value, purpose string) (string, error) {
 	return string(plain), nil
 }
 func PublicConfig(c Config) Config {
+	if c.InlineDockerfile != "" {
+		c.InlineDockerfile = ""
+		c.InlineKeep = true
+		c.InlineHasValue = true
+	}
 	c.Services = append([]ServiceConfig(nil), c.Services...)
 	for i := range c.Services {
 		c.Services[i].Variables = PublicConfig(Config{Variables: c.Services[i].Variables}).Variables
@@ -215,6 +236,11 @@ func PublicApplication(a Application) Application {
 }
 func PublicDeployment(d Deployment) Deployment { d.Config = PublicConfig(d.Config); return d }
 func MergeVariables(next *Config, old Config) error {
+	if next.InlineKeep {
+		next.InlineDockerfile = old.InlineDockerfile
+		next.InlineKeep = false
+		next.InlineHasValue = false
+	}
 	if next.ComposeKeep {
 		next.ComposeYAML = old.ComposeYAML
 		next.ComposeKeep = false

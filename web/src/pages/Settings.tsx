@@ -5,11 +5,12 @@ import type { SystemInfo, ProxyConfig } from "../types";
 import { useAuth } from "../context";
 import { bytes } from "../data";
 import { Button, ErrorNotice } from "../components/Controls";
+import Connections from "../components/Connections";
 import { Icon } from "../components/Icon";
 
 export default function Settings() {
   const auth = useAuth();
-  const [section, setSection] = createSignal("general");
+  const [section, setSection] = createSignal(location.hash.slice(1)||"general");
   const [actionError, setActionError] = createSignal("");
   onMount(() => { document.title = "Settings | Shipper"; });
   async function logout() {
@@ -28,7 +29,8 @@ export default function Settings() {
   return <div class="content content-wide">
     <div class="settings-layout">
       <aside class="settings-navigation"><a href="#general" class="settings-link" classList={{ active: section() === "general" }} onClick={() => setSection("general")}><Icon name="sliders" />General</a>
-        <a href="#docker" class="settings-link" classList={{ active: section() === "docker" }} onClick={() => setSection("docker")}><Icon name="plug" />Docker</a>
+        <a href="#sources" class="settings-link" classList={{active:section()==="sources"}} onClick={()=>setSection("sources")}><Icon name="git"/>Connections</a>
+ <a href="#docker" class="settings-link" classList={{ active: section() === "docker" }} onClick={() => setSection("docker")}><Icon name="plug" />Docker</a>
         <a href="#storage" class="settings-link" classList={{ active: section() === "storage" }} onClick={() => setSection("storage")}><Icon name="database" />Storage</a>
         <a href="#proxy" class="settings-link" classList={{ active: section() === "proxy" }} onClick={() => setSection("proxy")}><Icon name="globe" />Proxy</a>
         <a href="#account" class="settings-link" classList={{ active: section() === "account" }} onClick={() => setSection("account")}><Icon name="settings" />Account</a>
@@ -37,7 +39,8 @@ export default function Settings() {
         <header class="page-heading"><h1>Settings</h1></header>
         <Show when={query.error}><ErrorNotice message={query.error!.message} retry={() => void query.refetch()} /></Show>
         <Show when={actionError()}><ErrorNotice message={actionError()} /></Show>
-        <section class="settings-section" id="docker"><h2>Docker</h2><dl class="settings-group">
+        <Connections/>
+ <section class="settings-section" id="docker"><h2>Docker</h2><dl class="settings-group">
           <For each={dockerRows()}>{([label, value]) => <div class="setting-row"><dt>{label}</dt><dd>{query.isPending ? <span class="loading-line" /> : value}</dd></div>}</For>
         </dl></section>
         <section class="settings-section" id="storage"><h2>Storage</h2><dl class="settings-group">

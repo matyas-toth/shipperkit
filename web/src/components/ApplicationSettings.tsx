@@ -2,6 +2,7 @@ import { createStore } from "solid-js/store";
 import { Index, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { Application, StaticConfig } from "../types";
+import DeploymentTriggers from "./DeploymentTriggers";
 import { LifecycleCommands } from "./Commands";
 import StaticFields, { normalizedConfig } from "./StaticFields";
 import { Button, ErrorNotice, IconButton } from "./Controls";
@@ -20,6 +21,7 @@ export default function ApplicationSettings(props: { application: Application; a
     <Show when={config.method !== "compose"}><section class="volume-settings"><div class="section-toolbar"><h2>Persistent volumes</h2><Button icon="plus" variant="ghost" onClick={() => setConfig("volumes", rows => [...rows, { name: "", path: "" }])}>Add volume</Button></div><Index each={config.volumes}>{(volume, index) => <div class="volume-row"><input class="input" aria-label={"Volume name " + (index + 1)} placeholder="data" value={volume().name} required onInput={e => setConfig("volumes", index, "name", e.currentTarget.value)} /><input class="input mono" aria-label={"Mount path " + (index + 1)} placeholder="/app/data" value={volume().path} required onInput={e => setConfig("volumes", index, "path", e.currentTarget.value)} /><IconButton icon="trash" label={"Remove volume " + (index + 1)} ghost onClick={() => setConfig("volumes", rows => rows.filter((_, i) => i !== index))} /></div>}</Index></section></Show>
     <LifecycleCommands config={config} services={props.application.latestDeployment?.services?.map(s=>s.name)} change={hooks=>setConfig("hooks",hooks)} />
  <div class="form-actions"><Button type="submit" icon="deploy" disabled={props.busy||!dirty()}>Review changes</Button></div></form>
+    <DeploymentTriggers applicationId={props.application.id}/>
     <section class="delete-section"><h2>Delete application</h2><Button icon="trash" class="danger-button" disabled={props.busy} onClick={() => setConfirm(true)}>Delete application</Button></section>
     <Show when={confirm()}><DeleteDialog name={props.application.name} close={() => setConfirm(false)} remove={props.remove} /></Show>
   </div>;

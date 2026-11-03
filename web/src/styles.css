@@ -430,3 +430,5 @@ input::placeholder { color: var(--muted); }
  .task-history .tasks-table th:nth-child(2){width:112px}
  .task-history .tasks-table th:nth-child(4){width:72px}
 }
+
+.source-connect{margin:0 0 16px}.connection-form{max-width:600px;margin-top:24px}.connection-table th:nth-child(n){min-width:0}.connection-table th:last-child{width:48px}.connection-table .empty-row td{height:96px}.settings-section>.table-tray{margin-bottom:16px}

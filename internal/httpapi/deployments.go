@@ -180,6 +180,10 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 422, "invalid_name", "Enter an application name of up to 80 characters")
 		return
 	}
+	if e := s.validateSource(r.Context(), &a.Config); e != nil {
+		s.problem(w, 422, "invalid_source", e.Error())
+		return
+	}
 	if !s.validateConfig(w, &a.Config, a.ID) {
 		return
 	}
@@ -197,7 +201,7 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if (a.SourceKind != "git" && a.SourceKind != "compose") || a.Method == "" {
+	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") || a.Method == "" {
 		s.problem(w, 422, "unsupported_method", "Only applications deployed by Shipper can be redeployed")
 		return
 	}
@@ -245,6 +249,10 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 422, "invalid_name", "Enter an application name of up to 80 characters")
 		return
 	}
+	if e := s.validateSource(r.Context(), &a.Config); e != nil {
+		s.problem(w, 422, "invalid_source", e.Error())
+		return
+	}
 	if !s.validateConfig(w, &a.Config, a.ID) {
 		return
 	}
@@ -275,6 +283,9 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 	if input.Config != nil && input.Revision != "" {
 		operation = "apply"
 	}
+	if operation == "apply" && deploy.PlanChanges(current.Config, a.Config).Operation == "metadata" {
+		operation = "configure"
+	}
 	s.enqueue(w, r, a, operation, false, input.NoCache)
 }
 func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
@@ -296,7 +307,7 @@ func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 422, "confirmation_required", "Enter the application name to confirm deletion")
 		return
 	}
-	if (a.SourceKind != "git" && a.SourceKind != "compose") || a.Method == "" {
+	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") || a.Method == "" {
 		s.problem(w, 422, "unsupported_method", "This application was discovered from Docker and cannot be deleted here")
 		return
 	}

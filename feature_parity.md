@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-02, Europe/Budapest.  
 **Shipper baseline:** version `0.4.0`, commit `5831782a85a2431cc30baa9e07f72524c72103a7`, including Phases 1–4.  
-**Shipper implementation update:** 2026-11-03, Phase 5 / `0.5.0`; the original comparison baseline above remains pinned. See [commands and tasks][L05].  
+**Shipper implementation update:** 2026-11-04, Phase 6 core / `0.6.0`; the original comparison baseline above remains pinned. See [commands and tasks][L05].
 **Coolify baseline:** release tag `v4.6.0`, commit `0becfba9113063336b09860579627fd218cb3fc4`.  
 **Additional source checked:** Coolify `main` at `67b29ff24af8d54905341f8de8585c3302f67311` and the production docs repository at `b4f93fae4a2417817d4159c0b2377f24a265e5b8`.
 
@@ -331,6 +331,14 @@ shell fail or execute predictably; a runtime-only env change avoids source rebui
 logs do not leak a saved secret; desktop/mobile remain fast and uncluttered.
 
 ### P6. Git automation, source access, and image workflows
+
+**1.0 core implemented in 0.6.0:** GitHub App/token connections and repository/ref
+selection, encrypted credentials, signed push deployment with durable coalescing,
+path filters, cancellation/pinned retry, scoped deploy tokens, direct images,
+registry authentication and inline Dockerfiles. See [sources](docs/sources.md).
+Protocol, isolated Docker and browser tests pass. Real GitHub installation and
+public delivery remain an external acceptance check. The breadth milestones below
+remain the parity target; GitLab/SSH, publishing and PR previews are not shipped.
 
 **Outcome:** connect a private repository or image and deploy a selected revision
 manually or on push.

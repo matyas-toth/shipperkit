@@ -45,7 +45,7 @@ func (w *Worker) deployCompose(ctx context.Context, d *store.Deployment) (result
 			}
 		} else {
 			log("Cloning " + d.Config.Repository)
-			commit, e := w.Source.Clone(ctx, d.Config, dir, log)
+			commit, e := w.Source.Clone(ctx, cloneConfig(*d), dir, log)
 			if e != nil {
 				return e
 			}

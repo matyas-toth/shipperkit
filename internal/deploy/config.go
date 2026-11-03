@@ -61,13 +61,27 @@ var variableName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 var volumeName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,39}$`)
 
 func ValidateBuild(c *store.Config) error {
+	if c.AutoDeploy.Enabled && c.SourceID == "" {
+		return errors.New("Connect a GitHub source before enabling push deployments")
+	}
+	if len(c.AutoDeploy.Paths) > 32 {
+		return errors.New("Use at most 32 watch paths")
+	}
+	for _, pattern := range c.AutoDeploy.Paths {
+		if len(pattern) > 256 || strings.HasPrefix(pattern, "/") || strings.Contains(pattern, "..") || strings.ContainsAny(pattern, "\\\x00\r\n") {
+			return errors.New("Watch paths must stay inside the repository")
+		}
+		if _, e := path.Match(pattern, ""); e != nil {
+			return errors.New("Invalid watch path pattern")
+		}
+	}
 	if e := ValidateHooks(c); e != nil {
 		return e
 	}
 	if c.Method == "" {
 		c.Method = "static"
 	}
-	if c.Method != "auto" && c.Method != "static" && c.Method != "dockerfile" && c.Method != "railpack" && c.Method != "compose" {
+	if c.Method != "auto" && c.Method != "static" && c.Method != "dockerfile" && c.Method != "railpack" && c.Method != "compose" && c.Method != "image" && c.Method != "inline" {
 		return errors.New("Choose Automatic, Static site, Dockerfile, Railpack, or Docker Compose")
 	}
 	if c.Method == "compose" {
@@ -137,7 +151,7 @@ func ValidateBuild(c *store.Config) error {
 	if c.Method == "static" && c.Port != 0 && c.Port != 8080 {
 		return errors.New("Static sites use container port 8080")
 	}
-	if c.Method == "dockerfile" && (c.InstallCommand != "" || c.BuildCommand != "") {
+	if (c.Method == "dockerfile" || c.Method == "inline") && (c.InstallCommand != "" || c.BuildCommand != "") {
 		return errors.New("Set install and build commands in the Dockerfile")
 	}
 	if c.HealthPath == "" {

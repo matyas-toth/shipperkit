@@ -16,6 +16,7 @@ type ChangePlan struct {
 }
 
 func buildConfig(c store.Config) store.Config {
+	c.AutoDeploy = store.AutoDeploy{}
 	c.Hooks = nil
 	c.StartupPolicy = ""
 	c.StartCommand = ""
@@ -114,7 +115,7 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	var left, right map[string]any
 	json.Unmarshal(a, &left)
 	json.Unmarshal(b, &right)
-	labels := map[string]string{"repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "services": "Service configuration"}
+	labels := map[string]string{"repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
 	for key, label := range labels {
 		if !reflect.DeepEqual(left[key], right[key]) {
 			p.Changes = append(p.Changes, label)
@@ -126,6 +127,12 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	sort.Strings(p.Changes)
 	// Secret values are deliberately excluded from public diffs but still affect
 	// both operation planning and the presence of a pending change.
+	oldWithoutAuto, nextWithoutAuto := old, next
+	oldWithoutAuto.AutoDeploy = store.AutoDeploy{}
+	nextWithoutAuto.AutoDeploy = store.AutoDeploy{}
+	if reflect.DeepEqual(oldWithoutAuto, nextWithoutAuto) && !reflect.DeepEqual(old.AutoDeploy, next.AutoDeploy) {
+		p.Operation = "metadata"
+	}
 	if reflect.DeepEqual(old, next) {
 		p.Operation = "none"
 	}
