@@ -8,3 +8,5 @@ bin
 test-results
 playwright-report
 
+
+internal/startup/assets/*.gz

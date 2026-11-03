@@ -387,3 +387,46 @@ input::placeholder { color: var(--muted); }
 @media (width < 48rem) { .compose-preview .inventory-table { min-width: 450px; } .service-heading { margin-bottom: 20px; } .service-tabs { gap: 20px; } .domain-add > .domain-service { flex-basis: 100%; } }
 
 .status-completed { color: var(--success); }
+
+/* Lifecycle and tasks reuse the console trays and compact form rhythm. */
+.lifecycle-settings{margin-top:28px;display:grid;gap:16px}
+.lifecycle-settings h2,.task-history h2{margin:0 0 12px}
+.command-input{min-height:64px;resize:vertical;line-height:1.6;padding:8px}
+.command-options{grid-column:1/-1;margin-top:0}
+.command-options>summary{justify-content:flex-start;gap:6px;color:var(--muted)}
+.advanced-hooks{display:grid;gap:20px;padding-top:16px}
+.tasks-panel{display:grid;gap:28px;min-width:0}
+.tasks-panel>.section-toolbar{margin-bottom:-16px}
+.task-name{display:flex;gap:12px;align-items:center;background:none;border:0;padding:4px 0;color:var(--text);font:inherit;cursor:pointer;text-align:left}
+.task-name:hover{color:#fff;text-decoration:underline}
+.task-actions{text-align:right;white-space:nowrap}
+.task-editor{max-width:640px;display:grid;gap:20px}
+.task-editor .section-toolbar{margin-bottom:0}
+.task-schedule{margin-top:0}
+.schedule-preview{grid-column:1/-1;display:grid;justify-items:start;gap:8px}
+.schedule-preview time{font-variant-numeric:tabular-nums;color:var(--muted)}
+.task-run-name{text-transform:capitalize}
+.tasks-table td{height:44px}
+.change-review .change-operation{margin:20px 0 12px;color:#aeaeae}
+.change-list{padding:0;list-style:none;margin:0 0 24px;display:grid;gap:0;border-radius:4px;overflow:hidden;background:#080808}
+.change-list li{padding:12px;border-bottom:1px solid #ffffff14}
+.change-list li:last-child{border-bottom:0}
+.status-uncertain .status-dot{background:#f2cf76}
+@media(max-width:767px){.tasks-table th:nth-child(3),.tasks-table td:nth-child(3){display:none}.task-actions .button{padding-inline:8px}.tasks-panel{gap:20px}.change-review{width:calc(100% - 32px)}}
+
+.service-actions{margin-left:auto}
+.detected-commands{display:flex;justify-content:flex-end;margin-bottom:12px}
+
+.tasks-panel{grid-template-columns:minmax(0,1fr)}
+.tasks-panel>*{min-width:0}
+.tasks-table th:nth-child(n){min-width:0}
+.task-name{max-width:100%;overflow-wrap:anywhere;flex-wrap:wrap}
+@media(width < 48rem){
+ .tasks-table{table-layout:fixed}
+ .tasks-table th,.tasks-table td{padding-inline:8px}
+ .task-definitions th:nth-child(2){width:82px}
+ .task-definitions th:nth-child(4){width:96px}
+ .task-actions .button{padding-inline:6px;font-size:12px}
+ .task-history .tasks-table th:nth-child(2){width:112px}
+ .task-history .tasks-table th:nth-child(4){width:72px}
+}

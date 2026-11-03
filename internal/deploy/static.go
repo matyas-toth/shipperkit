@@ -81,7 +81,7 @@ func Validate(c *store.StaticConfig) error {
 		return errors.New("Choose a valid routing mode")
 	}
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
-	if c.Method == "compose" && c.Domain == "" {
+	if (c.Method == "compose" || c.StartupPolicy=="process") && c.Domain == "" {
 		return nil
 	}
 	if len(c.Domain) > 253 || !domainPattern.MatchString(c.Domain) || net.ParseIP(c.Domain) != nil {

@@ -53,7 +53,23 @@ type Application struct {
 	ActiveMethod       string       `json:"activeMethod"`
 }
 
+type Command struct {
+	Shell     string   `json:"shell"`
+	Argv      []string `json:"argv,omitempty"`
+	Service   string   `json:"service"`
+	Directory string   `json:"directory"`
+	User      string   `json:"user"`
+	Timeout   int      `json:"timeout"`
+	Mode      string   `json:"mode"`
+}
+type Hook struct {
+	Stage   string  `json:"stage"`
+	Command Command `json:"command"`
+}
+
 type StaticConfig struct {
+	Hooks            []Hook          `json:"hooks,omitempty"`
+	StartupPolicy    string          `json:"startupPolicy,omitempty"`
 	Repository       string          `json:"repository"`
 	Branch           string          `json:"branch"`
 	PublishDirectory string          `json:"publishDirectory"`
@@ -139,6 +155,10 @@ type Deployment struct {
 	StartedAt       int64        `json:"startedAt"`
 	FinishedAt      int64        `json:"finishedAt"`
 	PreviousDomains []Domain     `json:"previousDomains,omitempty"`
+	Service         string       `json:"service,omitempty"`
+	Actor           string       `json:"actor,omitempty"`
+	TaskID          string       `json:"taskId,omitempty"`
+	TaskCommand     *Command     `json:"taskCommand,omitempty"`
 	NoCache         bool         `json:"noCache"`
 	ResolvedMethod  string       `json:"resolvedMethod"`
 	RuntimePort     int          `json:"runtimePort"`

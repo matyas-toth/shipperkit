@@ -165,6 +165,24 @@ func (w *Worker) deployCompose(ctx context.Context, d *store.Deployment) (result
 	if e := w.routes(ctx, d.ApplicationID, nil); e != nil {
 		return e
 	}
+	if e := w.stage(ctx, d, "before_deploy"); e != nil {
+		return e
+	}
+	if e := w.hooks(ctx, *d, "before_deploy", false); e != nil {
+		return e
+	}
+	if e := w.stage(ctx, d, "starting"); e != nil {
+		return e
+	}
+	if d.PreviousID != "" {
+		previous, e := w.DB.Deployment(ctx, d.PreviousID)
+		if e != nil {
+			return e
+		}
+		if e = w.composeShutdownHooks(ctx, *d, previous); e != nil {
+			return e
+		}
+	}
 	log("Updating Compose services")
 	if e := runtime.UpCompose(ctx, *d, log); e != nil {
 		return e
@@ -187,6 +205,34 @@ func (w *Worker) deployCompose(ctx context.Context, d *store.Deployment) (result
 	if e := w.routes(ctx, "", d); e != nil {
 		return e
 	}
+	if e := w.hooks(ctx, *d, "after_deploy", true); e != nil {
+		return e
+	}
 	log("Compose services are running; persistent volumes were retained")
 	return nil
+}
+
+func (w *Worker) composeShutdownHooks(ctx context.Context, d, previous store.Deployment) error {
+	var oldPlan, nextPlan composePlan
+	if e := json.Unmarshal([]byte(previous.ComposePlan), &oldPlan); e != nil {
+		return e
+	}
+	if e := json.Unmarshal([]byte(d.ComposePlan), &nextPlan); e != nil {
+		return e
+	}
+	oldServices, _ := oldPlan.Project["services"].(map[string]any)
+	nextServices, _ := nextPlan.Project["services"].(map[string]any)
+	hooks := []store.Hook{}
+	for _, h := range previous.Config.Hooks {
+		if h.Stage == "before_stop" {
+			old, _ := json.Marshal(oldServices[h.Command.Service])
+			next, _ := json.Marshal(nextServices[h.Command.Service])
+			if string(old) != string(next) {
+				hooks = append(hooks, h)
+			}
+		}
+	}
+	previous.ID = d.ID
+	previous.Config.Hooks = hooks
+	return w.hooks(ctx, previous, "before_stop", true)
 }

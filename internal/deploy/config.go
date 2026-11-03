@@ -61,6 +61,9 @@ var variableName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 var volumeName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,39}$`)
 
 func ValidateBuild(c *store.Config) error {
+	if e := ValidateHooks(c); e != nil {
+		return e
+	}
 	if c.Method == "" {
 		c.Method = "static"
 	}

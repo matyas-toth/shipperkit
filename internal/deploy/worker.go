@@ -140,6 +140,7 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 				initialized = true
 			}
 		}
+		w.scheduled(work)
 		if len(pending) > 0 {
 			w.process(work, pending[0])
 			continue
@@ -165,7 +166,7 @@ func (w *Worker) cleanWorkspaces() error {
 		return e
 	}
 	for _, entry := range entries {
-		if !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !strings.HasPrefix(entry.Name(), "deployment-") {
+		if !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || (!strings.HasPrefix(entry.Name(), "deployment-") && !strings.HasPrefix(entry.Name(), "inspection-")) {
 			continue
 		}
 		target := filepath.Join(root, entry.Name())
@@ -225,7 +226,11 @@ func (w *Worker) routes(ctx context.Context, exclude string, override *store.Dep
 	return w.Runtime.Routes(ctx, apps, active)
 }
 func (w *Worker) process(parent context.Context, d store.Deployment) {
-	ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
+	timeout := 30 * time.Minute
+	if d.Operation == "task" && d.TaskCommand != nil {
+		timeout = time.Duration(d.TaskCommand.Timeout)*time.Second + time.Minute
+	}
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	if d.StartedAt == 0 {
 		d.StartedAt = time.Now().Unix()
@@ -233,6 +238,61 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 	err := func() error {
 		if e := w.Runtime.Ensure(ctx); e != nil {
 			return fmt.Errorf("Proxy setup failed: %w", e)
+		}
+		if strings.HasPrefix(d.Operation, "service_") {
+			if e := w.stage(ctx, &d, "operating"); e != nil {
+				return e
+			}
+			release, e := w.DB.Deployment(ctx, d.PreviousID)
+			if e != nil {
+				return e
+			}
+			operator, ok := w.Runtime.(interface {
+				LifecycleService(context.Context, store.Deployment, string, string, ...func(string)) error
+			})
+			if !ok {
+				return errors.New("Service actions are unavailable")
+			}
+			action := strings.TrimPrefix(d.Operation, "service_")
+			if check, ok := w.Runtime.(interface {
+				CheckServiceAction(context.Context, store.Deployment, string, string) error
+			}); ok {
+				if e = check.CheckServiceAction(ctx, release, d.Service, action); e != nil {
+					return e
+				}
+			}
+			if action != "start" {
+				hookRelease := release
+				hookRelease.ID = d.ID
+				hookRelease.Config.Hooks = nil
+				for _, h := range release.Config.Hooks {
+					if h.Command.Service == d.Service {
+						hookRelease.Config.Hooks = append(hookRelease.Config.Hooks, h)
+					}
+				}
+				if e = w.hooks(ctx, hookRelease, "before_stop", true); e != nil {
+					return e
+				}
+			}
+			if e = operator.LifecycleService(ctx, release, d.Service, action, func(line string) { w.log(d, line) }); e != nil {
+				return e
+			}
+			w.log(d, "Service "+d.Service+" "+action+" completed")
+			return nil
+		}
+		if d.Operation == "task" {
+			if d.TaskCommand == nil {
+				return errors.New("Task command is unavailable")
+			}
+			if e := w.stage(ctx, &d, "operating"); e != nil {
+				return e
+			}
+			release, e := w.DB.Deployment(ctx, d.PreviousID)
+			if e != nil {
+				return e
+			}
+			release.ID = d.ID
+			return w.runTask(ctx, release, "task", *d.TaskCommand)
 		}
 		if d.Operation == "domains" {
 			if e := w.stage(ctx, &d, "routing"); e != nil {
@@ -271,6 +331,11 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				return errors.New("Lifecycle operations are unavailable")
 			}
 			if d.Operation != "start" {
+				hookRelease := release
+				hookRelease.ID = d.ID
+				if e = w.hooks(ctx, hookRelease, "before_stop", true); e != nil {
+					return e
+				}
 				if e = w.DB.SetDesiredState(ctx, d.ApplicationID, "stopped"); e != nil {
 					return e
 				}
@@ -299,6 +364,14 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			if e := w.stage(ctx, &d, "deleting"); e != nil {
 				return e
 			}
+			if d.PreviousID != "" {
+				if release, e := w.DB.Deployment(ctx, d.PreviousID); e == nil {
+					release.ID = d.ID
+					if e = w.hooks(ctx, release, "before_stop", true); e != nil {
+						return e
+					}
+				}
+			}
 			w.log(d, "Removing application routes")
 			if e := w.routes(ctx, d.ApplicationID, nil); e != nil {
 				return e
@@ -312,6 +385,31 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			w.DB.ReleaseDomainClaims(ctx, d.ApplicationID)
 			w.log(d, "Application containers removed; volumes and image history retained")
 			return nil
+		}
+		if d.Operation == "apply" && d.ImageID == "" && d.PreviousID != "" {
+			previous, e := w.DB.Deployment(ctx, d.PreviousID)
+			if e != nil {
+				return e
+			}
+			if PlanChanges(previous.Config, d.Config).Operation != "rebuild" {
+				d.Commit = previous.Commit
+				d.ResolvedMethod = previous.ResolvedMethod
+				d.RuntimePort = 0
+				if Method(d.Config) == "compose" {
+					r, ok := w.Runtime.(interface {
+						ReuseCompose(context.Context, *store.Deployment, store.Deployment) error
+					})
+					if !ok {
+						return errors.New("Compose recreation is unavailable")
+					}
+					if e = r.ReuseCompose(ctx, &d, previous); e != nil {
+						return e
+					}
+				} else {
+					d.ImageID = previous.ImageID
+				}
+				w.log(d, "Reusing the current release image without cloning or rebuilding")
+			}
 		}
 		if Method(d.Config) == "compose" {
 			return w.deployCompose(ctx, &d)
@@ -374,6 +472,15 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				return e
 			}
 		}
+		if e := w.prepareStartup(ctx, &d); e != nil {
+			return e
+		}
+		if e := w.stage(ctx, &d, "before_deploy"); e != nil {
+			return e
+		}
+		if e := w.hooks(ctx, d, "before_deploy", false); e != nil {
+			return e
+		}
 		if e := w.stage(ctx, &d, "starting"); e != nil {
 			return e
 		}
@@ -424,12 +531,17 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		}
 		if d.PreviousID != "" && d.PreviousID != d.ID {
 			if old, e := w.DB.Deployment(ctx, d.PreviousID); e == nil {
+				old.ID = d.ID
+				if e = w.hooks(ctx, old, "before_stop", true); e != nil {
+					return e
+				}
+				old.ID = d.PreviousID
 				if e = w.Runtime.RemoveDeployment(ctx, old); e != nil {
 					w.log(d, "Previous container cleanup will be retried during application deletion: "+e.Error())
 				}
 			}
 		}
-		return nil
+		return w.hooks(ctx, d, "after_deploy", true)
 	}()
 	if parent.Err() != nil {
 		return
@@ -439,7 +551,7 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		d.State = "failed"
 		d.Error = RedactDeployment(d, err.Error())
 		w.log(d, err.Error())
-		if d.Operation == "deploy" && Method(d.Config) != "compose" {
+		if (d.Operation == "deploy" || d.Operation == "apply") && Method(d.Config) != "compose" {
 			cleanup, stop := context.WithTimeout(context.Background(), 20*time.Second)
 			if a, e := w.DB.Application(cleanup, d.ApplicationID); e == nil && a.ActiveDeploymentID != d.ID {
 				if e = w.Runtime.RemoveDeployment(cleanup, d); e != nil {

@@ -41,10 +41,12 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		}
 	}
 	payload, _ := json.Marshal(struct {
-		Name, ApplicationID, Operation string
-		Create, NoCache                bool
-		Config                         StaticConfig
-	}{a.Name, scope, d.Operation, create, d.NoCache, canonical})
+		Name, ApplicationID, Operation, Service string
+		Create, NoCache                         bool
+		TaskID                                  string
+		TaskCommand                             *Command
+		Config                                  StaticConfig
+	}{a.Name, scope, d.Operation, d.Service, create, d.NoCache, d.TaskID, d.TaskCommand, canonical})
 	mac := hmac.New(sha256.New, s.signingKey)
 	mac.Write(payload)
 	fingerprint := fmt.Sprintf("%x", mac.Sum(nil))
@@ -118,12 +120,16 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 			return d, err
 		}
 		var result sql.Result
-		result, err = tx.ExecContext(ctx, "UPDATE applications SET name=?,source_kind=?,source_ref=?,method=?,config_json=?,updated_at=? WHERE id=? AND deleted_at=0", a.Name, sourceKind(a.Config), a.Config.Repository, func() string {
-			if a.Config.Method == "" {
-				return "static"
-			}
-			return a.Config.Method
-		}(), cfg, now, a.ID)
+		if d.Operation == "task" {
+			result, err = tx.ExecContext(ctx, "UPDATE applications SET updated_at=updated_at WHERE id=? AND deleted_at=0", a.ID)
+		} else {
+			result, err = tx.ExecContext(ctx, "UPDATE applications SET name=?,source_kind=?,source_ref=?,method=?,config_json=?,updated_at=? WHERE id=? AND deleted_at=0", a.Name, sourceKind(a.Config), a.Config.Repository, func() string {
+				if a.Config.Method == "" {
+					return "static"
+				}
+				return a.Config.Method
+			}(), cfg, now, a.ID)
+		}
 		if err == nil {
 			n, _ := result.RowsAffected()
 			if n != 1 {
@@ -152,22 +158,31 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 	d.Config = a.Config
 	d.CreatedAt = now
 	d.PreviousDomains = append([]Domain(nil), a.Domains...)
-	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint,previous_domains_json,no_cache,application_name) VALUES (?,?,?,?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint, func() string { b, _ := json.Marshal(a.Domains); return string(b) }(), d.NoCache, a.Name)
+	taskCommand, err := s.sealJSON(d.TaskCommand, "task-command")
+	if err != nil {
+		return d, err
+	}
+	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint,previous_domains_json,no_cache,application_name,task_id,task_command,actor,service) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint, func() string { b, _ := json.Marshal(a.Domains); return string(b) }(), d.NoCache, a.Name, d.TaskID, taskCommand, d.Actor, d.Service)
 	if err != nil {
 		return d, err
 	}
 	return d, tx.Commit()
 }
 
-const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at,previous_domains_json,no_cache,resolved_method,runtime_port,application_name,compose_plan,services_json"
+const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at,previous_domains_json,no_cache,resolved_method,runtime_port,application_name,compose_plan,services_json,task_id,task_command,actor,service"
 
 type scanner interface{ Scan(...any) error }
 
 func (s *Store) scanDeployment(row scanner) (Deployment, error) {
 	var d Deployment
-	var cfg, previous, services string
-	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &previous, &d.NoCache, &d.ResolvedMethod, &d.RuntimePort, &d.ApplicationName, &d.ComposePlan, &services)
+	var cfg, previous, services, taskCommand string
+	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &previous, &d.NoCache, &d.ResolvedMethod, &d.RuntimePort, &d.ApplicationName, &d.ComposePlan, &services, &d.TaskID, &taskCommand, &d.Actor, &d.Service)
 	if err == nil {
+		if taskCommand != "" {
+			if err = s.unsealJSON(taskCommand, "task-command", &d.TaskCommand); err != nil {
+				return d, err
+			}
+		}
 		d.ComposePlan, err = s.unseal(d.ComposePlan, "compose-plan")
 		if err != nil {
 			return d, err
@@ -285,4 +300,14 @@ func sourceKind(c Config) string {
 		return "compose"
 	}
 	return "git"
+}
+
+func (s *Store) ConfigRevision(a Application) string {
+	data, _ := json.Marshal(struct {
+		Config Config
+		Active string
+	}{a.Config, a.ActiveDeploymentID})
+	mac := hmac.New(sha256.New, s.signingKey)
+	mac.Write(data)
+	return fmt.Sprintf("%x", mac.Sum(nil))
 }

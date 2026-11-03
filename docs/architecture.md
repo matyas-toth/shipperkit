@@ -170,3 +170,22 @@ public deployment responses. A failed build preserves the serving stack. Apply
 failures attempt to restore the previous model without touching persistent data.
 The service UI addresses stable Compose service names rather than container IDs.
 See [Compose operations](compose.md) for stateful update and isolation boundaries.
+
+## Lifecycle automation
+
+Migration 007 stores encrypted task definitions and attempt snapshots, operation
+actor/service identity and a pending scheduled occurrence. These share the leased
+application operation queue. Prepared jobs persist their container identity before
+start and recover by inspecting the same owned container. Docker exec has no
+atomic completion record, so ambiguous recovery is surfaced instead of retried.
+
+The small `cmd/shipper-start` Linux executable is generated for amd64/arm64 and
+embedded compressed in the control plane. Only applications with a Before start
+hook receive its cached layer and wrapped entrypoint. It enforces the hook deadline
+and execs the original process. It adds no resident Shipper sidecar. Successful
+job cleanup retains declared volumes. Startup hook logs remain runtime logs.
+
+Reviewed applies classify changes from the active release, reuse safe immutable
+image/model snapshots, and verify a signed desired-config/active-release revision.
+Public diffs contain field names, never values. Source suggestions use the existing
+public Git boundary and inspect bounded regular files without executing source.

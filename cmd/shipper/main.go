@@ -28,7 +28,7 @@ import (
 	"shipper/internal/ui"
 )
 
-var version = "0.4.0-dev"
+var version = "0.5.0-dev"
 
 func main() {
 	if err := run(); err != nil {

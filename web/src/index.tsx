@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import NewApplication from "./pages/NewApplication";
 import Application from "./pages/Application";
 import { Button, ErrorNotice } from "./components/Controls";
+import {clearVolatileDrafts} from "./drafts";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -19,7 +20,7 @@ const queryClient = new QueryClient({
 });
 function App() {
   const session = createQuery(() => ({ queryKey: ["session"], queryFn: () => api<Session>("/auth/session"), retry: 1 }));
-  function expire() { queryClient.setQueryData<Session>(["session"], { setupRequired: false, user: null }); }
+  function expire() { queryClient.setQueryData<Session>(["session"], { setupRequired: false, user: null });clearVolatileDrafts(); }
   onMount(() => { window.addEventListener("shipper:session-expired", expire); });
   onCleanup(() => window.removeEventListener("shipper:session-expired", expire));
   async function logout() {

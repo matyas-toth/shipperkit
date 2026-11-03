@@ -68,3 +68,14 @@ func TestBoundedLogsDoNotEmitSecretFragments(t *testing.T) {
 		}
 	}
 }
+
+func TestProcessReadinessWithoutDomain(t *testing.T) {
+	c := store.Config{Method: "dockerfile", Repository: "https://github.com/example/worker.git", StartupPolicy: "process"}
+	if e := Validate(&c); e != nil {
+		t.Fatal(e)
+	}
+	c.StartupPolicy = "http"
+	if Validate(&c) == nil {
+		t.Fatal("HTTP application accepted an invalid empty domain")
+	}
+}

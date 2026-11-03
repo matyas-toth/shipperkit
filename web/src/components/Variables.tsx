@@ -3,22 +3,22 @@ import { Dynamic, Portal } from "solid-js/web";
 import { post } from "../api";
 import { useAuth } from "../context";
 import type { Application, StaticConfig, Variable } from "../types";
-import { clearDraft, readDraft, saveDraft } from "../drafts";
+import { clearDraft, readDraft, saveDraft, saveVolatileDraft } from "../drafts";
 import { emptyVariable, looksLikeEnvironment, mergeEnvironment, parseEnvironment, variableHasContent, variableSignature, variablesForSave } from "../env";
 import { Button, ErrorNotice, IconButton } from "./Controls";
 
 type Options = { index: number; left: number; top: number; trigger: HTMLButtonElement };
 
-export default function Variables(props: { application: Application; busy: boolean; save?: (config: StaticConfig) => Promise<void>; embedded?: boolean; service?: string; change?: (variables: Variable[]) => void }) {
+export default function Variables(props: { application: Application; busy: boolean; save?: (config: StaticConfig) => Promise<boolean | void>; embedded?: boolean; service?: string; change?: (variables: Variable[]) => void }) {
   const auth = useAuth(), id = createUniqueId(), key = "variables:" + auth.session()?.user?.id + ":" + props.application.id + (props.service ? ":" + props.service : "");
-  const initial = readDraft<Variable[]>(key) ?? props.application.config.variables ?? [];
+  const initial = (props.embedded ? props.application.config.variables : readDraft<Variable[]>(key) ?? props.application.config.variables) ?? [];
   const [items, setItems] = createSignal<Variable[]>([...variablesForSave(initial), emptyVariable()]);
   const [error, setError] = createSignal(""), [saving, setSaving] = createSignal(false), [revealing, setRevealing] = createSignal(false);
   const [visible, setVisible] = createSignal<Record<number, boolean>>({}), [options, setOptions] = createSignal<Options>();
   let root!: HTMLElement, panel!: HTMLDivElement;
   const dirty = createMemo(() => variableSignature(items()) !== variableSignature(props.application.config.variables ?? []));
 
-  createEffect(() => saveDraft(key, variablesForSave(items()).filter(v => !v.secret || v.keep).map(v => v.secret ? { ...v, value: "" } : v)));
+  createEffect(() => {if(props.embedded)return;if(!dirty()){clearDraft(key);return;}const rows=variablesForSave(items());saveVolatileDraft(key,rows.map(v=>v.secret&&v.keep?{...v,value:""}:v));saveDraft(key,rows.filter(v=>!v.secret||v.keep).map(v=>v.secret?{...v,value:""}:v));});
   createEffect(() => props.change?.(variablesForSave(items())));
   function update(index: number, value: Partial<Variable>) {
     setItems(rows => {
@@ -67,10 +67,12 @@ export default function Variables(props: { application: Application; busy: boole
     } catch (e) { setError((e as Error).message); }
     finally { setRevealing(false); }
   }
+  function generate(index:number){const bytes=crypto.getRandomValues(new Uint8Array(32));const value=btoa(String.fromCharCode(...bytes)).replaceAll("+","-").replaceAll("/","_").replaceAll("=","");update(index,{value,secret:true,keep:false,keepFrom:undefined,hasValue:false});setVisible(v=>({...v,[index]:false}));closeOptions(true);}
   function remove(index: number) {
     closeOptions();setItems(rows => [...variablesForSave(rows.filter((_, i) => i !== index)), emptyVariable()]);setVisible({});
     queueMicrotask(() => root.querySelectorAll<HTMLInputElement>(".env-name")[Math.min(index, items().length - 1)]?.focus());
   }
+  async function findMissing(){setSaving(true);setError("");try{const result=await post<{variables:string[]}>("/repositories/inspect",{config:props.application.config},auth.session()?.csrfToken);const names=new Set(items().map(v=>v.name).filter(Boolean));const found=result.variables.filter(name=>!names.has(name)).slice(0,Math.max(0,128-names.size)).map(name=>({...emptyVariable(),name}));setItems([...variablesForSave(items()),...found,emptyVariable()]);}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
   async function save(event: SubmitEvent) {
     event.preventDefault();if (props.busy || saving() || !dirty()) return;setError("");
     const variables = variablesForSave(items()), names = new Set<string>();
@@ -80,7 +82,7 @@ export default function Variables(props: { application: Application; busy: boole
       names.add(variable.name);
     }
     setSaving(true);
-    try { await props.save?.({ ...props.application.config, variables });clearDraft(key); }
+    try { if(await props.save?.({ ...props.application.config, variables })!==false)clearDraft(key); }
     catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
@@ -91,11 +93,11 @@ export default function Variables(props: { application: Application; busy: boole
       <input class="input mono" aria-label={"Value for " + (variable().name || "variable " + (index + 1))} type={variable().secret && !visible()[index] ? "password" : "text"} value={variable().value} placeholder={variable().keep ? "••••••••" : "Value"} autocomplete="off" spellcheck={false} onPaste={event => paste(event, false)} onInput={event => update(index, { value: event.currentTarget.value, keep: false, keepFrom: undefined })} />
       <div class="variable-options"><Show when={variableHasContent(variable())}><IconButton icon="more" label={"Options for " + (variable().name || "variable " + (index + 1))} ghost aria-haspopup="dialog" aria-expanded={options()?.index === index} onClick={event => openOptions(index, event.currentTarget)} /></Show></div>
     </div>}</Index></div></div>
-    <Show when={!props.embedded}><div class="form-actions"><Button type="submit" icon="deploy" disabled={props.busy || saving() || !dirty()}>{saving() ? "Saving" : "Save and deploy"}</Button></div></Show>
+    <Show when={!props.embedded}><div class="form-actions"><Show when={!props.service&&props.application.config.repository}><Button variant="ghost" disabled={props.busy||saving()} onClick={()=>void findMissing()}>Find missing variables</Button></Show><Button type="submit" icon="deploy" disabled={props.busy || saving() || !dirty()}>{saving() ? "Saving" : "Review changes"}</Button></div></Show>
     <Show when={options()}>{opened => <Portal><div ref={panel} class="variable-menu" role="dialog" aria-label={"Options for " + (items()[opened().index]?.name || "variable")} style={{ left: opened().left + "px", top: opened().top + "px" }}>
       <Show when={!props.service && props.application.config.method !== "compose"}><label for={id + "-scope"}>Available during</label><select id={id + "-scope"} class="input" value={items()[opened().index]?.scope || "both"} onChange={event => update(opened().index, { scope: event.currentTarget.value as Variable["scope"] })}><option value="both">Build and runtime</option><option value="runtime">Runtime</option><option value="build">Build</option></select></Show>
       <label class="check-field"><input type="checkbox" checked={items()[opened().index]?.secret} onChange={event => update(opened().index, { secret: event.currentTarget.checked })} />Secret</label>
-      <div class="variable-menu-actions"><Show when={items()[opened().index]?.secret || (items()[opened().index]?.keep && !items()[opened().index]?.value)}><Button variant="ghost" icon="eye" disabled={revealing()} onClick={() => void reveal(opened().index)}>{visible()[opened().index] ? "Hide value" : "Reveal value"}</Button></Show><Button variant="ghost" icon="trash" class="danger-button" onClick={() => remove(opened().index)}>Remove variable</Button></div>
+      <div class="variable-menu-actions"><Show when={items()[opened().index]?.secret || (items()[opened().index]?.keep && !items()[opened().index]?.value)}><Button variant="ghost" icon="eye" disabled={revealing()} onClick={() => void reveal(opened().index)}>{visible()[opened().index] ? "Hide value" : "Reveal value"}</Button></Show><Button variant="ghost" icon="refresh" onClick={()=>generate(opened().index)}>Generate value</Button><Button variant="ghost" icon="trash" class="danger-button" onClick={() => remove(opened().index)}>Remove variable</Button></div>
     </div></Portal>}</Show>
   </Dynamic>;
 }

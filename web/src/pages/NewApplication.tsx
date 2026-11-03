@@ -8,6 +8,7 @@ import Variables from "../components/Variables";
 import { useAuth } from "../context";
 import { Button, ErrorNotice } from "../components/Controls";
 import { Icon } from "../components/Icon";
+import { LifecycleCommands } from "../components/Commands";
 import StaticFields, { emptyConfig } from "../components/StaticFields";
 import { clearDraft, readDraft, safeConfigDraft, saveDraft } from "../drafts";
 
@@ -28,6 +29,6 @@ export default function NewApplication() {
     <form onSubmit={submit}><Show when={error()}><ErrorNotice message={error()} /></Show><div class="form-fields">
       <label for="name">Name</label><input class="input" id="name" maxlength={80} placeholder={config.composeSource === "paste" ? "Application name" : "Repository name"} value={name()} onInput={e => setName(e.currentTarget.value)} />
       <StaticFields config={config} change={(key, value) => setConfig(key, value as never)} acme={!!proxy.data?.acmeEmail} />
-    </div><details class="configuration new-variables"><summary>.env<Icon name="down" /></summary><Variables application={{ id: "new", config } as Application} busy={pending()} embedded change={variables => setConfig("variables", variables)} /></details><div class="form-actions"><A href="/" class="button ghost">Cancel</A><Button type="submit" icon="deploy" disabled={pending()}>{pending() ? "Creating application" : "Deploy"}</Button></div></form>
+    </div><details class="configuration new-variables"><summary>.env<Icon name="down" /></summary><Variables application={{ id: "new", config } as Application} busy={pending()} embedded change={variables => setConfig("variables", variables)} /></details><details class="configuration"><summary>Deployment commands<Icon name="down" /></summary><LifecycleCommands compact config={config} change={hooks=>setConfig("hooks",hooks)} /></details><div class="form-actions"><A href="/" class="button ghost">Cancel</A><Button type="submit" icon="deploy" disabled={pending()}>{pending() ? "Creating application" : "Deploy"}</Button></div></form>
   </div>;
 }

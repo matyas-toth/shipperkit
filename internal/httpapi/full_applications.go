@@ -169,6 +169,10 @@ func (s *Server) updateDomains(w http.ResponseWriter, r *http.Request) {
 	if !s.validateComposeDomains(w, r, a.Config, domains, a.ActiveDeploymentID) {
 		return
 	}
+	if a.Config.StartupPolicy == "process" && len(domains) > 0 {
+		s.problem(w, 422, "worker_domains", "Process-only workers do not have public domains")
+		return
+	}
 	a.Config.Domains = domains
 	s.enqueue(w, r, a, "domains", false)
 }
@@ -177,7 +181,8 @@ func (s *Server) lifecycle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		Action string `json:"action"`
+		Action  string `json:"action"`
+		Service string `json:"service"`
 	}
 	if !s.decode(w, r, &input) {
 		return
@@ -193,6 +198,33 @@ func (s *Server) lifecycle(w http.ResponseWriter, r *http.Request) {
 	}
 	if a.ActiveDeploymentID == "" || (a.SourceKind != "git" && a.SourceKind != "compose") {
 		s.problem(w, 409, "no_active_deployment", "Deploy the application before using lifecycle controls")
+		return
+	}
+	if input.Service != "" {
+		if a.DesiredState == "stopped" && input.Action != "stop" {
+			s.problem(w, 409, "application_stopped", "Start the application before starting an individual service")
+			return
+		}
+		if a.Method != "compose" {
+			s.problem(w, 422, "invalid_service", "Service actions require a Compose application")
+			return
+		}
+		release, e := s.db.Deployment(r.Context(), a.ActiveDeploymentID)
+		if e != nil {
+			s.internal(w, e)
+			return
+		}
+		found := false
+		for _, svc := range release.Services {
+			if svc.Name == input.Service {
+				found = true
+			}
+		}
+		if !found {
+			s.problem(w, 422, "invalid_service", "Choose a service from the active release")
+			return
+		}
+		s.enqueueJob(w, r, a, store.Deployment{Operation: "service_" + input.Action, Service: input.Service}, false)
 		return
 	}
 	s.enqueue(w, r, a, input.Action, false)

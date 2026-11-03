@@ -12,7 +12,12 @@ export function goCommand() {
   throw new Error("Go 1.26 or newer is required. Install Go or set SHIPPER_GO to its executable.");
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const child = spawn(goCommand(), process.argv.slice(2), { stdio: "inherit" });
+  const command = goCommand();
+  if (["build", "test", "run"].includes(process.argv[2])) {
+    const generated = spawnSync(command, ["generate", "./internal/startup"], { stdio: "inherit" });
+    if (generated.status !== 0) process.exit(generated.status ?? 1);
+  }
+  const child = spawn(command, process.argv.slice(2), { stdio: "inherit" });
   child.on("error", error => { console.error(error.message); process.exitCode = 1; });
   child.on("exit", code => { process.exitCode = code ?? 1; });
   process.on("SIGINT", () => child.kill("SIGINT"));

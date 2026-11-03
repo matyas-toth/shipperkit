@@ -2,16 +2,19 @@
 
 A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
 
-**Phase 4: Docker Compose.** Deploy public Git repositories or pasted Compose
-YAML as one application with inspectable services. Dockerfile, Railpack, and
-static Apache deployments remain supported.
+**Phase 5: Lifecycle automation.** Configure deployment and startup commands,
+run saved tasks manually or on a schedule, and review configuration changes
+before applying them. Deploy public Git repositories or pasted Compose YAML as
+one application, with Dockerfile, Railpack, and static Apache support.
 
 Service logs, editable environments, domain routing, health checks, persistent
 volumes, and application lifecycle controls are available from the dashboard.
 Compose builds finish before updates begin, and failed startup attempts restore
 the previous pinned container configuration where possible. Persistent data is
 retained; database migrations require their own backup/recovery strategy.
-See [Compose operations](docs/compose.md).
+See [Compose operations](docs/compose.md) and [commands and tasks](docs/commands.md).
+The [feature parity audit](feature_parity.md) compares Coolify capabilities and
+sets the next [phases and milestones](docs/roadmap.md).
 
 ## Run locally
 
@@ -125,7 +128,7 @@ daemon leaves the last complete inventory visible with an explicit warning.
 Reconnects and periodic reconciliation repair missed Docker events.
 
 The inventory window is virtualized, and search/status filters run locally.
-Selecting an application opens Overview, Deployments, Logs, Domains, .env, and Settings.
+Selecting an application opens Overview, Deployments, Logs, Domains, .env, Tasks, and Settings.
 Container inspection uses a drawer. Navigation retains the query cache and shell.
 
 ## Deploy an application
@@ -148,7 +151,9 @@ A local application gets `http://<application-id>.localhost:8780`. **Redeploy**
 builds the current branch. The adjacent actions menu supports an uncached rebuild,
 start, stop, and restart. **Deployments** records build and routing operations;
 **Logs** streams runtime output separately. **Settings** saves a new name without
-redeploying and applies build/runtime changes with **Save and deploy**.
+redeploying and uses **Review changes** then **Apply changes**. Runtime-only edits reuse the active
+image where the saved model can represent them safely. **Redeploy** always fetches
+and builds the source again.
 
 **Domains** supports up to 32 hostnames with independent HTTPS and verification,
 one primary hostname, and optional aliases redirected to it. Root domains can add
@@ -185,6 +190,7 @@ npm run test:docker
 npm run test:deploy
 npm run test:full
 npm run test:compose
+npm run test:tasks
 # After building shipper:local:
 npm run test:package
 ```
@@ -217,6 +223,11 @@ It removes only this run's explicitly labeled test resources.
 mounts, encrypted variable round trips, multi-domain routing without replacement,
 failed-build preservation, runtime logs, and lifecycle actions. It removes only
 resources carrying its random instance identity.
+
+`test:tasks` verifies first-deploy PostgreSQL migrations, actual Docker startup
+hooks, image reuse, service dependency controls, job recovery after reopening the
+store, and argument-list execution in an image without a shell. Test resources
+carry a unique instance identity.
 
 Browser screenshots and test data go to the system temporary directory.
 Production data and generated builds are ignored by Git.

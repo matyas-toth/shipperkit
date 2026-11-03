@@ -31,7 +31,7 @@ All routes are same-origin and prefixed with `/api`. JSON errors have the shape:
 | POST | /applications/{id}/variables/reveal | Cookie + CSRF | Reveal saved `{name}` as `{value}` |
 | POST | /applications/{id}/name | Cookie + CSRF | Save `{name}` without deploying |
 | POST | /applications/{id}/domains | Cookie + CSRF | Queue `{domains, includeWWW?}` without rebuilding |
-| POST | /applications/{id}/lifecycle | Cookie + CSRF | Queue `{action: start|stop|restart}` |
+| POST | /applications/{id}/lifecycle | Cookie + CSRF | Queue `{action: start|stop|restart, service?}` |
 | GET | /applications/{id}/logs?container=ID&tail=200 | Cookie | Runtime SSE stream |
 
 POST bodies require `Content-Type: application/json`. Setup accepts
@@ -179,3 +179,34 @@ Domains add `service`; Compose domains require a deployed HTTP service. Primary
 and redirect policies are independent per service. Application `.env` supplies
 interpolation, while service overrides change that service's runtime environment.
 Compose and single-container methods cannot be switched within an existing app.
+
+## Lifecycle automation and reviewed changes
+
+All routes below require a session; POST additionally requires CSRF.
+
+| Method | Route | Contract |
+| --- | --- | --- |
+| POST | /repositories/inspect | `{config}` returns method/command suggestions and env-template names without executing source code. |
+| GET | /applications/{id}/deployments/{deployment} | One owned deployment, including task operations outside the newest-100 history window. |
+| POST | /applications/{id}/changes | `{config}` returns `{operation, changes, revision}`; secret values are excluded from the change list. |
+| POST | /applications/{id}/deployments | `{config, revision}` enqueues a reviewed `apply`; a stale revision returns 409. Without a revision, existing redeploy behavior is preserved. |
+| GET | /applications/{id}/tasks | `{items, runs}` with saved definitions and newest 100 attempts. |
+| POST | /applications/{id}/tasks | Create/update a task; omit `id` to create. |
+| POST | /applications/{id}/tasks/{task}/run | Snapshot its command into an owned queued operation; return 202. |
+| POST | /applications/{id}/tasks/{task}/delete | Delete its definition and retain execution history. |
+| POST | /applications/{id}/schedule-preview | `{schedule, timezone}` returns the next three Unix-second instants. |
+
+A command has `shell` or `argv`, optional `service`, `directory`, `user`, `timeout`
+and `mode` (`job` or `exec`). Config `hooks` contains `{stage, command}` entries;
+stages are `before_deploy`, `before_start`, `after_deploy`, and `before_stop`.
+`startupPolicy` is `http` or `process`; process-only workers have no public domains.
+Before deploy/start uses job mode. Defaults and limitations are documented in
+[commands and tasks](commands.md).
+
+A saved task adds `name`, `enabled`, optional five-field `schedule`, IANA `timezone`,
+`overlap` (`skip` or `queue`), and `missed` (`skip` or `once`). Responses include
+`nextAt`. Runs expose `id`, `deploymentId`, stage, command snapshot, state,
+container/exec identity, exit code (`-1` when unknown), timestamps and a redacted
+error. Their deployment logs use the existing cursor endpoint. Deployment records
+include actor, optional task ID and optional service identity. Definitions are
+application-scoped; an ID from another application returns 404.

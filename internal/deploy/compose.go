@@ -722,6 +722,11 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 		}
 		if svc.Restart == "" {
 			svc.Restart = "unless-stopped"
+			for _, meta := range d.Services {
+				if meta.Name == name && meta.OneShot {
+					svc.Restart = "no"
+				}
+			}
 		}
 		p.Services[name] = svc
 	}
@@ -919,10 +924,19 @@ func (r *DockerRuntime) BuildCompose(ctx context.Context, d *store.Deployment, l
 	}
 	data, e := json.Marshal(plan)
 	d.ComposePlan = string(data)
-	return e
+	if e != nil {
+		return e
+	}
+	return r.composeStartup(ctx, d)
 }
 func (r *DockerRuntime) UpCompose(ctx context.Context, d store.Deployment, log func(string)) error {
-	return r.composeCommand(ctx, d, []string{"up", "-d", "--no-build", "--pull", "never", "--remove-orphans", "--wait", "--wait-timeout", "90"}, log)
+	wait := 90
+	for _, h := range d.Config.Hooks {
+		if h.Stage == "before_start" {
+			wait = max(wait, 90+h.Command.Timeout)
+		}
+	}
+	return r.composeCommand(ctx, d, []string{"up", "-d", "--no-build", "--pull", "never", "--remove-orphans", "--wait", "--wait-timeout", strconv.Itoa(wait)}, log)
 }
 func (r *DockerRuntime) ComposeHealthy(ctx context.Context, d store.Deployment) error {
 	items, e := r.composeContainers(ctx, d.ApplicationID)
@@ -932,6 +946,9 @@ func (r *DockerRuntime) ComposeHealthy(ctx context.Context, d store.Deployment) 
 	for _, svc := range d.Services {
 		found := false
 		for _, c := range items {
+			if c.Labels["io.shipper.infrastructure"] != "" {
+				continue
+			}
 			if c.Labels["com.docker.compose.service"] == svc.Name {
 				found = true
 				if c.State != "running" {

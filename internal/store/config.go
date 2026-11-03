@@ -81,9 +81,44 @@ func (s *Store) marshalConfig(c Config) (string, error) {
 	c.ComposeKeep = false
 	c.ComposeHasValue = false
 	data, e := json.Marshal(c)
+	if e != nil {
+		return "", e
+	}
+	var obj map[string]json.RawMessage
+	if e = json.Unmarshal(data, &obj); e != nil {
+		return "", e
+	}
+	if len(c.Hooks) > 0 {
+		sealed, err := s.seal(string(obj["hooks"]), "hooks")
+		if err != nil {
+			return "", err
+		}
+		obj["hooks"], _ = json.Marshal(sealed)
+	}
+	data, e = json.Marshal(obj)
 	return string(data), e
 }
 func (s *Store) unmarshalConfig(raw string, c *Config) error {
+	var obj map[string]json.RawMessage
+	if e := json.Unmarshal([]byte(raw), &obj); e != nil {
+		return e
+	}
+	if hooks := obj["hooks"]; len(hooks) > 0 && hooks[0] == '"' {
+		var sealed string
+		if e := json.Unmarshal(hooks, &sealed); e != nil {
+			return e
+		}
+		plain, e := s.unseal(sealed, "hooks")
+		if e != nil {
+			return e
+		}
+		obj["hooks"] = json.RawMessage(plain)
+		data, e := json.Marshal(obj)
+		if e != nil {
+			return e
+		}
+		raw = string(data)
+	}
 	if e := json.Unmarshal([]byte(raw), c); e != nil {
 		return e
 	}

@@ -14,3 +14,5 @@ playwright-report/
 *.db-shm
 *.db-wal
 
+
+internal/startup/assets/*.gz

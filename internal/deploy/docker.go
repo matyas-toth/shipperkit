@@ -214,6 +214,9 @@ func (r *DockerRuntime) Package(ctx context.Context, d store.Deployment, archive
 }
 func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, error) {
 	name := runtimeName(d)
+	if d.TaskCommand != nil {
+		name = taskName(d, store.TaskRun{ID: d.ID})
+	}
 	for _, existing := range []string{d.ContainerID, name, r.prefix() + "-site-" + d.ID} {
 		if existing == "" {
 			continue
@@ -228,7 +231,7 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 		if !owned(old.Container.Config.Labels, r.Instance, d.ApplicationID) || old.Container.Config.Labels["io.shipper.deployment.id"] != d.ID {
 			return "", errors.New("Container ownership check failed")
 		}
-		if !old.Container.State.Running {
+		if !old.Container.State.Running && d.TaskCommand == nil {
 			_, e = r.Client.ContainerStart(ctx, old.Container.ID, client.ContainerStartOptions{})
 			if e != nil {
 				return "", e
@@ -248,9 +251,16 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 			}
 		}
 	}
-	if d.Config.StartCommand != "" && ReleaseMethod(d) == "dockerfile" {
+	if d.Config.StartCommand != "" && ReleaseMethod(d) != "static" {
 		configuration.Entrypoint = []string{"/bin/sh", "-c", d.Config.StartCommand}
 		configuration.Cmd = []string{}
+	}
+	if e := r.configureStartup(ctx, d, configuration); e != nil {
+		return "", e
+	}
+	if d.TaskCommand != nil {
+		configuration.Labels["io.shipper.infrastructure"] = "task"
+		configuration.Labels["io.shipper.task.id"] = d.ID
 	}
 	mounts := []mount.Mount{}
 	for _, v := range d.Config.Volumes {
@@ -282,9 +292,16 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 	if ReleaseMethod(d) != "static" {
 		temporary = "rw,nosuid,exec,size=67108864,mode=1777"
 	}
-	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: container.Resources{Memory: memory << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(256))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
+	restart := container.RestartPolicy{Name: "unless-stopped"}
+	if d.TaskCommand != nil {
+		restart = container.RestartPolicy{Name: "no"}
+	}
+	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(256))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
 	if e != nil {
 		return "", e
+	}
+	if d.TaskCommand != nil {
+		return c.ID, nil
 	}
 	_, e = r.Client.ContainerStart(ctx, c.ID, client.ContainerStartOptions{})
 	return c.ID, e
@@ -355,9 +372,16 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 	if ReleaseMethod(d) == "compose" && d.ContainerID == "" {
 		return r.ComposeHealthy(ctx, d)
 	}
-	deadline, stop := context.WithTimeout(ctx, 45*time.Second)
+	startupTimeout := time.Duration(0)
+	for _, h := range d.Config.Hooks {
+		if h.Stage == "before_start" && time.Duration(h.Command.Timeout)*time.Second > startupTimeout {
+			startupTimeout = time.Duration(h.Command.Timeout) * time.Second
+		}
+	}
+	deadline, stop := context.WithTimeout(ctx, 45*time.Second+startupTimeout)
 	defer stop()
 	var last error
+	stable := time.Now()
 	for deadline.Err() == nil {
 		info, e := r.Client.ContainerInspect(deadline, d.ContainerID, client.ContainerInspectOptions{})
 		if e != nil {
@@ -367,6 +391,46 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 			return errors.New("Candidate ownership check failed")
 		}
 		if info.Container.State.Running {
+			if d.Config.StartupPolicy == "process" {
+				waiting := false
+				for _, h := range d.Config.Hooks {
+					if h.Stage == "before_start" {
+						top, err := r.Client.ContainerTop(deadline, d.ContainerID, client.ContainerTopOptions{Arguments: []string{"-eo", "pid,args"}})
+						if err != nil {
+							return err
+						}
+						for _, proc := range top.Processes {
+							for _, field := range proc {
+								if strings.Contains(field, startupPath) {
+									waiting = true
+								}
+							}
+						}
+					}
+				}
+				if waiting {
+					stable = time.Now()
+					select {
+					case <-deadline.Done():
+					case <-time.After(250 * time.Millisecond):
+					}
+					continue
+				}
+
+				if info.Container.State.Health != nil {
+					if string(info.Container.State.Health.Status) == "healthy" {
+						return nil
+					}
+					last = errors.New("Image health check is not healthy")
+				} else if time.Since(stable) >= 2*time.Second {
+					return nil
+				}
+				select {
+				case <-deadline.Done():
+				case <-time.After(250 * time.Millisecond):
+				}
+				continue
+			}
 			healthPath := d.Config.HealthPath
 			if healthPath == "" {
 				healthPath = "/"
@@ -391,6 +455,7 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 				}
 			}
 		} else {
+			stable = time.Now()
 			e = errors.New("The application exited before its health check")
 		}
 

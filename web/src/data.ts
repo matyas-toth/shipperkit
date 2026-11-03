@@ -7,7 +7,7 @@ export function statusOf(container: Container): string {
 }
 export function statusLabel(value: string): string {
   const labels: Record<string, string> = {
-    completed: "Completed", serving: "Serving", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
+    before_deploy: "Before deploy", prepared: "Preparing", uncertain: "Uncertain", completed: "Completed", serving: "Serving", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
     restarting: "Restarting", dead: "Failed", removing: "Removing",
     unhealthy: "Unhealthy", starting: "Starting", missing: "Missing", failed: "Failed", degraded: "Degraded",
     queued: "Queued", cloning: "Cloning", packaging: "Packaging", checking: "Checking", promoting: "Promoting",
@@ -29,7 +29,7 @@ export function methodLabel(app: import("./types").Application) {
   const methods: Record<string, string> = { static: "Static site", compose: "Compose", dockerfile: "Dockerfile", railpack: "Railpack" };
   return methods[app.method] ?? methods[app.latestDeployment?.resolvedMethod ?? ""] ?? (app.method === "auto" ? "Automatic" : app.containers.some(c => c.project) ? "Compose" : "Docker");
 }
-export function deploymentLabel(d: import("./types").Deployment) { return d.state !== "succeeded" ? statusLabel(d.state) : ({ deploy: "Deployed", domains: "Domains updated", start: "Started", stop: "Stopped", restart: "Restarted", delete: "Deleted" }[d.operation] ?? "Completed"); }
+export function deploymentLabel(d: import("./types").Deployment) { return d.state !== "succeeded" ? statusLabel(d.state) : ({ deploy: "Deployed", domains: "Domains updated", start: "Started", stop: "Stopped", restart: "Restarted", delete: "Deleted", apply: "Applied", task: "Task completed", service_start:"Service started",service_stop:"Service stopped",service_restart:"Service restarted" }[d.operation] ?? "Completed"); }
 export function primaryDomain(app: import("./types").Application) { return app.domains?.find(d => d.primary) ?? app.domains?.[0]; }
 export function domainURL(domain: import("./types").Domain, proxy?: import("./types").ProxyConfig) { const port = domain.https ? proxy?.httpsPort : proxy?.httpPort; return (domain.https ? "https://" : "http://") + domain.hostname + (domain.hostname.endsWith(".localhost") && port && port !== (domain.https ? 443 : 80) ? ":" + port : ""); }
 export function applicationURL(config: import("./types").StaticConfig, proxy?: import("./types").ProxyConfig) {

@@ -100,7 +100,7 @@ func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id
 		c.HTTPS = primary.HTTPS
 	}
 
-	if c.Domain == "" && c.Method != "compose" {
+	if c.Domain == "" && c.Method != "compose" && c.StartupPolicy != "process" {
 		c.Domain = id + ".localhost"
 		c.HTTPS = false
 	}
@@ -124,12 +124,18 @@ func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id
 var keyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
 
 func (s *Server) enqueue(w http.ResponseWriter, r *http.Request, a store.Application, operation string, create bool, noCache ...bool) {
+	s.enqueueJob(w, r, a, store.Deployment{Operation: operation, NoCache: len(noCache) > 0 && noCache[0]}, create)
+}
+func (s *Server) enqueueJob(w http.ResponseWriter, r *http.Request, a store.Application, job store.Deployment, create bool) {
+	job.ID = auth.Token()[:24]
+	job.Actor = r.Context().Value(sessionKey).(store.Session).User.Email
+
 	key := r.Header.Get("Idempotency-Key")
 	if key != "" && !keyPattern.MatchString(key) {
 		s.problem(w, 422, "invalid_idempotency_key", "Use an idempotency key of at most 128 letters, numbers, or ._:-")
 		return
 	}
-	d, e := s.db.Enqueue(r.Context(), a, store.Deployment{ID: auth.Token()[:24], Operation: operation, NoCache: len(noCache) > 0 && noCache[0]}, key, create)
+	d, e := s.db.Enqueue(r.Context(), a, job, key, create)
 	if e != nil {
 		switch {
 		case errors.Is(e, store.ErrBusy):
@@ -196,11 +202,17 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var input struct {
-		Config  *store.StaticConfig `json:"config"`
-		Name    *string             `json:"name"`
-		NoCache bool                `json:"noCache"`
+		Config   *store.StaticConfig `json:"config"`
+		Name     *string             `json:"name"`
+		NoCache  bool                `json:"noCache"`
+		Revision string              `json:"revision"`
 	}
 	if !s.decode(w, r, &input) {
+		return
+	}
+	current := a
+	if input.Revision != "" && input.Revision != s.db.ConfigRevision(a) {
+		s.problem(w, 409, "configuration_changed", "Configuration changed; review the changes again")
 		return
 	}
 	if input.Config != nil {
@@ -240,10 +252,30 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		a.Config.Domain = ""
 		a.Config.HTTPS = false
 	}
+	if a.Config.StartupPolicy == "process" && len(a.Domains) > 0 {
+		s.problem(w, 422, "worker_domains", "Remove public domains before using process readiness")
+		return
+	}
 	if !s.validateComposeDomains(w, r, a.Config, a.Domains, a.ActiveDeploymentID) {
 		return
 	}
-	s.enqueue(w, r, a, "deploy", false, input.NoCache)
+	if strings.HasSuffix(r.URL.Path, "/changes") {
+		old := current.Config
+		if current.ActiveDeploymentID != "" {
+			if release, e := s.db.Deployment(r.Context(), current.ActiveDeploymentID); e == nil {
+				old = release.Config
+			}
+		}
+		plan := deploy.PlanChanges(old, a.Config)
+		plan.Revision = s.db.ConfigRevision(current)
+		s.json(w, 200, plan)
+		return
+	}
+	operation := "deploy"
+	if input.Config != nil && input.Revision != "" {
+		operation = "apply"
+	}
+	s.enqueue(w, r, a, operation, false, input.NoCache)
 }
 func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 	if !s.mutationAvailable(w) {
@@ -386,4 +418,13 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	respond("verified", "Verified")
+}
+
+func (s *Server) deployment(w http.ResponseWriter, r *http.Request) {
+	d, e := s.db.Deployment(r.Context(), chi.URLParam(r, "deployment"))
+	if e != nil || d.ApplicationID != chi.URLParam(r, "id") {
+		s.problem(w, 404, "not_found", "The deployment was not found")
+		return
+	}
+	s.json(w, 200, store.PublicDeployment(d))
 }

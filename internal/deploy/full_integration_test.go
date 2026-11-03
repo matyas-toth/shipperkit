@@ -188,6 +188,21 @@ func TestDockerFullApplications(t *testing.T) {
 	if !seen {
 		t.Fatal("Runtime log stream did not include application output", e)
 	}
+	t.Log("Applying a runtime-only variable while source is deliberately unbuildable")
+	current, _ = db.Application(ctx, app.ID)
+	replacementToken := "replacement-" + auth.Token()[:16]
+	for i := range current.Config.Variables {
+		if current.Config.Variables[i].Name == "RUNTIME_TOKEN" {
+			current.Config.Variables[i].Value = replacementToken
+		}
+	}
+	recreated := run(current, "apply", false)
+	if recreated.ImageID != first.ImageID || recreated.Commit != first.Commit {
+		t.Fatal("runtime-only edit rebuilt the image")
+	}
+	if code, body, release := request(app.Config.Domain, "/token"); code != 200 || body != replacementToken || release != recreated.ID {
+		t.Fatal("runtime-only configuration did not take effect", code, release)
+	}
 	current, _ = db.Application(ctx, app.ID)
 	run(current, "stop", false)
 	stopped, _ := db.Application(ctx, app.ID)
@@ -209,6 +224,23 @@ func TestDockerFullApplications(t *testing.T) {
 	}
 	if code, body, release := request(app.Config.Domain, "/"); code != 200 || !strings.Contains(body, "Shipper full application") || release != second.ID {
 		t.Fatal("Railpack application did not serve", code, body, release)
+	}
+	t.Log("Process-only worker readiness waits for startup hooks without requiring HTTP")
+	workerApp := store.Application{ID: auth.Token()[:24], Name: "Background worker", Config: store.Config{Method: "dockerfile", StartupPolicy: "process", StartCommand: "node -e 'setInterval(()=>{},1000)'", MemoryMB: 64, Hooks: []store.Hook{{Stage: "before_start", Command: store.Command{Argv: []string{"node", "-e", "setTimeout(()=>{},1000)"}, Timeout: 30, Mode: "job"}}}}}
+	workerJob, e := db.Enqueue(ctx, workerApp, store.Deployment{ID: auth.Token()[:24], Operation: "deploy"}, "", true)
+	if e != nil {
+		t.Fatal(e)
+	}
+	workerJob.ImageID = first.ImageID
+	workerJob.ResolvedMethod = "dockerfile"
+	workerJob.Commit = first.Commit
+	if e = db.SaveDeployment(ctx, workerJob); e != nil {
+		t.Fatal(e)
+	}
+	worker.process(ctx, workerJob)
+	workerJob, _ = db.Deployment(ctx, workerJob.ID)
+	if workerJob.State != "succeeded" {
+		t.Fatal("worker incorrectly required HTTP", workerJob.Error)
 	}
 	raw, e := os.ReadFile(filepath.Join(dir, "shipper.db-wal"))
 	if e == nil && (bytes.Contains(raw, []byte(token)) || bytes.Contains(raw, []byte(buildToken))) {

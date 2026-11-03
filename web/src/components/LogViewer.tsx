@@ -18,13 +18,14 @@ export default function LogViewer(props: { deployment: Deployment }) {
       queueMicrotask(() => { if (follow && viewport) viewport.scrollTop = viewport.scrollHeight; });
     }
   });
-  const filtered = createMemo(() => lines().filter(line => !search() || line.line.toLowerCase().includes(search().toLowerCase())));
+  const failedStep=createMemo(()=>[...lines()].reverse().find(line=>line.step!=="failed")?.step);
+  const filtered = createMemo(() => lines().filter(line => !search() || (line.line+" "+line.step).toLowerCase().includes(search().toLowerCase())));
   const start = createMemo(() => Math.max(0, Math.min(Math.floor(scroll() / 22) - 5, filtered().length - 64)));
   const visible = createMemo(() => filtered().slice(start(), start() + 64));
   async function copy() { try { await navigator.clipboard.writeText(lines().map(line => logDateTime(line.createdAt) + " " + line.step + " " + line.line).join("\n")); setCopied(true); } catch { setCopyError("The logs could not be copied"); } }
   return <div class="log-panel">
-    <div class="log-heading"><Status value={props.deployment.state} label={deploymentLabel(props.deployment)} /><span class="mono log-commit">{props.deployment.commit.slice(0, 8) || props.deployment.id.slice(0, 8)}</span><span class="muted log-date">{createdDate(props.deployment.createdAt)}</span><div class="search-field log-search"><Icon name="search" /><input aria-label="Search logs" placeholder="Search logs" value={search()} onInput={e => { setSearch(e.currentTarget.value); if (viewport) viewport.scrollTop = 0; }} /></div><IconButton icon={copied() ? "check" : "copy"} label="Copy logs" ghost onClick={() => void copy()} /></div>
-    <Show when={props.deployment.error}><div class="deployment-error" role="alert"><Icon name="warning" />{props.deployment.error}</div></Show>
+    <div class="log-heading"><Status value={props.deployment.state} label={deploymentLabel(props.deployment)} /><span class="mono log-commit" title={props.deployment.actor ? "Started by "+props.deployment.actor : undefined}>{props.deployment.commit.slice(0, 8) || props.deployment.id.slice(0, 8)}</span><span class="muted log-date">{createdDate(props.deployment.createdAt)}</span><div class="search-field log-search"><Icon name="search" /><input aria-label="Search logs" placeholder="Search logs" value={search()} onInput={e => { setSearch(e.currentTarget.value); if (viewport) viewport.scrollTop = 0; }} /></div><IconButton icon={copied() ? "check" : "copy"} label="Copy logs" ghost onClick={() => void copy()} /></div>
+    <Show when={props.deployment.error}><div class="deployment-error" role="alert"><Icon name="warning" /><span>{props.deployment.error}</span><Show when={failedStep()}><IconButton icon="chevron" label="Show failed step" ghost onClick={()=>{setSearch(failedStep()!);if(viewport)viewport.scrollTop=0;}} /></Show></div></Show>
     <Show when={query.error || copyError()}><ErrorNotice message={copyError() || query.error!.message} /></Show>
     <div ref={viewport} class="log-viewport mono" role="log" aria-label="Deployment logs" aria-live="off" tabindex="0" onScroll={e => { setScroll(e.currentTarget.scrollTop); follow = e.currentTarget.scrollHeight - e.currentTarget.clientHeight - e.currentTarget.scrollTop < 44; }}>
       <div style={{ height: start() * 22 + "px" }} />

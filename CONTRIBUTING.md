@@ -20,7 +20,9 @@ or Traefik behavior changes. Public ACME tests require dedicated reachable DNS;
 the local suite verifies TLS against its own generated trust anchor.
 Run `npm run test:full` for BuildKit/Railpack or runtime configuration changes,
 `npm run test:compose` for Compose orchestration, and `npm run test:package`
-after building the production image.
+after building the production image. Run `npm run test:tasks` for lifecycle/task,
+startup-hook, scheduler or command-recovery changes. Direct Go builds need
+`go generate ./internal/startup` before `go build` to include Linux helpers.
 
 Go code is formatted with gofmt. Keep exported APIs narrow, use contexts for
 operations, and test security, ownership, persistence, and failure behavior.

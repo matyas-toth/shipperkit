@@ -1,5 +1,10 @@
 # Roadmap
 
+Phases 1–5 describe completed implementation. Phases 6–14 are planned and follow
+the [Coolify parity audit and acceptance milestones](../feature_parity.md).
+Capability parity is an eventual goal; optional integrations must not enlarge the
+default application workflow or require extra platform services.
+
 ## Phase 1: Foundation
 
 - [x] Go HTTP API using chi
@@ -58,7 +63,7 @@ certificate validation.
 - [x] Static serving state, legacy runtime visibility and readable container names
 
 Git provider login/private repositories and signed push webhooks remain planned.
-Public ACME issuance needs the reachable VPS/domain check in Phase 5.
+Public ACME issuance needs the routing and reachable VPS/domain checks in Phases 7 and 10.
 
 ## Phase 4: Compose
 
@@ -75,8 +80,144 @@ Public ACME issuance needs the reachable VPS/domain check in Phase 5.
 See [Compose operations and supported boundary](compose.md). Stateful updates can
 involve downtime; restoring containers does not reverse database migrations.
 
-## Phase 5: Release hardening
+## Phase 5: Lifecycle automation and configuration UX
 
-Disposable Linux VPS integration suite, TLS/ACME staging, backups, upgrades,
-installer/distribution decisions, resource measurements, and security review.
+- [x] P5.1: durable lifecycle tasks, first-deploy migration jobs, startup hooks
+- [x] P5.2: saved manual tasks, schedules, timezone/overlap policies and run history
+- [x] P5.3: pending changes, masked diffs, runtime-versus-build change planning
+- [x] Preserve existing log, .env, static-status, naming and navigation QoL
+- [x] Verify task recovery, failure ordering, secret redaction and no-shell images
 
+Exit: migrations complete before consumers start, failed tasks block the new
+release, restarts honor the correct hooks, and everyday edits apply with the
+smallest required operation. See the P5 contract in the parity audit and [commands and tasks](commands.md).
+
+The supported boundary is explicit: one leased operation worker, bounded logs,
+startup attempts in runtime logs, and uncertainty for unprovable exec outcomes.
+Compose interpolation/build-input edits conservatively rebuild.
+
+## 1.0 release boundary
+
+Phase 10 is the 1.0 release gate for a dependable single-server platform. It is
+not a requirement to finish every breadth milestone below. Within Phases 6–9:
+
+| Phase | Required for 1.0 | Later parity |
+| --- | --- | --- |
+| 6 | GitHub private repositories, repository/revision pickers, signed push deployments, predictable cancel/retry, image workflow | Additional Git providers, PR previews, broad source/build compatibility |
+| 7 | VPS/dashboard HTTPS and renewal, common domains/routing, per-service controls, explicit previous-release recovery | Wildcards/custom certificates, broad proxy/Compose/device/network compatibility |
+| 8 | Shipper/key backup and recovery, declared supported application-data backups and tested restores | Every database adapter, Coolify import, broad portability features |
+| 9 | Health/resource diagnostics, actionable notifications, scoped automation API | Full CLI/MCP, file browser, log-drain/channel/traffic breadth |
+| 10 | Tested Linux install, update, reboot, ACME renewal, security/recovery, performance and documentation | Provider/catalog/collaboration/remote-server breadth |
+
+Phase 5 is required in full. Teams, remote servers, scaling and the optional
+integration/catalog work in Phases 11–14 remain after 1.0. A feature must pass its
+acceptance scenario before it counts toward the release gate.
+
+## Phase 6: Sources, images and Git automation
+
+- [ ] P6.1: private GitHub/GitLab, deploy keys, provider/repository/revision pickers
+- [ ] Direct image and inline Dockerfile workflows, registry authentication/push
+- [ ] Submodules, LFS, clone-depth controls and explicit trusted source hosts
+- [ ] P6.2: signed webhooks, narrow deploy tokens, path filters, queue cancellation
+- [ ] P6.3: isolated trusted previews, separate credentials/storage and cleanup
+- [ ] Optional GitHub sign-in remains separate from connecting source credentials
+
+Exit: private source/image deployments and push triggers are reproducible,
+duplicate events are controlled, and previews do not inherit production data.
+
+## Phase 7: Routing, Compose compatibility and release control
+
+- [ ] P7.1: public/dashboard HTTPS, generated domains, certificate diagnostics
+- [ ] DNS-01/wildcards/custom certificates, scoped Traefik settings and maintenance
+- [ ] Controlled TCP/UDP exposure, cross-app networking and optional managed DNS
+- [ ] P7.2: Compose profiles/files, safe includes/extends, build secrets/contexts
+- [ ] Explicit trusted-workload options for needed host mounts, devices and GPU
+- [ ] P7.3: manual release rollback, comparison, retention, readiness and draining
+
+Exit: advanced settings are validated and reviewable, route edits remain lightweight,
+operator rollback works, and Compose's stateful update limits remain explicit.
+
+## Phase 8: Data protection, databases and portability
+
+- [ ] P8.1: instance/storage backups, S3 copies, retention and verified recovery
+- [ ] P8.2: database connection/TLS controls and engine-aware backup/restore adapters
+- [ ] Start with PostgreSQL and MySQL/MariaDB, then extend supported engines
+- [ ] P8.3: portable export/import, stopped config clones and Coolify migration mapping
+- [ ] Retained-volume reattachment and separate, explicit persistent-data deletion
+
+Exit: restore a disposable application and its data, recover an installation with
+its original encryption material, and prove that ordinary cleanup preserves data.
+
+## Phase 9: Operations, observability and agent interfaces
+
+- [ ] P9.1: managed-service terminal/files, focused metrics and connectivity diagnostics
+- [ ] P9.2: event outbox, notifications, optional log forwarding and bounded retention
+- [ ] Favorites/tags, command palette, log controls, stable navigation and bulk previews
+- [ ] P9.3: scoped versioned API, Go CLI, JSON output and permission-checked MCP adapter
+- [ ] Measure per-feature resource cost and keep optional collectors disabled by default
+
+Exit: an operator or agent can diagnose and act through the same authorized
+operations, with bounded logs/metrics and no unrelated-container access.
+
+## Phase 10: Production release hardening
+
+- [ ] Disposable Linux VPS, public ACME renewal, reboot and failure matrix
+- [ ] Architecture/engine compatibility and reproducible resource/performance checks
+- [ ] One-command setup after local workflows are stable, pinned updates and recovery
+- [ ] Account/session controls, 2FA/recovery, security and dependency review
+- [ ] Versioned API/schema, examples, migration/recovery guides and release documentation
+- [ ] Data-preserving uninstall and a documented support boundary
+
+Exit: install, deploy, back up, reboot, update, recover and uninstall on a tested
+host. This is the single-server release gate, not a claim of complete Coolify parity.
+
+## Phase 11: Collaboration, environments and reusable configuration
+
+- [ ] Invitations and simple roles with one implicit workspace for solo installations
+- [ ] Optional groups, application variants, linked values and propagation previews
+- [ ] Passkeys/OIDC and additional OAuth adapters
+- [ ] Doppler/Infisical/Vault references, rotation and team isolation
+- [ ] Expanded audit and permission tests across API, terminal, tasks and data
+
+Exit: collaboration works without adding mandatory hierarchy to a solo user's flow.
+
+## Phase 12: Remote targets, build servers and scale
+
+- [ ] P12.1: SSH targets, host-key validation, connection profiles and scoped inventory
+- [ ] P12.2: remote builds, registry transport, capacity and explicit fallback policy
+- [ ] P12.3: stateless replicas/multi-target releases, target results and external LB checks
+- [ ] Data-aware clone/move and encrypted, single-owner instance transfer
+- [ ] Dedicated isolation targets for untrusted preview/CI execution
+
+Exit: remote execution preserves ownership and reports partial failure correctly;
+adding replicas does not imply database or control-plane high availability.
+
+## Phase 13: Optional catalog and integration breadth
+
+- [ ] Small tested recipes plus an on-demand catalog and Coolify recipe translation
+- [ ] Named notification/log-drain adapters and opt-in traffic analytics
+- [ ] Cloudflare tunnels, provider provisioning/cloud-init and optional host patch jobs
+- [ ] Dedicated GitHub Actions runner integration
+- [ ] Alternate proxy handoff and lazy-loaded relationship/canvas views
+- [ ] Per-recipe/provider support declarations instead of broad unsupported parity claims
+
+Exit: enabling an optional capability does not add dependencies or workflow steps
+for installations that do not use it.
+
+## Phase 14: Exact legacy and specialist compatibility
+
+- [ ] Optional pinned Nixpacks compatibility builder and migration guidance
+- [ ] Explicitly tracked legacy Swarm adapter, separate from ordinary Compose/replicas
+- [ ] Remaining concrete runtime/device/network/storage and proxy compatibility cases
+- [ ] Field-by-field Coolify import reports with unresolved gaps kept visible
+
+Exit: specialist fixtures work with declared backend versions while the ordinary
+single-server product keeps the same small operational footprint.
+
+## Progress and parity rules
+
+A planned field or adapter is not completion. Each capability needs a support
+boundary and an acceptance scenario, linked by its F-ID in
+[feature_parity.md](../feature_parity.md). Preserve the Q-ID QoL register as phases
+ship. Re-audit a pinned Coolify release before claiming current parity, and keep
+native workflows, partial support and Compose workarounds distinct.

@@ -2,6 +2,8 @@ import { spawn, spawnSync } from "node:child_process";
 import { goCommand } from "./go.mjs";
 
 const command = goCommand();
+const generated = spawnSync(command, ["generate", "./internal/startup"], { stdio: "inherit" });
+if (generated.status !== 0) process.exit(generated.status ?? 1);
 // Compile once so Ctrl+C owns the actual server, including on Windows.
 const build = spawnSync(command, ["build", "-o", "bin/", "./cmd/shipper"], { stdio: "inherit" });
 if (build.status !== 0) process.exit(build.status ?? 1);

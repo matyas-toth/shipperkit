@@ -82,19 +82,24 @@ configs:
 volumes:
   database:
 `;
-  const composeConfig={method:"compose",composeSource:"paste",composeYAML,rootDirectory:".",variables:[{name:"DATABASE_PASSWORD",value:composePassword,secret:true,scope:"both"}],domains:[{id:"web",service:"web",hostname:composeHost,https:false,primary:true,redirect:false}]};
+  const composeConfig={method:"compose",composeSource:"paste",composeYAML,rootDirectory:".",hooks:[{stage:"before_deploy",command:{service:"web",argv:["test","-s","/usr/local/apache2/htdocs/index.html"],mode:"job",timeout:30}},{stage:"before_start",command:{service:"web",argv:["test","-s","/usr/local/apache2/htdocs/index.html"],mode:"job",timeout:30}}],variables:[{name:"DATABASE_PASSWORD",value:composePassword,secret:true,scope:"both"}],domains:[{id:"web",service:"web",hostname:composeHost,https:false,primary:true,redirect:false}]};
   const preview=await api("/compose/preview",{config:composeConfig});if(preview.services.length!==2)throw Error("Packaged Compose preview failed");
   const composeJob=await api("/applications",{name:"Packaged Compose",config:composeConfig});const composeRelease=await waitDeployment(composeJob);
   if(composeRelease.state!=="succeeded"){const logs=await api(`/applications/${composeJob.applicationId}/deployments/${composeJob.id}/logs`);throw Error(composeRelease.error+" "+JSON.stringify(logs));}
   const composeSite=await siteRequest(composeHost);if(composeSite.status!==200||!composeSite.body.includes("Packaged Compose works"))throw Error("Packaged Compose build/config mount failed");
   const composeDetail=await api("/applications/"+composeJob.applicationId);if(composeDetail.application.config.composeYAML||JSON.stringify(composeDetail).includes(composePassword))throw Error("Packaged Compose disclosed a secret");
   if((await api(`/applications/${composeJob.applicationId}/variables/reveal`,{service:"database",name:"POSTGRES_PASSWORD"})).value!==composePassword)throw Error("Inherited Compose value reveal failed");
+  const savedTask=await api(`/applications/${composeJob.applicationId}/tasks`,{name:"Print page",enabled:true,command:{service:"web",argv:["cat","/usr/local/apache2/htdocs/index.html"],mode:"job",timeout:30}});
+  const taskJob=await api(`/applications/${composeJob.applicationId}/tasks/${savedTask.id}/run`,{});if((await waitDeployment(taskJob)).state!=="succeeded")throw Error("Packaged saved task failed");
+  const history=await api(`/applications/${composeJob.applicationId}/tasks`);if(history.runs.filter(run=>run.state==="succeeded").length<2)throw Error("Packaged task attempts were not recorded");
+  const web=await poll(async()=>{const detail=await api(`/applications/${composeJob.applicationId}`);return detail.application.containers.find(c=>c.service==="web");});
+  if(!docker("logs",web.id).includes("[Shipper] Before start"))throw Error("Packaged embedded startup helper was not executed");
   docker("restart",name);await poll(()=>api("/auth/session").then(s=>!!s.user));
   const composeUpdate=await api(`/applications/${composeJob.applicationId}/deployments`,{config:composeDetail.application.config});if((await waitDeployment(composeUpdate)).state!=="succeeded")throw Error("Packaged retained Compose redeploy failed");
   if((await siteRequest(composeHost)).status!==200)throw Error("Packaged Compose restart/redeploy lost routing");
   const composeDelete=await api(`/applications/${composeJob.applicationId}/delete`,{confirmName:"Packaged Compose"});await poll(async()=>{const logs=await api(`/applications/${composeJob.applicationId}/deployments/${composeDelete.id}/logs`);if(logs.state==="failed")throw Error("Packaged Compose deletion failed");return logs.state==="succeeded";});
   docker("exec",name,"shipper","healthcheck");
-  console.log("Passed packaged non-root setup, public Git, BuildKit static build with secret mounts, route-only domains, lifecycle, domain verification, restart/session persistence, failed-release preservation, Compose builds/config mounts, inherited variables, retained redeployment, and deletion.");
+  console.log("Passed packaged non-root setup, public Git, BuildKit static build with secret mounts, route-only domains, lifecycle, domain verification, restart/session persistence, failed-release preservation, Compose builds/config mounts, inherited variables, first-deploy tasks, embedded startup helpers, saved job history, retained redeployment, and deletion.");
 } finally {
   if (instance) {
     const containers = docker("ps","-aq","--filter","label=io.shipper.instance="+instance).split(/\s+/).filter(Boolean);
