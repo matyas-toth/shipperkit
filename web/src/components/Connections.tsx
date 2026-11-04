@@ -52,7 +52,7 @@ export default function Connections() {
     setEditingId(c.id);
     setName(c.name);
     setKind(c.kind);
-    setHost(c.host);
+    setHost(c.host);setUsername(c.username??"");setAllowPrivate(c.allowPrivate??false);
     setToken("");
     setPassword("");
     setKey("");
@@ -207,6 +207,7 @@ export default function Connections() {
             icon="plus"
             onClick={() => {
               setEditingId("");
+ setUsername("");setAllowPrivate(false);
               setName("");
               setToken("");
               setPassword("");

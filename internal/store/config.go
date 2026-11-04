@@ -350,6 +350,8 @@ func (s *Store) SetDomainCheck(ctx context.Context, id string, domain Domain, st
 			d.VerificationState = state
 			d.Message = message
 			d.CheckedAt = time.Now().Unix()
+			d.CertificateExpiresAt = domain.CertificateExpiresAt
+			d.CertificateIssuer = domain.CertificateIssuer
 		}
 	}
 	raw, _ := json.Marshal(domains)

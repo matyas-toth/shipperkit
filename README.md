@@ -2,10 +2,11 @@
 
 A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
 
-**Phase 5: Lifecycle automation.** Configure deployment and startup commands,
-run saved tasks manually or on a schedule, and review configuration changes
-before applying them. Deploy public Git repositories or pasted Compose YAML as
-one application, with Dockerfile, Railpack, and static Apache support.
+**Phases 1–7 core.** Deploy public/private GitHub repositories, direct images,
+inline Dockerfiles or Compose applications. Configure lifecycle commands and
+scheduled tasks, automate signed push deployments, review configuration changes,
+and restore recorded releases. Dockerfile, Railpack and static Apache builds
+share the same application model.
 
 Service logs, editable environments, domain routing, health checks, persistent
 volumes, and application lifecycle controls are available from the dashboard.
@@ -87,6 +88,7 @@ administrator and metadata.
 | `SHIPPER_ADDR` | `127.0.0.1:8080` | HTTP listener |
 | `SHIPPER_DATA_DIR` | `.shipper` | Private SQLite and setup-token directory |
 | `SHIPPER_PUBLIC_URL` | Request origin | Canonical origin, e.g. `https://shipper.example.com`, without a trailing slash |
+| `SHIPPER_DASHBOARD_UPSTREAM` | unset | `auto` for packaged dashboard HTTPS, or an explicit Docker-reachable HTTP origin |
 | `SHIPPER_SETUP_TOKEN` | Generated local file | Optional first-run capability of at least 32 characters |
 | `DOCKER_HOST` | SDK platform default | Unix socket, Windows named pipe, or TLS-protected TCP |
 | `DOCKER_TLS_VERIFY` | unset | Must be `1` for TCP connections |
@@ -163,6 +165,9 @@ one primary hostname, and optional aliases redirected to it. Root domains can ad
 email, public DNS, and reachable ports; local addresses use HTTP. See
 [application operations](docs/full-applications.md) and
 [static site operations](docs/static-sites.md).
+
+See [routing, VPS HTTPS and recorded release recovery](docs/routing-and-releases.md)
+for path routing, maintenance, certificate diagnostics, runtime limits and rollback.
 
 ## Password recovery
 

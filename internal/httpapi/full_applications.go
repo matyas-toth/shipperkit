@@ -161,6 +161,10 @@ func (s *Server) updateDomains(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, d := range domains {
+		if s.dashboardDomain(d.Hostname) {
+			s.problem(w, 422, "reserved_domain", "This hostname belongs to the Shipper dashboard")
+			return
+		}
 		if d.HTTPS && s.cfg.Proxy.ACMEEmail == "" {
 			s.problem(w, 422, "https_unconfigured", "Set SHIPPER_ACME_EMAIL before enabling HTTPS")
 			return

@@ -25,11 +25,15 @@ func TestComposeReferenceLoader(t *testing.T) {
 	if len(services) != 2 || services[0].Name != "db" || services[1].Port != 80 {
 		t.Fatal(services)
 	}
-	c.Services=[]store.ServiceConfig{{Name:"web",Variables:[]store.Variable{{Name:"EXTRA",Value:"value"}}}}
-	if ComposeServices(p,c)[1].Port!=80{t.Fatal("An environment-only edit changed the inherited HTTP port")}
-	c.Services[0].Port=ptr(0)
-	if ComposeServices(p,c)[1].Port!=0{t.Fatal("An explicit internal-only override was ignored")}
-	c.Services=nil
+	c.Services = []store.ServiceConfig{{Name: "web", Variables: []store.Variable{{Name: "EXTRA", Value: "value"}}}}
+	if ComposeServices(p, c)[1].Port != 80 {
+		t.Fatal("An environment-only edit changed the inherited HTTP port")
+	}
+	c.Services[0].Port = ptr(0)
+	if ComposeServices(p, c)[1].Port != 0 {
+		t.Fatal("An explicit internal-only override was ignored")
+	}
+	c.Services = nil
 	// Shell variables and the process's Docker settings never participate.
 	t.Setenv("TOKEN", "host-secret")
 	c.Variables = nil

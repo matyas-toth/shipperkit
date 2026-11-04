@@ -61,6 +61,9 @@ var variableName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 var volumeName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,39}$`)
 
 func ValidateBuild(c *store.Config) error {
+	if e := ValidateRuntime(c.Runtime); e != nil {
+		return e
+	}
 	if c.AutoDeploy.Enabled && c.SourceID == "" {
 		return errors.New("Connect a GitHub source before enabling push deployments")
 	}
@@ -125,7 +128,7 @@ func ValidateBuild(c *store.Config) error {
 			if svc.Port != nil {
 				servicePort = *svc.Port
 			}
-			inner := store.Config{Method: "railpack", Port: servicePort, HealthPath: svc.HealthPath, MemoryMB: svc.MemoryMB, Variables: svc.Variables}
+			inner := store.Config{Runtime: svc.Runtime, Method: "railpack", Port: servicePort, HealthPath: svc.HealthPath, MemoryMB: svc.MemoryMB, Variables: svc.Variables}
 			if e := ValidateBuild(&inner); e != nil {
 				return fmt.Errorf("Service %s: %w", svc.Name, e)
 			}
@@ -232,6 +235,11 @@ func NormalizeDomains(input []store.Domain) ([]store.Domain, error) {
 		if d.Service != "" && !serviceName.MatchString(d.Service) {
 			return nil, errors.New("Choose a valid service for each domain")
 		}
+		if e := ValidateRoute(d); e != nil {
+			return nil, e
+		}
+		d.CertificateExpiresAt = 0
+		d.CertificateIssuer = ""
 		d.VerificationState = ""
 		d.Message = ""
 		d.CheckedAt = 0

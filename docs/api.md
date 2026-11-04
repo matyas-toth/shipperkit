@@ -238,3 +238,24 @@ Config adds `sourceId`, `repositoryId`, `autoDeploy:{enabled,paths,supersede}`,
 `inlineDockerfile` with `inlineKeep` retention metadata. Deployment responses add
 `digest` and `cancelRequested`; `cancelled` is terminal. Auto-deploy-only changes
 use a reviewed `configure` operation without rebuilding or recreating containers.
+
+## Routing and recorded recovery (0.7)
+
+`POST /applications/{id}/deployments/{deployment}/rollback` accepts `{review:true}`
+and returns a masked ChangePlan with operation `rollback`. Send its `{revision}`
+to enqueue restoration. Requires cookie + CSRF. Targets must be previous successful
+releases of this application with retained artifacts; missing artifacts/stale reviews
+return 409. The queued deployment persists rollbackId and restores recorded settings
+without repeating deployment migrations. Current domains and persistent data remain.
+
+Domain fields add `pathPrefix`, `stripPrefix`, `compress`, `maintenance`, and
+`responseHeaders` (string map). Successful TLS verification records
+`certificateExpiresAt` and `certificateIssuer`. Config and service overrides add
+`runtime:{cpus,pids,restart,startupSeconds,stopSeconds,drainSeconds}`; drain applies
+only to whole single-container release replacement. See the supported ranges and
+inheritance rules in [routing and releases](routing-and-releases.md).
+
+`GET /proxy` includes optional dashboardURL/dashboardUpstream.
+`POST /proxy/check` requires cookie + CSRF and probes only the configured dashboard,
+returning state, message, observed DNS addresses and trusted certificate metadata.
+It never accepts an arbitrary target URL.

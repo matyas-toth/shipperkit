@@ -1,3 +1,4 @@
+import DomainOptions from "./DomainOptions";
 import { For, Index, Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api, post } from "../api";
@@ -30,7 +31,7 @@ export default function Domains(props: { application: Application; proxy?: Proxy
       <label class="domain-check-control"><input type="checkbox" aria-label={"Redirect " + domain().hostname} checked={domain().redirect} disabled={domain().primary} onChange={e => update(domain().id, { redirect: e.currentTarget.checked })} /><span>Redirect</span></label>
       <Button small variant="ghost" aria-label={"Verify " + domain().hostname} icon={stored(domain())?.verificationState === "verified" ? "check" : "refresh"} disabled={checks()[domain().id] || !stored(domain()) || !props.application.activeDeploymentId || props.busy} onClick={() => void verify(domain())}>{checks()[domain().id] ? "Checking" : stored(domain())?.verificationState === "verified" ? "Verified" : "Verify"}</Button>
       <IconButton icon="trash" label={"Remove " + domain().hostname} ghost onClick={() => setDomains(current => { const next = current.filter(d => d.id !== domain().id);const group = next.filter(d => d.service === domain().service);if (group.length && !group.some(d => d.primary)) group[0].primary = true;return next; })} />
-      <Show when={stored(domain())?.message && stored(domain())?.verificationState !== "verified"}><div class="domain-row-error" role="status">{stored(domain())?.message}</div></Show>
+      <DomainOptions domain={domain()} stored={stored(domain())} change={value=>update(domain().id,value)}/><Show when={stored(domain())?.message && stored(domain())?.verificationState !== "verified"}><div class="domain-row-error" role="status">{stored(domain())?.message}</div></Show>
     </div>}</Index><Show when={!domains().length}><div class="domain-empty">No domains</div></Show></div></div>
     <div class="form-actions"><Button type="submit" icon="check" disabled={props.busy}>Save domains</Button></div>
     <Show when={props.application.activeDeploymentId}><div class="domain-links"><For each={props.application.domains?.filter(d => !props.service || d.service === props.service)}>{d => <a class="inline-link" href={domainURL(d, props.proxy)} target="_blank" rel="noreferrer">{d.hostname}</a>}</For></div></Show>

@@ -7,6 +7,7 @@ const account = { email: "owner@example.test", password: "shipper-browser-test-p
 test.beforeEach(async({page})=>{
  await page.route("**/api/applications/*/changes",r=>r.fulfill({json:{operation:"recreate",changes:["Environment variables"],revision:"browser-review-fixture"}}));
 });
+test.afterEach(async({page})=>{await page.unrouteAll({behavior:"wait"});});
 const screenshot = (name: string) => join(tmpdir(), "shipper-phase3-" + name + ".png");
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/");await page.getByLabel("Email", { exact: true }).fill(account.email);await page.getByLabel("Password", { exact: true }).fill(account.password);await page.getByRole("button", { name: "Sign in", exact: true }).click();await expect(page.getByRole("heading",{name:"Applications",exact:true})).toBeVisible();

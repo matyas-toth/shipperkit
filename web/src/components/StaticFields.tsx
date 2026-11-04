@@ -1,3 +1,4 @@
+import RuntimeFields from "./RuntimeFields";
 import { For, Show, createEffect, createSignal } from "solid-js";
 import type { StaticConfig } from "../types";
 import { post } from "../api";
@@ -40,6 +41,7 @@ export default function StaticFields(props: { config: StaticConfig; change: (key
       <Show when={props.config.method!=="static"}><label for="startup-policy">Readiness</label><select id="startup-policy" class="input" value={props.config.startupPolicy||"http"} onChange={e=>{props.change("startupPolicy",e.currentTarget.value);if(e.currentTarget.value==="process"&&!props.applicationId){props.change("domain","");props.change("https",false);}}}><option value="http">HTTP</option><option value="process">Running process</option></select></Show>
  <Show when={props.config.startupPolicy!=="process"}><label for="health-path">Health check path</label><input class="input" id="health-path" value={props.config.healthPath} onInput={e => props.change("healthPath", e.currentTarget.value)} /></Show><label for="memory-limit">Memory limit (MiB)</label><input class="input" id="memory-limit" type="number" min="64" max="8192" value={props.config.memoryMB} onInput={e => props.change("memoryMB", Number(e.currentTarget.value))} />
     </div></details></Show>
+ <Show when={props.config.method!=="compose"}><RuntimeFields value={props.config.runtime} change={runtime=>props.change("runtime",runtime)}/></Show>
  <AutomaticDeployFields config={props.config} change={props.change}/>
   </>;
 }

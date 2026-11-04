@@ -764,6 +764,13 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 	if e = json.Unmarshal(data, &model); e != nil {
 		return e
 	}
+	for name, raw := range model["services"].(map[string]any) {
+		for _, override := range d.Config.Services {
+			if override.Name == name {
+				applyComposePolicy(raw.(map[string]any), override.Runtime)
+			}
+		}
+	}
 	plan := composePlan{Project: model, Masks: mask}
 	data, e = json.Marshal(plan)
 	d.ComposePlan = string(data)
@@ -930,7 +937,10 @@ func (r *DockerRuntime) BuildCompose(ctx context.Context, d *store.Deployment, l
 	return r.composeStartup(ctx, d)
 }
 func (r *DockerRuntime) UpCompose(ctx context.Context, d store.Deployment, log func(string)) error {
-	wait := 90
+	wait := max(90, StartupSeconds(d.Config.Runtime))
+	for _, svc := range d.Config.Services {
+		wait = max(wait, StartupSeconds(svc.Runtime))
+	}
 	for _, h := range d.Config.Hooks {
 		if h.Stage == "before_start" {
 			wait = max(wait, 90+h.Command.Timeout)
@@ -965,6 +975,11 @@ func (r *DockerRuntime) ComposeHealthy(ctx context.Context, d store.Deployment) 
 					candidate.ContainerID = c.ID
 					candidate.RuntimePort = svc.Port
 					candidate.Config.HealthPath = svc.HealthPath
+					for _, override := range d.Config.Services {
+						if override.Name == svc.Name {
+							candidate.Config.Runtime = override.Runtime
+						}
+					}
 					if e = r.Healthy(ctx, candidate); e != nil {
 						return fmt.Errorf("Service %s: %w", svc.Name, e)
 					}
@@ -985,6 +1000,9 @@ func (r *DockerRuntime) ComposeLifecycle(ctx context.Context, d store.Deployment
 	if action == "start" {
 		return r.UpCompose(ctx, d, func(string) {})
 	}
-	args := []string{action, "--timeout", "10"}
+	args := []string{action}
+	if d.Config.Runtime.StopSeconds > 0 {
+		args = append(args, "--timeout", strconv.Itoa(StopSeconds(d.Config.Runtime)))
+	}
 	return r.composeCommand(ctx, d, args, func(string) {})
 }

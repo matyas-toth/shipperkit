@@ -1,6 +1,6 @@
 # Roadmap
 
-Phases 1–5 and the Phase 6 1.0 core are implemented. Later milestones follow
+Phases 1–5 and the Phase 6–7 1.0 core are implemented. Later milestones follow
 the [Coolify parity audit and acceptance milestones](../feature_parity.md).
 Capability parity is an eventual goal; optional integrations must not enlarge the
 default application workflow or require extra platform services.
@@ -131,15 +131,22 @@ Full P6 parity, especially preview isolation, is not claimed.
 
 ## Phase 7: Routing, Compose compatibility and release control
 
-- [ ] P7.1: public/dashboard HTTPS, generated domains, certificate diagnostics
-- [ ] DNS-01/wildcards/custom certificates, scoped Traefik settings and maintenance
-- [ ] Controlled TCP/UDP exposure, cross-app networking and optional managed DNS
-- [ ] P7.2: Compose profiles/files, safe includes/extends, build secrets/contexts
-- [ ] Explicit trusted-workload options for needed host mounts, devices and GPU
-- [ ] P7.3: manual release rollback, comparison, retention, readiness and draining
+- [x] Packaged VPS/dashboard HTTPS route, automatic ACME renewal configuration
+- [x] DNS/TLS/identity verification and observed certificate issuer/expiry
+- [x] Per-domain path/strip-prefix routing, response headers, compression, maintenance
+- [x] Per-service CPU/PID/restart/startup/stop controls, single-container traffic drain
+- [x] Reviewed recorded-release rollback, config comparison and retained-artifact checks
+- [x] Preserve current domains/data and skip deployment migrations on restoration
+- [ ] Public ACME issuance/renewal acceptance on a real VPS remains a Phase 10 gate
+- [ ] Later parity: wildcard/custom certificates, raw proxy plans, managed DNS
+- [ ] Later parity: TCP/UDP exposure, cross-app networks, profiles/multiple files
+- [ ] Later parity: trusted host mounts, devices/GPU, build secrets/extra contexts
 
-Exit: advanced settings are validated and reviewable, route edits remain lightweight,
-operator rollback works, and Compose's stateful update limits remain explicit.
+The 1.0 core is implemented within the [routing and release support boundary](routing-and-releases.md).
+Compose retains stateful reconciliation and pinned failure recovery; data/schema
+reversal is not implied by rolling back containers. Specialist compatibility and
+full P7 parity remain open. Static proxy setting changes require explicit
+container recreation while preserving certificate storage.
 
 ## Phase 8: Data protection, databases and portability
 

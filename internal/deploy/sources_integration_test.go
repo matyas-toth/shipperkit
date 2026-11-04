@@ -88,6 +88,79 @@ func TestDockerSourceWorkflows(t *testing.T) {
 				t.Fatal(string(out), e)
 			}
 		}
+		if method == "inline" {
+			first := d
+			a, _ = db.Application(ctx, a.ID)
+			a.Config.InlineDockerfile = strings.ReplaceAll(a.Config.InlineDockerfile, "Inline source works", "Second release works")
+			a.Config.Runtime = store.RuntimePolicy{CPUs: 0.5, PIDs: 128, StopSeconds: 3, StartupSeconds: 30}
+			next, e := db.Enqueue(ctx, a, store.Deployment{ID: auth.Token()[:24], Operation: "deploy"}, "", false)
+			if e != nil {
+				t.Fatal(e)
+			}
+			w.process(ctx, next)
+			next, _ = db.Deployment(ctx, next.ID)
+			if next.State != "succeeded" {
+				t.Fatal("second release", next.Error)
+			}
+			info, e := r.Client.ContainerInspect(ctx, next.ContainerID, client.ContainerInspectOptions{})
+			if e != nil || info.Container.HostConfig.NanoCPUs != 500000000 || *info.Container.HostConfig.PidsLimit != 128 || *info.Container.Config.StopTimeout != 3 {
+				t.Fatal("Runtime policy was not applied", e)
+			}
+			a, _ = db.Application(ctx, a.ID)
+			a.Config.Domains = []store.Domain{{ID: "primary", Hostname: a.ID + ".localhost", Primary: true, PathPrefix: "/api", StripPrefix: true, Compress: true, ResponseHeaders: map[string]string{"X-Shipper-Test": "routed"}}}
+			route, e := db.Enqueue(ctx, a, store.Deployment{ID: auth.Token()[:24], Operation: "domains"}, "", false)
+			if e != nil {
+				t.Fatal(e)
+			}
+			w.process(ctx, route)
+			route, _ = db.Deployment(ctx, route.ID)
+			if route.State != "succeeded" {
+				t.Fatal("route", route.Error)
+			}
+			out, e := r.probeHTTP(ctx, "127.0.0.1", 8080, a.ID+".localhost", "/api/")
+			if e != nil || !strings.Contains(string(out), "Second release works") || !strings.Contains(string(out), "X-Shipper-Test: routed") {
+				t.Fatal("path/header routing", string(out), e)
+			}
+			a, _ = db.Application(ctx, a.ID)
+			a.Config.Domains = a.Domains
+			a.Config.Domains[0].Maintenance = true
+			maintenance, e := db.Enqueue(ctx, a, store.Deployment{ID: auth.Token()[:24], Operation: "domains"}, "", false)
+			if e != nil {
+				t.Fatal(e)
+			}
+			w.process(ctx, maintenance)
+			maintenance, _ = db.Deployment(ctx, maintenance.ID)
+			if maintenance.State != "succeeded" {
+				t.Fatal("maintenance", maintenance.Error)
+			}
+			out, e = r.probeHTTP(ctx, "127.0.0.1", 8080, a.ID+".localhost", "/api/")
+			if e != nil || !strings.Contains(string(out), "503 Service Unavailable") {
+				t.Fatal("maintenance response", string(out), e)
+			}
+			a, _ = db.Application(ctx, a.ID)
+			a.Config.Domains = a.Domains
+			a.Config.Domains[0].Maintenance = false
+			restoreRoutes, e := db.Enqueue(ctx, a, store.Deployment{ID: auth.Token()[:24], Operation: "domains"}, "", false)
+			if e != nil {
+				t.Fatal(e)
+			}
+			w.process(ctx, restoreRoutes)
+			a, _ = db.Application(ctx, a.ID)
+			a.Config = first.Config
+			rollback, e := db.Enqueue(ctx, a, store.Deployment{ID: auth.Token()[:24], Operation: "rollback", RollbackID: first.ID}, "", false)
+			if e != nil {
+				t.Fatal(e)
+			}
+			w.process(ctx, rollback)
+			d, _ = db.Deployment(ctx, rollback.ID)
+			if d.State != "succeeded" || d.ImageID != first.ImageID {
+				t.Fatal("rollback", d.Error)
+			}
+			out, e = r.probeHTTP(ctx, "127.0.0.1", 8080, a.ID+".localhost", "/api/")
+			if e != nil || !strings.Contains(string(out), "Inline source works") {
+				t.Fatal("rollback did not retain domains", string(out), e)
+			}
+		}
 		if e = r.Lifecycle(ctx, d, "restart"); e != nil {
 			t.Fatal(e)
 		}

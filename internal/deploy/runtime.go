@@ -68,7 +68,7 @@ func (r *DockerRuntime) Lifecycle(ctx context.Context, d store.Deployment, actio
 	}
 	if action == "stop" || action == "restart" {
 		if info.Container.State.Running {
-			if _, e = r.Client.ContainerStop(ctx, d.ContainerID, client.ContainerStopOptions{Timeout: ptr(10)}); e != nil {
+			if _, e = r.Client.ContainerStop(ctx, d.ContainerID, client.ContainerStopOptions{Timeout: ptr(StopSeconds(d.Config.Runtime))}); e != nil {
 				return e
 			}
 		}

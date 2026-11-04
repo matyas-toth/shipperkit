@@ -17,6 +17,7 @@ type ChangePlan struct {
 
 func buildConfig(c store.Config) store.Config {
 	c.AutoDeploy = store.AutoDeploy{}
+	c.Runtime = store.RuntimePolicy{}
 	c.Hooks = nil
 	c.StartupPolicy = ""
 	c.StartCommand = ""
@@ -105,6 +106,9 @@ func PlanChanges(old, next store.Config) ChangePlan {
 					p.Operation = "rebuild"
 				}
 			}
+			if svc.Runtime.CPUs > 0 && found.Runtime.CPUs == 0 || svc.Runtime.PIDs > 0 && found.Runtime.PIDs == 0 || svc.Runtime.Restart != "" && found.Runtime.Restart == "" || svc.Runtime.StopSeconds > 0 && found.Runtime.StopSeconds == 0 {
+				p.Operation = "rebuild"
+			}
 			if !reflect.DeepEqual(svc.UnsetVariables, found.UnsetVariables) || svc.MemoryMB > 0 && found.MemoryMB == 0 || svc.Port != nil && found.Port == nil {
 				p.Operation = "rebuild"
 			}
@@ -115,7 +119,7 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	var left, right map[string]any
 	json.Unmarshal(a, &left)
 	json.Unmarshal(b, &right)
-	labels := map[string]string{"repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
+	labels := map[string]string{"runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
 	for key, label := range labels {
 		if !reflect.DeepEqual(left[key], right[key]) {
 			p.Changes = append(p.Changes, label)
@@ -173,6 +177,7 @@ func (r *DockerRuntime) ReuseCompose(ctx context.Context, d *store.Deployment, p
 			if override.Name != name {
 				continue
 			}
+			applyComposePolicy(svc, override.Runtime)
 			for _, key := range override.UnsetVariables {
 				delete(env, key)
 			}

@@ -52,7 +52,8 @@ func (f *composeFixtureSource) Clone(ctx context.Context, c store.Config, dir st
       test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 2s
       timeout: 2s
-      retries: 20
+      retries: 60
+      start_period: 15s
 volumes:
   database:
 `
@@ -63,7 +64,7 @@ func TestDockerComposeApplications(t *testing.T) {
 	if os.Getenv("SHIPPER_TEST_COMPOSE") != "1" {
 		t.Skip("set SHIPPER_TEST_COMPOSE=1 for real Compose integration")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 	docker, e := engine.New()
 	if e != nil {
@@ -90,7 +91,8 @@ func TestDockerComposeApplications(t *testing.T) {
 	w := NewWorker(db, runtime, events.New(), dir)
 	source := &composeFixtureSource{version: "one"}
 	w.Source = source
-	a := store.Application{ID: auth.Token()[:24], Name: "Compose fixture", Config: store.Config{Method: "compose", ComposeSource: "git", ComposeFile: "compose.yaml", RootDirectory: ".", Repository: "https://github.com/example/app.git", Variables: []store.Variable{{Name: "DATABASE_PASSWORD", Value: "fixture-password-" + auth.Token()[:12], Secret: true}}}}
+	a := store.Application{ID: auth.Token()[:24], Name: "Compose fixture", Config: store.Config{Runtime: store.RuntimePolicy{StartupSeconds: 180}, Method: "compose", ComposeSource: "git", ComposeFile: "compose.yaml", RootDirectory: ".", Repository: "https://github.com/example/app.git", Variables: []store.Variable{{Name: "DATABASE_PASSWORD", Value: "fixture-password-" + auth.Token()[:12], Secret: true}}}}
+	a.Config.Services = []store.ServiceConfig{{Name: "web", Runtime: store.RuntimePolicy{CPUs: 0.75, PIDs: 128, StopSeconds: 3}}}
 	a.Config.Domains = []store.Domain{{ID: "web", Service: "web", Hostname: a.ID + ".localhost", Primary: true}}
 	t.Cleanup(func() {
 		clean, stop := context.WithTimeout(context.Background(), time.Minute)
@@ -154,6 +156,12 @@ func TestDockerComposeApplications(t *testing.T) {
 	}
 	dbID := ""
 	for _, c := range items {
+		if c.Labels["com.docker.compose.service"] == "web" {
+			info, e := runtime.Client.ContainerInspect(ctx, c.ID, client.ContainerInspectOptions{})
+			if e != nil || info.Container.HostConfig.NanoCPUs != 750000000 || *info.Container.HostConfig.PidsLimit != 128 || *info.Container.Config.StopTimeout != 3 {
+				t.Fatal("Compose runtime controls", e)
+			}
+		}
 		if c.Labels["com.docker.compose.service"] == "db" {
 			dbID = c.ID
 		}
@@ -247,6 +255,28 @@ func TestDockerComposeApplications(t *testing.T) {
 	if len(a.Containers) != 2 || a.State != "running" {
 		t.Fatal("Compose inventory not grouped", a.State, len(a.Containers))
 	}
+	t.Log("Restoring a recorded Compose release while retaining database data")
+	a, _ = db.Application(ctx, a.ID)
+	a.Config = first.Config
+	rollback, e := db.Enqueue(ctx, a, store.Deployment{ID: auth.Token()[:24], Operation: "rollback", RollbackID: first.ID}, "", false)
+	if e != nil {
+		t.Fatal(e)
+	}
+	w.process(ctx, rollback)
+	restored, e := db.Deployment(ctx, rollback.ID)
+	if e != nil || restored.State != "succeeded" || !strings.Contains(request("/"), "Compose one") {
+		t.Fatal("manual Compose rollback", restored.Error, e)
+	}
+	items, _ = runtime.composeContainers(ctx, a.ID)
+	for _, item := range items {
+		if item.Labels["com.docker.compose.service"] == "db" {
+			dbID = item.ID
+		}
+	}
+	if out, e := runtime.exec(ctx, dbID, []string{"psql", "-U", "postgres", "-Atc", "SELECT value FROM shipper_proof"}); e != nil || !strings.Contains(string(out), "survived") {
+		t.Fatal("rollback lost persistent data", string(out), e)
+	}
+	a, _ = db.Application(ctx, a.ID)
 	volume := runtime.composeProject(a.ID) + "-database"
 	run("delete", false, "succeeded")
 	if _, e = runtime.Client.VolumeInspect(ctx, volume, client.VolumeInspectOptions{}); e != nil {

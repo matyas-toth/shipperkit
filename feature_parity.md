@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-02, Europe/Budapest.  
 **Shipper baseline:** version `0.4.0`, commit `5831782a85a2431cc30baa9e07f72524c72103a7`, including Phases 1–4.  
-**Shipper implementation update:** 2026-11-04, Phase 6 core / `0.6.0`; the original comparison baseline above remains pinned. See [commands and tasks][L05].
+**Shipper implementation update:** 2026-11-04, Phase 6–7 core / `0.7.0`; the original comparison baseline above remains pinned. See [commands and tasks][L05].
 **Coolify baseline:** release tag `v4.6.0`, commit `0becfba9113063336b09860579627fd218cb3fc4`.  
 **Additional source checked:** Coolify `main` at `67b29ff24af8d54905341f8de8585c3302f67311` and the production docs repository at `b4f93fae4a2417817d4159c0b2377f24a265e5b8`.
 
@@ -21,13 +21,14 @@ Railpack, static-site, and basic Compose workflows. It also has application/serv
 ownership, persistent volumes, deployment history, encrypted configuration,
 runtime logs, health-gated single-container promotion, and scoped routing.
 
-Coolify's largest lead is everything around deployment: private sources and Git
-automation, databases and recoverability, interactive operations, remote hosts,
-team access, integrations, and a much broader set of configuration escape hatches.
-Running PostgreSQL in Compose does not equal having a database backup/restore
-workflow. An authenticated browser API does not equal a scoped public API, CLI,
-and MCP integration. Automatic failure recovery does not equal an operator-facing
-rollback feature.
+Since the initial audit, Phases 5–7 added lifecycle automation, private GitHub
+sources, signed push deployments, direct images, recorded rollback and common
+routing/runtime controls. Coolify's largest remaining lead is databases and data
+recovery, interactive operations, remote hosts, teams, additional providers and
+broader specialist configuration. Running PostgreSQL in Compose still does not
+equal having a database backup/restore workflow. The narrow deploy API does not
+yet equal a general scoped operations API, CLI and MCP integration. Public VPS
+issuance/renewal remains a release-gate check despite the local TLS coverage.
 
 There is no honest single parity percentage. A template count, a deployment
 backend, and a tested recovery workflow have different value and risk. The matrix
@@ -102,23 +103,23 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F01 | Public Git source, revision, base directory | **Present** | Preserve the short public-repository flow and immutable commit recording. | [D02], [L01] |
-| F02 | GitHub/GitLab App repository access and private repository selection | **Missing** | Connect a source account once, search repositories, choose a revision. GitHub first, GitLab next. **P6** | [D09], [C02] |
+| F02 | GitHub/GitLab App repository access and private repository selection | **Partial** | GitHub App/token connections and authorized repository lists ship in 0.6.0. GitLab remains later P6 parity. | [D09], [C02] |
 | F03 | Deploy keys and generic Git providers, including Bitbucket/Gitea | **Missing** | One generic Git credential/transport path plus provider discovery adapters. Explicitly approve private source hosts. **P6** | [D09], [C02] |
-| F04 | Repository/branch selection and tags or commit revisions | **Partial** | Public branch suggestions and revision input exist; add authenticated repository, branch, and tag pickers. **P6** | [D09], [L01] |
-| F05 | Push deployments, manual deploy webhooks, monorepo watch paths | **Missing** | Signed provider events, narrow deploy tokens, branch/path filters, delivery deduplication. **P6** | [D10], [C02] |
+| F04 | Repository/branch selection and tags or commit revisions | **Present** for GitHub/public Git | GitHub repository, branch/tag suggestions and manual commit input are available. Additional provider discovery remains later parity. | [D09], [L01] |
+| F05 | Push deployments, manual deploy webhooks, monorepo watch paths | **Present** for GitHub and scoped deploy tokens | Signed pushes, branch/path filters, delivery deduplication, pause and persisted coalescing ship in 0.6.0. Provider status feedback remains later breadth. | [D10], [C02] |
 | F06 | Pull/merge-request previews and automatic cleanup | **Missing** | Isolated application variants, separate domains/volumes/secrets, trusted-author defaults and expiry. **P6**, hardened isolation in **P12** | [D11] |
 | F07 | Submodules, Git LFS, shallow/full-history selection | **Missing** | Advanced source options with scoped credentials and the same host validation as the parent source. **P6** | [D12] |
 | F08 | Repository scan for methods, Dockerfiles, Compose, ports, env templates | **Partial** | Basic method detection and explicit Compose inspection exist; unify a read-only scan with editable suggestions. **P5–P6** | [D13], [L01], [L02] |
 | F09 | Static deployment with routing configuration | **Present** | Preserve Apache, SPA/file routing and controlled `.htaccess`; add headers and caching through routing settings. **P7** extends this. | [D02], [L01] |
 | F10 | Railpack automatic builds and command overrides | **Present** | Keep the existing isolated builder. Expand tested language/framework examples and version/config controls where needed. **P6/P10** | [D06], [L01] |
 | F11 | Git Dockerfile builds, contexts and file selection | **Present** | Keep Dockerfile ownership of its build steps and predictable monorepo paths. | [D02], [L01] |
-| F12 | Dockerfile pasted without a Git repository | **Workaround** | Compose `dockerfile_inline` works; add a direct inline-Dockerfile source through the same builder. **P6** | [D02], [C01], [L02] |
-| F13 | Direct prebuilt image deployment, tags and digests | **Workaround** | Pasted Compose can run images; add an image source without requiring YAML. Record resolved digests. **P6** | [D14], [L02] |
+| F12 | Dockerfile pasted without a Git repository | **Present** | Direct encrypted inline-Dockerfile source uses the isolated BuildKit path without a repository context. | [D02], [C01], [L02] |
+| F13 | Direct prebuilt image deployment, tags and digests | **Present** | Direct image source, registry authentication, platform choice, image ID/digest recording and ordinary application controls ship in 0.6.0. | [D14], [L02] |
 | F14 | Nixpacks configuration and existing Nixpacks projects | **Missing** | Offer migration guidance and an opt-in pinned compatibility builder for recipes that require it. Railpack stays the default. **P14** | [D05] |
 | F15 | Git and pasted Compose, multiple services and persistent volumes | **Present** for the supported subset | Retain one application model for both sources; do not reproduce Coolify's separate Application/Service hierarchy. | [D03], [L02] |
 | F16 | Broader Compose definitions, file combinations and profiles | **Partial** | Add selected profiles, overrides, supported includes/extends, additional contexts and clear preflight errors incrementally. **P7** | [D03], [L02] |
 | F17 | Raw Compose/custom Docker options, devices and GPU access | **Missing** | An explicit trusted-workload capability profile and reviewed overrides; preserve Shipper ownership. Default deployments remain restricted. **P7**, specialized adapters in **P14** | [D12], [C01], [L02] |
-| F18 | Registry login, image publishing, build secrets and advanced build inputs | **Partial** | Single-container secrets exist; add registry credentials/push, Compose secrets/SSH and declared platform targets. **P6–P7** | [D15], [L01], [L02] |
+| F18 | Registry login, image publishing, build secrets and advanced build inputs | **Partial** | Registry pull credentials and Linux platform selection ship in 0.6.0. Publishing, Compose build secrets/SSH and additional contexts remain later parity. | [D15], [L01], [L02] |
 
 ### B. Runtime, automation, configuration, and releases
 
@@ -126,17 +127,17 @@ limits are part of the reference, not requirements to exceed accidentally.
 | --- | --- | --- | --- | --- |
 | F19 | Install/build/start and pre/post deployment commands | **Present** for the declared command contract | Candidate-image migrations, startup hooks on actual starts, after-deploy and controlled before-stop tasks. Startup attempts use runtime logs; job attempts are durable. [Command boundary][L05]. | [C01], [L01], [L05] |
 | F20 | Manual execution, scheduled tasks and execution history | **Present** for the native subset | Saved tasks, Run now, five-field cron/IANA timezones, next-run preview, persisted wait/skip and missed-run policies, timeout and redacted history. One leased worker; uncertain exec outcomes require inspection. | [D16], [C03], [L05] |
-| F21 | Deployment queue, cancellation and operation results | **Partial** | Durable queue exists; add stage-aware cancellation, retry, superseding stale requests and bounded concurrency. **P5–P6** | [D01], [L03] |
+| F21 | Deployment queue, cancellation and operation results | **Present** within one-worker scope | Durable coalescing, pre-mutation cancellation, queued superseding and recorded-revision retry ship in 0.6.0. Workload-changing tasks are deliberately not cancellable. | [D01], [L03] |
 | F22 | Runtime-only changes without source rebuilding | **Present** within the declared reuse boundary | Reviewed Apply reuses single-container images and Compose service-runtime models. Compose interpolation/build inputs and removal of certain inherited overrides reload source conservatively. Rename and domains retain lighter operations. | [D17], [L01], [L05] |
-| F23 | Health checks, worker operation and startup/shutdown tuning | **Partial** | HTTP/image checks exist; add worker/non-HTTP policies, grace periods, readiness settings and graceful draining. **P5/P7** | [D12], [D17], [L01] |
-| F24 | CPU/memory/restart settings and advanced resource controls | **Partial** | Memory settings and bounded defaults exist; expose needed CPU/PID/restart/grace controls by service. **P7** | [D12], [L01], [L02] |
+| F23 | Health checks, worker operation and startup/shutdown tuning | **Present** within declared readiness scope | HTTP/image/process readiness, startup deadline, graceful stop and bounded single-container traffic drain ship through 0.7.0. Compose remains stateful. | [D12], [D17], [L01] |
+| F24 | CPU/memory/restart settings and advanced resource controls | **Present** for common limits | CPU/PID/restart/startup/stop controls are available per Compose service and single-container app. Specialist resources remain later parity. | [D12], [L01], [L02] |
 | F25 | Component lifecycle actions in a stack | **Present** for start/stop/restart | Service menus share durable operations and reject shutdown while a transitive dependant is running. Complete application reconciliation remains the deployment default. Further restart/draining policy is P7. | [D17], [L02], [L05] |
 | F26 | Recognizable or custom container names | **Partial** | Generated names already work. Prefer stable service DNS; offer exact names only when required and explain replacement constraints. **P7** | [D12], [L01] |
 | F27 | Scoped variables, secrets, import/edit/reveal | **Present** for local application/service values | Preserve the minimal `.env` editor, encryption and inheritance. Add validation rather than more default controls. | [D17], [L01], [L02] |
 | F28 | Shared team/project/environment/server values | **Missing** | Opt-in reusable value sets with visible provenance, explicit links and reviewed propagation. Optional grouping must not become a deployment prerequisite. **P11** | [D20] |
 | F29 | External secrets from Doppler, Infisical and Vault | **Missing** | Credential-reference adapters using the same `.env` surface, scoped resolution and rotation controls. **P11/P13** | [C04] |
 | F30 | Env-template suggestions and generated credentials/URLs | **Partial** | Paste/edit works. Add missing-key suggestions, generation in row menus and recipe variables with explicit review. **P5/P6/P13** | [D13], [C08], [L01] |
-| F31 | Health-gated replacement, graceful stop and manual image rollback | **Partial** | Candidate checks and automatic failure recovery exist; add operator rollback, release comparison, retention and drain controls. **P7** | [D01], [D04], [L03] |
+| F31 | Health-gated replacement, graceful stop and manual image rollback | **Partial** | Reviewed recorded-release restoration, config comparison, retained-artifact checks and single-container drain ship in 0.7.0. Missing artifacts reject recovery; automatic retention/pruning remains deferred. | [D01], [D04], [L03] |
 | F32 | Configuration inspection, cloning, move and migration workflows | **Partial** | Snapshots exist. Add effective-config review, portable export/import and safe duplication before remote migration. **P5/P8/P11/P12** | [D17], [D25], [L03] |
 
 ### C. Domains, HTTPS, networking, and proxy controls
@@ -144,11 +145,11 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F33 | Multiple domains, service routing, primary aliases and redirects | **Present** | Preserve hostname rows, per-service ownership, root-domain www expansion, independent HTTPS and verification. | [D03], [D19], [L02] |
-| F34 | Automatic public HTTPS, renewal and dashboard HTTPS | **Partial** | ACME HTTP configuration exists; complete public-VPS setup, renewal diagnostics, dashboard TLS and recovery tests. **P7/P10** | [D19], [L01] |
+| F34 | Automatic public HTTPS, renewal and dashboard HTTPS | **Partial** pending public acceptance | Packaged dashboard HTTPS, ACME renewal configuration and certificate diagnostics ship in 0.7.0. Trusted local TLS and restart tests exist; live public issuance/renewal remains P10. | [D19], [L01] |
 | F35 | Generated app domains and wildcard domain configuration | **Partial** | Single-container local addresses exist; add consistent local/service URLs and an optional operator-controlled wildcard base domain. **P7** | [D19], [L01] |
 | F36 | DNS challenge, wildcard certificates, custom certificates/resolvers | **Missing** | Advanced certificate options on the same domain model; HTTP challenge remains the short default path. **P7** | [D19] |
-| F37 | Traefik dynamic config, middleware, headers, auth, path routing and compression | **Missing** as user controls | Structured common settings plus validated app/service-scoped Traefik overrides and a separate admin proxy configuration. **P7** | [D19], [C05] |
-| F38 | Maintenance mode and custom fallback/error pages | **Missing** | A route-only maintenance action and optional page customization; do not stop databases or workers implicitly. **P7** | [D19] |
+| F37 | Traefik dynamic config, middleware, headers, auth, path routing and compression | **Partial** | Per-domain path/strip-prefix, compression and response headers ship in 0.7.0. Auth middleware, arbitrary scoped Traefik overrides and admin proxy plans remain later parity. | [D19], [C05] |
+| F38 | Maintenance mode and custom fallback/error pages | **Partial** | Route-only HTTP 503 maintenance preserves running services. Custom fallback/error pages remain later parity. | [D19] |
 | F39 | Public TCP/UDP ports, database access and internal connections | **Partial** | Private Compose networking works; add explicit exposure/binding, database TLS and narrow cross-application connections. **P7/P8** | [D03], [D21], [L02] |
 | F40 | Managed Cloudflare DNS and tunnel integration | **Missing** | Optional Cloudflare credential capabilities; show a proposed DNS change before applying it. Tunnel mode is separate from DNS management. **P7/P13** | [C04], [C05] |
 | F41 | Caddy and custom reverse proxy configurations | **Missing** | Optional routing adapters for Caddy/custom proxy handoff. Traefik stays the default. **P13/P14** | [D19] |
@@ -380,6 +381,15 @@ the queued revision is the revision deployed; a preview cannot access production
 data; an image-only application needs no Git or Compose knowledge.
 
 ### P7. Routing, Compose breadth, and deployment control
+
+**1.0 core implemented in 0.7.0:** packaged dashboard HTTPS routing, ACME renewal
+configuration, certificate diagnostics, per-domain path/header/compression and
+maintenance controls, per-service runtime limits and reviewed recorded-release
+recovery. Current domains/data are retained and deployment migration hooks skipped.
+See [routing and releases](docs/routing-and-releases.md) for supported behavior and
+verification. Public ACME issuance/renewal still needs the Phase 10 VPS gate.
+The breadth milestones below remain open, including wildcard/custom certificates,
+raw proxy configuration, specialist networking and broad Compose compatibility.
 
 **Outcome:** common advanced workloads deploy without abandoning Shipper's model.
 

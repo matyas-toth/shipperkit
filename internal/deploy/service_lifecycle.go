@@ -19,9 +19,14 @@ func (r *DockerRuntime) LifecycleService(ctx context.Context, d store.Deployment
 	if e := r.CheckServiceAction(ctx, d, name, action); e != nil {
 		return e
 	}
-	args := []string{action, "--timeout", "10", name}
+	args := []string{action, name}
 	if action == "start" {
 		wait := 90
+		for _, svc := range d.Config.Services {
+			if svc.Name == name {
+				wait = max(wait, StartupSeconds(svc.Runtime))
+			}
+		}
 		for _, h := range d.Config.Hooks {
 			if h.Stage == "before_start" {
 				wait = max(wait, 90+h.Command.Timeout)
@@ -47,6 +52,11 @@ func (r *DockerRuntime) LifecycleService(ctx context.Context, d store.Deployment
 				candidate.ContainerID = id
 				candidate.RuntimePort = svc.Port
 				candidate.Config.HealthPath = svc.HealthPath
+				for _, override := range d.Config.Services {
+					if override.Name == name {
+						candidate.Config.Runtime = override.Runtime
+					}
+				}
 				return r.Healthy(ctx, candidate)
 			}
 		}

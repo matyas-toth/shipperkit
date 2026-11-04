@@ -19,7 +19,10 @@ async function api(path, body) {
   if (response.headers.get("set-cookie")) cookie = response.headers.get("set-cookie").split(";")[0];
   const value = await response.json();if (!response.ok) throw Object.assign(Error(value.error?.message || "API request failed"), {status:response.status});return value;
 }
-async function waitDeployment(job) { return poll(async () => { const detail = await api("/applications/" + job.applicationId);const d = detail.deployments.find(d => d.id === job.id);return d && ["succeeded","failed"].includes(d.state) ? d : undefined; }); }
+async function waitDeployment(job) {
+  try { return await poll(async () => { const detail=await api("/applications/"+job.applicationId);const d=detail.deployments.find(d=>d.id===job.id);return d&&["succeeded","failed","cancelled"].includes(d.state)?d:undefined; },600000); }
+  catch(error) { const logs=await api(`/applications/${job.applicationId}/deployments/${job.id}/logs`).catch(()=>undefined);throw Error(`Deployment ${job.id}: ${error.message}\n${logs?.items.slice(-60).map(line=>line.line).join("\n")??"Logs unavailable"}`); }
+}
 function siteRequest(domain, path = "/") { return new Promise((resolve,reject) => { const request=httpRequest({hostname:"127.0.0.1",port:ports[1],path,headers:{Host:domain},timeout:10000},response=>{let body="";response.setEncoding("utf8");response.on("data",chunk=>body+=chunk);response.on("end",()=>resolve({status:response.statusCode,release:response.headers["x-shipper-deployment"],body}));});request.on("error",reject);request.on("timeout",()=>request.destroy(Error("Site request timed out")));request.end(); }); }
 function removeContainer(containerName, label, expected) { try { const labels = JSON.parse(docker("inspect","--format","{{json .Config.Labels}}",containerName));if (labels[label] === expected) docker("rm","-f",containerName); }catch {} }
 function removeVolume(volumeName,label,expected) { try { const labels = JSON.parse(docker("volume","inspect","--format","{{json .Labels}}",volumeName));if (labels[label] === expected) docker("volume","rm",volumeName); }catch {} }
@@ -31,6 +34,7 @@ try {
   const session = await api("/auth/setup",{email:"package@example.test",password,setupToken});csrf=session.csrfToken;
   instance = (await api("/system")).instanceId;if (!/^[a-f0-9]{64}$/.test(instance)) throw Error("The packaged instance did not expose its stable identity");
   if (docker("exec",name,"id","-u") !== "65532") throw Error("The control plane is not running without root");
+  console.log("Checking packaged public Git, branch selection and static builds");
   const branches = await api("/repositories/branches",{repository:"https://github.com/mdn/beginner-html-site.git"});if(!branches.items.length || !branches.default || !branches.items.includes(branches.default))throw Error("Public branch selection failed");
   const job = await api("/applications",{name:"Packaged website",config:{repository:"https://github.com/mdn/beginner-html-site.git",publishDirectory:".",routing:"files",domain:"",https:false,htaccess:false,branch:""}});
   application = job.applicationId;let first = await waitDeployment(job);if (first.state !== "succeeded") throw Error(first.error);
@@ -43,6 +47,7 @@ try {
   first = await waitDeployment(builtJob);if(first.state!=="succeeded") {const logs=await api(`/applications/${application}/deployments/${first.id}/logs`);throw Error(first.error+"\n"+logs.items.map(l=>l.line).join("\n"));}
   if (!(await siteRequest(first.config.domain)).body.includes("packaged-build-output")) throw Error("The packaged BuildKit client did not build the static output");
   for(const path of ["/.shipper-httpd.conf","/private.key"])if((await siteRequest(first.config.domain,path)).status===200)throw Error("A private build artifact was published");
+  console.log("Checking packaged routing, lifecycle and release preservation");
   const routeJob = await api("/applications/"+application+"/domains",{domains:[{id:"primary",hostname:first.config.domain,https:false,primary:true,redirect:false},{id:"alias",hostname:"alias-"+first.config.domain,https:false,primary:false,redirect:false}]});
   if ((await waitDeployment(routeJob)).state!=="succeeded" || (await siteRequest("alias-"+first.config.domain)).release!==first.id) throw Error("Packaged route-only update failed");
   const stopped = await api("/applications/"+application+"/lifecycle",{action:"stop"});if((await waitDeployment(stopped)).state!=="succeeded")throw Error("Packaged stop failed");
@@ -53,6 +58,7 @@ try {
   const after = await siteRequest(first.config.domain);if(after.status!==200||after.release!==first.id) throw Error("A failed deployment disturbed the active site");
   const deletion=await api("/applications/"+application+"/delete",{confirmName:"Packaged website"});await poll(async()=>{const logs=await api(`/applications/${application}/deployments/${deletion.id}/logs`);if(logs.state==="failed")throw Error("Packaged deletion failed");return logs.state==="succeeded";});
 
+  console.log("Checking packaged Compose builds, startup commands and task history");
   const composePassword=randomBytes(24).toString("hex"), composeHost="compose-"+id+".localhost";
   const composeYAML=`services:
   web:

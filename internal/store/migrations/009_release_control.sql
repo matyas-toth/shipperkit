@@ -1,0 +1,1 @@
+ALTER TABLE deployments ADD COLUMN rollback_id TEXT NOT NULL DEFAULT '';

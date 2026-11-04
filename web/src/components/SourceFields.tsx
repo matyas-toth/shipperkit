@@ -1,5 +1,5 @@
 import { createQuery } from "@tanstack/solid-query";
-import { For, Show, createEffect, createSignal } from "solid-js";
+import { For, Show, createEffect, createSignal, createMemo } from "solid-js";
 import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Connection, StaticConfig } from "../types";
@@ -25,8 +25,9 @@ export function GitConnectionFields(props: {
       }[]
     >([]),
     [search, setSearch] = createSignal("");
+  const sourceID = createMemo(() => props.config.sourceId);
   createEffect(() => {
-    props.config.sourceId;
+    sourceID();
     setPage(1);
     setRows([]);
   });

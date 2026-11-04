@@ -2,6 +2,7 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -105,6 +106,9 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 				return
 			}
 			hasActive := false
+			if dashboard, ok := w.Runtime.(*DockerRuntime); ok && dashboard.Config.DashboardUpstream != "" {
+				hasActive = true
+			}
 			for _, a := range apps {
 				if a.ActiveDeploymentID != "" {
 					hasActive = true
@@ -418,6 +422,48 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			w.log(d, "Application containers removed; volumes and image history retained")
 			return nil
 		}
+		if d.Operation == "rollback" && d.ImageID == "" {
+			target, e := w.DB.Deployment(ctx, d.RollbackID)
+			if e != nil || target.ApplicationID != d.ApplicationID || target.State != "succeeded" {
+				return errors.New("The recorded release is unavailable")
+			}
+			checker, ok := w.Runtime.(interface {
+				CheckRelease(context.Context, store.Deployment) error
+			})
+			if !ok {
+				return errors.New("Release recovery is unavailable")
+			}
+			if e = checker.CheckRelease(ctx, target); e != nil {
+				return e
+			}
+			d.Commit = target.Commit
+			d.ImageID = target.ImageID
+			d.Digest = target.Digest
+			d.ResolvedMethod = target.ResolvedMethod
+			d.RuntimePort = target.RuntimePort
+			d.Services = target.Services
+			d.ComposePlan = target.ComposePlan
+			if Method(d.Config) == "compose" {
+				if e = prepareRollbackCompose(&d); e != nil {
+					return e
+				}
+				app, e := w.DB.Application(ctx, d.ApplicationID)
+				if e != nil {
+					return e
+				}
+				var plan composePlan
+				if e = json.Unmarshal([]byte(d.ComposePlan), &plan); e != nil {
+					return e
+				}
+				plan.PreviousDesiredState = app.DesiredState
+				raw, e := json.Marshal(plan)
+				if e != nil {
+					return e
+				}
+				d.ComposePlan = string(raw)
+			}
+			w.log(d, "Restoring recorded code and runtime settings; current domains and persistent data are retained")
+		}
 		if d.Operation == "apply" && d.ImageID == "" && d.PreviousID != "" {
 			previous, e := w.DB.Deployment(ctx, d.PreviousID)
 			if e != nil {
@@ -536,7 +582,7 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		if e := w.stage(ctx, &d, "before_deploy"); e != nil {
 			return e
 		}
-		if e := w.hooks(ctx, d, "before_deploy", false); e != nil {
+		if e := w.deploymentHooks(ctx, d, "before_deploy", false); e != nil {
 			return e
 		}
 		if e := w.stage(ctx, &d, "starting"); e != nil {
@@ -588,6 +634,14 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			w.log(d, "Application is running without public domains")
 		}
 		if d.PreviousID != "" && d.PreviousID != d.ID {
+			if d.Config.Runtime.DrainSeconds > 0 {
+				w.log(d, "Draining the previous release")
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(time.Duration(d.Config.Runtime.DrainSeconds) * time.Second):
+				}
+			}
 			if old, e := w.DB.Deployment(ctx, d.PreviousID); e == nil {
 				old.ID = d.ID
 				if e = w.hooks(ctx, old, "before_stop", true); e != nil {
@@ -599,7 +653,7 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				}
 			}
 		}
-		return w.hooks(ctx, d, "after_deploy", true)
+		return w.deploymentHooks(ctx, d, "after_deploy", true)
 	}()
 	if parent.Err() != nil {
 		return
@@ -613,7 +667,7 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		}
 		d.Error = RedactDeployment(d, err.Error())
 		w.log(d, err.Error())
-		if (d.Operation == "deploy" || d.Operation == "apply") && Method(d.Config) != "compose" {
+		if (d.Operation == "deploy" || d.Operation == "apply" || d.Operation == "rollback") && Method(d.Config) != "compose" {
 			cleanup, stop := context.WithTimeout(context.Background(), 20*time.Second)
 			if a, e := w.DB.Application(cleanup, d.ApplicationID); e == nil && a.ActiveDeploymentID != d.ID {
 				if e = w.Runtime.RemoveDeployment(cleanup, d); e != nil {

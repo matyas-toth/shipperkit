@@ -7,12 +7,14 @@ import (
 )
 
 type Connection struct {
-	ID        string           `json:"id"`
-	Name      string           `json:"name"`
-	Kind      string           `json:"kind"`
-	Host      string           `json:"host"`
-	UpdatedAt int64            `json:"updatedAt"`
-	Secret    ConnectionSecret `json:"-"`
+	Username     string           `json:"username,omitempty"`
+	AllowPrivate bool             `json:"allowPrivate,omitempty"`
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	Kind         string           `json:"kind"`
+	Host         string           `json:"host"`
+	UpdatedAt    int64            `json:"updatedAt"`
+	Secret       ConnectionSecret `json:"-"`
 }
 type ConnectionSecret struct {
 	Token          string `json:"token,omitempty"`
@@ -35,6 +37,8 @@ func (s *Store) scanConnection(row scanner) (Connection, error) {
 	if e == nil {
 		e = s.unsealJSON(raw, "connection:"+c.ID, &c.Secret)
 	}
+	c.Username = c.Secret.Username
+	c.AllowPrivate = c.Secret.AllowPrivate
 	return c, e
 }
 func (s *Store) Connection(ctx context.Context, id string) (Connection, error) {

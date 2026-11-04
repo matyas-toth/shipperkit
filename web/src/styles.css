@@ -432,3 +432,7 @@ input::placeholder { color: var(--muted); }
 }
 
 .source-connect{margin:0 0 16px}.connection-form{max-width:600px;margin-top:24px}.connection-table th:nth-child(n){min-width:0}.connection-table th:last-child{width:48px}.connection-table .empty-row td{height:96px}.settings-section>.table-tray{margin-bottom:16px}
+
+.domain-route-options{grid-column:1/-1;border-top:1px solid var(--border);min-width:0;padding:0 10px}.domain-route-options>summary{display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none;min-height:28px;color:var(--muted)}.domain-route-options>summary svg{width:12px;height:12px}.domain-route-options[open]{padding-bottom:12px}.domain-route-options .configuration-fields{max-width:520px}.domain-route-options .check-field{margin:0}.domain-route-options textarea{width:100%;min-height:70px}.proxy-check{margin-top:16px}.proxy-check .settings-group{margin-top:12px}
+
+.proxy-check > .button{margin-top:12px}

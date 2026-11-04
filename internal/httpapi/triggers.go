@@ -233,7 +233,16 @@ func (s *Server) retryDeployment(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 409, "revision_unknown", "Redeploy to resolve a revision for this source")
 		return
 	}
+	if old.Config.Method == "image" && old.Digest == "" && !strings.Contains(old.Config.Image, "@sha256:") {
+		s.problem(w, 409, "revision_unknown", "Redeploy to resolve an immutable image revision")
+		return
+	}
+	policy := a.Config.AutoDeploy
 	a.Config = old.Config
+	a.Config.AutoDeploy = policy
+	if a.Config.SourceID == "" || a.Config.Method == "image" || a.Config.Method == "inline" {
+		a.Config.AutoDeploy = store.AutoDeploy{}
+	}
 	if a.Config.Method == "image" && old.Digest != "" {
 		a.Config.Image = old.Digest
 	}

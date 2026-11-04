@@ -114,6 +114,16 @@ func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id
 			return false
 		}
 	}
+	if s.dashboardDomain(c.Domain) {
+		s.problem(w, 422, "reserved_domain", "This hostname belongs to the Shipper dashboard")
+		return false
+	}
+	for _, domain := range c.Domains {
+		if s.dashboardDomain(domain.Hostname) {
+			s.problem(w, 422, "reserved_domain", "This hostname belongs to the Shipper dashboard")
+			return false
+		}
+	}
 	if c.HTTPS && s.cfg.Proxy.ACMEEmail == "" {
 		s.problem(w, 422, "https_unconfigured", "Set SHIPPER_ACME_EMAIL before enabling HTTPS")
 		return false
@@ -274,6 +284,7 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 				old = release.Config
 			}
 		}
+		old.AutoDeploy = current.Config.AutoDeploy
 		plan := deploy.PlanChanges(old, a.Config)
 		plan.Revision = s.db.ConfigRevision(current)
 		s.json(w, 200, plan)
@@ -357,6 +368,7 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	d.Config.Domain = domain.Hostname
 	d.Config.HTTPS = domain.HTTPS
+	d.Config.Domains = []store.Domain{domain}
 	respond := func(state, message string) {
 		s.db.SetDomainCheck(r.Context(), a.ID, domain, state, message)
 		s.hub.Publish()
@@ -410,7 +422,7 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 	}}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: 7 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	req, _ := http.NewRequestWithContext(ctx, "GET", scheme+"://"+d.Config.Domain+"/", nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", scheme+"://"+d.Config.Domain+domainProbePath(domain), nil)
 	res, e := client.Do(req)
 	if e != nil {
 		state := "unreachable"
@@ -424,7 +436,12 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 	}
 	defer res.Body.Close()
 	io.Copy(io.Discard, io.LimitReader(res.Body, 4096))
-	if (res.StatusCode < 200 || res.StatusCode >= 400) || res.Header.Get("X-Shipper-Deployment") != d.ID {
+	if res.TLS != nil && len(res.TLS.PeerCertificates) > 0 {
+		cert := res.TLS.PeerCertificates[0]
+		domain.CertificateExpiresAt = cert.NotAfter.Unix()
+		domain.CertificateIssuer = cert.Issuer.CommonName
+	}
+	if (res.StatusCode < 200 || res.StatusCode >= 400) && !(domain.Maintenance && res.StatusCode == 503) || res.Header.Get("X-Shipper-Deployment") != d.ID {
 		respond("route_error", fmt.Sprintf("The domain is not serving this deployment (HTTP %d)", res.StatusCode))
 		return
 	}

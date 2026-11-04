@@ -168,7 +168,7 @@ func (w *Worker) deployCompose(ctx context.Context, d *store.Deployment) (result
 	if e := w.stage(ctx, d, "before_deploy"); e != nil {
 		return e
 	}
-	if e := w.hooks(ctx, *d, "before_deploy", false); e != nil {
+	if e := w.deploymentHooks(ctx, *d, "before_deploy", false); e != nil {
 		return e
 	}
 	if e := w.stage(ctx, d, "starting"); e != nil {
@@ -205,7 +205,7 @@ func (w *Worker) deployCompose(ctx context.Context, d *store.Deployment) (result
 	if e := w.routes(ctx, "", d); e != nil {
 		return e
 	}
-	if e := w.hooks(ctx, *d, "after_deploy", true); e != nil {
+	if e := w.deploymentHooks(ctx, *d, "after_deploy", true); e != nil {
 		return e
 	}
 	log("Compose services are running; persistent volumes were retained")

@@ -96,6 +96,8 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.With(s.csrf, s.limit).Post("/applications/{id}/deploy-token", s.deployToken)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/cancel", s.cancelDeployment)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/retry", s.retryDeployment)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/rollback", s.rollbackRelease)
+			r.With(s.csrf, s.limit).Post("/proxy/check", s.checkProxy)
 			r.Get("/proxy", s.proxyInfo)
 			r.Get("/domain-options", s.domainOptions)
 			r.With(s.csrf, s.limit).Post("/compose/preview", s.previewCompose)

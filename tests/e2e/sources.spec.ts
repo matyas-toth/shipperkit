@@ -49,6 +49,13 @@ test("connections, private repository selection, immutable queue controls and im
             default_branch: "main",
             private: true,
           },
+          {
+            id: 56,
+            full_name: "northstar/worker",
+            clone_url: "https://github.com/northstar/worker.git",
+            default_branch: "main",
+            private: true,
+          },
         ],
         nextPage: 0,
       },
@@ -79,6 +86,12 @@ test("connections, private repository selection, immutable queue controls and im
     page.getByLabel("Branch or commit", { exact: true }),
   ).toHaveValue("main");
   await page.getByLabel("Branch or commit", { exact: true }).fill("develop");
+  await expect(
+    page
+      .getByLabel("Repository", { exact: true })
+      .locator('option[value="https://github.com/northstar/worker.git"]'),
+  ).toHaveCount(1);
+
   await page.getByText("Automatic deployments", { exact: true }).click();
   await page.getByLabel("Deploy on push", { exact: true }).check();
   await page.getByLabel("Watch paths", { exact: true }).fill("apps/web/**");

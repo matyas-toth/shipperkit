@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -28,7 +29,7 @@ import (
 	"shipper/internal/ui"
 )
 
-var version = "0.6.0-dev"
+var version = "0.7.0-dev"
 
 func main() {
 	if err := run(); err != nil {
@@ -114,6 +115,35 @@ func run() error {
 	}
 	if net.ParseIP(proxyConfig.BindIP) == nil {
 		return errors.New("SHIPPER_PROXY_BIND must be an IP address")
+	}
+	upstream := os.Getenv("SHIPPER_DASHBOARD_UPSTREAM")
+	if upstream != "" {
+		proxyConfig.DashboardURL = publicURL
+		if upstream == "auto" {
+			proxyConfig.DashboardContainer = os.Getenv("HOSTNAME")
+			proxyConfig.DashboardUpstream = "http://dashboard-" + instance[:12] + ":8080"
+		} else {
+			proxyConfig.DashboardUpstream = upstream
+		}
+		if err = deploy.ValidateDashboard(proxyConfig); err != nil {
+			return err
+		}
+		dashboard, _ := url.Parse(publicURL)
+		apps, e := db.Applications(context.Background())
+		if e != nil {
+			return e
+		}
+		for _, app := range apps {
+			if app.Config.Domain == dashboard.Hostname() {
+				return errors.New("Move the application's dashboard hostname before enabling dashboard HTTPS")
+			}
+			for _, domain := range app.Domains {
+				if domain.Hostname == dashboard.Hostname() {
+					return errors.New("Move the application's dashboard hostname before enabling dashboard HTTPS")
+				}
+			}
+		}
+
 	}
 	worker := deploy.NewWorker(db, &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig, DataDir: dataDir}, hub, dataDir)
 	worker.Refresh = monitor.Trigger

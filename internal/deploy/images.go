@@ -65,8 +65,15 @@ func (r *DockerRuntime) PullImage(ctx context.Context, d *store.Deployment, c *s
 	}
 	d.ImageID = image.ID
 	d.ResolvedMethod = "image"
-	if len(image.RepoDigests) > 0 {
-		d.Digest = image.RepoDigests[0]
+	if _, ok := ref.(reference.Digested); ok {
+		d.Digest = ref.String()
+	}
+	for _, raw := range image.RepoDigests {
+		candidate, e := reference.ParseNormalizedNamed(raw)
+		if e == nil && candidate.Name() == ref.Name() {
+			d.Digest = candidate.String()
+			break
+		}
 	}
 	return nil
 }

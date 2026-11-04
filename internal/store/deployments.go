@@ -42,12 +42,12 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		}
 	}
 	payload, _ := json.Marshal(struct {
-		Name, ApplicationID, Operation, Service, Revision string
-		Create, NoCache                                   bool
-		TaskID                                            string
-		TaskCommand                                       *Command
-		Config                                            StaticConfig
-	}{a.Name, scope, d.Operation, d.Service, d.Commit, create, d.NoCache, d.TaskID, d.TaskCommand, canonical})
+		Name, ApplicationID, Operation, Service, Revision, Rollback string
+		Create, NoCache                                             bool
+		TaskID                                                      string
+		TaskCommand                                                 *Command
+		Config                                                      StaticConfig
+	}{a.Name, scope, d.Operation, d.Service, d.Commit, d.RollbackID, create, d.NoCache, d.TaskID, d.TaskCommand, canonical})
 	mac := hmac.New(sha256.New, s.signingKey)
 	mac.Write(payload)
 	fingerprint := fmt.Sprintf("%x", mac.Sum(nil))
@@ -160,21 +160,21 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 	if err != nil {
 		return d, err
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint,previous_domains_json,no_cache,application_name,task_id,task_command,actor,service,commit_sha) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint, func() string { b, _ := json.Marshal(a.Domains); return string(b) }(), d.NoCache, a.Name, d.TaskID, taskCommand, d.Actor, d.Service, d.Commit)
+	_, err = tx.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,config_json,previous_id,created_at,request_key,request_fingerprint,previous_domains_json,no_cache,application_name,task_id,task_command,actor,service,commit_sha,rollback_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", d.ID, a.ID, d.Operation, string(cfg), a.ActiveDeploymentID, now, key, fingerprint, func() string { b, _ := json.Marshal(a.Domains); return string(b) }(), d.NoCache, a.Name, d.TaskID, taskCommand, d.Actor, d.Service, d.Commit, d.RollbackID)
 	if err != nil {
 		return d, err
 	}
 	return d, tx.Commit()
 }
 
-const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at,previous_domains_json,no_cache,resolved_method,runtime_port,application_name,compose_plan,services_json,task_id,task_command,actor,service,digest,cancel_requested"
+const deploymentColumns = "id,application_id,operation,state,config_json,commit_sha,image_id,container_id,previous_id,error,created_at,started_at,finished_at,previous_domains_json,no_cache,resolved_method,runtime_port,application_name,compose_plan,services_json,task_id,task_command,actor,service,digest,cancel_requested,rollback_id"
 
 type scanner interface{ Scan(...any) error }
 
 func (s *Store) scanDeployment(row scanner) (Deployment, error) {
 	var d Deployment
 	var cfg, previous, services, taskCommand string
-	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &previous, &d.NoCache, &d.ResolvedMethod, &d.RuntimePort, &d.ApplicationName, &d.ComposePlan, &services, &d.TaskID, &taskCommand, &d.Actor, &d.Service, &d.Digest, &d.CancelRequested)
+	err := row.Scan(&d.ID, &d.ApplicationID, &d.Operation, &d.State, &cfg, &d.Commit, &d.ImageID, &d.ContainerID, &d.PreviousID, &d.Error, &d.CreatedAt, &d.StartedAt, &d.FinishedAt, &previous, &d.NoCache, &d.ResolvedMethod, &d.RuntimePort, &d.ApplicationName, &d.ComposePlan, &services, &d.TaskID, &taskCommand, &d.Actor, &d.Service, &d.Digest, &d.CancelRequested, &d.RollbackID)
 	if err == nil {
 		if taskCommand != "" {
 			if err = s.unsealJSON(taskCommand, "task-command", &d.TaskCommand); err != nil {

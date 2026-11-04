@@ -1,3 +1,4 @@
+import ProxyCheck from "../components/ProxyCheck";
 import { For, Show, createSignal, onMount } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
@@ -55,7 +56,7 @@ export default function Settings() {
         </dl></section>
         <section class="settings-section" id="proxy"><h2>Proxy</h2><dl class="settings-group">
           <div class="setting-row"><dt>Proxy</dt><dd>Traefik</dd></div><div class="setting-row"><dt>HTTP port</dt><dd>{proxy.data?.httpPort ?? "Loading"}</dd></div><div class="setting-row"><dt>HTTPS port</dt><dd>{proxy.data?.httpsPort ?? "Loading"}</dd></div><div class="setting-row"><dt>Bind address</dt><dd>{proxy.data?.bindIP ?? "Loading"}</dd></div><div class="setting-row"><dt>ACME email</dt><dd>{proxy.data?.acmeEmail || "Not configured"}</dd></div>
-        </dl></section>
+        </dl><ProxyCheck proxy={proxy.data}/></section>
         <section class="settings-section"><h2>Shipper</h2><dl class="settings-group">
           <div class="setting-row"><dt>Version</dt><dd>{query.data?.version ?? "Loading"}</dd></div>
           <div class="setting-row"><dt>Go</dt><dd>{query.data?.runtime.go ?? "Loading"}</dd></div>

@@ -303,6 +303,69 @@ func TestDockerStaticPipeline(t *testing.T) {
 	if !verified {
 		t.Fatal("trusted HTTPS route did not serve the active release")
 	}
+	// The packaged control plane joins the owned edge network through an explicit
+	// control-plane label, and its HTTPS route keeps normal TLS verification.
+	dashboardLabels := runtime.labels("", "")
+	dashboardLabels["io.shipper.control-plane"] = "true"
+	dashboardLabels["io.shipper.infrastructure"] = "dashboard-fixture"
+	dashboard, e := runtime.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Config: &container.Config{Image: ApacheImage, Labels: dashboardLabels}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	t.Cleanup(func() {
+		clean, stop := context.WithTimeout(context.Background(), 20*time.Second)
+		defer stop()
+		if e := runtime.removeOwned(clean, dashboard.ID, ""); e != nil {
+			t.Error(e)
+		}
+	})
+	runtime.Config.DashboardContainer = dashboard.ID
+	runtime.Config.DashboardURL = "https://" + app.Config.Domain
+	runtime.Config.DashboardUpstream = "http://dashboard-" + instance[:12] + ":80"
+	if e = runtime.Ensure(ctx); e != nil {
+		t.Fatal("dashboard networking", e)
+	}
+	if _, e = runtime.Client.ContainerStart(ctx, dashboard.ID, client.ContainerStartOptions{}); e != nil {
+		t.Fatal(e)
+	}
+	runtime.dashboardRoute(config)
+	for _, v := range config["http"].(map[string]any)["routers"].(map[string]any) {
+		router := v.(map[string]any)
+		if router["tls"] != nil {
+			router["tls"] = map[string]any{}
+		}
+	}
+	data, _ = json.Marshal(config)
+	if e = runtime.copy(ctx, runtime.proxy(), "/data/dynamic", map[string][]byte{"routes.next": data}); e != nil {
+		t.Fatal(e)
+	}
+	if _, e = runtime.exec(ctx, runtime.proxy(), []string{"mv", "/data/dynamic/routes.next", "/data/dynamic/routes.yaml"}); e != nil {
+		t.Fatal(e)
+	}
+	checkDashboard := func() {
+		t.Helper()
+		for limit := time.Now().Add(10 * time.Second); time.Now().Before(limit); {
+			req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://127.0.0.1:%d/", runtime.Config.HTTPSPort), nil)
+			req.Host = app.Config.Domain
+			res, e := secureClient.Do(req)
+			if e == nil {
+				res.Body.Close()
+				if res.StatusCode == 200 && res.Header.Get("X-Shipper-Instance") == instance {
+					return
+				}
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		t.Fatal("trusted dashboard route failed")
+	}
+	checkDashboard()
+	if _, e = runtime.Client.ContainerRestart(ctx, runtime.proxy(), client.ContainerRestartOptions{}); e != nil {
+		t.Fatal(e)
+	}
+	checkDashboard()
+	runtime.Config.DashboardContainer = ""
+	runtime.Config.DashboardURL = ""
+	runtime.Config.DashboardUpstream = ""
 	if e := runtime.Routes(ctx, []store.Application{current}, map[string]store.Deployment{app.ID: fromGit}); e != nil {
 		t.Fatal(e)
 	}

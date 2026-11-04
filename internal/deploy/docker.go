@@ -28,6 +28,10 @@ const ApacheImage = "httpd:2.4-alpine@sha256:070da7661f0be8a05430b2c125c0cde9e53
 const TraefikImage = "traefik:v3.6@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d"
 
 type ProxyConfig struct {
+	DashboardURL       string `json:"dashboardURL,omitempty"`
+	DashboardUpstream  string `json:"dashboardUpstream,omitempty"`
+	DashboardContainer string `json:"-"`
+
 	BindIP    string `json:"bindIP"`
 	HTTPPort  int    `json:"httpPort"`
 	HTTPSPort int    `json:"httpsPort"`
@@ -93,6 +97,9 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 	} else {
 		return e
 	}
+	if e := r.connectDashboard(ctx); e != nil {
+		return e
+	}
 	volume := r.prefix() + "-proxy-data"
 	if v, e := r.Client.VolumeInspect(ctx, volume, client.VolumeInspectOptions{}); e == nil {
 		if !owned(v.Volume.Labels, r.Instance, "") {
@@ -141,7 +148,9 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 		return e
 	}
 	// Initialize the watched directory before startup; it persists independently of Shipper.
-	initial, _ := json.Marshal(Routes(nil, nil))
+	initialRoutes := Routes(nil, nil)
+	r.dashboardRoute(initialRoutes)
+	initial, _ := json.Marshal(initialRoutes)
 	if e = r.copy(ctx, created.ID, "/data", map[string][]byte{"./": nil, "dynamic/": nil, "dynamic/routes.yaml": initial}); e != nil {
 		return e
 	}
@@ -150,7 +159,13 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 }
 func ptr[T any](v T) *T { return &v }
 func (r *DockerRuntime) configHash() string {
-	data, _ := json.Marshal(r.Config)
+	data, _ := json.Marshal(struct {
+		BindIP    string `json:"bindIP"`
+		HTTPPort  int    `json:"httpPort"`
+		HTTPSPort int    `json:"httpsPort"`
+		ACMEEmail string `json:"acmeEmail"`
+		ACMECA    string `json:"acmeCA"`
+	}{r.Config.BindIP, r.Config.HTTPPort, r.Config.HTTPSPort, r.Config.ACMEEmail, r.Config.ACMECA})
 	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 func (r *DockerRuntime) copy(ctx context.Context, id, dest string, files map[string][]byte) error {
@@ -293,10 +308,22 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 		temporary = "rw,nosuid,exec,size=67108864,mode=1777"
 	}
 	restart := container.RestartPolicy{Name: "unless-stopped"}
+	if d.Config.Runtime.Restart != "" {
+		restart.Name = container.RestartPolicyMode(d.Config.Runtime.Restart)
+	}
+	cpus := int64(1e9)
+	if d.Config.Runtime.CPUs > 0 {
+		cpus = int64(d.Config.Runtime.CPUs * 1e9)
+	}
+	pids := int64(256)
+	if d.Config.Runtime.PIDs > 0 {
+		pids = d.Config.Runtime.PIDs
+	}
 	if d.TaskCommand != nil {
 		restart = container.RestartPolicy{Name: "no"}
 	}
-	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(256))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
+	configuration.StopTimeout = ptr(StopSeconds(d.Config.Runtime))
+	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: cpus, PidsLimit: ptr(pids)}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
 	if e != nil {
 		return "", e
 	}
@@ -378,7 +405,7 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 			startupTimeout = time.Duration(h.Command.Timeout) * time.Second
 		}
 	}
-	deadline, stop := context.WithTimeout(ctx, 45*time.Second+startupTimeout)
+	deadline, stop := context.WithTimeout(ctx, time.Duration(StartupSeconds(d.Config.Runtime))*time.Second+startupTimeout)
 	defer stop()
 	var last error
 	stable := time.Now()
@@ -513,6 +540,8 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 			domains[i].VerificationState = ""
 			domains[i].Message = ""
 			domains[i].CheckedAt = 0
+			domains[i].CertificateExpiresAt = 0
+			domains[i].CertificateIssuer = ""
 		}
 		payload, _ := json.Marshal(struct {
 			Domains []store.Domain
@@ -549,7 +578,27 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 				routerKey += "-" + domain.ID
 			}
 			rule := "Host(`" + domain.Hostname + "`)"
+			if domain.PathPrefix != "" && domain.PathPrefix != "/" {
+				rule += " && PathPrefix(`" + domain.PathPrefix + "`)"
+			}
+			if domain.Maintenance {
+				serviceKey = "maintenance-" + a.ID
+				services[serviceKey] = map[string]any{"loadBalancer": map[string]any{"servers": []any{}}}
+			}
 			chain := []string{identity}
+			policy := "route-" + routerKey + "-" + revision[:12]
+			if domain.StripPrefix {
+				middlewares[policy+"-strip"] = map[string]any{"stripPrefix": map[string]any{"prefixes": []string{domain.PathPrefix}}}
+				chain = append(chain, policy+"-strip")
+			}
+			if domain.Compress {
+				middlewares[policy+"-compress"] = map[string]any{"compress": map[string]any{}}
+				chain = append(chain, policy+"-compress")
+			}
+			if len(domain.ResponseHeaders) > 0 {
+				middlewares[policy+"-headers"] = map[string]any{"headers": map[string]any{"customResponseHeaders": domain.ResponseHeaders}}
+				chain = append(chain, policy+"-headers")
+			}
 			if domain.Redirect && !domain.Primary && primary.Hostname != "" {
 				redirect := "redirect-" + routerKey + "-" + revision[:12]
 				scheme := "http"
@@ -557,7 +606,7 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 					scheme = "https"
 				}
 				middlewares[redirect] = map[string]any{"redirectRegex": map[string]any{"regex": "^https?://" + regexp.QuoteMeta(domain.Hostname) + "(?::[0-9]+)?(.*)", "replacement": scheme + "://" + primary.Hostname + "${1}", "permanent": true}}
-				chain = append(chain, redirect)
+				chain = append([]string{identity, redirect}, chain[1:]...)
 			}
 			router := map[string]any{"rule": rule, "service": serviceKey, "entryPoints": []string{"web"}, "middlewares": chain}
 			if domain.HTTPS {
@@ -584,6 +633,7 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 
 func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, active map[string]store.Deployment) error {
 	configuration := Routes(apps, active)
+	r.dashboardRoute(configuration)
 	data, e := json.Marshal(configuration)
 	if e != nil {
 		return e
@@ -619,7 +669,9 @@ func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, ac
 			}
 			if json.Unmarshal(out, &services) == nil {
 				found := map[string]string{}
+				enabled := map[string]bool{}
 				for _, s := range services {
+					enabled[s.Name] = s.Status == "enabled"
 					if s.Status == "enabled" && len(s.LoadBalancer.Servers) > 0 {
 						found[s.Name] = s.LoadBalancer.Servers[0].URL
 					}
@@ -635,6 +687,12 @@ func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, ac
 				}
 				for name, value := range expectedServices {
 					servers := value.(map[string]any)["loadBalancer"].(map[string]any)["servers"].([]any)
+					if len(servers) == 0 {
+						if !enabled[name+"@file"] {
+							complete = false
+						}
+						continue
+					}
 					if found[name+"@file"] != servers[0].(map[string]string)["url"] {
 						complete = false
 					}
@@ -651,7 +709,7 @@ func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, ac
 						expected, _ := configuration["http"].(map[string]any)["routers"].(map[string]any)
 						seen := map[string]bool{}
 						for _, router := range routers {
-							if !strings.HasSuffix(router.Name, "@file") || !strings.HasPrefix(router.Name, "app-") {
+							if !strings.HasSuffix(router.Name, "@file") || !(strings.HasPrefix(router.Name, "app-") || strings.HasPrefix(router.Name, "shipper-dashboard")) {
 								continue
 							}
 							name := strings.TrimSuffix(router.Name, "@file")
@@ -723,6 +781,9 @@ func (r *DockerRuntime) RemoveDeployment(ctx context.Context, d store.Deployment
 		return e
 	}
 	for _, item := range items.Items {
+		if _, e := r.Client.ContainerStop(ctx, item.ID, client.ContainerStopOptions{Timeout: ptr(StopSeconds(d.Config.Runtime))}); e != nil && !errdefs.IsNotFound(e) {
+			return e
+		}
 		if e := r.removeOwned(ctx, item.ID, d.ApplicationID); e != nil {
 			return e
 		}
@@ -747,7 +808,13 @@ func (r *DockerRuntime) probeHTTP(ctx context.Context, target string, port int, 
 	return r.execPipe(ctx, r.proxy(), []string{"nc", "-w", "3", target, strconv.Itoa(port)}, nil, strings.NewReader(request), false)
 }
 func (r *DockerRuntime) ProbeLocal(ctx context.Context, d store.Deployment) (bool, error) {
-	out, e := r.probeHTTP(ctx, "127.0.0.1", 8080, d.Config.Domain, "/")
+	requestPath := "/"
+	for _, domain := range d.Config.Domains {
+		if domain.Hostname == d.Config.Domain && domain.PathPrefix != "" {
+			requestPath = domain.PathPrefix + "/"
+		}
+	}
+	out, e := r.probeHTTP(ctx, "127.0.0.1", 8080, d.Config.Domain, requestPath)
 	if e != nil {
 		return false, e
 	}
@@ -761,7 +828,13 @@ func (r *DockerRuntime) ProbeLocal(ctx context.Context, d store.Deployment) (boo
 		return false, nil
 	}
 	code, _ := strconv.Atoi(parts[1])
-	if code != 200 && (code < 300 || code > 399) {
+	maintenance := false
+	for _, domain := range d.Config.Domains {
+		if domain.Hostname == d.Config.Domain {
+			maintenance = domain.Maintenance
+		}
+	}
+	if code != 200 && (code < 300 || code > 399) && !(maintenance && code == 503) {
 		return false, nil
 	}
 	for _, line := range lines[1:] {

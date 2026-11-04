@@ -72,7 +72,17 @@ type AutoDeploy struct {
 	Paths     []string `json:"paths,omitempty"`
 	Supersede bool     `json:"supersede"`
 }
+type RuntimePolicy struct {
+	CPUs           float64 `json:"cpus,omitempty"`
+	PIDs           int64   `json:"pids,omitempty"`
+	Restart        string  `json:"restart,omitempty"`
+	StartupSeconds int     `json:"startupSeconds,omitempty"`
+	StopSeconds    int     `json:"stopSeconds,omitempty"`
+	DrainSeconds   int     `json:"drainSeconds,omitempty"`
+}
 type StaticConfig struct {
+	Runtime RuntimePolicy `json:"runtime"`
+
 	SourceID         string          `json:"sourceId,omitempty"`
 	RepositoryID     int64           `json:"repositoryId,omitempty"`
 	AutoDeploy       AutoDeploy      `json:"autoDeploy"`
@@ -111,12 +121,13 @@ type StaticConfig struct {
 	Services         []ServiceConfig `json:"services"`
 }
 type ServiceConfig struct {
-	Name           string     `json:"name"`
-	Port           *int       `json:"port,omitempty"`
-	HealthPath     string     `json:"healthPath"`
-	MemoryMB       int64      `json:"memoryMB"`
-	Variables      []Variable `json:"variables"`
-	UnsetVariables []string   `json:"unsetVariables,omitempty"`
+	Runtime        RuntimePolicy `json:"runtime"`
+	Name           string        `json:"name"`
+	Port           *int          `json:"port,omitempty"`
+	HealthPath     string        `json:"healthPath"`
+	MemoryMB       int64         `json:"memoryMB"`
+	Variables      []Variable    `json:"variables"`
+	UnsetVariables []string      `json:"unsetVariables,omitempty"`
 }
 type Service struct {
 	OneShot    bool       `json:"oneShot"`
@@ -142,6 +153,14 @@ type Volume struct {
 	Path string `json:"path"`
 }
 type Domain struct {
+	PathPrefix           string            `json:"pathPrefix,omitempty"`
+	StripPrefix          bool              `json:"stripPrefix,omitempty"`
+	Compress             bool              `json:"compress,omitempty"`
+	Maintenance          bool              `json:"maintenance,omitempty"`
+	ResponseHeaders      map[string]string `json:"responseHeaders,omitempty"`
+	CertificateExpiresAt int64             `json:"certificateExpiresAt,omitempty"`
+	CertificateIssuer    string            `json:"certificateIssuer,omitempty"`
+
 	Service           string `json:"service,omitempty"`
 	ID                string `json:"id"`
 	Hostname          string `json:"hostname"`
@@ -154,6 +173,7 @@ type Domain struct {
 }
 
 type Deployment struct {
+	RollbackID      string       `json:"rollbackId,omitempty"`
 	Digest          string       `json:"digest,omitempty"`
 	CancelRequested bool         `json:"cancelRequested,omitempty"`
 	ID              string       `json:"id"`
