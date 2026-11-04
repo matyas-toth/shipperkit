@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"net"
@@ -29,7 +30,7 @@ import (
 	"shipper/internal/ui"
 )
 
-var version = "0.7.0-dev"
+var version = "0.8.0-dev"
 
 func main() {
 	if err := run(); err != nil {
@@ -49,14 +50,30 @@ func run() error {
 		case "version":
 			fmt.Println(version)
 			return nil
+		case "restore":
+			flags := flag.NewFlagSet("restore", flag.ContinueOnError)
+			archive := flags.String("archive", "", "Encrypted instance archive")
+			identity := flags.String("identity", "", "Recovery key file")
+			target := flags.String("data-dir", "", "Empty destination directory")
+			if e := flags.Parse(os.Args[2:]); e != nil {
+				return e
+			}
+			if *archive == "" || *identity == "" || *target == "" || flags.NArg() != 0 {
+				return errors.New("usage: shipper restore --archive backup.age --identity recovery-key.txt --data-dir empty-directory")
+			}
+			if e := deploy.RecoverInstance(context.Background(), *archive, *identity, *target); e != nil {
+				return e
+			}
+			fmt.Println("Instance recovered with applications stopped and schedules disabled. Review the installation before starting workloads.")
+			return nil
 		case "healthcheck":
 			return healthcheck()
 		case "help", "--help", "-h":
-			fmt.Println("Usage: shipper [version|healthcheck|reset-password]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, DOCKER_HOST")
+			fmt.Println("Usage: shipper [version|healthcheck|reset-password|restore]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, DOCKER_HOST")
 			return nil
 		case "reset-password":
 		default:
-			return errors.New("usage: shipper [version|healthcheck|reset-password]")
+			return errors.New("usage: shipper [version|healthcheck|reset-password|restore]")
 		}
 	}
 	dataDir := env("SHIPPER_DATA_DIR", ".shipper")
@@ -68,7 +85,11 @@ func run() error {
 	if len(os.Args) > 1 {
 		return resetPassword(db)
 	}
-	publicURL := os.Getenv("SHIPPER_PUBLIC_URL")
+	recovered, e := deploy.RecoveredProxy(dataDir)
+	if e != nil {
+		return e
+	}
+	publicURL := env("SHIPPER_PUBLIC_URL", recovered.DashboardURL)
 	if err = httpapi.ValidatePublicURL(publicURL); err != nil {
 		return err
 	}
@@ -98,15 +119,30 @@ func run() error {
 		return err
 	}
 	docker.Instance = instance
-	httpPort, err := strconv.Atoi(env("SHIPPER_HTTP_PORT", "8780"))
+	httpPort, err := strconv.Atoi(env("SHIPPER_HTTP_PORT", strconv.Itoa(func() int {
+		if recovered.HTTPPort > 0 {
+			return recovered.HTTPPort
+		}
+		return 8780
+	}())))
 	if err != nil || httpPort < 1 || httpPort > 65535 {
 		return errors.New("SHIPPER_HTTP_PORT must be between 1 and 65535")
 	}
-	httpsPort, err := strconv.Atoi(env("SHIPPER_HTTPS_PORT", "8743"))
+	httpsPort, err := strconv.Atoi(env("SHIPPER_HTTPS_PORT", strconv.Itoa(func() int {
+		if recovered.HTTPSPort > 0 {
+			return recovered.HTTPSPort
+		}
+		return 8743
+	}())))
 	if err != nil || httpsPort < 1 || httpsPort > 65535 || httpPort == httpsPort {
 		return errors.New("SHIPPER_HTTPS_PORT must be a distinct port between 1 and 65535")
 	}
-	proxyConfig := deploy.ProxyConfig{BindIP: env("SHIPPER_PROXY_BIND", "127.0.0.1"), HTTPPort: httpPort, HTTPSPort: httpsPort, ACMEEmail: os.Getenv("SHIPPER_ACME_EMAIL"), ACMECA: os.Getenv("SHIPPER_ACME_CA")}
+	proxyConfig := deploy.ProxyConfig{BindIP: env("SHIPPER_PROXY_BIND", func() string {
+		if recovered.BindIP != "" {
+			return recovered.BindIP
+		}
+		return "127.0.0.1"
+	}()), HTTPPort: httpPort, HTTPSPort: httpsPort, ACMEEmail: env("SHIPPER_ACME_EMAIL", recovered.ACMEEmail), ACMECA: env("SHIPPER_ACME_CA", recovered.ACMECA)}
 	if proxyConfig.ACMEEmail != "" {
 		address, e := mail.ParseAddress(proxyConfig.ACMEEmail)
 		if e != nil || address.Address != proxyConfig.ACMEEmail {
@@ -116,7 +152,7 @@ func run() error {
 	if net.ParseIP(proxyConfig.BindIP) == nil {
 		return errors.New("SHIPPER_PROXY_BIND must be an IP address")
 	}
-	upstream := os.Getenv("SHIPPER_DASHBOARD_UPSTREAM")
+	upstream := env("SHIPPER_DASHBOARD_UPSTREAM", recovered.DashboardUpstream)
 	if upstream != "" {
 		proxyConfig.DashboardURL = publicURL
 		if upstream == "auto" {

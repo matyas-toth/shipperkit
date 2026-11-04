@@ -81,7 +81,8 @@ type RuntimePolicy struct {
 	DrainSeconds   int     `json:"drainSeconds,omitempty"`
 }
 type StaticConfig struct {
-	Runtime RuntimePolicy `json:"runtime"`
+	VolumeSources map[string]string `json:"volumeSources,omitempty"`
+	Runtime       RuntimePolicy     `json:"runtime"`
 
 	SourceID         string          `json:"sourceId,omitempty"`
 	RepositoryID     int64           `json:"repositoryId,omitempty"`

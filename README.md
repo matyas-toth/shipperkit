@@ -2,7 +2,7 @@
 
 A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
 
-**Phases 1–7 core.** Deploy public/private GitHub repositories, direct images,
+**Phases 1–8 core.** Deploy public/private GitHub repositories, direct images,
 inline Dockerfiles or Compose applications. Configure lifecycle commands and
 scheduled tasks, automate signed push deployments, review configuration changes,
 and restore recorded releases. Dockerfile, Railpack and static Apache builds
@@ -12,8 +12,10 @@ Service logs, editable environments, domain routing, health checks, persistent
 volumes, and application lifecycle controls are available from the dashboard.
 Compose builds finish before updates begin, and failed startup attempts restore
 the previous pinned container configuration where possible. Persistent data is
-retained; database migrations require their own backup/recovery strategy.
-See [Compose operations](docs/compose.md) and [commands and tasks](docs/commands.md).
+retained. Encrypted instance recovery, local/S3 backup plans, cold-volume archives
+and PostgreSQL/MySQL/MariaDB restore copies are available. Release rollback and
+data recovery remain separate operations.
+See [backups and recovery](docs/backups.md), [Compose operations](docs/compose.md) and [commands and tasks](docs/commands.md).
 The [feature parity audit](feature_parity.md) compares Coolify capabilities and
 sets the next [phases and milestones](docs/roadmap.md).
 The planned [account and authentication model](docs/authentication.md) and

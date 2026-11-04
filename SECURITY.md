@@ -87,3 +87,15 @@ Planned managed HTTPS seeds ACME contact from the first administrator's email an
 owns issuance, renewal, persistence, bounded retry and actionable failure reporting.
 Current 0.7.0 still uses explicit proxy/ACME configuration. Preserve existing CA
 accounts, contact overrides and certificate storage during migration and recovery.
+
+
+Phase 8 recovery archives use age authenticated encryption. Keep the separately
+downloaded recovery identity outside the VPS and separate from its encrypted archives;
+together they expose the original instance encryption material and credentials.
+Private staging is necessary for database tools and SQLite snapshots. Archives are
+size-bounded and fully authenticated/inventoried before restore. Instance recovery
+is offline, refuses populated targets, revokes sessions/tokens and pauses captured
+work. Database/volume restoration creates a new copy, leaving originals available.
+S3 credentials and per-run destination snapshots are encrypted at rest; signed requests
+use HTTPS by default and reject redirects/private network targets unless opted in.
+See [backup boundaries and recovery](docs/backups.md).

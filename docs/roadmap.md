@@ -1,7 +1,7 @@
 # Roadmap
 
-Updated 2026-11-04. Phases 1–5 and the Phase 6–7 core are implemented in 0.7.0.
-The next deliverables are data recovery, operational visibility, a mandatory UI
+Updated 2026-11-04. Phases 1–7 and the Phase 8 recovery core are implemented in 0.8.0.
+The next deliverables are operational visibility, a mandatory UI
 refactor, and a tested installation and server-care workflow. Phase 10 remains
 the single-server 1.0 release gate.
 
@@ -205,28 +205,28 @@ an application release.
 
 ### P8.1: Instance and storage recovery, required for 1.0
 
-- [ ] Versioned backup of SQLite state, original encryption material, source/registry
+- [x] Versioned backup of SQLite state, original encryption material, source/registry
   credentials, task/schedule definitions and relevant proxy certificate state
-- [ ] Portable encrypted recovery bundle with separately held recovery material;
+- [x] Portable encrypted recovery bundle with separately held recovery material;
   restoring it must not depend on an encryption key available only on the lost VPS
-- [ ] Local and S3-compatible off-server destinations, integrity checks, bounded
+- [x] Local and S3-compatible off-server destinations, integrity checks, bounded
   archive size, retention and deliberate download/reveal of sensitive material
-- [ ] Backup eligible application volumes/files with a declared consistency policy;
+- [x] Backup eligible application volumes/files with a declared consistency policy;
   stop writes or use native backup operations when a live archive would be unsafe
-- [ ] Backup status, freshness, failures and restore actions in application/service
+- [x] Backup status, freshness, failures and restore actions in application/service
   context; use the shared schedule picker from P9.5 for recurrence
-- [ ] Safe retained-volume discovery/reattachment and separate explicit data deletion
+- [x] Safe retained-volume discovery/reattachment and separate explicit data deletion
 
 ### P8.2: Database recovery, required for the declared 1.0 engines
 
-- [ ] Start with PostgreSQL and MySQL/MariaDB native backup/restore adapters
-- [ ] Confirm engine/version and expose connection, credential and relevant TLS
+- [x] Start with PostgreSQL and MySQL/MariaDB native backup/restore adapters
+- [x] Confirm engine/version and expose connection, credential and relevant TLS
   controls on the existing service, without mandatory database-resource hierarchy
-- [ ] Restore from declared file/object-storage formats with compatibility checks,
-  explicit replacement review and a recoverable failure result
-- [ ] Restore into a disposable copy and verify a real application read/write
-- [ ] Distinguish a successful upload, a fresh backup and a verified restore;
-  alert when protection is missing, stale or failing
+- [x] Restore from declared file/object-storage formats with compatibility checks,
+  reviewed restore into a new copy, a separate reviewed application switch and a recoverable failure result
+- [x] Restore into a disposable copy and verify a real application read/write
+- [x] Distinguish a successful upload, a fresh backup and a verified restore;
+  show missing, stale or failing protection in context; notification policy continues in P9
 
 ### P8.3: Later parity, preserve the backlog
 
@@ -239,6 +239,12 @@ Acceptance: recover Shipper with its original secrets and serving configuration 
 a fresh host; restore a supported database and eligible files from an off-server
 copy; verify application behavior; prove updates, ordinary cleanup and app deletion
 preserve data. Interrupted or inconsistent restores must never report success.
+
+Implementation boundary: [backup and recovery operations](backups.md) declares the
+supported formats, local/native consistency policies, copy-first restore and
+separate application switch. PostgreSQL 17, MySQL 8.4 and MariaDB 11 are the initial
+acceptance engines. Generic destructive SQL import is later parity. Real public
+ACME/domain recovery and distribution acceptance continue in the Phase 10 lab.
 
 ## Phase 9: Operations, diagnostics and bounded server care
 
@@ -329,25 +335,29 @@ P9.5 completes the cross-flow audit and acceptance before P10.
 
 ### P9.5.3: Intuitive task recurrence picker (Q39)
 
-- [ ] Guided scheduling is the default when a schedule is enabled. Offer common
+Implemented early in Phase 8 for Tasks and Backups; future maintenance flows reuse
+the same component and parser. Guided intervals divide their hour/day evenly;
+other supported cron steps stay in Custom mode.
+
+- [x] Guided scheduling is the default when a schedule is enabled. Offer common
   minute/hour intervals, daily times, selected weekdays/weekly times and monthly
   dates, with relevant time/day/month controls instead of five raw cron fields
-- [ ] Show the generated five-field cron expression continuously in a read-only,
+- [x] Show the generated five-field cron expression continuously in a read-only,
   focusable, copyable input. Keep it visible so users can learn the resulting pattern
-- [ ] An explicit Custom cron mode makes the expression editable. Switching from
+- [x] An explicit Custom cron mode makes the expression editable. Switching from
   the picker retains its current expression; editing a manual expression never
   silently simplifies it to fit a preset
-- [ ] Return to guided controls only when they can represent the expression exactly;
+- [x] Return to guided controls only when they can represent the expression exactly;
   otherwise preserve Custom mode. Supported raw lists, ranges and steps remain usable
-- [ ] Show the saved IANA timezone and the next three real run dates/times using
+- [x] Show the saved IANA timezone and the next three real run dates/times using
   the existing backend preview/validation, including DST gaps and repeated times
-- [ ] Preserve current five-field numeric cron semantics, overlap/missed-run policy
+- [x] Preserve current five-field numeric cron semantics, overlap/missed-run policy
   and task history, including day-of-month/weekday OR semantics. Do not add another
   scheduler daemon or change execution behavior
-- [ ] Offer only clock patterns that the existing model can represent. Do not label
+- [x] Offer only clock patterns that the existing model can represent. Do not label
   a cron step as an arbitrary elapsed interval or promise every-other-week/last-day/
   paired-time rules that a single supported expression cannot express accurately
-- [ ] Reuse the picker for task, backup and maintenance schedules where those
+- [x] Reuse the picker for task, backup and maintenance schedules where those
   features use the same recurrence model; keep timeout/overlap options separate
 
 Examples, interpreted in the selected timezone:

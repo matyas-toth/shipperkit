@@ -148,9 +148,11 @@ func (s *Server) deleteTask(w http.ResponseWriter, r *http.Request) {
 	s.json(w, 200, map[string]bool{"deleted": true})
 }
 func (s *Server) schedulePreview(w http.ResponseWriter, r *http.Request) {
-	if _, e := s.db.Application(r.Context(), chi.URLParam(r, "id")); e != nil {
-		s.resourceError(w, e)
-		return
+	if id := chi.URLParam(r, "id"); id != "" {
+		if _, e := s.db.Application(r.Context(), id); e != nil {
+			s.resourceError(w, e)
+			return
+		}
 	}
 	var input struct {
 		Schedule string `json:"schedule"`

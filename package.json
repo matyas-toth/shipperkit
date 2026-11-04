@@ -1,6 +1,6 @@
 {
   "name": "shipper",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "A lightweight self-hosted application platform",
   "license": "MIT",
@@ -19,7 +19,8 @@
     "test:full": "node scripts/test-full.mjs",
     "test:compose": "node scripts/test-compose.mjs",
     "test:tasks": "node scripts/test-tasks.mjs",
-    "test:sources": "node scripts/test-sources.mjs"
+    "test:sources": "node scripts/test-sources.mjs",
+    "test:backups": "node scripts/test-backups.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0"

@@ -189,3 +189,24 @@ Reviewed applies classify changes from the active release, reuse safe immutable
 image/model snapshots, and verify a signed desired-config/active-release revision.
 Public diffs contain field names, never values. Source suggestions use the existing
 public Git boundary and inspect bounded regular files without executing source.
+
+
+## Data protection
+
+Migration 010 adds encrypted backup plans, immutable credential/destination snapshots
+and durable attempts. The existing renewable worker lease serializes execution;
+transactional application locks cover deployment, task and protection queues. No
+new runner service is introduced. Binary database output streams through the Docker
+SDK to private bounded staging rather than deployment log buffers. Native adapters
+run inside the selected owned service, while cold file archives use temporary owned
+helpers with no network.
+
+Versioned age X25519 bundles include a checked SHA-256 file inventory. SQLite uses
+VACUUM INTO for a consistent online snapshot, and instance archives retain the original
+encryption key and certificate state. The independently saved recovery identity
+decrypts a lost-host archive. S3 uses the official AWS SigV4 signer and streaming
+requests with explicit private-endpoint policy and no redirects. Restore authenticates
+and validates the whole archive before any workload mutation. Database copies and
+new retained volumes preserve originals; reviewed configuration changes perform the
+application switch. Offline instance recovery only installs into an empty directory
+and pauses schedules, push automation and captured work. See [operations](backups.md).

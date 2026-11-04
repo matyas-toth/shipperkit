@@ -3,6 +3,8 @@ module shipper
 go 1.26.0
 
 require (
+	filippo.io/age v1.3.2
+	github.com/aws/aws-sdk-go-v2 v1.41.3
 	github.com/compose-spec/compose-go/v2 v2.16.1
 	github.com/containerd/errdefs v1.0.0
 	github.com/distribution/reference v0.6.0
@@ -18,7 +20,9 @@ require (
 )
 
 require (
+	filippo.io/hpke v0.4.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/docker/go-connections v0.8.2 // indirect
 	github.com/docker/go-units v0.5.0 // indirect

@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-02, Europe/Budapest.  
 **Shipper baseline:** version `0.4.0`, commit `5831782a85a2431cc30baa9e07f72524c72103a7`, including Phases 1–4.  
-**Shipper implementation update:** 2026-11-04, Phase 6–7 core / `0.7.0`; the original comparison baseline above remains pinned. See [commands and tasks][L05].
+**Shipper implementation update:** 2026-11-04, Phase 8 recovery core / `0.8.0`; the original comparison baseline above remains pinned. See [commands and tasks][L05].
 **Planning update:** 2026-11-04, expanded VPS provisioning/server care, mandatory P9.5 interaction design and guided cron scheduling. These are planned work, not added implementation claims. Automatic first-admin ACME setup, built-in certificate lifecycle, the offered Contabo/domain lab and admin-provisioned provider/2FA policy are specified in the linked roadmap/contracts.
 **Coolify baseline:** release tag `v4.6.0`, commit `0becfba9113063336b09860579627fd218cb3fc4`.  
 **Additional source checked:** Coolify `main` at `67b29ff24af8d54905341f8de8585c3302f67311` and the production docs repository at `b4f93fae4a2417817d4159c0b2377f24a265e5b8`.
@@ -160,12 +160,12 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F42 | Deploy PostgreSQL/MySQL/MariaDB/MongoDB/Redis/KeyDB/Dragonfly/ClickHouse/SQLite workloads | **Workaround** | Images/Compose can run workloads. Add reviewed database recipes and optional service database capabilities, not new mandatory resource hierarchies. **P8/P13** | [D21], [C06], [L02] |
-| F43 | Database connection details, credentials, exposure and TLS controls | **Partial** | Environment overrides exist; add connection copy, credential management and explicit private/public exposure. **P8** | [D21] |
-| F44 | Engine-aware scheduled backups | **Missing** | PostgreSQL, MySQL/MariaDB, MongoDB, ClickHouse and SQLite adapters as applicable; separate Redis-family persistence policies. **P8** | [D22], [C06] |
-| F45 | Database import/restore from upload, host file or S3 | **Missing** | Engine/format-aware restore jobs, validation, explicit data replacement and disposable restore verification. **P8** | [D22], [C06] |
+| F43 | Database connection details, credentials, exposure and TLS controls | **Partial** | Encrypted backup credentials, loopback connection controls and TLS modes ship in 0.8.0. General connection copying, credential rotation and explicit private/public exposure remain. **P8** | [D21] |
+| F44 | Engine-aware scheduled backups | **Partial** | PostgreSQL/MySQL/MariaDB native plans and shared guided scheduling ship in 0.8.0. MongoDB, ClickHouse, SQLite and Redis-family policies remain later parity. **P8** | [D22], [C06] |
+| F45 | Database import/restore from upload, host file or S3 | **Partial** | Versioned encrypted Shipper archives, S3 retrieval, reviewed restore copies and database read/write checks ship in 0.8.0. Arbitrary raw SQL import and in-place replacement remain outside the current boundary. **P8** | [D22], [C06] |
 | F46 | Named volumes, file/directory/host mounts and advanced storage options | **Partial** | Named volumes and repository file snapshots exist. Add explicit approved host paths and needed external storage settings without weakening the portable default. **P7/P8** | [D23], [L02] |
-| F47 | Scheduled storage archives, S3 copies and retention | **Missing** | Reuse task scheduling and backup destinations. Distinguish consistent DB backups from file archives. **P8** | [D23], [C07] |
-| F48 | Instance backup, restore and disaster recovery | **Partial** | Manual procedures exist. Add a verified metadata/key/certificate backup bundle, CLI recovery and restore checks. **P8/P10** | [D24], [L01] |
+| F47 | Scheduled storage archives, S3 copies and retention | **Present within declared scope** | Cold owned-volume archives, signed S3 copies, checksums and per-plan retention ship in 0.8.0. Reuse task scheduling and backup destinations. Distinguish consistent DB backups from file archives. **P8** | [D23], [C07] |
+| F48 | Instance backup, restore and disaster recovery | **Partial** | Versioned age-encrypted metadata/original-key/proxy/ACME bundles and an empty-target recovery CLI ship in 0.8.0. Real-host distribution/public-certificate acceptance remains P10. **P8/P10** | [D24], [L01] |
 | F49 | Clone/move resources without copying stored data | **Missing** | Duplicate configuration into a stopped application; new domains/storage by default and explicit secret/data choices. **P8/P11** | [D17] |
 | F50 | Cross-instance resource/server transfer | **Missing** | Versioned encrypted transfer, explicit ownership handoff and separate data movement when hosts change. **P12/P13** | [D25], [C09] |
 

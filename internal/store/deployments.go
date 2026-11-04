@@ -107,7 +107,7 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		}(), sourceRef(a.Config), method, now, now, cfg, string(domains))
 	} else {
 		var busy int
-		err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM deployments WHERE application_id=? AND state NOT IN ('succeeded','failed','interrupted','cancelled')", a.ID).Scan(&busy)
+		err = tx.QueryRowContext(ctx, "SELECT (SELECT COUNT(*) FROM deployments WHERE application_id=? AND state NOT IN ('succeeded','failed','interrupted','cancelled'))+(SELECT count(*) FROM backup_runs WHERE application_id=? AND state IN ('queued','running'))", a.ID, a.ID).Scan(&busy)
 		if err != nil {
 			return d, err
 		}

@@ -61,6 +61,14 @@ var variableName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 var volumeName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,39}$`)
 
 func ValidateBuild(c *store.Config) error {
+	if len(c.VolumeSources) > 32 {
+		return errors.New("Use at most 32 retained volume mappings")
+	}
+	for key, source := range c.VolumeSources {
+		if !regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,254}$`).MatchString(key) || !regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,254}$`).MatchString(source) {
+			return errors.New("Invalid retained volume mapping")
+		}
+	}
 	if e := ValidateRuntime(c.Runtime); e != nil {
 		return e
 	}

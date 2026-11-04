@@ -7,6 +7,7 @@ import { useAuth } from "../context";
 import { bytes } from "../data";
 import { Button, ErrorNotice } from "../components/Controls";
 import Connections from "../components/Connections";
+import Backups from "../components/Backups";
 import { Icon } from "../components/Icon";
 
 export default function Settings() {
@@ -33,6 +34,7 @@ export default function Settings() {
         <a href="#sources" class="settings-link" classList={{active:section()==="sources"}} onClick={()=>setSection("sources")}><Icon name="git"/>Connections</a>
  <a href="#docker" class="settings-link" classList={{ active: section() === "docker" }} onClick={() => setSection("docker")}><Icon name="plug" />Docker</a>
         <a href="#storage" class="settings-link" classList={{ active: section() === "storage" }} onClick={() => setSection("storage")}><Icon name="database" />Storage</a>
+        <a href="#recovery" class="settings-link" classList={{active:section()==="recovery"}} onClick={()=>setSection("recovery")}><Icon name="database"/>Recovery</a>
         <a href="#proxy" class="settings-link" classList={{ active: section() === "proxy" }} onClick={() => setSection("proxy")}><Icon name="globe" />Proxy</a>
         <a href="#account" class="settings-link" classList={{ active: section() === "account" }} onClick={() => setSection("account")}><Icon name="settings" />Account</a>
       </aside>
@@ -50,6 +52,7 @@ export default function Settings() {
           <div class="setting-row"><dt>Applications</dt><dd>{query.data?.database.counts.applications ?? 0}</dd></div>
           <div class="setting-row"><dt>Containers</dt><dd>{query.data?.database.counts.containers ?? 0}</dd></div>
         </dl></section>
+        <section class="settings-section" id="recovery"><Backups/></section>
         <section class="settings-section" id="account"><h2>Account</h2><dl class="settings-group">
           <div class="setting-row"><dt>Email</dt><dd>{auth.session()?.user?.email}</dd></div>
           <div class="setting-row"><dt>Session</dt><dd><Button small onClick={() => void logout()}>Sign out</Button></dd></div>

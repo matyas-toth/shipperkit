@@ -23,7 +23,10 @@ Run `npm run test:full` for BuildKit/Railpack or runtime configuration changes,
 after building the production image. Run heavy Docker suites sequentially on
 Docker Desktop to avoid competing cold-build and database-startup deadlines. Run `npm run test:tasks` for lifecycle/task,
 startup-hook, scheduler or command-recovery changes. Run `npm run test:sources`
-for direct-image/inline workflows, source identity and recorded-image recovery. Direct Go builds need
+for direct-image/inline workflows, source identity and recorded-image recovery.
+Run `npm run test:backups` for archive, database, volume, S3, recovery or protection-queue
+changes. It uses isolated database fixtures and verifies actual read/write behavior.
+Direct Go builds need
 `go generate ./internal/startup` before `go build` to include Linux helpers.
 
 Go code is formatted with gofmt. Keep exported APIs narrow, use contexts for

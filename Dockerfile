@@ -14,7 +14,7 @@ COPY cmd ./cmd
 COPY internal ./internal
 COPY --from=frontend /src/internal/ui/dist ./internal/ui/dist
 RUN --mount=type=cache,target=/root/.cache/go-build go generate ./internal/startup
-ARG VERSION=0.7.0-dev
+ARG VERSION=0.8.0-dev
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg/mod CGO_ENABLED=0 go build -p 2 -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /shipper ./cmd/shipper
 
 FROM alpine:3.23

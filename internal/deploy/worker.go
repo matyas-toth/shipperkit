@@ -91,6 +91,19 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 		slog.Error("Deployment workspace cleanup failed", "error", e)
 		return
 	}
+	_ = w.DB.InterruptBackups(work)
+	if e := w.cleanBackupWorkspaces(); e != nil {
+		slog.Error("Backup workspace cleanup failed", "error", e)
+		return
+	}
+	if runtime, ok := w.Runtime.(*DockerRuntime); ok {
+		cleanup, cancel := context.WithTimeout(work, 10*time.Second)
+		e := runtime.cleanBackupHelpers(cleanup)
+		cancel()
+		if e != nil {
+			slog.Warn("Backup helper cleanup failed", "error", e)
+		}
+	}
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	initialized := false
@@ -145,10 +158,14 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 				initialized = true
 			}
 		}
+		w.ScheduleBackups(work)
 		w.scheduled(work)
 		w.triggered(work)
 		if len(pending) > 0 {
 			w.process(work, pending[0])
+			continue
+		}
+		if w.ProcessBackup(work) {
 			continue
 		}
 		select {

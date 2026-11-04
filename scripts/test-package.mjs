@@ -26,6 +26,7 @@ async function waitDeployment(job) {
 function siteRequest(domain, path = "/") { return new Promise((resolve,reject) => { const request=httpRequest({hostname:"127.0.0.1",port:ports[1],path,headers:{Host:domain},timeout:10000},response=>{let body="";response.setEncoding("utf8");response.on("data",chunk=>body+=chunk);response.on("end",()=>resolve({status:response.statusCode,release:response.headers["x-shipper-deployment"],body}));});request.on("error",reject);request.on("timeout",()=>request.destroy(Error("Site request timed out")));request.end(); }); }
 function removeContainer(containerName, label, expected) { try { const labels = JSON.parse(docker("inspect","--format","{{json .Config.Labels}}",containerName));if (labels[label] === expected) docker("rm","-f",containerName); }catch {} }
 function removeVolume(volumeName,label,expected) { try { const labels = JSON.parse(docker("volume","inspect","--format","{{json .Labels}}",volumeName));if (labels[label] === expected) docker("volume","rm",volumeName); }catch {} }
+async function main(){
 try {
   docker("volume","create","--label","io.shipper.test-run=" + id,volume);
   const group = process.env.DOCKER_GID || (process.platform === "linux" ? String(statSync("/var/run/docker.sock").gid) : "0");
@@ -34,6 +35,21 @@ try {
   const session = await api("/auth/setup",{email:"package@example.test",password,setupToken});csrf=session.csrfToken;
   instance = (await api("/system")).instanceId;if (!/^[a-f0-9]{64}$/.test(instance)) throw Error("The packaged instance did not expose its stable identity");
   if (docker("exec",name,"id","-u") !== "65532") throw Error("The control plane is not running without root");
+  console.log("Checking packaged encrypted recovery under the non-root filesystem policy");
+  const protectionPlan=await api("/protection/plans",{id:"",applicationId:"",name:"Package recovery",config:{kind:"instance",keep:2},enabled:true,schedule:"",timezone:"UTC",nextAt:0});
+  const protectionJob=await api(`/protection/plans/${protectionPlan.id}/run`,{});
+  const protectedRun=await poll(async()=>{const info=await api("/protection");const run=info.runs.find(r=>r.id===protectionJob.id);if(run?.state==="failed"||run?.state==="interrupted")throw Error(run.error);return run?.state==="succeeded"?run:undefined;});
+  if(!protectedRun.checksum||protectedRun.bytes<100)throw Error("Packaged recovery archive was not verified");
+  const encrypted=await fetch(origin+`/api/protection/runs/${protectedRun.id}/download`,{method:"POST",headers:{Cookie:cookie,"Content-Type":"application/json","X-CSRF-Token":csrf},body:"{}"});
+  if(!encrypted.ok||!Buffer.from(await encrypted.arrayBuffer()).subarray(0,22).toString().startsWith("age-encryption.org/v1"))throw Error("Packaged archive download is not age encrypted");
+  const recoveryResponse=await fetch(origin+"/api/protection/key",{method:"POST",headers:{Cookie:cookie,"Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify({confirm:"Download recovery key"})});
+  if(!recoveryResponse.ok)throw Error("Explicit packaged recovery key download failed");
+  const writeIdentity=spawnSync("docker",["exec","-i",name,"sh","-c","umask 077; cat > /tmp/recovery-key"],{input:await recoveryResponse.text(),encoding:"utf8",windowsHide:true});
+  if(writeIdentity.status!==0)throw Error("Could not prepare the isolated recovery identity file");
+  const recovered=docker("exec",name,"shipper","restore","--archive",`/data/backups/archives/${protectedRun.id}.age`,"--identity","/tmp/recovery-key","--data-dir","/tmp/recovered");
+  if(!recovered.includes("Instance recovered"))throw Error("Packaged offline recovery did not complete");
+  docker("exec",name,"cmp","/data/encryption.key","/tmp/recovered/encryption.key");
+  if(process.env.SHIPPER_TEST_PROTECTION_ONLY==="1"){console.log("Passed packaged non-root encrypted snapshot, streaming download and offline CLI recovery with the original key.");return;}
   console.log("Checking packaged public Git, branch selection and static builds");
   const branches = await api("/repositories/branches",{repository:"https://github.com/mdn/beginner-html-site.git"});if(!branches.items.length || !branches.default || !branches.items.includes(branches.default))throw Error("Public branch selection failed");
   const job = await api("/applications",{name:"Packaged website",config:{repository:"https://github.com/mdn/beginner-html-site.git",publishDirectory:".",routing:"files",domain:"",https:false,htaccess:false,branch:""}});
@@ -117,3 +133,6 @@ volumes:
   }
   removeContainer(name,"io.shipper.test-run",id);removeVolume(volume,"io.shipper.test-run",id);
 }
+
+}
+await main();

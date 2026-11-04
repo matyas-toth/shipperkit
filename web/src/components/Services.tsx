@@ -1,3 +1,4 @@
+import Backups from "./Backups";
 import RuntimeFields from "./RuntimeFields";
 import { For, Show, createMemo, createSignal } from "solid-js";
 import type { Application, Domain, ProxyConfig, Service, ServiceConfig, StaticConfig, RuntimePolicy } from "../types";
@@ -30,8 +31,9 @@ export function ServicePanel(props: { application: Application; services: Servic
   }
   async function settings(e: SubmitEvent) { e.preventDefault();setError("");try { await save({ port: port(), healthPath: health(), memoryMB: memory(),runtime:runtime() }); }catch (e) { setError((e as Error).message); } }
   return <section class="service-detail"><header class="service-heading"><Button icon="back" variant="ghost" onClick={props.close}>Services</Button><h2><Icon name="box" />{props.name}</h2><details class="application-actions service-actions"><summary aria-label="Service actions"><Icon name="more" /></summary><div class="action-menu"><For each={["start","stop","restart"]}>{action=><button disabled={props.busy} onClick={()=>void props.lifecycle(action)}>{action[0].toUpperCase()+action.slice(1)} service</button>}</For></div></details></header>
-    <nav class="service-tabs" aria-label="Service navigation"><For each={["logs", "env", "domains", "settings"]}>{value => <button classList={{ active: tab() === value }} onClick={() => setTab(value)}>{value === "env" ? ".env" : value[0].toUpperCase() + value.slice(1)}</button>}</For></nav>
+    <nav class="service-tabs" aria-label="Service navigation"><For each={["logs", "env", "domains", "backups", "settings"]}>{value => <button classList={{ active: tab() === value }} onClick={() => setTab(value)}>{value === "env" ? ".env" : value[0].toUpperCase() + value.slice(1)}</button>}</For></nav>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
+    <Show when={tab() === "backups"}><Backups application={props.application} services={props.services} service={props.name} save={props.save}/></Show>
     <Show when={tab() === "logs"}><RuntimeLogs application={app()} /></Show>
     <Show when={tab() === "env"}><Variables application={app()} service={props.name} busy={props.busy} save={config => { const rows = config.variables, names = new Set(rows.map(v => v.name)), inherited = new Set((service()?.variables ?? []).map(v => v.name)), owned = new Set((override()?.variables ?? []).map(v => v.name));return save({ variables: rows.filter(v => owned.has(v.name) || !inherited.has(v.name) || !v.keep || !!v.keepFrom || !v.secret).map(v => ({ ...v, scope: "runtime" })), unsetVariables: [...new Set([...(override()?.unsetVariables ?? []), ...inherited])].filter(name => !names.has(name)) }); }} /></Show>
     <Show when={tab() === "domains"}><Domains application={props.application} services={props.services} service={props.name} proxy={props.proxy} busy={props.busy} save={props.saveDomains} /></Show>

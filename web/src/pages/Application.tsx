@@ -11,6 +11,7 @@ import LogViewer from "../components/LogViewer";
 import ContainerDrawer from "../components/ContainerDrawer";
 import ApplicationSettings from "../components/ApplicationSettings";
 import Tasks from "../components/Tasks";
+import Backups from "../components/Backups";
 import ChangeReview from "../components/ChangeReview";
 import Domains from "../components/Domains";
 import Variables from "../components/Variables";
@@ -29,7 +30,7 @@ export default function ApplicationPage() {
   const app = () => query.data?.application;
   let tabs!:HTMLElement;
   const appIdentity=createMemo(()=>app()?.id);
-  const tab = () => search.tab === "variables" ? "env" : ["overview", "deployments", "logs", "domains", "env", "tasks", "settings"].includes(String(search.tab)) ? String(search.tab) : "overview";
+  const tab = () => search.tab === "variables" ? "env" : ["overview", "deployments", "logs", "domains", "env", "tasks", "backups", "settings"].includes(String(search.tab)) ? String(search.tab) : "overview";
   function positionTabs(){const active=tabs?.querySelector<HTMLElement>("button.active");if(!active||!tabs)return;const frame=tabs.getBoundingClientRect(),item=active.getBoundingClientRect();if(item.left<frame.left||item.right>frame.right)tabs.scrollLeft+=item.left-frame.left-(frame.width-item.width)/2;}
   createEffect(()=>{tab();appIdentity();queueMicrotask(positionTabs);});
   onMount(()=>{window.addEventListener("resize",positionTabs);onCleanup(()=>window.removeEventListener("resize",positionTabs));});
@@ -68,7 +69,7 @@ export default function ApplicationPage() {
         <div class="heading-actions"><Show when={active() && domain() && a().desiredState !== "stopped"}><a class="button ghost" href={domainURL(domain()!, proxy.data)} target="_blank" rel="noreferrer">Visit<Icon name="external" /></a></Show><Show when={managed()}><Button icon="deploy" disabled={busy()} onClick={() => void deploy().catch(e => setActionError((e as Error).message))}>Redeploy</Button><details class="application-actions"><summary aria-label="Application actions"><Icon name="down" /></summary><div class="action-menu"><button disabled={busy()} onClick={() => void deploy({ noCache: true }).catch(e => setActionError((e as Error).message))}>Rebuild without cache</button><Show when={active()}><button disabled={busy()} onClick={() => void lifecycle(a().desiredState === "stopped" ? "start" : "stop")}>{a().desiredState === "stopped" ? "Start application" : "Stop application"}</button><button disabled={busy()} onClick={() => void lifecycle("restart")}>Restart application</button></Show></div></details></Show></div>
       </header>
       <Show when={actionError()}><ErrorNotice message={actionError()} /></Show>
-      <nav ref={tabs} class="application-tabs" aria-label="Application navigation"><For each={["overview", "deployments", "logs", "domains", "env", "tasks", "settings"].filter(value => managed() || value === "overview")}>{value => <button classList={{ active: tab() === value }} onClick={() => setSearch({ tab: value, service: undefined })}>{value === "env" ? ".env" : value[0].toUpperCase() + value.slice(1)}</button>}</For></nav>
+      <nav ref={tabs} class="application-tabs" aria-label="Application navigation"><For each={["overview", "deployments", "logs", "domains", "env", "tasks", "backups", "settings"].filter(value => managed() || value === "overview")}>{value => <button classList={{ active: tab() === value }} onClick={() => setSearch({ tab: value, service: undefined })}>{value === "env" ? ".env" : value[0].toUpperCase() + value.slice(1)}</button>}</For></nav>
       <Show when={tab() === "overview"}>
         <Show when={!search.service || a().method !== "compose"} fallback={<Show when={search.service} keyed>{name => <ServicePanel application={a()} services={active()?.services ?? a().latestDeployment?.services ?? []} name={String(name)} proxy={proxy.data} busy={busy()} save={saveConfig} saveDomains={domains} close={() => setSearch({ service: undefined })} lifecycle={action=>lifecycle(action,String(search.service))} editCompose={() => setSearch({ tab: "settings", service: undefined })} />}</Show>}>
         <dl class="application-overview"><div><dt>Domain</dt><dd><Show when={domain()} fallback="None">{d => <a class="inline-link" href={domainURL(d(), proxy.data)} target="_blank" rel="noreferrer">{d().hostname}<Icon name="external" /></a>}</Show></dd></div><Show when={a().config.composeSource !== "paste" && a().sourceKind!=="image" && a().sourceKind!=="inline"}><div><dt>Repository</dt><dd><Show when={a().sourceRef} fallback="None"><a href={a().sourceRef} target="_blank" rel="noreferrer" class="inline-link"><Icon name="git" />{a().sourceRef.replace("https://", "").replace(/\.git$/, "")}<Icon name="external" /></a></Show></dd></div></Show><div><dt>Method</dt><dd>{methodLabel(a())}</dd></div><Show when={a().config.composeSource !== "paste" && a().sourceKind!=="image" && a().sourceKind!=="inline"}><div><dt>Commit</dt><dd class="mono">{active()?.commit.slice(0, 12) || "None"}</dd></div></Show></dl>
@@ -78,6 +79,7 @@ export default function ApplicationPage() {
       <Show when={tab() === "logs"}><RuntimeLogs application={a()} containerId={active()?.containerId} /></Show>
       <Show when={tab() === "domains"}><Domains application={a()} services={active()?.services} proxy={proxy.data} busy={busy()} save={domains} /></Show>
       <Show when={tab() === "env"}><Variables application={a()} busy={busy()} save={saveConfig} /></Show>
+      <Show when={tab() === "backups"}><Backups application={a()} services={active()?.services??[]} save={saveConfig}/></Show>
       <Show when={tab() === "tasks"}><Tasks application={a()} services={active()?.services??[]} busy={busy()} deployments={query.data?.deployments??[]} view={id=>setSearch({tab:"deployments",deployment:id})}/></Show>
       <Show when={tab() === "settings"}><ApplicationSettings application={a()} acme={!!proxy.data?.acmeEmail} busy={busy()} save={saveConfig} rename={rename} remove={remove} /></Show>
     </>}</Show>

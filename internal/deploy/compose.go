@@ -475,6 +475,13 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 	// A stable label keeps unchanged database containers part of the active app.
 	labels["io.shipper.resource"] = "application"
 	for key, vol := range p.Volumes {
+		if source := d.Config.VolumeSources[key]; source != "" {
+			if e := r.checkVolumeSource(ctx, d.ApplicationID, source); e != nil {
+				return e
+			}
+			vol.Name = source
+			vol.External = true
+		}
 		if !bool(vol.External) {
 			vol.Name = r.composeProject(d.ApplicationID) + "-" + key
 			vol.Labels = ct.Labels(labels)

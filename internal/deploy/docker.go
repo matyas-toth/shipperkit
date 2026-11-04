@@ -120,6 +120,9 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 		if inspected.Container.Config.Labels["io.shipper.proxy.config"] != r.configHash() {
 			return errors.New("Proxy configuration changed; recreate the Shipper proxy container while retaining its data volume, then redeploy")
 		}
+		if e = r.restoreACME(ctx, r.proxy()); e != nil {
+			return e
+		}
 		if !inspected.Container.State.Running {
 			_, e = r.Client.ContainerStart(ctx, r.proxy(), client.ContainerStartOptions{})
 		}
@@ -152,6 +155,9 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 	r.dashboardRoute(initialRoutes)
 	initial, _ := json.Marshal(initialRoutes)
 	if e = r.copy(ctx, created.ID, "/data", map[string][]byte{"./": nil, "dynamic/": nil, "dynamic/routes.yaml": initial}); e != nil {
+		return e
+	}
+	if e = r.restoreACME(ctx, created.ID); e != nil {
 		return e
 	}
 	_, e = r.Client.ContainerStart(ctx, created.ID, client.ContainerStartOptions{})
@@ -280,6 +286,12 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 	mounts := []mount.Mount{}
 	for _, v := range d.Config.Volumes {
 		volume := r.prefix() + "-" + d.ApplicationID + "-" + v.Name
+		if source := d.Config.VolumeSources[v.Name]; source != "" {
+			if e := r.checkVolumeSource(ctx, d.ApplicationID, source); e != nil {
+				return "", e
+			}
+			volume = source
+		}
 		existing, e := r.Client.VolumeInspect(ctx, volume, client.VolumeInspectOptions{})
 		if e == nil {
 			if !owned(existing.Volume.Labels, r.Instance, d.ApplicationID) {

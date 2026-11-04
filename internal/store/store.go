@@ -25,6 +25,7 @@ var ErrAlreadyConfigured = errors.New("administrator already configured")
 
 type Store struct {
 	db         *sql.DB
+	file       string
 	key        cipher.AEAD
 	signingKey []byte
 }
@@ -47,7 +48,7 @@ func Open(dir string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
-	s := &Store{db: db}
+	s := &Store{db: db, file: file}
 	for _, pragma := range []string{"PRAGMA journal_mode=WAL", "PRAGMA foreign_keys=ON", "PRAGMA busy_timeout=5000", "PRAGMA synchronous=NORMAL"} {
 		if _, err := db.Exec(pragma); err != nil {
 			db.Close()
@@ -62,7 +63,7 @@ func Open(dir string) (*Store, error) {
 	_, keyError := os.Stat(keyFile)
 	if os.IsNotExist(keyError) {
 		var encrypted int
-		_ = db.QueryRow("SELECT (SELECT COUNT(*) FROM applications WHERE instr(config_json,'sealed:v1:')>0)+(SELECT COUNT(*) FROM deployments WHERE instr(config_json,'sealed:v1:')>0 OR instr(compose_plan,'sealed:v1:')>0)+(SELECT count(*) FROM tasks)+(SELECT count(*) FROM task_runs)+(SELECT count(*) FROM connections)").Scan(&encrypted)
+		_ = db.QueryRow("SELECT (SELECT COUNT(*) FROM applications WHERE instr(config_json,'sealed:v1:')>0)+(SELECT COUNT(*) FROM deployments WHERE instr(config_json,'sealed:v1:')>0 OR instr(compose_plan,'sealed:v1:')>0)+(SELECT count(*) FROM tasks)+(SELECT count(*) FROM task_runs)+(SELECT count(*) FROM connections)+(SELECT count(*) FROM backup_plans)+(SELECT count(*) FROM backup_runs)+(SELECT count(*) FROM backup_destinations)+(SELECT count(*) FROM settings WHERE key='recovery_identity')").Scan(&encrypted)
 		if encrypted > 0 {
 			db.Close()
 			return nil, errors.New("Restore encryption.key before opening encrypted application configuration")

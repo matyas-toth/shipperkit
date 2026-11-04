@@ -35,6 +35,7 @@ jobs:
       - run: npm run test:compose
       - run: npm run test:tasks
       - run: npm run test:sources
+      - run: npm run test:backups
       - run: docker build -t shipper:ci .
       - run: npm run test:package
         env:

@@ -41,15 +41,16 @@ type Config struct {
 	Proxy      deploy.ProxyConfig
 }
 type Server struct {
-	github    *gitprovider.GitHub
-	db        *store.Store
-	monitor   *inventory.Monitor
-	hub       *events.Hub
-	cfg       Config
-	limiter   *limiter
-	dummyHash string
-	authSlots chan struct{}
-	logSlots  chan struct{}
+	github          *gitprovider.GitHub
+	db              *store.Store
+	monitor         *inventory.Monitor
+	hub             *events.Hub
+	cfg             Config
+	limiter         *limiter
+	dummyHash       string
+	authSlots       chan struct{}
+	logSlots        chan struct{}
+	protectionSlots chan struct{}
 }
 type contextKey int
 
@@ -60,7 +61,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		cfg.GitHub = gitprovider.New()
 	}
 	dummy, _ := auth.Password(auth.Token()[:32])
-	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8)}
+	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1)}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, s.headers)
 	r.Get("/connect/github/manifest", s.githubManifest)
@@ -75,6 +76,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		r.With(s.limit, s.hashCapacity).Post("/auth/login", s.login)
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireSession)
+			s.protectionRoutes(r)
 			r.Get("/containers", s.containers)
 			r.Get("/applications", s.applications)
 			r.Get("/applications/{id}", s.application)
@@ -172,7 +174,7 @@ func (s *Server) origin(next http.Handler) http.Handler {
 		}
 		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
 			kind, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if kind != "application/json" {
+			if kind != "application/json" && !(kind == "multipart/form-data" && strings.HasSuffix(r.URL.Path, "/protection/import")) {
 				s.problem(w, 415, "json_required", "Send the request as JSON")
 				return
 			}

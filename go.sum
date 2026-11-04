@@ -1,5 +1,15 @@
+c2sp.org/CCTV/age v0.0.0-20260829155415-4448f2097b2d h1:Blprhc2SbChNZtWcU+BLTM4YdoqYAS9V7cJgOwJKyAs=
+c2sp.org/CCTV/age v0.0.0-20260829155415-4448f2097b2d/go.mod h1:SrHC2C7r5GkDk8R+NFVzYy/sdj0Ypg9htaPXQq5Cqeo=
+filippo.io/age v1.3.2 h1:r6RSZLFSMm6rzKepZ7ZAYkKCu14f3/Me8c7uKYh7C8c=
+filippo.io/age v1.3.2/go.mod h1:TH/Yr2sSRhCKbaH4XPxpUV0Us8Gv6txYUpiZQWz8Evk=
+filippo.io/hpke v0.4.0 h1:p575VVQ6ted4pL+it6M00V/f2qTZITO0zgmdKCkd5+A=
+filippo.io/hpke v0.4.0/go.mod h1:EmAN849/P3qdeK+PCMkDpDm83vRHM5cDipBJ8xbQLVY=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
+github.com/aws/aws-sdk-go-v2 v1.41.3 h1:4kQ/fa22KjDt13QCy1+bYADvdgcxpfH18f0zP542kZA=
+github.com/aws/aws-sdk-go-v2 v1.41.3/go.mod h1:mwsPRE8ceUUpiTgF7QmQIJ7lgsKUPQOUl3o72QBrE1o=
+github.com/aws/smithy-go v1.24.2 h1:FzA3bu/nt/vDvmnkg+R8Xl46gmzEDam6mZ1hzmwXFng=
+github.com/aws/smithy-go v1.24.2/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/compose-spec/compose-go/v2 v2.16.1 h1:xuEQu32ghB2AK023Beumm//K8bz8u1AHC9P0zKp8jlw=
 github.com/compose-spec/compose-go/v2 v2.16.1/go.mod h1:Q1+qtN4vhzEjGrnqRtzx1xa8raDZQlMUe3WJxndYNiQ=
 github.com/containerd/errdefs v1.0.0 h1:tg5yIfIlQIrxYtu9ajqY42W3lpS19XqdxRQeEwYG8PI=

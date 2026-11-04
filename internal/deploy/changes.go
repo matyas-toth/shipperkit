@@ -25,6 +25,7 @@ func buildConfig(c store.Config) store.Config {
 	c.HealthPath = ""
 	c.MemoryMB = 0
 	c.Volumes = nil
+	c.VolumeSources = nil
 	c.Domains = nil
 	c.Domain = ""
 	c.HTTPS = false
@@ -80,6 +81,11 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	old = comparisonConfig(old)
 	next = comparisonConfig(next)
 	p := ChangePlan{Operation: "recreate", Changes: []string{}}
+	for key := range old.VolumeSources {
+		if next.VolumeSources[key] == "" {
+			p.Operation = "rebuild"
+		}
+	}
 	if !reflect.DeepEqual(buildConfig(old), buildConfig(next)) {
 		p.Operation = "rebuild"
 	}
@@ -148,6 +154,9 @@ func PlanChanges(old, next store.Config) ChangePlan {
 func (r *DockerRuntime) ReuseCompose(ctx context.Context, d *store.Deployment, previous store.Deployment) error {
 	var plan composePlan
 	if e := json.Unmarshal([]byte(previous.ComposePlan), &plan); e != nil {
+		return e
+	}
+	if e := r.reuseVolumeSources(ctx, *d, &plan); e != nil {
 		return e
 	}
 	services, ok := plan.Project["services"].(map[string]any)
