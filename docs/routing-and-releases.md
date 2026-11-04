@@ -32,6 +32,14 @@ monitor. A 503 is a valid verified response for deliberate maintenance mode.
 
 ## VPS and dashboard HTTPS
 
+The instructions below describe current 0.7.0 configuration. Planned P10 managed
+HTTPS will automatically use the first administrator's email as the initial ACME
+contact, initialize the resolver and own certificate issuance/renewal without
+asking for a separate email field, environment edit or manual proxy recreation.
+It will preserve existing CA state/explicit overrides and surface only actionable
+prerequisite/failure states. See the [roadmap](roadmap.md) and
+[real-system test plan](vps-test-plan.md); this automatic bootstrap is not implemented yet.
+
 For a fresh packaged Linux installation, point a public hostname to the VPS and
 allow inbound TCP 80/443. Keep the dashboard's direct port bound to loopback.
 Set these values in Compose's environment file before starting Shipper:

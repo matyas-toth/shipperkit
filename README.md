@@ -16,6 +16,9 @@ retained; database migrations require their own backup/recovery strategy.
 See [Compose operations](docs/compose.md) and [commands and tasks](docs/commands.md).
 The [feature parity audit](feature_parity.md) compares Coolify capabilities and
 sets the next [phases and milestones](docs/roadmap.md).
+The planned [account and authentication model](docs/authentication.md) and
+[VPS acceptance lab](docs/vps-test-plan.md) describe future access controls and
+real-system release checks, separately from shipped functionality.
 
 ## Run locally
 

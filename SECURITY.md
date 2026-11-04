@@ -1,6 +1,6 @@
 # Security
 
-Shipper controls security-critical infrastructure. Phase 3 is development
+Shipper controls security-critical infrastructure. Version 0.7.0 is development
 software and has not had an independent security review.
 
 Keep it on loopback or behind authenticated private access. Configure the
@@ -29,9 +29,13 @@ Static containers use an unprivileged user; full application images retain their
 configured user. Prefer an explicit non-root USER in Dockerfiles. HTTP/HTTPS proxy publication is separate from the private management
 listener. Public ACME issuance depends on operator DNS and firewall configuration.
 
-Only public HTTPS Git sources are supported. Credentials, redirects, hooks,
-submodules, private-network destinations, and control-plane repository command execution are
-disabled. Build commands execute inside the dedicated BuildKit daemon. Publish archives exclude metadata/secrets, reject links and escapes,
+Git sources use hardened HTTPS checkout. Public repositories and connected private
+GitHub repositories are supported; source credentials are encrypted and excluded
+from ordinary responses and command arguments. Redirects, Git hooks, submodules,
+Git LFS, private Git hosts and control-plane repository command execution remain
+outside the supported source path. Registry credentials are bound to their host;
+private registry addresses require explicit opt-in. Build commands execute inside
+the dedicated BuildKit daemon. Publish archives exclude metadata/secrets, reject links and escapes,
 and use a restricted Apache `.htaccess` allowlist. Limits and operational caveats
 are documented in [static site operations](docs/static-sites.md).
 
@@ -41,9 +45,11 @@ BuildKit requires a privileged, instance-owned daemon; Railpack preparation is
 bounded and has no socket/host mounts. Variables are encrypted in SQLite and
 masked in ordinary responses; Docker administrators can still inspect runtime
 environment. Back up encryption.key with the database. See
-[full application operations](docs/full-applications.md). Private Git credentials
-remain unimplemented. A formal security audit and disposable-VPS ACME/reboot
-checks remain release prerequisites.
+[full application operations](docs/full-applications.md) and
+[source credentials and triggers](docs/sources.md). Signed GitHub deliveries and
+application-scoped deploy tokens do not grant dashboard access. A formal security
+audit and [real-system ACME/reboot/recovery acceptance](docs/vps-test-plan.md)
+remain release prerequisites; offered lab access is not evidence of completed tests.
 
 
 Compose sources and resolved plans are encrypted and hidden from ordinary API
@@ -53,3 +59,31 @@ verify instance/application ownership before orchestration. Explicit external
 volumes are used without adoption or deletion. Compose is an administrator-only
 workload capability, not a sandbox for hostile tenants. Supported options and
 stateful rollback limits are documented in [Compose operations](docs/compose.md).
+
+## Planned authentication and HTTPS policy
+
+The [authentication contract](docs/authentication.md) and
+[roadmap](docs/roadmap.md) are future requirements, not current OAuth/2FA support.
+There is no planned public registration: admins provision accounts, while the
+existing private first-admin capability remains the bootstrap exception.
+
+Collaboration will support independently enabled Email + Password, Google,
+GitHub and Discord sign-in. Empty-password accounts have no password credential;
+admin-supplied temporary passwords require replacement before full access.
+Verified-email admission may link a provider to an existing provisioned account,
+but stable provider subjects identify established links. Unverified/ambiguous or
+non-authoritative claims cannot silently link or create users. Login credentials
+remain separate from repository connections.
+
+Personal TOTP, recovery and instance-wide enforcement are required before 1.0.
+Every enrolled interactive login needs Shipper's own second factor, including
+future OAuth login. Password-change/enrollment/factor gates restrict both UI and
+API/stream access. Forced enrollment covers active admin/user sessions and cannot
+be bypassed by disabling a required factor or using an old personal token.
+Audit factor resets and offline owner recovery; do not log or expose TOTP secrets
+or recovery codes through ordinary APIs.
+
+Planned managed HTTPS seeds ACME contact from the first administrator's email and
+owns issuance, renewal, persistence, bounded retry and actionable failure reporting.
+Current 0.7.0 still uses explicit proxy/ACME configuration. Preserve existing CA
+accounts, contact overrides and certificate storage during migration and recovery.

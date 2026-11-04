@@ -3,6 +3,7 @@
 **Audit date:** 2026-11-02, Europe/Budapest.  
 **Shipper baseline:** version `0.4.0`, commit `5831782a85a2431cc30baa9e07f72524c72103a7`, including Phases 1–4.  
 **Shipper implementation update:** 2026-11-04, Phase 6–7 core / `0.7.0`; the original comparison baseline above remains pinned. See [commands and tasks][L05].
+**Planning update:** 2026-11-04, expanded VPS provisioning/server care, mandatory P9.5 interaction design and guided cron scheduling. These are planned work, not added implementation claims. Automatic first-admin ACME setup, built-in certificate lifecycle, the offered Contabo/domain lab and admin-provisioned provider/2FA policy are specified in the linked roadmap/contracts.
 **Coolify baseline:** release tag `v4.6.0`, commit `0becfba9113063336b09860579627fd218cb3fc4`.  
 **Additional source checked:** Coolify `main` at `67b29ff24af8d54905341f8de8585c3302f67311` and the production docs repository at `b4f93fae4a2417817d4159c0b2377f24a265e5b8`.
 
@@ -126,7 +127,7 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F19 | Install/build/start and pre/post deployment commands | **Present** for the declared command contract | Candidate-image migrations, startup hooks on actual starts, after-deploy and controlled before-stop tasks. Startup attempts use runtime logs; job attempts are durable. [Command boundary][L05]. | [C01], [L01], [L05] |
-| F20 | Manual execution, scheduled tasks and execution history | **Present** for the native subset | Saved tasks, Run now, five-field cron/IANA timezones, next-run preview, persisted wait/skip and missed-run policies, timeout and redacted history. One leased worker; uncertain exec outcomes require inspection. | [D16], [C03], [L05] |
+| F20 | Manual execution, scheduled tasks and execution history | **Present** for the native subset | Saved tasks, Run now, five-field cron/IANA timezones, next-run preview, persisted wait/skip and missed-run policies, timeout and redacted history. Guided recurrence with visible generated cron is planned in **P9.5/Q39**; it is not implemented yet. | [D16], [C03], [L05] |
 | F21 | Deployment queue, cancellation and operation results | **Present** within one-worker scope | Durable coalescing, pre-mutation cancellation, queued superseding and recorded-revision retry ship in 0.6.0. Workload-changing tasks are deliberately not cancellable. | [D01], [L03] |
 | F22 | Runtime-only changes without source rebuilding | **Present** within the declared reuse boundary | Reviewed Apply reuses single-container images and Compose service-runtime models. Compose interpolation/build inputs and removal of certain inherited overrides reload source conservatively. Rename and domains retain lighter operations. | [D17], [L01], [L05] |
 | F23 | Health checks, worker operation and startup/shutdown tuning | **Present** within declared readiness scope | HTTP/image/process readiness, startup deadline, graceful stop and bounded single-container traffic drain ship through 0.7.0. Compose remains stateful. | [D12], [D17], [L01] |
@@ -145,7 +146,7 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F33 | Multiple domains, service routing, primary aliases and redirects | **Present** | Preserve hostname rows, per-service ownership, root-domain www expansion, independent HTTPS and verification. | [D03], [D19], [L02] |
-| F34 | Automatic public HTTPS, renewal and dashboard HTTPS | **Partial** pending public acceptance | Packaged dashboard HTTPS, ACME renewal configuration and certificate diagnostics ship in 0.7.0. Trusted local TLS and restart tests exist; live public issuance/renewal remains P10. | [D19], [L01] |
+| F34 | Automatic public HTTPS, renewal and dashboard HTTPS | **Partial** pending public acceptance | Packaged HTTPS/renewal configuration and diagnostics exist. **P10** will seed ACME from first-admin email, automate issuance/renewal/recovery and verify on the offered VPS/domains; that bootstrap and live acceptance are not yet implemented/completed. | [D19], [L01] |
 | F35 | Generated app domains and wildcard domain configuration | **Partial** | Single-container local addresses exist; add consistent local/service URLs and an optional operator-controlled wildcard base domain. **P7** | [D19], [L01] |
 | F36 | DNS challenge, wildcard certificates, custom certificates/resolvers | **Missing** | Advanced certificate options on the same domain model; HTTP challenge remains the short default path. **P7** | [D19] |
 | F37 | Traefik dynamic config, middleware, headers, auth, path routing and compression | **Partial** | Per-domain path/strip-prefix, compression and response headers ship in 0.7.0. Auth middleware, arbitrary scoped Traefik overrides and admin proxy plans remain later parity. | [D19], [C05] |
@@ -191,7 +192,7 @@ limits are part of the reference, not requirements to exceed accidentally.
 | F62 | Stateless multi-server deployment with external load balancing | **Missing** | Deploy one pinned image to selected targets; report each result and require declared external/shared state. **P12** | [D08] |
 | F63 | Replica count and placement through legacy Swarm | **Missing** | First deliver replica/multi-host outcomes; retain an optional exact legacy adapter milestone. Do not claim Compose equals Swarm. **P12/P14** | [D07] |
 | F64 | Hetzner, DigitalOcean, Vultr and Hostinger provisioning/cloud-init | **Missing** | Optional provider adapters around Add server, with price/action confirmation and reusable SSH validation. **P13** | [D26], [C13] |
-| F65 | Server package updates, Docker preparation and security update configuration | **Missing** | Explicit host-administration jobs and maintenance windows. Existing unmanaged workloads remain outside application inventory. **P10/P13** | [D27], [C13] |
+| F65 | Server package updates, Docker preparation and security update configuration | **Missing** | Required local-host provisioning and explicit maintenance policies/windows in **P10**; broader fleet/provider patching in **P13**. Narrow audited host actions preserve unrelated workloads and SSH access. | [D27], [C13] |
 | F66 | Host web terminal and jump/private-network access | **Missing** | Remote connection profiles and an opt-in admin host tool, separate from service terminals and ordinary app permissions. **P12/P13** | [D32], [C10] |
 | F67 | Ephemeral GitHub Actions runners on build hosts | **Missing** | Optional isolated CI-runner integration with dedicated capacity and credential handling. Never a prerequisite for deployments. **P13** | [D28], [C13] |
 
@@ -200,15 +201,15 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F68 | Secure admin setup, password sessions and recovery | **Present** for a single-admin installation | Preserve capability-based bootstrap, CSRF, session checks and local recovery; add account/session management. **P10** extends this. | [D33], [L04] |
-| F69 | Invitations, team separation and roles | **Missing** | One implicit workspace initially; invite, choose access, finish. Optional additional workspaces later. **P11** | [D33], [C14] |
-| F70 | OAuth sign-in, OIDC SSO, 2FA and passkeys | **Missing** | GitHub sign-in can accompany P6; add 2FA/recovery before public release, then passkeys/OIDC and provider adapters. **P6/P10/P11** | [D33], [C14] |
+| F69 | Invitations, team separation and roles | **Missing** | One implicit workspace; admins provision email/optional temporary password and role in Settings. No public signup or OAuth account creation. Optional workspaces later. **P11**, see [authentication contract](docs/authentication.md). | [D33], [C14] |
+| F70 | OAuth sign-in, OIDC SSO, 2FA and passkeys | **Missing** | **P10:** personal and instance-enforced Shipper TOTP/recovery. **P11:** independently enabled password/Google/GitHub/Discord login, admin-provisioned accounts and verified-email linking to stable provider identities. Passkeys/general OIDC later; source connections remain separate. | [D33], [C14] |
 | F71 | Security/configuration audit events | **Partial** | Deployment history exists; extend a bounded audit stream to credentials, auth, config, terminal, data and server actions. **P5–P11** | [D33], [C14] |
 | F72 | Scoped REST API tokens, IP restrictions and machine-readable operations | **Partial** | Browser-session API exists. Add scoped tokens, versioned contracts, idempotency, operation watches and sensitive-read separation. **P6/P9** | [D34], [C15], [L04] |
 | F73 | CLI resource management | **Missing** beyond maintenance subcommands | Extend the Go client/binary over the same API, with JSON output and contexts. **P9** | [D35] |
 | F74 | MCP tools, resources and prompts | **Missing** | A thin adapter over the same permission-checked operations; no chatbot or separate business-logic engine. **P9** | [D36], [C15] |
 | F75 | Projects, environments, optional canvas and relationship views | **Missing** | Saved views, optional groups and application variants. Canvas may become a lazy-loaded optional view, never the required deployment path. **P11/P13** | [D20], [D37] |
 | F76 | One-click application/service catalog | **Workaround** through pasted Compose | A few tested recipes first, then an on-demand catalog and Coolify recipe translator with per-recipe compatibility results. **P8/P13** | [C08] |
-| F77 | Installation, updates, downgrade/recovery, uninstall and instance settings | **Partial** | Local binary and non-root Docker package exist. Add tested Linux setup, pinned update/restore paths and data-preserving uninstall. **P10** | [D24], [D38], [L04] |
+| F77 | Installation, updates, downgrade/recovery, uninstall and instance settings | **Partial** | Local binary and non-root Docker package exist. **P10** adds one-command Docker/dependency provisioning, secure onboarding, boot recovery, bounded host care, maintenance policies, pinned update/restore paths and data-preserving uninstall on declared Linux hosts. | [D24], [D38], [L04] |
 | F78 | Documented, reproducible user and automation workflows | **Partial** | Repository docs/tests exist; publish versioned API/schema, recovery guides, examples, migration guides and support diagnostics. **Every phase, release gate P10** | [D34], [D35], [L04] |
 
 ## 4. The architecture that keeps parity affordable
@@ -248,9 +249,20 @@ generic plugin framework, workflow language, or every future DTO before P5.
 
 ### UI and configuration contract
 
-The main path stays **source → inspect → deploy → domain**. An application shows
-its running state and deployment state separately. A single-container app should
-not gain a compulsory service-selection step.
+The main path becomes **source → inspect/method → essentials → review/deploy**,
+with optional domains during creation or later. P9.5 is a mandatory pre-1.0
+interaction-design milestone. Keep a quick path, skip irrelevant/empty steps,
+preserve drafts when moving back, and share validation with the API. A
+single-container app must not gain compulsory service or server selection.
+An application shows its serving and deployment state separately.
+
+Use choice cards for meaningful alternatives, service summaries for stacks,
+compact tables for dense history and status/review panels for diagnostics and
+consequential changes. Distinguish source, build method and runtime role;
+automatic detection recommends a method rather than becoming another unexplained
+entry in a flat selector. Apply the same components to backup and update flows.
+Task scheduling starts with a guided recurrence picker, visible read-only cron,
+timezone/next-run preview and lossless manual editing; see Q39 and P9.5.
 
 Use the existing `.env` editor for local, inherited and linked values, with
 advanced options in row actions. Preserve a source value unless an actual override
@@ -268,9 +280,9 @@ taglines added to compensate for a confusing layout.
 
 ## 5. Phases and milestones
 
-Phases 1–4 remain complete historical milestones. The old single “Phase 5: Release
-hardening” placeholder is expanded below. Reliability and security work occur in
-every phase; P10 is the public-release gate. These are sequenced deliverables, not
+Phases 1–4 remain complete historical milestones. The release-hardening plan now
+includes mandatory P9.5 interaction design and P10 host provisioning/server care.
+Reliability and security work occur in every phase; P10 is the public-release gate. These are sequenced deliverables, not
 calendar estimates or a promise that full Coolify breadth fits one small release.
 
 ### P5. Lifecycle automation and configuration UX
@@ -435,12 +447,18 @@ options work on an approved target; rollback identifies code/config/data boundar
 
 ### P8. Data protection and database workflows
 
+**1.0 scope:** P8.1 plus declared PostgreSQL and MySQL/MariaDB recovery paths,
+off-server copies, retention and verified restores. Further engines, general
+portability/cloning and Coolify import remain later parity, including P8.3.
+
 **Outcome:** deploying persistent data includes a usable recovery path.
 
 **P8.1: instance and storage recovery**
 
 - A versioned encrypted backup bundle containing metadata, encryption material,
   credential references/settings and proxy certificate state as appropriate.
+- Protect portable recovery material independently of the failed VPS; a bundle
+  must not require a key that exists only inside the inaccessible installation.
 - Backup destinations with local and S3-compatible storage, retention, download,
   integrity checks, bounded compression and optional multiple copies.
 - Storage archives for eligible volumes/directories, with a quiesce/task mechanism
@@ -476,8 +494,13 @@ cannot masquerade as success; normal updates/cleanup never erase live data.
 
 ### P9. Operations, visibility, and agent experience
 
-**Outcome:** diagnose and operate an app from the UI, CLI or an agent with the same
-permissions and operation results.
+**1.0 scope:** focused diagnostics, actionable webhook/email notifications,
+retention and reviewed server-care operations, and a scoped versioned operations
+API. Full CLI/MCP, interactive terminal/files, broad channels/collectors/traffic
+analytics and bulk tooling remain later parity. Keep those detailed targets below.
+
+**Outcome:** diagnose and operate an app from the UI or scoped API with shared
+permissions and operation results; CLI and MCP later adapt the same contract.
 
 **P9.1: focused operations**
 
@@ -485,6 +508,9 @@ permissions and operation results.
   download/rename/permissions, with capability checks and audit.
 - Distinguish runtime-layer edits from persistent storage and source-controlled
   files. Only expose the selected managed service's filesystem.
+- A focused System area for the implicit host, installed versions, storage, boot/
+  daemon/proxy readiness, proposed repairs and recovery. Privileged repairs are
+  narrow audited operations; disruptive effects require review or a configured policy.
 - Bounded CPU/RAM/restart/OOM/disk samples, dependency connectivity diagnostics and
   separate serving/deploying state. Optional traffic aggregates can follow.
 - Pause/follow/search/export logs and jump to the failed task/stage.
@@ -511,52 +537,185 @@ permissions and operation results.
 - Sensitive reads, task execution, terminal access, deletion and administration
   are distinct capabilities. Never use browser-cookie scraping for automation.
 
-**Exit checks:** an agent can deploy, wait, inspect a failure and retry without the
-UI; a read-only token cannot execute or reveal secrets; a terminal/file request
-cannot switch to another app by supplying its container ID; a notification storm
-is bounded; disabled analytics/forwarding adds no collector; large lists/logs remain
-responsive with measured idle and per-feature resource use.
+**1.0 exit checks:** deploy, wait, inspect a failure and retry through the scoped
+API; a read-only token cannot execute, reveal secrets or administer the host;
+notifications are deduplicated; cleanup preserves active/retained releases and
+persistent data; large lists/logs remain responsive with measured idle cost.
 
-### P10. Production release and installation hardening
+**Later breadth exit checks:** terminal/file requests cannot switch applications
+through arbitrary container IDs; disabled forwarding/analytics adds no collector;
+CLI/MCP operate through the same permissions and durable results.
 
-**Outcome:** a reproducible, supportable single-server release.
+### P9.5. Interaction design and guided scheduling
 
-- Test fresh supported Linux hosts, architecture/engine/Compose compatibility,
-  setup recovery, public ACME issuance and renewal, restart/reboot and low-disk cases.
-- Provide one-command installation after the local workflows are stable, preserving
-  the user's request to defer distribution details until the app works locally.
-- Add pinned updates, backup-before-migration, tested restore-based recovery,
-  version/support diagnostics and data-preserving uninstall.
-- Improve account/password/session controls, add 2FA with recovery codes, review
-  management-plane exposure, source credentials, task/terminal privileges and tokens.
-- Publish release notes, API schema, examples, disaster recovery and contributor
-  documentation; maintain license notices and dependency/base-image updates.
-- Establish reproducible performance budgets for idle CPU/RAM, API latency,
-  navigation, event-to-UI delay, builds and log interaction. Proposed targets are
-  not evidence of beating Coolify until measured on equivalent workloads.
+**Required before 1.0.** Improve how existing capabilities are chosen and operated,
+using DESIGN.md and the current identity. Shared components can ship alongside
+P8/P9, including scheduling for backups; this gate completes the cross-flow pass.
+The detailed acceptance contract is in
+[the roadmap](docs/roadmap.md#phase-95-ui-refactor-and-guided-scheduling-mandatory-before-10).
 
-**Exit checks:** install, deploy a private-source app and a database stack, migrate,
-serve HTTPS, back up, reboot, update, simulate failure, restore and uninstall on
-an isolated VPS. The release must document remaining single-admin/remote-host limits.
+- Choice cards, adaptive forms, service summaries, diagnostic/status panels and
+  consequence-focused review components replace the overuse of monotone lists.
+- Application creation separates source selection, read-only inspection and method
+  recommendation, relevant essentials, and review/deploy. Offer a quick path,
+  direct review-to-section editing, safe drafts and optional later domain setup.
+- Keep `.env` minimal, advanced settings contextual and single-container workflows
+  free of unnecessary service/server/project/environment selections.
+- Q39: guided recurrence is the default when enabling a task schedule. Cover
+  common minute/hour intervals, daily times, weekly/selected weekdays and monthly
+  dates with relevant controls. Show generated cron in a read-only, focusable,
+  copyable input and provide an explicit Custom cron editor.
+- Keep one canonical supported five-field cron expression and IANA timezone.
+  Reuse backend validation and next-three-run preview. Preserve manual expressions;
+  return to the picker only when the pattern is exactly representable. Do not
+  change overlap/missed-run behavior or add a separate scheduler.
+- Preserve current cron day-of-month/weekday OR semantics and DST behavior. Do
+  not misrepresent arbitrary elapsed intervals, every-other-week rules, last-day
+  syntax or paired times as supported single-expression patterns.
+- Reuse guided scheduling for backups/maintenance sharing this model. Separate
+  recurrence controls from advanced execution/overlap policy.
 
-### P11. Collaboration, reusable configuration, and environments
+**Exit checks:** deploy the supported application kinds on desktop/mobile without
+irrelevant controls; create a weekly task without cron knowledge; inspect/copy its
+cron, verify timezone/next runs, manually edit and round-trip supported patterns
+without changing meaning. Check short months, invalid input, DST, keyboard/focus,
+draft preservation, navigation stability and perceived speed. Retain Q01–Q38.
 
-**Outcome:** share an installation without making every solo user manage teams.
+### P10. VPS provisioning, ongoing care and production acceptance
 
-- One implicit workspace; optional additional workspaces for real isolation needs.
-- Invite a person, choose Viewer/Developer/Admin access, finish. Preserve an owner
-  recovery boundary and enforce all scope checks server-side.
-- Add passkeys, OIDC SSO and further OAuth adapters through the same account model.
-- Optional groups, app variants/environments, linked value sets and explicit
-  propagation previews. Local values and ownership remain understandable.
-- Integrate Doppler, Infisical and Vault as scoped secret references with rotation
-  and resolution history. Values should not be copied into browser drafts.
-- Expand audit events and team/source/storage credential separation.
+**Outcome:** on a fresh dedicated supported VPS, run one command, open Shipper,
+and handle routine application hosting and care through it. Keep one implicit
+local server; the user should rarely need Docker commands or SSH for normal work.
 
-**Exit checks:** a solo user's creation path is unchanged; a viewer cannot deploy,
-open a terminal or reveal a secret; an app cannot resolve another workspace's values;
-removing a member revokes effective access; changing a shared value shows affected
-apps and does not silently redeploy them all.
+**P10.1: bootstrap and ownership**
+
+- Declare a small tested Linux/architecture matrix. Preflight resources, privileges,
+  package locks, conflicting ports/networks and incompatible existing software.
+- Install supported Docker Engine, Compose/build tooling and necessary dependencies
+  when missing. Reuse compatible installations without replacing daemon policy or
+  adopting unrelated workloads. Keep manual/existing-Docker installation documented.
+- Configure private state, permissions, networks, proxy and boot services. Obtain
+  application runtimes inside build images rather than requiring host toolchains.
+- Make installation resumable and idempotent with versioned/integrity-checked
+  artifacts, durable stages, readable logs and concrete retry outcomes.
+- First-admin creation automatically persists that email as initial ACME contact
+  and queues resolver bootstrap, with no separate email field/environment edit.
+  Preserve CA state and deliberate legacy overrides; later auth-email changes do
+  not silently replace the ACME contact. Reconcile proxy setup without manual removal.
+- Default supported new public domains to HTTPS and automatically issue/attach
+  certificates and HTTP redirects; expose only necessary domain/DNS prerequisites.
+  Preserve deliberate legacy HTTP/external-termination policy on upgrades.
+- Preserve SSH when applying declared firewall changes and report external/provider
+  prerequisites; localhost/internal services retain their supported behavior.
+
+**P10.2: ongoing care**
+
+- Recover Shipper, proxy and intended running/stopped app state after reboot or
+  recoverable daemon failure. Connect P8/P9 backup and disk protection.
+- Own HTTPS issuance/renewal/persistence and bounded retry respecting CA limits.
+  Routine success is quiet; context/status and alerts handle actionable DNS,
+  reachability or expiry risk. Never report an untrusted fallback as valid HTTPS.
+- Use narrow audited privileged operations with permissions, preflight/effect
+  review, bounded execution and persisted results, never a generic host shell API.
+- Provide pinned Shipper updates, verified pre-update backups, compatibility checks,
+  migration handling and tested recovery. Schema rollback may require restoring
+  state, not merely starting an older executable.
+- Add explicit Docker/dependency/OS-security maintenance policies, windows and
+  reboot-required status. Disruptive changes follow operator approval or a saved
+  policy and never occur unexpectedly during an ordinary application deploy.
+- Preserve foreign dependencies and refuse uncertain/global cleanup. Keep uninstall
+  data preserving, with separate choices for app data, platform state and shared
+  host dependencies. Do not implicitly remove Docker.
+
+**P10.3: production release gate**
+
+- Test Docker-absent and compatible-Docker hosts, interrupted install/rerun, low
+  resources, conflicts and unsupported-host outcomes on every declared target.
+- Use the offered disposable 8 GB Contabo VPS and 3–4 test domains once access
+  arrives, reinstalling only the authorized host across declared distributions.
+  Record actual architecture/versions, DNS changes and redacted off-host evidence;
+  see [the VPS test plan](docs/vps-test-plan.md). Access is not supplied yet.
+- Exercise real GitHub onboarding/private checkout/public signed pushes/revocation
+  and first-admin ACME setup without manual config, multi-domain/service/www trusted
+  issuance, genuine renewal, DNS/address/firewall failures and persisted CA state.
+  Use staging for repeated CA exercises; a restart is not renewal evidence.
+- Deploy web/static/worker/database workloads, run migrations/tasks, reboot with
+  an intentionally stopped app, update, inject failure and restore from off-server
+  backups on a fresh host. Verify retained data and safe uninstall.
+- Deliver personal TOTP with generated secret/QR, issuer Shipper, confirmation and
+  recovery codes, plus instance enforcement covering fresh users and existing
+  admin/user sessions. Require Shipper's factor on each enrolled interactive login;
+  optional factor removal needs verification and enforced factors cannot be disabled.
+- Restrict incomplete password-change/enrollment/factor sessions at API/stream and
+  UI level. Preserve the gate for P11 OAuth, distinguish machine automation from
+  personal access and include audited offline owner recovery; see
+  [the account contract](docs/authentication.md).
+- Finish account/session and privileged-execution review, release/API/schema notes,
+  support matrices, examples and emergency SSH/provider-console recovery docs.
+- Pass P9.5 and measured idle CPU/RAM, API/navigation/event latency and log/build
+  interaction budgets. Cross-platform performance superiority requires equivalent
+  benchmarks, not an architectural assumption.
+
+**Exit checks:** repeat installation, deployment, backup, reboot, update, failure
+recovery and uninstall on an isolated supported VPS, normally through Shipper.
+The operator retains the VPS/provider account, billing, capacity and domain
+ownership and application/data compatibility decisions. Optional DNS/provider
+integrations can automate more later. Universal host administration, provider
+outages, fleets and full Coolify breadth remain outside the 1.0 promise.
+
+### P11. Admin-provisioned collaboration and reusable configuration
+
+**Outcome:** one account and factor policy across enabled login methods, with
+administrator-controlled admission and no new hierarchy for solo users. See the
+[authentication contract](docs/authentication.md) for the detailed state model,
+provider-specific setup instructions and proposed callback URLs.
+
+**P11.1: admission and identity**
+
+- Admins add email, optional temporary password and role in Settings. No public
+  registration, self-invitation, domain-wide admission or OAuth just-in-time users;
+  the private first-admin capability remains the bootstrap exception.
+- Email + Password, Google, GitHub and Discord are independently enabled. Blank
+  password means no password credential and OAuth-only login. A supplied/reset
+  temporary password must change before full app access; OAuth cannot bypass an
+  outstanding gate. Shipper does not send or retain readable passwords.
+- Verified matching email links only to an active provisioned account. Persist a
+  unique stable provider/issuer + subject/user ID binding after required gates;
+  missing/unverified/ambiguous/non-authoritative claims need proof or explicit
+  admin binding, never guessing, automatic creation or silent merging.
+- Existing identity email changes do not transfer accounts. Disable/remove users
+  across all methods and revoke effective credentials; prevent last-admin lockout.
+  Repository/source connections remain independent of authentication and roles.
+
+**P11.2: provider configuration and factor gates**
+
+- Admin client IDs/secrets with encrypted storage, rotation and connection tests.
+  Show exact canonical-HTTPS callbacks, Copy and concise provider-specific setup
+  steps for Google web OAuth/OIDC, a GitHub sign-in OAuth client and Discord OAuth2.
+- Request identity/email scopes only, including verified/private email as needed.
+  Use one-use expiring state, PKCE where supported and server-side validation;
+  Google additionally requires issuer/audience/signature/nonce checks.
+- Reuse P10-generated Shipper TOTP for every enrolled password/provider login.
+  Provider MFA is not a bypass. Password changes, factor challenges and forced
+  enrollment issue only restricted onboarding sessions until all requirements pass.
+- Enabling enforcement gates existing unenrolled sessions, including the admin,
+  and fresh OAuth-only users. Users cannot disable enforced factors. Recovery and
+  factor changes require verification, revocation and audit without credential logs.
+
+**P11.3: collaboration and configuration isolation**
+
+- One implicit workspace; optional groups/workspaces/app variants only where useful.
+  Enforce Viewer/Developer/Admin and resource-scope permissions server-side.
+- Linked values and explicit propagation previews, plus scoped Doppler/Infisical/
+  Vault references with rotation/history and no secrets in browser drafts.
+- Passkeys/general OIDC and broader provider/role models can extend this boundary.
+
+**Exit checks:** provisioned password/OAuth-only users, forced temporary-password
+changes, one account across all enabled methods, private/verified email handling,
+identity collisions/changes, mandatory TOTP after every login, enforcement against
+active admin/user cookies/streams and personal tokens, factor recovery/removal,
+last-admin protection and revocation all pass. Test role/secret/data isolation.
+The solo creation path stays unchanged; provider login never confers source access.
 
 ### P12. Remote targets, separate builds, and scale
 
@@ -608,8 +767,9 @@ apps without adopting unrelated containers or leaving two active owners.
   track incompatible recipes explicitly rather than claiming catalog-wide parity.
 - Complete notification/log-drain destination adapters and opt-in traffic analytics
   with retention and anonymization controls.
-- Add Cloudflare tunnels, cloud-provider provisioning/cloud-init and optional host
-  patch administration. Provider purchasing actions require a concrete reviewed
+- Add Cloudflare tunnels, cloud-provider purchasing/provisioning/cloud-init and
+  extended fleet patch administration beyond P10 local-host care. Provider
+  purchasing actions require a concrete reviewed
   cost/action plan; ordinary app actions never imply buying or patching a server.
 - Add opt-in GitHub Actions runner integration on dedicated capacity, without
   promoting it into a mandatory CI server inside Shipper.
@@ -659,10 +819,10 @@ the complexity already removed from `.env`, logs and static-site views.
 | Q09 | Minimal `.env`, paste support and secondary row actions | Present; extend P5 | Keep ordinary editing to name/value and one apply action. |
 | Q10 | Canonical white icon/favicons and Inter wordmark asset | Present as assets; preserve | Follow DESIGN.md; avoid a new branding redesign as parity work. |
 | Q11 | Multi-domain rows, www, per-domain HTTPS and verification | Present; extend P7 | A new hostname must not require a second application. |
-| Q12 | Private repository and authenticated branch picker | P6 | Connect once, then select; advanced URLs/keys remain available. |
-| Q13 | Push-to-deploy and branch/path filters | P6 | One obvious Auto deploy setting with useful trigger history. |
+| Q12 | Private repository and authenticated branch picker | Implemented for GitHub; public acceptance P10 | Connect once, then select; additional providers remain later parity. |
+| Q13 | Push-to-deploy and branch/path filters | Implemented for GitHub; public acceptance P10 | One Auto deploy control with durable triggers, path filters and clear results. |
 | Q14 | Automatic HTTPS on a Linux VPS | Partial; P7/P10 | Show DNS/issuance state and resolve setup prerequisites in one flow. |
-| Q15 | Manual Traefik settings per application/service | P7 | Common fields first; scoped raw config under advanced controls. |
+| Q15 | Manual Traefik settings per application/service | Structured subset present; raw overrides later P7 parity | Common fields first; validated scoped raw configuration remains advanced backlog. |
 | Q16 | Per-service domains and other configuration | Present subset; P5/P7/P8 extend | Select the service once, then operate in its context. |
 | Q17 | Detected build/start/task command suggestions | Build/start suggestions present; task inference remains explicit | Read repository scripts; let the user review rather than guess a migration. |
 | Q18 | Saved task Run now and execution history | Present | Reuse a task instead of repeatedly opening a terminal. |
@@ -670,7 +830,7 @@ the complexity already removed from `.env`, logs and static-site views.
 | Q20 | Secret/password generation | Present in .env row options; database adapters P8 | Put it in the existing value/row action, not a global tool page. |
 | Q21 | Pending changes, masked diff, relevant Apply action | Present | Make rebuild versus recreate versus routing visible before execution. |
 | Q22 | Jump to failure and deployment phase timeline | Failed-step filtering present; richer timeline P9 | Open the failed stage with its logs, exit status and duration. |
-| Q23 | Release comparison and clear redeploy/rollback choices | P7 | Distinguish latest source, same revision and a recorded previous release. |
+| Q23 | Release comparison and clear redeploy/rollback choices | Recorded restore/review present; preserve | Distinguish latest source, a recorded revision and restoration of code/config while retaining data. |
 | Q24 | Copy service address, domain, port or database connection | P7/P8 | Keep secret-bearing copy actions deliberate and permission checked. |
 | Q25 | Duplicate an application | P8/P11 | New storage/domains by default; review copied credentials and dependencies. |
 | Q26 | Favorites, optional tags and saved views | P9/P11 | Organize without mandatory project creation. |
@@ -678,41 +838,49 @@ the complexity already removed from `.env`, logs and static-site views.
 | Q28 | Preserve tab/service/filter/log position | P5/P9 | Avoid reloads and layout shifts during navigation. |
 | Q29 | Pause/resume log following and bounded export | P9 | Keep the viewer fast and its memory limit explicit in implementation. |
 | Q30 | Actionable failure/recovery notifications | P9 | Quiet while unchanged; combine repeated alerts. |
-| Q31 | Cancel, retry, supersede stale queued deployments | P5/P6 | Report partial state instead of pretending cancellation reversed work. |
+| Q31 | Cancel, retry, supersede stale queued deployments | Present for eligible deployment stages; preserve | Report partial state instead of pretending cancellation reversed migrations or data changes. |
 | Q32 | Basic resource and disk diagnostics | P9 | Surface the cause near the failing app, not an unrelated analytics dashboard. |
 | Q33 | Bulk restart/redeploy/image update | P9/P12 | Preview effects, limit concurrency and show each application's result. |
 | Q34 | Small maintained examples and recipes | P6/P8/P10/P13 | A handful of reliable examples before a giant catalog. |
 | Q35 | Performance and perceived speed | Every phase | Cached content, bounded background work, event updates and measured regressions. |
 | Q36 | Review effective Compose/source configuration | P5/P7 | Show inheritance and reset overrides without making users manage two primary copies. |
 | Q37 | Backups and a tested restore action | P8 | A green upload result is not proof that application data can be recovered. |
-| Q38 | Maintenance mode without stopping workers/databases | P7 | Change routing separately from workload/data lifecycle. |
+| Q38 | Maintenance mode without stopping workers/databases | Present; preserve | Change routing separately from workload/data lifecycle. |
+| Q39 | Guided task recurrence, visible generated cron and manual mode | Planned; P9.5 | Common schedules through a picker; cron remains readable/copyable, timezone/next runs visible and manual patterns lossless. |
+| Q40 | Adaptive application creation and quick path | Planned; P9.5 | Source, detected method, essentials and review; skip irrelevant steps and preserve drafts. |
+| Q41 | Choice cards and purpose-built information components | Planned; P9.5 | Use choice cards, service summaries, compact history tables and status/review panels in the appropriate contexts. |
+| Q42 | One-command dedicated-VPS setup with dependencies | Planned; P10 | Detect/install compatible Docker/tooling, configure boot/proxy and secure onboarding; reruns preserve state and other workloads. |
+| Q43 | Routine server care through Shipper | Planned; P9/P10 | Focused System health/storage/updates/recovery, safe retention, explicit maintenance policies and narrow audited host actions. |
+| Q44 | Built-in HTTPS and automatic first-admin ACME contact | Planned; P10 | First-admin email initializes ACME; public domain issuance, renewal/retry and certificate persistence need no recurring operator task. |
+| Q45 | Admin-provisioned users and configurable login providers | Planned; P11 | No signup; password/Google/GitHub/Discord toggles, exact callback guidance and temporary-password or OAuth-only accounts. |
+| Q46 | One account across verified matching providers | Planned; P11 | Verified-email admission, stable provider identities and unchanged roles/factors; no silent creation or unsafe merging. |
+| Q47 | Personal TOTP and instance-wide enforcement | Planned; P10/P11 | Generated Shipper setup, factor step after every enrolled login, mandatory enrollment for existing/fresh users and no disabling enforced 2FA. |
 
 ## 7. Dependency and release checkpoints
 
-**1.0 targets Phase 10's single-server production gate.** Phases 5–9 contain both
-required core outcomes and later parity breadth; optional breadth must not delay
-a dependable release. Phase 5 is required in full. Before 1.0, require GitHub
-private source selection and signed push deployments; common per-service routing
-and working VPS/dashboard HTTPS; explicit previous-release recovery; tested
-Shipper and supported application-data backup/restore; health/resource diagnostics,
-actionable notifications and a scoped automation API; and the full Phase 10
-installation, security, upgrade, recovery and performance checks.
+**1.0 targets Phase 10's single-server production gate.** Require the shipped
+Phase 5–7 core with real GitHub and public HTTPS acceptance; tested Shipper/key/
+certificate and supported application-data recovery with off-server backups;
+focused diagnostics, actionable notifications, bounded retention and a scoped
+operations API; the mandatory P9.5 UI and guided-scheduling gate; and the complete
+P10 provisioning, server-care, maintenance, security, upgrade, recovery and
+performance lifecycle on fresh dedicated supported Linux VPSs.
 
-PR previews, additional source providers, specialist Docker/Compose/proxy options,
-every database adapter, full CLI/MCP, file-browser/log-drain/channel/traffic breadth,
-and Phases 11–14 are later parity. Preserve their milestone IDs instead of
-pretending they are required for the first stable release. The focused release
-mapping is also in [the roadmap](docs/roadmap.md).
-
+Additional providers/previews, specialist Docker/Compose/proxy controls, every
+database adapter, broad portability, full CLI/MCP, file browser, collector/channel/
+traffic breadth and Phases 11–14 remain later parity. Phase 10 does not promise
+universal Linux administration or provider-outage recovery. Preserve all detailed
+milestone IDs and support declarations. See [the roadmap](docs/roadmap.md).
 
 | Checkpoint | Required result | Claims that must remain limited |
 | --- | --- | --- |
 | P5 complete | Migrations/tasks and daily editing are dependable locally. | Private Git, full rollback, managed backups and remote-host parity are still open. |
 | P6 complete | Private source/image workflows and automatic deployments work. | Public-fork isolation and remote build capacity need their own target work. |
 | P7 complete | Advanced single-server runtime/routing/Compose controls and operator rollback work. | Stateful updates do not imply automatic DB reversal or zero downtime. |
-| P8 complete | Application data and control-plane state have tested recovery paths. | Each database engine/backup format needs its own support declaration. |
-| P9 complete | Operators and agents can diagnose and act through shared interfaces. | A few metrics/channels do not establish every Sentinel/notification/provider feature. |
-| P10 complete | A supportable single-server release can be installed, updated and recovered on tested hosts. | This is a production-readiness checkpoint, not full Coolify breadth parity. |
+| P8 core complete | Application data and control-plane state have tested recovery paths. | Each database engine/backup format needs its own support declaration. |
+| P9 core complete | Operators and agents can diagnose and act through shared UI/API operations, with alerts and safe retention. | Full CLI/MCP, terminal/files, collectors and channel breadth remain later parity. |
+| P9.5 complete | Common creation/edit/recovery flows and guided recurrence are understandable, accessible and responsive. | UI availability does not replace backend acceptance; no silent cron conversion or extra mandatory hierarchy. |
+| P10 complete | A fresh supported dedicated VPS is provisioned through one command; routine care, updates, reboot, backups and recovery work through Shipper. | Declared hosts and narrow host actions only; provider ownership and broader Coolify parity remain separate. |
 | P11–P12 complete | Collaboration, configuration reuse, remote builds/deployments and scoped transfers work. | Replicas require application/state/load-balancer readiness; controller HA remains separate. |
 | P13–P14 complete | Catalog, optional integrations and specialist compatibility have declared tests. | Parity is still snapshot-specific and any untested recipe/field remains an open entry. |
 
