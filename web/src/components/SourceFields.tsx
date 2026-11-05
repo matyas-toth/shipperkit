@@ -4,6 +4,7 @@ import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Connection, StaticConfig } from "../types";
 import { Button, ErrorNotice } from "./Controls";
+import { Icon } from "./Icon";
 export function useConnections() {
   return createQuery(() => ({
     queryKey: ["connections"],
@@ -51,8 +52,8 @@ export function GitConnectionFields(props: {
       <Show
         when={connections.data?.items.some((c) => c.kind !== "registry")}
         fallback={
-          <a class="inline-link source-connect" href="/settings#sources">
-            Connect GitHub
+          <a class="button neutral small source-connect" href="/settings#sources">
+            <Icon name="git" />Connect GitHub
           </a>
         }
       >

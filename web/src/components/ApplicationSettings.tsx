@@ -5,27 +5,118 @@ import type { Application, StaticConfig } from "../types";
 import DeploymentTriggers from "./DeploymentTriggers";
 import { LifecycleCommands } from "./Commands";
 import StaticFields, { normalizedConfig } from "./StaticFields";
-import { Button, ErrorNotice, IconButton } from "./Controls";
-import { clearDraft, readDraft, safeConfigDraft, saveDraft } from "../drafts";
+import { Button, Disclosure, ErrorNotice, IconButton, validateForm } from "./Controls";
+import { clearDraft, readDraft, safeConfigDraft, saveDraft, saveVolatileDraft } from "../drafts";
 import { useAuth } from "../context";
 import Volumes from "./Volumes";
 
-export default function ApplicationSettings(props: { application: Application; acme: boolean; busy: boolean; save: (config: StaticConfig) => Promise<boolean | void>; rename: (name: string) => Promise<void>; remove: () => Promise<void> }) {
-  const auth = useAuth(), key = "settings:" + auth.session()?.user?.id + ":" + props.application.id;
-  const [config, setConfig] = createStore(normalizedConfig(readDraft<StaticConfig>(key) ?? props.application.config)), [name, setName] = createSignal(props.application.name), [error, setError] = createSignal(""), [renaming, setRenaming] = createSignal(false), [confirm, setConfirm] = createSignal(false);
-  const dirty=createMemo(()=>JSON.stringify(safeConfigDraft(config))!==JSON.stringify(safeConfigDraft(normalizedConfig(props.application.config))));
-  createEffect(() => saveDraft(key, safeConfigDraft(config)));
-  async function save(e: SubmitEvent) { e.preventDefault(); setError(""); try { if(await props.save({ ...config, variables: props.application.config.variables, services: props.application.config.services })!==false)clearDraft(key); } catch (e) { setError((e as Error).message); } }
-  async function rename(e: SubmitEvent) { e.preventDefault();setRenaming(true);setError("");try { await props.rename(name()); } catch (e) { setError((e as Error).message); } finally { setRenaming(false); } }
-  return <div class="application-settings"><Show when={error()}><ErrorNotice message={error()} /></Show><form onSubmit={rename} class="rename-form"><label for="application-name">Name</label><div><input id="application-name" class="input" value={name()} required maxlength={80} onInput={e => setName(e.currentTarget.value)} /><Button type="submit" disabled={renaming() || name() === props.application.name}>Save name</Button></div></form><form onSubmit={save} class="app-config-form"><div class="form-fields">
-    <StaticFields config={config} change={(key, value) => setConfig(key, value as never)} applicationId={props.application.id} /></div>
-    <Show when={config.method !== "compose"}><details class="configuration"><summary>Storage</summary>
-      <Volumes values={config.volumes} change={volumes => setConfig("volumes", volumes)} />
-    </details></Show>
-    <details class="configuration"><summary>Deployment commands</summary><LifecycleCommands compact config={config} services={props.application.latestDeployment?.services?.map(s=>s.name)} change={hooks=>setConfig("hooks",hooks)} /></details>
- <div class="form-actions"><Button type="submit" icon="deploy" disabled={props.busy||!dirty()}>Review changes</Button></div></form>
-    <DeploymentTriggers applicationId={props.application.id}/>
-    <section class="delete-section"><h2>Delete application</h2><Button icon="trash" class="danger-button" disabled={props.busy} onClick={() => setConfirm(true)}>Delete application</Button></section>
+function configFingerprint(config: StaticConfig) {
+  return JSON.stringify(safeConfigDraft(config), (_, value) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]]))
+      : value);
+}
+
+export default function ApplicationSettings(props: {
+  application: Application;
+  showSource?: boolean;
+  busy: boolean;
+  save: (config: StaticConfig) => Promise<boolean | void>;
+  rename: (name: string) => Promise<void>;
+  remove: () => Promise<void>;
+}) {
+  const auth = useAuth();
+  const key = "settings:" + auth.session()?.user?.id + ":" + props.application.id;
+  const [config, setConfig] = createStore(normalizedConfig(readDraft<StaticConfig>(key) ?? props.application.config));
+  const [name, setName] = createSignal(props.application.name);
+  const [error, setError] = createSignal("");
+  const [renameError, setRenameError] = createSignal("");
+  const [renaming, setRenaming] = createSignal(false);
+  const [reviewing, setReviewing] = createSignal(false);
+  const [confirm, setConfirm] = createSignal(false);
+  const inlineCompose = () => config.method === "compose" && config.composeSource === "paste";
+  const [sourceOpen, setSourceOpen] = createSignal(!!props.showSource || inlineCompose());
+  const hasSavedCompose = () => props.application.config.composeSource === "paste" &&
+    !!(props.application.config.composeKeep || props.application.config.composeHasValue);
+  const composeEdited = () => inlineCompose() && (config.composeKeep === false && hasSavedCompose() || !!config.composeYAML);
+  const savedFingerprint = createMemo(() => configFingerprint(normalizedConfig(props.application.config)));
+  const dirty = createMemo(() => composeEdited() || configFingerprint(config) !== savedFingerprint());
+  createEffect(() => {
+    if (!dirty()) {
+      clearDraft(key);
+      return;
+    }
+    const safe = safeConfigDraft(config);
+    saveDraft(key, safe);
+    // Inline source can contain credentials. Keep edited YAML in memory only.
+    saveVolatileDraft(key, composeEdited() ? { ...safe, composeYAML: config.composeYAML, composeKeep: config.composeKeep } : safe);
+  });
+  createEffect(() => { if (props.showSource) setSourceOpen(true); });
+  async function save(e: SubmitEvent) {
+    e.preventDefault();
+    if (props.busy || reviewing() || !dirty() || !validateForm(e.currentTarget as HTMLFormElement)) return;
+    setError("");
+    setReviewing(true);
+    try {
+      const draft = { ...config, variables: props.application.config.variables, services: props.application.config.services };
+      if (await props.save(draft) !== false) clearDraft(key);
+    } catch (e) { setError((e as Error).message); }
+    finally { setReviewing(false); }
+  }
+  async function rename(e: SubmitEvent) {
+    e.preventDefault();
+    if (renaming() || name().trim() === props.application.name) return;
+    setRenaming(true);
+    setRenameError("");
+    try { await props.rename(name().trim()); }
+    catch (e) { setRenameError((e as Error).message); }
+    finally { setRenaming(false); }
+  }
+  return <div class="application-settings">
+    <div class="app-settings-general">
+      <h2>Application settings</h2>
+      <form onSubmit={rename} class="rename-form">
+        <label for="application-name">Name</label>
+        <div>
+          <input id="application-name" class="input" value={name()} required maxlength={80} onInput={e => setName(e.currentTarget.value)} />
+          <Button type="submit" disabled={renaming() || !name().trim() || name().trim() === props.application.name}>Save name</Button>
+        </div>
+      </form>
+      <Show when={renameError()}><ErrorNotice message={renameError()} /></Show>
+    </div>
+    <form noValidate onSubmit={save} class="app-config-form">
+      <Disclosure label="Source and build" icon="layers" open={sourceOpen()} onToggle={e => setSourceOpen(e.currentTarget.open)}>
+        <div class="form-fields configuration-fields app-settings-fields">
+          <StaticFields config={config} change={(key, value) => setConfig(key, value as never)} applicationId={props.application.id}
+            expanded={sourceOpen()} hasSavedCompose={hasSavedCompose()} />
+        </div>
+      </Disclosure>
+      <Show when={config.method !== "compose"}>
+        <Disclosure label="Storage" icon="database">
+          <Volumes values={config.volumes} change={volumes => setConfig("volumes", volumes)} />
+        </Disclosure>
+      </Show>
+      <Disclosure label="Deployment commands" icon="terminal">
+        <div class="app-settings-disclosure-body">
+          <LifecycleCommands compact config={config} services={props.application.latestDeployment?.services?.map(s => s.name)}
+            change={hooks => setConfig("hooks", hooks)} />
+        </div>
+      </Disclosure>
+      <div class="app-settings-review">
+        <Show when={error()}><ErrorNotice message={error()} /></Show>
+        <Button variant="primary" type="submit" icon="deploy" disabled={props.busy || !dirty()} aria-disabled={reviewing() || undefined}>
+          {reviewing() ? "Reviewing changes" : "Review changes"}
+        </Button>
+      </div>
+    </form>
+    <div class="app-settings-secondary">
+      <DeploymentTriggers applicationId={props.application.id} />
+      <Disclosure label="Danger zone" icon="warning" class="delete-section">
+        <div class="app-settings-disclosure-body">
+          <Button icon="trash" class="danger-button" disabled={props.busy} onClick={() => setConfirm(true)}>Delete application</Button>
+        </div>
+      </Disclosure>
+    </div>
     <Show when={confirm()}><DeleteDialog name={props.application.name} close={() => setConfirm(false)} remove={props.remove} /></Show>
   </div>;
 }

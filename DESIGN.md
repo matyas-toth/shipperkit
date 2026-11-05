@@ -477,7 +477,49 @@ components:
     enterAnimation: 140ms cubic-bezier(0.23, 1, 0.32, 1)
 ---
 
-## Overview
+## Shipper interaction system
+
+This section describes Shipper's current UI. The OpenCode Console reconstruction
+below is a reference for the original visual language. Where the two differ,
+use Shipper's interaction rules and values here.
+
+- Keep the near-black frame, charcoal panels, Inter, Tabler icons, and dense
+  data views. Use 24/30 px for page titles, 16/22 px for section headings,
+  14/20 px for ordinary text and smaller headings, and 12–13 px for dense
+  data and metadata. Use monospace for values copied into tools or terminals.
+- Use a light filled button for the main decision in the current group. Give
+  secondary actions a visible neutral surface. Reserve quiet actions for
+  Cancel, Back, and contextual tools. Destructive actions keep their own
+  treatment and a review step. Put important actions next to the content they
+  affect. On touch screens use 44 px targets for form and disclosure controls.
+- A disclosure has a full-width surface, an explicit label, and a trailing
+  chevron that turns on expansion. Use native details and summary for keyboard
+  and screen reader behavior. Keep required fields visible; put overrides and
+  uncommon controls inside named disclosures. Keep small controls and the log
+  toolbar dense.
+- Show all viable source and build choices as labeled radio cards. Git and
+  local files support Automatic, Dockerfile, Railpack, Static site and Docker
+  Compose; inline inputs and container images imply their build method.
+  Selecting a method keeps the chosen source. Use radio segments for short
+  option sets and a searchable picker for a long list of names. Existing apps
+  keep their single-container or Compose topology during edits.
+- Settings and System show one section at a time and keep deep links. Use
+  navigation for distinct jobs and disclosures for optional fields within one
+  job. Domain cards show hostname, route and verification first; editing and
+  advanced routing open in place. App and service navigation wrap on narrow
+  screens so all destinations remain visible.
+- App settings use one column for the name, configuration, deploy token,
+  and danger zone. The configuration form ends with a padded review footer.
+  Inline Compose opens the source section with its editor ready; loading saved
+  source does not create a pending change.
+- Preserve the shallow nested radius on table trays and panels (6 px outer,
+  4 px inner with a 2 px inset). A rounded control inside a larger surface
+  must have enough inset to follow the outer curve. Use neutral hover and
+  selected surfaces and a visible blue keyboard focus ring.
+
+## OpenCode Console reference
+
+### Overview
 
 OpenCode Console is an authenticated workspace interface for model access, request activity, usage, and workspace administration. This is a reconstructed draft of its dark dashboard. Its visible presentation combines a near-black outer frame, a charcoal application panel, compact horizontal navigation, small variable-weight type, and subtly outlined controls. Activity uses a broad analytical canvas; Logs uses a centered dense table; General settings uses a centered form with a secondary navigation column.
 

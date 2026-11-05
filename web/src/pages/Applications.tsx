@@ -17,7 +17,7 @@ export default function Applications() {
   const visible = createMemo(() => items().slice(start(), start() + WINDOW_ROWS));
   function resetScroll() { if (viewport) viewport.scrollTop = 0; setScrollTop(0); }
   return <div class="content content-narrow">
-    <header class="page-heading"><h1>Applications</h1><Button icon="plus" onClick={() => navigate("/new")}>New application</Button></header>
+    <header class="page-heading"><h1>Applications</h1><Button variant="primary" icon="plus" onClick={() => navigate("/new")}>New application</Button></header>
     <Show when={inventory.error()}><ErrorNotice message={inventory.error()!.message} retry={() => void inventory.refresh()} /></Show>
     <Show when={inventory.data() && !inventory.data()!.docker.connected}><ErrorNotice message={inventory.data()!.docker.error || "Docker is unavailable"} retry={() => void inventory.refresh()} /></Show>
     <div class="table-toolbar app-toolbar">

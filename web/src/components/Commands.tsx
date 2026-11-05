@@ -1,6 +1,7 @@
 import { For, Show, createSignal, createUniqueId } from "solid-js";
 import type { Command, Hook, StaticConfig } from "../types";
 import { Icon } from "./Icon";
+import { SegmentedChoice } from "./Choices";
 export const emptyCommand = (): Command => ({ shell: "", service: "", directory: "", user: "", timeout: 300, mode: "job" });
 export function CommandFields(props: { value: Command; change: (c: Command) => void; label?: string; services?: string[]; execution?: boolean }) {
  const id = createUniqueId();
@@ -9,8 +10,8 @@ export function CommandFields(props: { value: Command; change: (c: Command) => v
  <Show when={props.services?.length}><label for={id+"service"}>Service</label><select id={id+"service"} class="input" value={props.value.service} onChange={e=>update({service:e.currentTarget.value})}><option value="" disabled>Choose service</option><For each={props.services}>{s=><option value={s}>{s}</option>}</For></select></Show>
  <label for={id+"command"}>{props.label ?? "Command"}</label><Show when={!props.value.argv} fallback={<textarea id={id+"command"} class="input mono command-input" value={JSON.stringify(props.value.argv)} onChange={e=>{try{const argv=JSON.parse(e.currentTarget.value);if(Array.isArray(argv)&&argv.every(v=>typeof v==="string"))update({argv});}catch{e.currentTarget.setCustomValidity("Enter a JSON array of arguments");}}} onInput={e=>e.currentTarget.setCustomValidity("")} />}><textarea id={id+"command"} class="input mono command-input" value={props.value.shell} placeholder="None" onInput={e=>update({shell:e.currentTarget.value})} /></Show>
  <details class="configuration command-options"><summary>Options<Icon name="down" /></summary><div class="form-fields configuration-fields">
- <label for={id+"format"}>Command format</label><select id={id+"format"} class="input" value={props.value.argv ? "argv" : "shell"} onChange={e=>update(e.currentTarget.value==="argv"?{shell:"",argv:[]}:{shell:"",argv:undefined})}><option value="shell">Shell</option><option value="argv">Argument list</option></select>
- <Show when={props.execution}><label for={id+"execution"}>Run in</label><select id={id+"execution"} class="input" value={props.value.mode} onChange={e=>update({mode:e.currentTarget.value as Command["mode"]})}><option value="job">Fresh job container</option><option value="exec">Running service</option></select></Show>
+ <SegmentedChoice label="Command format" value={props.value.argv ? "argv" : "shell"} choices={[{value:"shell",label:"Shell"},{value:"argv",label:"Argument list"}]} change={format => update(format==="argv"?{shell:"",argv:[]}:{shell:"",argv:undefined})} />
+ <Show when={props.execution}><SegmentedChoice<Command["mode"]> label="Run in" value={props.value.mode} choices={[{value:"job",label:"Job container"},{value:"exec",label:"Running service"}]} change={mode => update({mode})} /></Show>
  <label for={id+"cwd"}>Working directory</label><input id={id+"cwd"} class="input mono" placeholder="Image default" value={props.value.directory} onInput={e=>update({directory:e.currentTarget.value})} />
  <label for={id+"user"}>User</label><input id={id+"user"} class="input" placeholder="Image default" value={props.value.user} onInput={e=>update({user:e.currentTarget.value})} />
  <label for={id+"timeout"}>Timeout (seconds)</label><input id={id+"timeout"} class="input" type="number" min="1" max="3600" value={props.value.timeout} onInput={e=>update({timeout:Number(e.currentTarget.value)})} />

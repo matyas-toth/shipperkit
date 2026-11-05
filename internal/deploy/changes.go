@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"shipper/internal/store"
+	"slices"
 	"sort"
+
+	"shipper/internal/store"
 )
 
 type ChangePlan struct {
@@ -148,9 +150,17 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	json.Unmarshal(b, &right)
 	labels := map[string]string{"localSource": "Source files", "runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
 	for key, label := range labels {
-		if !reflect.DeepEqual(left[key], right[key]) {
+		if !reflect.DeepEqual(left[key], right[key]) && !slices.Contains(p.Changes, label) {
 			p.Changes = append(p.Changes, label)
 		}
+	}
+	// Redacted configurations deliberately hide the inline text. Report its
+	// presence in the diff without including any of its contents.
+	if old.ComposeYAML != next.ComposeYAML && !slices.Contains(p.Changes, "Compose source") {
+		p.Changes = append(p.Changes, "Compose source")
+	}
+	if old.InlineDockerfile != next.InlineDockerfile && !slices.Contains(p.Changes, "Dockerfile source") {
+		p.Changes = append(p.Changes, "Dockerfile source")
 	}
 	if !reflect.DeepEqual(old.Variables, next.Variables) {
 		p.Changes = append(p.Changes, "Environment variables")

@@ -21,6 +21,7 @@ test("System tokens, notification choices and responsive diagnostics", async({pa
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   await login(page);await page.getByRole("link",{name:"System",exact:true}).click();
   await expect(page).toHaveTitle("System | Shipper");await expect(page.getByRole("heading",{name:"Health",exact:true})).toBeVisible();
+  await page.getByRole("link",{name:"Access tokens",exact:true}).click();await expect(page.getByRole("heading",{name:"Health",exact:true})).toHaveCount(0);
   await page.getByText("Create token",{exact:true}).first().click();
   await page.getByLabel("Name",{exact:true}).fill("Read-only test automation");
   await page.getByLabel("Application",{exact:true}).selectOption("application-web");
@@ -33,9 +34,10 @@ test("System tokens, notification choices and responsive diagnostics", async({pa
   await page.getByRole("row").filter({hasText:"Read-only test automation"}).getByRole("button",{name:"Revoke",exact:true}).click();
   await expect(page.getByRole("row").filter({hasText:"Read-only test automation"})).toHaveCount(0);
   expect((await page.request.get("/api/v1/capabilities",{headers:{Authorization:"Bearer "+raw}})).status()).toBe(401);
-  await page.getByLabel("Enabled",{exact:true}).check();await page.getByLabel("Delivery",{exact:true}).selectOption("email");await expect(page.getByLabel("SMTP host",{exact:true})).toBeVisible();await page.getByLabel("Delivery",{exact:true}).selectOption("webhook");await expect(page.getByLabel("Webhook URL",{exact:true})).toBeVisible();
+  await page.getByRole("link",{name:"Notifications",exact:true}).click();
+  await page.getByLabel("Enabled",{exact:true}).check();await page.getByRole("radio",{name:"Email",exact:true}).check();await expect(page.getByLabel("SMTP host",{exact:true})).toBeVisible();await page.getByRole("radio",{name:"Webhook",exact:true}).check();await expect(page.getByLabel("Webhook URL",{exact:true})).toBeVisible();
   await page.getByLabel("Enabled",{exact:true}).uncheck();
-  await page.locator("summary").filter({hasText:"Create token"}).click();await page.locator(".page-scroll").evaluate(el=>el.scrollTop=0);
+  await page.getByRole("link",{name:"Overview",exact:true}).click();await page.locator(".page-scroll").evaluate(el=>el.scrollTop=0);
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-system.png"),fullPage:true});
   await page.setViewportSize({width:390,height:844});await expect(page.getByRole("heading",{name:"System",exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-system-mobile.png"),fullPage:true});
@@ -68,7 +70,32 @@ test("Compose overview service logs survive inventory refreshes without replay",
 });
 
 test("Local folder source can be reviewed without connecting Git",async({page})=>{
- await login(page);await page.goto("/new");await page.getByRole("button",{name:"More sources",exact:true}).click();await page.getByRole("radio",{name:"Local files",exact:true}).check();
- const directory=await mkdtemp(join(tmpdir(),"shipper-folder-test-"));folders.push(directory);await writeFile(join(directory,"index.html"),"local folder fixture");await writeFile(join(directory,".env"),"SECRET=must-not-upload");await writeFile(join(directory,".vpsenv"),"DUMMY=must-not-upload");await page.getByLabel("Project folder").setInputFiles(directory);
+ await login(page);await page.goto("/new");await page.getByRole("radio",{name:"Local files",exact:true}).check();
+ const directory=await mkdtemp(join(tmpdir(),"shipper-folder-test-"));folders.push(directory);await writeFile(join(directory,"index.html"),"local folder fixture");await writeFile(join(directory,"compose.yaml"),"services:\n  web:\n    image: nginx:alpine\n    expose: ['80']\n");await writeFile(join(directory,".env"),"SECRET=must-not-upload");await writeFile(join(directory,".vpsenv"),"DUMMY=must-not-upload");await page.getByLabel("Project folder").setInputFiles(directory);
  await expect(page.locator(".source-file-list")).toContainText("index.html");await expect(page.locator(".source-file-list")).not.toContainText(".env");await expect(page.locator(".source-file-list")).not.toContainText(".vpsenv");await page.getByRole("button",{name:"Use these files",exact:true}).click();await expect(page.locator(".local-source-input>.mono")).toHaveText(/^[a-f0-9]{12}$/);await expect(page.getByRole("textbox",{name:"Repository URL",exact:true})).toHaveCount(0);await page.getByRole("button",{name:"Review with defaults",exact:true}).click();await expect(page.locator(".creation-review")).toContainText("Static site (automatic)");await expect(page.locator(".creation-review")).toContainText("Snapshot");await page.screenshot({path:join(tmpdir(),"shipper-phase95-local-review.png")});
+ await page.getByRole("button",{name:"Edit configuration",exact:true}).click();
+ await page.getByRole("radio",{name:"Docker Compose",exact:true}).check();
+ await page.getByRole("button",{name:"Preview services",exact:true}).click();
+ await expect(page.locator(".creation-services")).toContainText("nginx:alpine");
+ await expect(page.getByLabel("Compose file",{exact:true})).toHaveValue("compose.yaml");
+ await page.getByRole("button",{name:"Review deployment",exact:true}).click();
+ await expect(page.locator(".creation-review")).toContainText("Docker Compose");
+ await expect(page.locator(".creation-review")).toContainText("Snapshot");
+ await page.getByRole("button",{name:"Edit source",exact:true}).click();
+ await page.getByRole("radio",{name:"Git repository",exact:true}).check();
+ const repository="https://github.com/example/compose-demo.git", commit="9".repeat(40);
+ await page.route("**/api/repositories/inspect",route=>route.fulfill({json:{method:"dockerfile",commit:"8".repeat(40),variables:[]}}));
+ await page.route("**/api/compose/preview",route=>{
+   expect(route.request().postDataJSON().config).toMatchObject({repository,branch:"develop",method:"compose",composeSource:"git",composeFile:"deploy/compose.yaml"});
+   return route.fulfill({json:{commit,composeFile:"deploy/compose.yaml",files:["deploy/compose.yaml"],services:[{name:"web",image:"nginx:alpine",port:80,volumes:[]}]}});
+ });
+ await page.getByLabel("Repository URL",{exact:true}).fill(repository);
+ await page.getByLabel("Branch or commit",{exact:true}).fill("develop");
+ await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await page.getByRole("radio",{name:"Docker Compose",exact:true}).check();
+ await page.getByLabel("Compose file",{exact:true}).fill("deploy/compose.yaml");
+ await page.getByRole("button",{name:"Review deployment",exact:true}).click();
+ await expect(page.locator(".creation-review")).toContainText(repository);
+ await expect(page.locator(".creation-review")).toContainText(commit.slice(0,12));
+ await expect(page.locator(".creation-review")).toContainText("deploy/compose.yaml");
 });

@@ -6,6 +6,7 @@ import type { Application, StaticConfig, Variable } from "../types";
 import { clearDraft, readDraft, saveDraft, saveVolatileDraft } from "../drafts";
 import { emptyVariable, looksLikeEnvironment, mergeEnvironment, parseEnvironment, variableHasContent, variableSignature, variablesForSave } from "../env";
 import { Button, ErrorNotice, IconButton } from "./Controls";
+import { SegmentedChoice } from "./Choices";
 
 type Options = { index: number; left: number; top: number; trigger: HTMLButtonElement };
 
@@ -95,7 +96,7 @@ export default function Variables(props: { application: Application; busy: boole
     </div>}</Index></div></div>
     <Show when={!props.embedded}><div class="form-actions"><Show when={!props.service&&(props.application.config.repository||props.application.config.localSource)}><Button variant="ghost" disabled={props.busy||saving()} onClick={()=>void findMissing()}>Find missing variables</Button></Show><Button type="submit" icon="deploy" disabled={props.busy || saving() || !dirty()}>{saving() ? "Saving" : "Review changes"}</Button></div></Show>
     <Show when={options()}>{opened => <Portal><div ref={panel} class="variable-menu" role="dialog" aria-label={"Options for " + (items()[opened().index]?.name || "variable")} style={{ left: opened().left + "px", top: opened().top + "px" }}>
-      <Show when={!props.service && props.application.config.method !== "compose"}><label for={id + "-scope"}>Available during</label><select id={id + "-scope"} class="input" value={items()[opened().index]?.scope || "both"} onChange={event => update(opened().index, { scope: event.currentTarget.value as Variable["scope"] })}><option value="both">Build and runtime</option><option value="runtime">Runtime</option><option value="build">Build</option></select></Show>
+      <Show when={!props.service && props.application.config.method !== "compose"}><SegmentedChoice<Variable["scope"]> label="Available during" value={items()[opened().index]?.scope || "both"} choices={[{value:"both",label:"Build and runtime"},{value:"runtime",label:"Runtime"},{value:"build",label:"Build"}]} change={scope => update(opened().index, { scope })} /></Show>
       <label class="check-field"><input type="checkbox" checked={items()[opened().index]?.secret} onChange={event => update(opened().index, { secret: event.currentTarget.checked })} />Secret</label>
       <div class="variable-menu-actions"><Show when={items()[opened().index]?.secret || (items()[opened().index]?.keep && !items()[opened().index]?.value)}><Button variant="ghost" icon="eye" disabled={revealing()} onClick={() => void reveal(opened().index)}>{visible()[opened().index] ? "Hide value" : "Reveal value"}</Button></Show><Button variant="ghost" icon="refresh" onClick={()=>generate(opened().index)}>Generate value</Button><Button variant="ghost" icon="trash" class="danger-button" onClick={() => remove(opened().index)}>Remove variable</Button></div>
     </div></Portal>}</Show>

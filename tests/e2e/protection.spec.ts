@@ -24,6 +24,13 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   ).toBeVisible();
   await page.goto("/settings#recovery");
   const recovery = page.locator("#recovery");
+  const restoreSteps = recovery.locator("summary").filter({ hasText: "Recover an installation" });
+  await expect(recovery.getByText("Empty data directory", { exact: true })).toBeHidden();
+  await restoreSteps.focus();
+  await restoreSteps.press("Enter");
+  await expect(recovery.getByText("Empty data directory", { exact: true })).toBeVisible();
+  await restoreSteps.click();
+  await expect(recovery.getByText("Empty data directory", { exact: true })).toBeHidden();
   await recovery
     .getByRole("button", { name: "New backup", exact: true })
     .click();

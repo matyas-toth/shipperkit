@@ -1,12 +1,13 @@
-import { Show, createSignal } from "solid-js";
 import type { StaticConfig } from "../types";
 import { ChoiceCards, type Choice } from "./Choices";
 
-type Build = "static" | "dockerfile" | "railpack";
+type Build = "auto" | "static" | "dockerfile" | "railpack" | "compose";
 const choices: readonly Choice<Build>[] = [
+  { value: "auto", label: "Automatic", icon: "sliders" },
   { value: "dockerfile", label: "Dockerfile", icon: "code" },
   { value: "railpack", label: "Railpack", icon: "box" },
   { value: "static", label: "Static site", icon: "globe" },
+  { value: "compose", label: "Docker Compose", icon: "layers" },
 ];
 export const methodLabel = (method: StaticConfig["method"]) => ({
   auto: "Automatic", dockerfile: "Dockerfile", railpack: "Railpack", static: "Static site",
@@ -15,23 +16,16 @@ export const methodLabel = (method: StaticConfig["method"]) => ({
 
 export default function BuildMethod(props: {
   value: StaticConfig["method"];
-  detected?: Build;
+  detected?: Exclude<Build, "auto">;
+  allowCompose?: boolean;
   change: (method: StaticConfig["method"]) => void;
 }) {
-  const [choosing, setChoosing] = createSignal(props.value !== "auto");
-  const override = () => choosing() || props.value !== "auto";
-  return <div class="build-method">
-    <div class="build-mode">
-      <div class="segments" role="group" aria-label="Build selection">
-        <button type="button" aria-pressed={!override()} onClick={() => { setChoosing(false); props.change("auto"); }}>Automatic</button>
-        <button type="button" aria-pressed={override()} onClick={() => setChoosing(true)}>Choose method</button>
-      </div>
-      <Show when={!override() && props.detected}><span class="detected-method">{methodLabel(props.detected!)} <span>recommended</span></span></Show>
-    </div>
-    <Show when={override()}>
-      <ChoiceCards<Build> label="Build method" value={props.value as Build}
-        choices={choices.map(choice => ({ ...choice, recommended: choice.value === props.detected }))}
-        change={props.change} />
-    </Show>
-  </div>;
+  const methods = choices.map(choice => ({
+    ...choice,
+    get recommended() { return choice.value === props.detected; },
+    get detail() { return choice.value === "auto" && props.detected ? methodLabel(props.detected) : undefined; },
+  }));
+  return <ChoiceCards<Build> label="Build method" value={props.value as Build}
+    choices={methods.filter(c => props.allowCompose || c.value !== "compose")}
+    change={props.change} />;
 }

@@ -4,7 +4,7 @@ import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application, Service, StaticConfig } from "../types";
 import { bytes, formatDuration } from "../data";
-import { Button, ErrorNotice, IconButton, Status } from "./Controls";
+import { Button, Disclosure, ErrorNotice, IconButton, Status } from "./Controls";
 import SchedulePicker from "./SchedulePicker";
 import { ChoiceCards } from "./Choices";
 
@@ -348,7 +348,7 @@ export default function Backups(props: {
               Import backup
             </Button>
           </Show>
-          <Button icon="plus" onClick={create} disabled={busy()}>
+          <Button variant="primary" icon="plus" onClick={create} disabled={busy()}>
             New backup
           </Button>
         </div>
@@ -373,8 +373,7 @@ export default function Backups(props: {
             </dd>
           </div>
         </dl>
-        <details class="configuration">
-          <summary>Recover an installation</summary>
+        <Disclosure label="Recover an installation" icon="terminal" class="recovery-disclosure">
           <pre class="recovery-command"><code>shipper restore --archive backup.age --identity shipper-recovery-key.txt --data-dir /new/shipper</code></pre>
           <dl class="settings-group">
             <div class="setting-row">
@@ -394,7 +393,7 @@ export default function Backups(props: {
               <dd>Separate database and volume backups</dd>
             </div>
           </dl>
-        </details>
+        </Disclosure>
       </Show>
       <Show when={importing()}>
         <form class="backup-editor" onSubmit={importFile}>

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { post } from "../api";
 import { useAuth } from "../context";
 import { Button, ErrorNotice, IconButton } from "./Controls";
+import { ChoiceCards } from "./Choices";
 import type { Connection } from "../types";
 import { useConnections } from "./SourceFields";
 export default function Connections() {
@@ -13,6 +14,7 @@ export default function Connections() {
     [busy, setBusy] = createSignal(false),
     [editing, setEditing] = createSignal(false),
     [editingId, setEditingId] = createSignal(""),
+    [disconnect, setDisconnect] = createSignal<Connection>(),
     [webhook, setWebhook] = createSignal<{ secret: string; path: string }>(),
     [kind, setKind] = createSignal("github_token"),
     [name, setName] = createSignal(""),
@@ -161,8 +163,7 @@ export default function Connections() {
                     <IconButton
                       icon="trash"
                       label={"Disconnect " + c.name}
-                      ghost
-                      onClick={() => void remove(c.id)}
+                      onClick={() => setDisconnect(c)}
                     />
                   </td>
                 </tr>
@@ -176,6 +177,11 @@ export default function Connections() {
           </tbody>
         </table>
       </div>
+      <Show when={disconnect()}>{item => <div class="inline-confirm" role="group" aria-label="Disconnect connection">
+        <strong>Disconnect {item().name}?</strong>
+        <Button variant="ghost" onClick={() => setDisconnect(undefined)}>Cancel</Button>
+        <Button class="danger-button" onClick={async () => { const id = item().id; setDisconnect(undefined); await remove(id); }}>Disconnect</Button>
+      </div>}</Show>
       <Show when={webhook()}>
         {(value) => (
           <div class="form-fields connection-form">
@@ -203,10 +209,10 @@ export default function Connections() {
         when={editing()}
         fallback={
           <Button
-            variant="ghost"
             icon="plus"
             onClick={() => {
               setEditingId("");
+              setKind("github_token");
  setUsername("");setAllowPrivate(false);
               setName("");
               setToken("");
@@ -221,18 +227,13 @@ export default function Connections() {
       >
         <form onSubmit={save} class="connection-form">
           <div class="form-fields">
-            <label for="connection-kind">Provider</label>
-            <select
-              id="connection-kind"
-              class="input"
-              disabled={!!editingId()}
-              value={kind()}
-              onChange={(e) => setKind(e.currentTarget.value)}
-            >
-              <option value="github_token">GitHub token</option>
-              <option value="github_app">Existing GitHub App</option>
-              <option value="registry">Container registry</option>
-            </select>
+            <Show when={!editingId()}>
+              <ChoiceCards label="Provider" value={kind()} change={setKind} choices={[
+                {value:"github_token",label:"GitHub token",icon:"git"},
+                {value:"github_app",label:"Existing GitHub App",icon:"layers"},
+                {value:"registry",label:"Container registry",icon:"box"},
+              ]} />
+            </Show>
             <label for="connection-name">Name</label>
             <input
               id="connection-name"

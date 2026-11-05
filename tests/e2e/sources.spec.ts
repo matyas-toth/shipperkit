@@ -85,16 +85,15 @@ test("connections, private repository selection, immutable queue controls and im
   await expect(
     page.getByLabel("Branch or commit", { exact: true }),
   ).toHaveValue("main");
-  await page.getByLabel("Branch or commit", { exact: true }).fill("develop");
+  await page.getByRole("button", { name: "Browse branches", exact: true }).click();
+  await page.getByRole("group", { name: "Branches", exact: true }).getByRole("button", { name: "develop", exact: true }).click();
+  await expect(page.getByLabel("Branch or commit", { exact: true })).toHaveValue("develop");
   await expect(
     page
       .getByLabel("Repository", { exact: true })
       .locator('option[value="https://github.com/northstar/worker.git"]'),
   ).toHaveCount(1);
 
-  await page.getByText("Automatic deployments", { exact: true }).click();
-  await page.getByLabel("Deploy on push", { exact: true }).check();
-  await page.getByLabel("Watch paths", { exact: true }).fill("apps/web/**");
   await page.screenshot({
     path: join(tmpdir(), "shipper-phase6-private-source.png"),
   });
@@ -199,7 +198,11 @@ test("connections, private repository selection, immutable queue controls and im
     const input = r.request().postDataJSON();
     return r.fulfill({json:{name:input.name,config:input.config,applicationId:"d".repeat(24),revision:"fixture",commit:input.commit}});
   });
-  await page.getByRole("button", { name: "Review with defaults", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByText("Automatic deployments", { exact: true }).click();
+  await page.getByLabel("Deploy on push", { exact: true }).check();
+  await page.getByLabel("Watch paths", { exact: true }).fill("apps/web/**");
+  await page.getByRole("button", { name: "Review deployment", exact: true }).click();
   await expect(page.locator(".creation-review")).toContainText("Dockerfile (automatic)");
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await expect(

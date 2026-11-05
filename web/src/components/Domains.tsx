@@ -1,40 +1,119 @@
 import DomainOptions from "./DomainOptions";
-import { For, Index, Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application, Domain, ProxyConfig, Service } from "../types";
 import { domainURL } from "../data";
-import { Button, ErrorNotice, IconButton } from "./Controls";
+import { Button, ErrorNotice, IconButton, Status, validateForm } from "./Controls";
+import { Icon } from "./Icon";
 
-export default function Domains(props: { application: Application; proxy?: ProxyConfig; services?: Service[]; service?: string; busy: boolean; save: (domains: Domain[]) => Promise<void> }) {
-  const auth = useAuth(), [domains, setDomains] = createSignal<Domain[]>([...(props.application.domains ?? []).filter(d => !props.service || d.service === props.service)]), [hostname, setHostname] = createSignal(""), [lookup, setLookup] = createSignal(""), [httpsChoice, setHTTPS] = createSignal<boolean>(), [www, setWWW] = createSignal(false), [error, setError] = createSignal(""), [checks, setChecks] = createSignal<Record<string, boolean>>({});
+export default function Domains(props: { application: Application; proxy?: ProxyConfig; services?: Service[]; service?: string; busy: boolean; save: (domains: Domain[]) => Promise<void>; configureService?: () => void }) {
+  const saved = () => (props.application.domains ?? []).filter(d => !props.service || d.service === props.service);
+  const auth = useAuth(), [domains, setDomains] = createSignal<Domain[]>(saved()), [hostname, setHostname] = createSignal(""), [lookup, setLookup] = createSignal(""), [httpsChoice, setHTTPS] = createSignal<boolean>(), [www, setWWW] = createSignal(false), [error, setError] = createSignal(""), [checks, setChecks] = createSignal<Record<string, boolean>>({});
+  const ids = createMemo(() => domains().map(d => d.id));
+  const route = (d: Domain) => JSON.stringify([d.id, d.hostname, d.service || "", d.https, d.primary, d.redirect, d.pathPrefix || "", !!d.stripPrefix, !!d.compress, !!d.maintenance, Object.entries(d.responseHeaders ?? {}).sort()]);
+  const fingerprint = (items: Domain[]) => items.map(route).sort().join("\n");
+  const dirty = () => fingerprint(domains()) !== fingerprint(saved());
+  const compose = () => props.application.method === "compose";
+  const availableServices = () => props.services?.filter(s => s.port > 0 && !s.oneShot) ?? [];
+  const pickService = () => compose() && !props.service;
+  const canAdd = () => !compose() || (props.service ? availableServices().some(s => s.name === props.service) : availableServices().length > 0);
   const https = () => httpsChoice() ?? (!!props.proxy?.autoHTTPS && !!props.proxy?.acmeEmail);
   createEffect(() => { const name = hostname();const timer = setTimeout(() => setLookup(name), 250);onCleanup(() => clearTimeout(timer)); });
-  const [service, setService] = createSignal(props.service || props.services?.find(s => s.port)?.name || "");
+  const [selectedService, setService] = createSignal("");
+  const service = () => props.service || selectedService() || availableServices()[0]?.name || "";
   const options = createQuery(() => ({ queryKey: ["domain-options", lookup()], queryFn: () => api<{ canIncludeWWW: boolean }>("/domain-options?hostname=" + encodeURIComponent(lookup())), enabled: lookup().includes("."), staleTime: 60000 }));
   function update(id: string, value: Partial<Domain>) { setDomains(current => current.map(d => d.id === id ? { ...d, ...value, verificationState: "", message: "" } : d)); }
   function primary(id: string) { setDomains(current => { const target = current.find(d => d.id === id);return current.map(d => d.service === target?.service ? { ...d, primary: d.id === id, redirect: d.id === id ? false : d.redirect } : d); }); }
   function add() {
-    const name = hostname().trim().toLowerCase();if (!name) return;const entries: Domain[] = [{ id: crypto.randomUUID(), hostname: name, https: https() && !name.endsWith(".localhost"), primary: !domains().some(d => d.service === (service() || undefined)), service: service() || undefined, redirect: false }];if (www() && options.data?.canIncludeWWW) entries.push({ id: crypto.randomUUID(), hostname: "www." + name, https: https(), service: service() || undefined, primary: false, redirect: true });setDomains(current => [...current, ...entries]);setHostname("");setWWW(false);setHTTPS(undefined);
+    const name = hostname().trim().toLowerCase();
+    if (!name || !canAdd() || props.busy) return;
+    setError("");
+    const alias = www() && options.data?.canIncludeWWW && lookup() === hostname();
+    if ((props.application.domains ?? []).some(d => props.service && d.service !== props.service && (d.hostname === name || alias && d.hostname === "www." + name)) ||
+      domains().some(d => d.hostname === name || alias && d.hostname === "www." + name)) {
+      setError("This domain is already listed"); return;
+    }
+    const target = compose() ? service() || undefined : undefined;
+    const entries: Domain[] = [{ id: crypto.randomUUID(), hostname: name, https: https() && !name.endsWith(".localhost"), primary: !domains().some(d => d.service === target), service: target, redirect: false }];
+    if (alias) entries.push({ id: crypto.randomUUID(), hostname: "www." + name, https: https(), service: target, primary: false, redirect: true });
+    setDomains(current => [...current, ...entries]); setHostname(""); setWWW(false); setHTTPS(undefined);
   }
-  async function save(e: SubmitEvent) { e.preventDefault();setError("");try { await props.save(props.service ? [...props.application.domains.filter(d => d.service !== props.service), ...domains()] : domains()); } catch (e) { setError((e as Error).message); } }
+  async function save(e: SubmitEvent) { e.preventDefault(); if (!dirty() || props.busy || !validateForm(e.currentTarget as HTMLFormElement)) return;setError("");try { await props.save(props.service ? [...(props.application.domains ?? []).filter(d => d.service !== props.service), ...domains()] : domains()); } catch (e) { setError((e as Error).message); } }
   async function verify(domain: Domain) { setChecks(value => ({ ...value, [domain.id]: true }));setError("");try { await post(`/applications/${props.application.id}/domain-check`, { domainId: domain.id }, auth.session()?.csrfToken); } catch (e) { setError((e as Error).message); }finally { setChecks(value => ({ ...value, [domain.id]: false })); } }
-  const availableServices = () => props.services?.filter(s => s.port > 0) ?? [];
-  const stored = (domain: Domain) => props.application.domains?.find(d => d.id === domain.id && d.hostname === domain.hostname && d.https === domain.https && d.service === domain.service);
-  return <form onSubmit={save} class="domains-panel"><Show when={error()}><ErrorNotice message={error()} /></Show><Show when={props.application.latestDeployment?.operation === "domains" && props.application.latestDeployment.state === "failed"}><ErrorNotice message={props.application.latestDeployment!.error} /></Show>
-    <div class="domain-add"><Show when={props.application.method === "compose" && !props.service}><select class="input domain-service" aria-label="Domain service" value={service()} onChange={e => setService(e.currentTarget.value)}><option value="">Choose service</option><For each={availableServices()}>{s => <option value={s.name}>{s.name}</option>}</For></select></Show><label class="sr-only" for="new-domain">New domain</label><input class="input" id="new-domain" placeholder="app.example.com" value={hostname()} onInput={e => setHostname(e.currentTarget.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault();add(); } }} /><label class="check-field"><input type="checkbox" checked={https() && !hostname().endsWith(".localhost")} disabled={!props.proxy?.acmeEmail || hostname().endsWith(".localhost")} onChange={e => setHTTPS(e.currentTarget.checked)} />HTTPS</label><Show when={options.data?.canIncludeWWW && lookup() === hostname()}><label class="check-field"><input type="checkbox" checked={www()} onChange={e => setWWW(e.currentTarget.checked)} />Include www</label></Show><Button icon="plus" onClick={add} disabled={!hostname().trim() || props.busy || (props.application.method === "compose" && !service())}>Add domain</Button></div>
-    <div class="table-tray domains-tray" classList={{ "service-domains": props.application.method === "compose" && !props.service }}><div class="domains-header"><span>Domain</span><Show when={props.application.method === "compose" && !props.service}><span>Service</span></Show><span>HTTPS</span><span>Primary</span><span>Redirect</span><span>Verification</span><span /></div><div class="domains-body"><Index each={domains()}>{domain => <div class="domain-row">
-      <input class="input" aria-label={"Hostname " + domain().hostname} value={domain().hostname} required onInput={e => update(domain().id, { hostname: e.currentTarget.value.trim().toLowerCase() })} />
-      <Show when={props.application.method === "compose" && !props.service}><select class="input" aria-label={"Service for " + domain().hostname} value={domain().service || ""} onChange={e => update(domain().id, { service: e.currentTarget.value, primary: false, redirect: false })}><For each={availableServices()}>{s => <option value={s.name}>{s.name}</option>}</For></select></Show>
-      <label class="domain-check-control"><input type="checkbox" aria-label={"HTTPS for " + domain().hostname} checked={domain().https} disabled={!props.proxy?.acmeEmail || domain().hostname.endsWith(".localhost")} onChange={e => update(domain().id, { https: e.currentTarget.checked })} /><span>HTTPS</span></label>
-      <label class="domain-check-control"><input type="radio" name={"primary-domain-" + (domain().service || "app")} aria-label={"Primary " + domain().hostname} checked={domain().primary} onChange={() => primary(domain().id)} /><span>Primary</span></label>
-      <label class="domain-check-control"><input type="checkbox" aria-label={"Redirect " + domain().hostname} checked={domain().redirect} disabled={domain().primary} onChange={e => update(domain().id, { redirect: e.currentTarget.checked })} /><span>Redirect</span></label>
-      <Button small variant="ghost" aria-label={"Verify " + domain().hostname} icon={stored(domain())?.verificationState === "verified" ? "check" : "refresh"} disabled={checks()[domain().id] || !stored(domain()) || !props.application.activeDeploymentId || props.busy} onClick={() => void verify(domain())}>{checks()[domain().id] ? "Checking" : stored(domain())?.verificationState === "verified" ? "Verified" : "Verify"}</Button>
-      <IconButton icon="trash" label={"Remove " + domain().hostname} ghost onClick={() => setDomains(current => { const next = current.filter(d => d.id !== domain().id);const group = next.filter(d => d.service === domain().service);if (group.length && !group.some(d => d.primary)) group[0].primary = true;return next; })} />
-      <DomainOptions domain={domain()} stored={stored(domain())} change={value=>update(domain().id,value)}/><Show when={stored(domain())?.message && stored(domain())?.verificationState !== "verified"}><div class="domain-row-error" role="status">{stored(domain())?.message}</div></Show>
-    </div>}</Index><Show when={!domains().length}><div class="domain-empty">No domains</div></Show></div></div>
-    <div class="form-actions"><Button type="submit" icon="check" disabled={props.busy}>Save domains</Button></div>
-    <Show when={props.application.activeDeploymentId}><div class="domain-links"><For each={props.application.domains?.filter(d => !props.service || d.service === props.service)}>{d => <a class="inline-link" href={domainURL(d, props.proxy)} target="_blank" rel="noreferrer">{d.hostname}</a>}</For></div></Show>
+  const savedHost = (domain: Domain) => saved().find(d => d.id === domain.id && d.hostname === domain.hostname && d.https === domain.https && d.service === domain.service);
+  const stored = (domain: Domain) => savedHost(domain) && saved().find(d => route(d) === route(domain));
+  function remove(id: string) {
+    const item = domains().find(d => d.id === id);
+    if (!item) return;
+    setDomains(current => {
+      const next = current.filter(d => d.id !== id), group = next.filter(d => d.service === item.service);
+      return group.length && !group.some(d => d.primary)
+        ? next.map(d => d.id === group[0].id ? { ...d, primary: true, redirect: false } : d) : next;
+    });
+  }
+  function move(id: string, target: string) {
+    const previous = domains().find(d => d.id === id);
+    if (!previous || previous.service === target) return;
+    const remaining = domains().find(d => d.id !== id && d.service === previous.service);
+    const destination = domains().some(d => d.id !== id && d.service === target);
+    setDomains(items => items.map(d => {
+      if (d.id === id) return { ...d, service: target, primary: !destination, redirect: false };
+      if (previous.primary && d.id === remaining?.id) return { ...d, primary: true, redirect: false };
+      return d;
+    }));
+  }
+  return <form noValidate onSubmit={save} class="domains-panel"><Show when={error()}><ErrorNotice message={error()} /></Show><Show when={props.application.latestDeployment?.operation === "domains" && props.application.latestDeployment.state === "failed"}><ErrorNotice message={props.application.latestDeployment!.error} /></Show>
+    <h2>Domains</h2>
+    <Show when={canAdd()} fallback={<div class="domain-unavailable"><span>No HTTP port configured</span><Show when={props.configureService}><Button icon="settings" onClick={() => props.configureService?.()}>Service settings</Button></Show></div>}>
+      <div class="domain-add">
+        <Show when={pickService()}><select class="input domain-service" aria-label="Domain service" value={service()} onChange={e => setService(e.currentTarget.value)}><option value="" disabled>Choose service</option><For each={availableServices()}>{s => <option value={s.name}>{s.name}</option>}</For></select></Show>
+        <label class="sr-only" for="new-domain">New domain</label><input class="input" id="new-domain" placeholder="app.example.com" value={hostname()} onInput={e => { setHostname(e.currentTarget.value); setWWW(false); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
+        <Show when={hostname() && props.proxy?.acmeEmail && !hostname().endsWith(".localhost")}><label class="check-field"><input type="checkbox" checked={https()} onChange={e => setHTTPS(e.currentTarget.checked)} />HTTPS</label></Show>
+        <Show when={options.data?.canIncludeWWW && lookup() === hostname()}><label class="check-field"><input type="checkbox" checked={www()} onChange={e => setWWW(e.currentTarget.checked)} />Include www</label></Show>
+        <Button icon="plus" onClick={add} disabled={!hostname().trim() || props.busy || compose() && !service()}>Add domain</Button>
+      </div>
+    </Show>
+    <div class="domain-list"><For each={ids()}>{id => {
+      const domain = createMemo<Domain>(previous => domains().find(d => d.id === id) ?? previous, domains().find(d => d.id === id)!);
+      const verified = () => stored(domain())?.verificationState === "verified";
+      return <article class="domain-card">
+        <header class="domain-card-heading">
+          <div class="domain-identity">
+            <Show when={stored(domain()) && props.application.activeDeploymentId} fallback={<strong>{domain().hostname}</strong>}>
+              <a class="inline-link" href={domainURL(domain(), props.proxy)} target="_blank" rel="noreferrer">{domain().hostname}<Icon name="external" /></a>
+            </Show>
+            <div class="domain-facts">
+              <Show when={pickService() && domain().service}><span>{domain().service}</span></Show>
+              <span>{domain().https ? "HTTPS" : "HTTP"}</span>
+              <Show when={domain().primary}><span>Primary</span></Show>
+              <Show when={domain().redirect}><span>Redirect</span></Show>
+              <Show when={verified()}><Status value="running" label="Verified" /></Show>
+              <Show when={!stored(domain())}><Status value="queued" label="Unsaved" /></Show>
+            </div>
+          </div>
+          <div class="toolbar-actions">
+            <Button small aria-label={"Verify " + domain().hostname} icon="refresh" disabled={checks()[id] || !stored(domain()) || !props.application.activeDeploymentId || props.busy} onClick={() => void verify(domain())}>{checks()[id] ? "Checking" : verified() ? "Recheck" : "Verify"}</Button>
+            <IconButton icon="trash" label={"Remove " + domain().hostname} onClick={() => remove(id)} />
+          </div>
+        </header>
+        <Show when={stored(domain())?.message && !verified()}><div class="domain-row-error" role="status">{stored(domain())?.message}</div></Show>
+        <details class="configuration domain-editor">
+          <summary aria-label={"Edit " + domain().hostname}>Edit domain</summary>
+          <div class="form-fields configuration-fields">
+            <label for={"host-" + id}>Hostname</label><input id={"host-" + id} class="input" aria-label={"Hostname " + domain().hostname} value={domain().hostname} required onInput={e => update(id, { hostname: e.currentTarget.value.trim().toLowerCase(), ...(e.currentTarget.value.endsWith(".localhost") ? { https: false } : {}) })} />
+            <Show when={pickService()}><label for={"service-" + id}>Service</label><select id={"service-" + id} class="input" aria-label={"Service for " + domain().hostname} value={domain().service || ""} onChange={e => move(id, e.currentTarget.value)}><For each={availableServices()}>{s => <option value={s.name}>{s.name}</option>}</For></select></Show>
+            <div class="domain-toggles">
+              <Show when={props.proxy?.acmeEmail || domain().https}><label class="check-field"><input type="checkbox" aria-label={"HTTPS for " + domain().hostname} checked={domain().https} disabled={domain().hostname.endsWith(".localhost")} onChange={e => update(id, { https: e.currentTarget.checked })} />HTTPS</label></Show>
+              <label class="check-field"><input type="radio" name={"primary-domain-" + (domain().service || "app")} aria-label={"Primary " + domain().hostname} checked={domain().primary} onChange={() => primary(id)} />Primary domain</label>
+              <Show when={!domain().primary}><label class="check-field"><input type="checkbox" aria-label={"Redirect " + domain().hostname} checked={domain().redirect} onChange={e => update(id, { redirect: e.currentTarget.checked })} />Redirect to primary</label></Show>
+            </div>
+          </div>
+          <DomainOptions domain={domain()} stored={savedHost(domain())} change={value => update(id, value)} />
+        </details>
+      </article>;
+    }}</For><Show when={!domains().length && canAdd()}><div class="empty-state">No domains</div></Show></div>
+    <Show when={domains().length || dirty()}><div class="form-actions"><Button variant="primary" type="submit" icon="check" disabled={props.busy || !dirty()}>Save domains</Button></div></Show>
   </form>;
 }

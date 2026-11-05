@@ -2,7 +2,7 @@ import { Show, createSignal } from "solid-js";
 import { post } from "../api";
 import { useAuth } from "../context";
 import type { StaticConfig } from "../types";
-import { Button, ErrorNotice } from "./Controls";
+import { Button, Disclosure, ErrorNotice } from "./Controls";
 export function AutomaticDeployFields(props: {
   config: StaticConfig;
   change: (key: keyof StaticConfig, value: unknown) => void;
@@ -85,8 +85,8 @@ export default function DeploymentTriggers(props: { applicationId: string }) {
     }
   }
   return (
-    <details class="configuration deploy-token">
-      <summary>Deploy token</summary>
+    <Disclosure label="Deploy token" icon="plug" class="deploy-token">
+      <div class="app-settings-disclosure-body">
       <Show when={error()}>
         <ErrorNotice message={error()} />
       </Show>
@@ -124,6 +124,7 @@ export default function DeploymentTriggers(props: { applicationId: string }) {
           Generate token
         </Button>
       </div>
-    </details>
+      </div>
+    </Disclosure>
   );
 }
