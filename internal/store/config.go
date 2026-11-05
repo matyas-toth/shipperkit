@@ -236,6 +236,13 @@ func PublicApplication(a Application) Application {
 }
 func PublicDeployment(d Deployment) Deployment { d.Config = PublicConfig(d.Config); return d }
 func MergeVariables(next *Config, old Config) error {
+	if next.CommandsKeep {
+		next.Hooks = old.Hooks
+		next.InstallCommand = old.InstallCommand
+		next.BuildCommand = old.BuildCommand
+		next.StartCommand = old.StartCommand
+		next.CommandsKeep = false
+	}
 	if next.InlineKeep {
 		next.InlineDockerfile = old.InlineDockerfile
 		next.InlineKeep = false

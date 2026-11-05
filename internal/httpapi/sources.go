@@ -192,6 +192,45 @@ func (s *Server) sourceBranches(w http.ResponseWriter, r *http.Request) {
 	s.json(w, 200, map[string]any{"items": names, "revisions": refs, "default": repo.DefaultBranch})
 }
 func (s *Server) validateSource(ctx context.Context, c *store.Config) error {
+	if p, _ := ctx.Value(automationKey).(*store.OperationToken); p != nil && len(p.Applications) > 0 {
+		id, _ := ctx.Value(automationAppKey).(string)
+		a, e := s.db.Application(ctx, id)
+		if e != nil {
+			return errors.New("Choose an authorized application")
+		}
+		normalize := func(v string) string {
+			return strings.TrimSuffix(strings.TrimSuffix(strings.ToLower(strings.TrimSpace(v)), "/"), ".git")
+		}
+		if c.SourceID != "" && (c.SourceID != a.Config.SourceID || normalize(c.Repository) != normalize(a.Config.Repository)) {
+			return errors.New("An application token can only use its existing private repository connection")
+		}
+		if c.RegistryID != "" && c.RegistryID != a.Config.RegistryID {
+			return errors.New("An application token can only use its existing registry connection")
+		}
+		if c.RegistryID != "" && c.Method == "image" {
+			next, err := deploy.ImageReference(c.Image)
+			old, oldErr := deploy.ImageReference(a.Config.Image)
+			if err != nil || oldErr != nil || next.Name() != old.Name() {
+				return errors.New("An application token can only change tags or digests within its existing private image repository")
+			}
+		}
+	}
+	if c.LocalSource != "" {
+		v, e := s.db.SourceSnapshot(ctx, c.LocalSource)
+		if e != nil {
+			return errors.New("Local source is unavailable")
+		}
+		if session, ok := ctx.Value(sessionKey).(store.Session); ok && v.OwnerID != session.User.ID {
+			return errors.New("Local source is unavailable to this account")
+		}
+		if p, _ := ctx.Value(automationKey).(*store.OperationToken); p != nil && !p.Allows("deploy", v.ApplicationID) {
+			return errors.New("Local source is outside this token's applications")
+		}
+		if c.Method == "image" || c.Method == "inline" || c.Method == "compose" && c.ComposeSource == "paste" {
+			return errors.New("Choose a build method for the local source")
+		}
+		return nil
+	}
 	if c.Method == "inline" {
 		return nil
 	}

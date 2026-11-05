@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -21,20 +22,37 @@ import (
 
 	"golang.org/x/term"
 	"shipper/internal/auth"
+	"shipper/internal/cli"
 	"shipper/internal/deploy"
 	"shipper/internal/engine"
 	"shipper/internal/events"
 	"shipper/internal/httpapi"
 	"shipper/internal/inventory"
+	"shipper/internal/operations"
 	"shipper/internal/store"
 	"shipper/internal/ui"
 )
 
-var version = "0.8.0-dev"
+var version = "0.9.0-dev"
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error("Shipper stopped", "error", err)
+		structured := false
+		for _, arg := range os.Args[1:] {
+			structured = structured || arg == "--json"
+		}
+		if structured {
+			var apiError *cli.APIError
+			if errors.As(err, &apiError) {
+				json.NewEncoder(os.Stderr).Encode(map[string]any{"error": apiError})
+			} else {
+				json.NewEncoder(os.Stderr).Encode(map[string]any{"error": map[string]string{"code": "command_failed", "message": err.Error()}})
+			}
+		} else if len(os.Args) > 1 {
+			slog.Error("Shipper command failed", "error", err)
+		} else {
+			slog.Error("Shipper stopped", "error", err)
+		}
 		os.Exit(1)
 	}
 }
@@ -47,6 +65,8 @@ func env(key, fallback string) string {
 func run() error {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "connect", "apps", "inspect", "doctor", "plan", "deploy", "watch", "logs", "rollback", "task":
+			return cli.Run(os.Args[1:], os.Stdout)
 		case "version":
 			fmt.Println(version)
 			return nil
@@ -69,7 +89,7 @@ func run() error {
 		case "healthcheck":
 			return healthcheck()
 		case "help", "--help", "-h":
-			fmt.Println("Usage: shipper [version|healthcheck|reset-password|restore]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, DOCKER_HOST")
+			fmt.Println("Usage: shipper [connect|apps|inspect|doctor|plan|deploy|watch|logs|rollback|task|version|healthcheck|reset-password|restore]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, DOCKER_HOST")
 			return nil
 		case "reset-password":
 		default:
@@ -183,6 +203,12 @@ func run() error {
 	}
 	worker := deploy.NewWorker(db, &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig, DataDir: dataDir}, hub, dataDir)
 	worker.Refresh = monitor.Trigger
+	operator := &operations.Service{DB: db, Docker: docker.Client(), Monitor: monitor, Instance: instance, DataDir: dataDir}
+	worker.Operations = operator.Run
+	worker.Maintenance = operator.ProcessMaintenance
+	operator.RepairProxy = worker.RepairProxy
+	proxyIdentity, _ := json.Marshal(proxyConfig)
+	operator.ConfigIdentity = string(proxyIdentity)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	monitorDone := make(chan struct{})
@@ -190,7 +216,7 @@ func run() error {
 	workerDone := make(chan struct{})
 	go func() { defer close(workerDone); worker.Run(ctx) }()
 	addr := env("SHIPPER_ADDR", "127.0.0.1:8080")
-	server := &http.Server{Addr: addr, Handler: httpapi.New(db, monitor, hub, httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig}), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: addr, Handler: httpapi.New(db, monitor, hub, httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, Operations: operator}), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	serverErrors := make(chan error, 1)
 	go func() { serverErrors <- server.ListenAndServe() }()
 	slog.Info("Shipper is listening", "address", addr, "version", version)

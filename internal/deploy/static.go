@@ -74,6 +74,12 @@ func Validate(c *store.StaticConfig) error {
 		return nil
 	}
 	c.Repository = strings.TrimSpace(c.Repository)
+	if c.LocalSource != "" {
+		if c.SourceID != "" || c.Repository != "" || c.AutoDeploy.Enabled {
+			return errors.New("Local source cannot also use Git automation")
+		}
+		c.Repository = "https://local.shipper.invalid/source"
+	}
 	u, e := url.Parse(c.Repository)
 	if e != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Port() != "" && u.Port() != "443") || len(c.Repository) > 2048 {
 		return errors.New("Enter a public HTTPS Git repository URL")
@@ -94,6 +100,10 @@ func Validate(c *store.StaticConfig) error {
 		return errors.New("Enter a valid Git branch or full commit SHA")
 	}
 	c.PublishDirectory = strings.TrimSpace(c.PublishDirectory)
+	if c.LocalSource != "" {
+		c.Repository = ""
+		c.Branch = ""
+	}
 	if c.PublishDirectory == "" {
 		c.PublishDirectory = "."
 	}

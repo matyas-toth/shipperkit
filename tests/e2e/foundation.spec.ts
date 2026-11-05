@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 const token = "shipper-browser-test-setup-token-00000000000000000000000000000000";
 const account = { email: "owner@example.test", password: "shipper-browser-test-password" };
 test.beforeEach(async({page})=>{
+ await page.route("**/api/applications/compose-browser/diagnostics",r=>r.fulfill({json:{checks:[],observations:[],changesSinceServing:[],unknowns:[]}}));
+ await page.route("**/api/applications/compose-browser/incidents",r=>r.fulfill({json:{items:[]}}));
  await page.route("**/api/applications/*/changes",r=>r.fulfill({json:{operation:"recreate",changes:["Environment variables"],revision:"browser-review-fixture"}}));
 });
 test.afterEach(async({page})=>{await page.unrouteAll({behavior:"wait"});});

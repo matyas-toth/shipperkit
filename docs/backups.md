@@ -167,7 +167,8 @@ give Shipper access only to its chosen backup prefix.
 
 History distinguishes **Backed up**, an **Uploaded** off-server copy, and restore
 verification. The latest failure and overdue/freshness information stay in context.
-Broader notification/outbox and stale-protection alert policy belongs to Phase 9.
+Phase 9 adds transition notifications and observed backup freshness through the
+shared [operations](operations.md) collector/outbox.
 
 ## Validation
 
@@ -184,3 +185,14 @@ Cloud-provider interoperability, real public ACME/domain recovery and the planne
 Contabo distribution matrix still require the real-system acceptance lab. MongoDB,
 SQLite, ClickHouse, Redis-family policies, generic SQL imports, application cloning
 and Coolify migration remain P8.3 later parity.
+
+## Phase 9 local sources and automation
+
+Version 0.9.0 instance bundles include referenced immutable local sources in an
+integrity-checked inner archive. Recovery verifies every referenced source digest,
+revokes operations tokens, interrupts maintenance and disables notifications and
+automatic cleanup. Application image transport is still separate from source/state
+recovery; rebuilding a local source no longer depends on a lost developer machine.
+Use a matching archive/schema version for offline recovery, then follow the tested
+upgrade path. The new operations outbox reports backup failure/recovery and overdue
+protection; see [operations](operations.md).

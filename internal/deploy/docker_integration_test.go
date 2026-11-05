@@ -1,6 +1,8 @@
 package deploy
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -25,6 +27,8 @@ import (
 	"shipper/internal/auth"
 	"shipper/internal/engine"
 	"shipper/internal/events"
+	"shipper/internal/inventory"
+	"shipper/internal/operations"
 	"shipper/internal/store"
 )
 
@@ -246,6 +250,64 @@ func TestDockerStaticPipeline(t *testing.T) {
 	if len(fromGit.Commit) != 40 {
 		t.Fatal("Git revision was not recorded", fromGit.Commit)
 	}
+	activeRelease := fromGit
+	t.Run("immutable local source and operational observations", func(t *testing.T) {
+		var archive bytes.Buffer
+		writer := tar.NewWriter(&archive)
+		content := "<h1>Shipper local source fixture</h1>"
+		writer.WriteHeader(&tar.Header{Name: "index.html", Size: int64(len(content)), Mode: 0644})
+		writer.Write([]byte(content))
+		writer.Close()
+		source, e := db.AcceptSource(ctx, &archive, "owner", app.ID, "local integration")
+		if e != nil {
+			t.Fatal(e)
+		}
+		local := c
+		local.Repository = ""
+		local.Branch = ""
+		local.LocalSource = source.ID
+		w.Source = ConnectedSource{DB: db}
+		result := deploySite(local)
+		if result.Commit != source.Digest {
+			t.Fatal("Local source digest not recorded", result.Commit)
+		}
+		if code, body, release := request("/"); code != 200 || !strings.Contains(body, "Shipper local source fixture") || release != result.ID {
+			t.Fatal(code, body, release)
+		}
+		docker.Instance = instance
+		monitor := inventory.New(docker, db, events.New())
+		if e = monitor.Reconcile(ctx); e != nil {
+			t.Fatal(e)
+		}
+		operator := operations.Service{DB: db, Docker: docker.Client(), Monitor: monitor, Instance: instance, DataDir: dir}
+		operator.Collect(ctx)
+		facts, e := db.Observations(ctx, app.ID)
+		if e != nil {
+			t.Fatal(e)
+		}
+		found := false
+		for _, v := range facts {
+			if v.Kind == "service" && v.Reference == result.ContainerID {
+				found = true
+				if !strings.Contains(string(v.Details), "memoryBytes") {
+					t.Fatal(v)
+				}
+			}
+		}
+		if !found {
+			t.Fatal("Runtime observation missing", facts)
+		}
+		plan, e := operator.Retention(ctx)
+		if e != nil {
+			t.Fatal(e)
+		}
+		for _, image := range plan.Images {
+			if image.ID == result.ImageID || image.ID == fromGit.ImageID {
+				t.Fatal("Retention includes recorded release")
+			}
+		}
+		activeRelease = result
+	})
 	current, _ = db.Application(ctx, app.ID)
 	// Verify TLS with a generated trust anchor, without disabling certificate checks.
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -259,7 +321,7 @@ func TestDockerStaticPipeline(t *testing.T) {
 	if e = runtime.copy(ctx, runtime.proxy(), "/data", map[string][]byte{"test.crt": cert, "test.key": pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: private})}); e != nil {
 		t.Fatal(e)
 	}
-	secure := fromGit
+	secure := activeRelease
 	secure.Config.HTTPS = true
 	secureApp := current
 	secureApp.Domains = append([]store.Domain(nil), current.Domains...)
@@ -293,7 +355,7 @@ func TestDockerStaticPipeline(t *testing.T) {
 		res, e := secureClient.Do(req)
 		if e == nil {
 			res.Body.Close()
-			if res.StatusCode == 200 && res.Header.Get("X-Shipper-Deployment") == fromGit.ID {
+			if res.StatusCode == 200 && res.Header.Get("X-Shipper-Deployment") == activeRelease.ID {
 				verified = true
 				break
 			}
@@ -366,7 +428,7 @@ func TestDockerStaticPipeline(t *testing.T) {
 	runtime.Config.DashboardContainer = ""
 	runtime.Config.DashboardURL = ""
 	runtime.Config.DashboardUpstream = ""
-	if e := runtime.Routes(ctx, []store.Application{current}, map[string]store.Deployment{app.ID: fromGit}); e != nil {
+	if e := runtime.Routes(ctx, []store.Application{current}, map[string]store.Deployment{app.ID: activeRelease}); e != nil {
 		t.Fatal(e)
 	}
 	// Proxy routes survive a proxy restart without needing Shipper to supply them.
@@ -380,7 +442,7 @@ func TestDockerStaticPipeline(t *testing.T) {
 		res, e := http.DefaultClient.Do(req)
 		if e == nil {
 			res.Body.Close()
-			if res.StatusCode == 200 && res.Header.Get("X-Shipper-Deployment") == fromGit.ID {
+			if res.StatusCode == 200 && res.Header.Get("X-Shipper-Deployment") == activeRelease.ID {
 				ready = true
 				break
 			}

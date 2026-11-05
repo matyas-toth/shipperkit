@@ -201,7 +201,7 @@ func (s *Server) tokenDeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cfg.Worker.Trigger()
-	s.json(w, 202, store.PublicDeployment(d))
+	s.json(w, 202, publicDeployment(r, d))
 }
 func (s *Server) cancelDeployment(w http.ResponseWriter, r *http.Request) {
 	if e := s.db.CancelDeployment(r.Context(), chi.URLParam(r, "id"), chi.URLParam(r, "deployment")); e != nil {
@@ -229,7 +229,7 @@ func (s *Server) retryDeployment(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 409, "not_retryable", "This operation cannot be retried")
 		return
 	}
-	if old.Commit == "" && old.Config.Method != "image" && old.Config.Method != "inline" {
+	if old.Commit == "" && old.Config.LocalSource == "" && old.Config.Method != "image" && old.Config.Method != "inline" {
 		s.problem(w, 409, "revision_unknown", "Redeploy to resolve a revision for this source")
 		return
 	}

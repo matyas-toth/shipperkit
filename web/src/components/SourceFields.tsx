@@ -56,7 +56,7 @@ export function GitConnectionFields(props: {
           </a>
         }
       >
-        <label for="source-connection">Source</label>
+        <label for="source-connection">Connection</label>
         <select
           id="source-connection"
           class="input"

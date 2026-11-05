@@ -10,6 +10,8 @@ import (
 )
 
 type ChangePlan struct {
+	Effects   []string `json:"effects,omitempty"`
+	Downtime  string   `json:"downtime,omitempty"`
 	Operation string   `json:"operation"`
 	Changes   []string `json:"changes"`
 	Revision  string   `json:"revision"`
@@ -81,6 +83,25 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	old = comparisonConfig(old)
 	next = comparisonConfig(next)
 	p := ChangePlan{Operation: "recreate", Changes: []string{}}
+	p.Effects = []string{"Preserve persistent data and current domains"}
+	if next.Method == "compose" {
+		p.Downtime = "Possible during Compose reconciliation"
+		p.Effects = append(p.Effects, "Reconcile declared Compose services")
+	} else {
+		p.Downtime = "Readiness checks precede traffic promotion"
+	}
+	if len(next.Hooks) > 0 {
+		p.Effects = append(p.Effects, "Run declared lifecycle commands; data changes are not reversed by release rollback")
+	}
+	for _, volume := range next.Volumes {
+		found := false
+		for _, v := range old.Volumes {
+			found = found || v.Name == volume.Name
+		}
+		if !found {
+			p.Effects = append(p.Effects, "Create or attach persistent volume "+volume.Name)
+		}
+	}
 	for key := range old.VolumeSources {
 		if next.VolumeSources[key] == "" {
 			p.Operation = "rebuild"
@@ -125,7 +146,7 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	var left, right map[string]any
 	json.Unmarshal(a, &left)
 	json.Unmarshal(b, &right)
-	labels := map[string]string{"runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
+	labels := map[string]string{"localSource": "Source files", "runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
 	for key, label := range labels {
 		if !reflect.DeepEqual(left[key], right[key]) {
 			p.Changes = append(p.Changes, label)
@@ -148,6 +169,10 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	}
 	if p.Operation != "none" && len(p.Changes) == 0 {
 		p.Changes = append(p.Changes, "Configuration")
+	}
+	if p.Operation == "none" || p.Operation == "metadata" {
+		p.Effects = []string{"Keep workloads unchanged"}
+		p.Downtime = "No workload restart"
 	}
 	return p
 }

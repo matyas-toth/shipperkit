@@ -25,6 +25,7 @@ import (
 	"shipper/internal/events"
 	"shipper/internal/gitprovider"
 	"shipper/internal/inventory"
+	"shipper/internal/operations"
 	"shipper/internal/store"
 )
 
@@ -39,6 +40,7 @@ type Config struct {
 	InstanceID string
 	Worker     *deploy.Worker
 	Proxy      deploy.ProxyConfig
+	Operations *operations.Service
 }
 type Server struct {
 	github          *gitprovider.GitHub
@@ -76,6 +78,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		r.With(s.limit, s.hashCapacity).Post("/auth/login", s.login)
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireSession)
+			s.operationsRoutes(r)
 			s.protectionRoutes(r)
 			r.Get("/containers", s.containers)
 			r.Get("/applications", s.applications)
@@ -133,7 +136,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		})
 	})
 	r.Handle("/*", cfg.Assets)
-	return r
+	return s.automation(r)
 }
 func (s *Server) headers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +177,7 @@ func (s *Server) origin(next http.Handler) http.Handler {
 		}
 		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
 			kind, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if kind != "application/json" && !(kind == "multipart/form-data" && strings.HasSuffix(r.URL.Path, "/protection/import")) {
+			if kind != "application/json" && !(kind == "application/x-tar" && r.URL.Path == "/api/sources") && !(kind == "multipart/form-data" && strings.HasSuffix(r.URL.Path, "/protection/import")) {
 				s.problem(w, 415, "json_required", "Send the request as JSON")
 				return
 			}
@@ -184,6 +187,10 @@ func (s *Server) origin(next http.Handler) http.Handler {
 }
 func (s *Server) requireSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if principal(r) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
 		session, err := s.session(r)
 		if err != nil {
 			s.problem(w, 401, "unauthenticated", "Sign in to continue")
@@ -194,6 +201,10 @@ func (s *Server) requireSession(next http.Handler) http.Handler {
 }
 func (s *Server) csrf(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if principal(r) != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
 		session := r.Context().Value(sessionKey).(store.Session)
 		if !auth.Equal(r.Header.Get("X-CSRF-Token"), session.CSRF) {
 			s.problem(w, 403, "csrf_invalid", "Refresh the page and try again")
@@ -203,6 +214,10 @@ func (s *Server) csrf(next http.Handler) http.Handler {
 	})
 }
 func (s *Server) session(r *http.Request) (store.Session, error) {
+	if principal(r) != nil {
+		t, e := s.db.OperationToken(r.Context(), strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		return store.Session{User: store.User{ID: t.UserID}, ExpiresAt: t.ExpiresAt}, e
+	}
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
 		return store.Session{}, err
@@ -349,7 +364,21 @@ func (s *Server) applications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i := range items {
-		items[i] = store.PublicApplication(items[i])
+		items[i] = publicApplication(r, items[i])
+	}
+	if p := principal(r); p != nil {
+		filtered := []store.Application{}
+		for _, a := range items {
+			if p.Allows("read", a.ID) {
+				filtered = append(filtered, a)
+			}
+		}
+		items = filtered
+		if len(p.Applications) > 0 {
+			h := s.monitor.Health()
+			s.json(w, 200, map[string]any{"items": items, "docker": map[string]any{"connected": h.Connected, "checkedAt": h.CheckedAt, "observedAt": h.ObservedAt}})
+			return
+		}
 	}
 	s.json(w, 200, map[string]any{"items": items, "docker": s.monitor.Health()})
 }
@@ -408,6 +437,7 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (s *Server) json(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(value)

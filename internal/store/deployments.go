@@ -33,24 +33,16 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		return d, err
 	}
 	defer tx.Rollback()
-	canonical := a.Config
-	scope := a.ID
-	if create {
-		scope = ""
-		if canonical.Domain == a.ID+".localhost" {
-			canonical.Domain = ""
+	if a.Config.LocalSource != "" {
+		var n int
+		if e := tx.QueryRowContext(ctx, "SELECT count(*) FROM source_snapshots WHERE id=? AND deleting=0", a.Config.LocalSource).Scan(&n); e != nil {
+			return d, e
+		}
+		if n != 1 {
+			return d, errors.New("Local source is unavailable; upload it again")
 		}
 	}
-	payload, _ := json.Marshal(struct {
-		Name, ApplicationID, Operation, Service, Revision, Rollback string
-		Create, NoCache                                             bool
-		TaskID                                                      string
-		TaskCommand                                                 *Command
-		Config                                                      StaticConfig
-	}{a.Name, scope, d.Operation, d.Service, d.Commit, d.RollbackID, create, d.NoCache, d.TaskID, d.TaskCommand, canonical})
-	mac := hmac.New(sha256.New, s.signingKey)
-	mac.Write(payload)
-	fingerprint := fmt.Sprintf("%x", mac.Sum(nil))
+	fingerprint := s.requestFingerprint(a, d, create)
 	if requestKey != "" {
 		old, e := s.scanDeployment(tx.QueryRowContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE request_key=?", requestKey))
 		if e == nil {
@@ -68,6 +60,16 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		}
 	}
 	now := time.Now().Unix()
+	if a.Config.LocalSource != "" {
+		result, e := tx.ExecContext(ctx, "UPDATE source_snapshots SET application_id=? WHERE id=? AND deleting=0 AND (application_id='' OR application_id=?)", a.ID, a.Config.LocalSource, a.ID)
+		if e != nil {
+			return d, e
+		}
+		n, _ := result.RowsAffected()
+		if n != 1 {
+			return d, errors.New("Local source belongs to another application")
+		}
+	}
 	cfg, err := s.marshalConfig(a.Config)
 	if err != nil {
 		return d, err
@@ -246,6 +248,19 @@ func (s *Store) SaveDeployment(ctx context.Context, d Deployment) error {
 		if n == 0 {
 			return ErrCancelled
 		}
+		state := d.State
+		if state == "succeeded" {
+			state = "healthy"
+		}
+		if state == "interrupted" {
+			state = "failed"
+		}
+		err = s.Observe(ctx, Observation{ID: "operation/" + d.ApplicationID, ApplicationID: d.ApplicationID, Kind: func() string {
+			if d.Operation == "task" {
+				return "task"
+			}
+			return "deployment"
+		}(), State: state, Summary: "Latest " + d.Operation + " is " + d.State, Reference: d.ID})
 	}
 	return err
 }
@@ -300,6 +315,9 @@ func (s *Store) ReleaseLease(ctx context.Context, owner string) {
 }
 
 func sourceKind(c Config) string {
+	if c.LocalSource != "" {
+		return "local"
+	}
 	if c.Method == "image" {
 		return "image"
 	}
@@ -322,9 +340,88 @@ func (s *Store) ConfigRevision(a Application) string {
 	return fmt.Sprintf("%x", mac.Sum(nil))
 }
 
+// ChangeRevision binds the proposed inputs as well as the current serving state.
+func (s *Store) ChangeRevision(current, next Application) string {
+	data, _ := json.Marshal(struct {
+		Current string
+		Next    Application
+	}{s.ConfigRevision(current), Application{ID: next.ID, Name: next.Name, Config: next.Config}})
+	mac := hmac.New(sha256.New, s.signingKey)
+	mac.Write(data)
+	return fmt.Sprintf("%x", mac.Sum(nil))
+}
+
+func (s *Store) TailLogs(ctx context.Context, id string, limit int) ([]LogLine, error) {
+	limit = min(max(limit, 1), 100)
+	rows, e := s.db.QueryContext(ctx, `SELECT seq,step,line,created_at,number FROM (SELECT seq,step,line,created_at,ROW_NUMBER() OVER (ORDER BY seq) AS number FROM deployment_logs WHERE deployment_id=?) ORDER BY seq DESC LIMIT ?`, id, limit)
+	if e != nil {
+		return nil, e
+	}
+	defer rows.Close()
+	out := []LogLine{}
+	for rows.Next() {
+		var l LogLine
+		if e = rows.Scan(&l.Sequence, &l.Step, &l.Line, &l.CreatedAt, &l.Number); e != nil {
+			return nil, e
+		}
+		out = append(out, l)
+	}
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out, rows.Err()
+}
+
 func sourceRef(c Config) string {
+	if c.LocalSource != "" {
+		return c.LocalSource
+	}
 	if c.Method == "image" {
 		return c.Image
 	}
 	return c.Repository
+}
+
+func (s *Store) requestFingerprint(a Application, d Deployment, create bool) string {
+	canonical := a.Config
+	scope := a.ID
+	if create {
+		scope = ""
+		if canonical.Domain == a.ID+".localhost" {
+			canonical.Domain = ""
+		}
+	}
+	payload, _ := json.Marshal(struct {
+		Name, ApplicationID, Operation, Service, Revision, Rollback string
+		Create, NoCache                                             bool
+		TaskID                                                      string
+		TaskCommand                                                 *Command
+		Config                                                      StaticConfig
+	}{a.Name, scope, d.Operation, d.Service, d.Commit, d.RollbackID, create, d.NoCache, d.TaskID, d.TaskCommand, canonical})
+	mac := hmac.New(sha256.New, s.signingKey)
+	mac.Write(payload)
+	return fmt.Sprintf("%x", mac.Sum(nil))
+}
+
+func (s *Store) ReplayRequest(ctx context.Context, key string, a Application, d Deployment, create ...bool) (Deployment, bool, error) {
+	if key == "" {
+		return Deployment{}, false, nil
+	}
+	old, e := s.scanDeployment(s.db.QueryRowContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE request_key=?", key))
+	if errors.Is(e, sql.ErrNoRows) {
+		return Deployment{}, false, nil
+	}
+	if e != nil {
+		return Deployment{}, false, e
+	}
+	var original string
+	e = s.db.QueryRowContext(ctx, "SELECT request_fingerprint FROM deployments WHERE id=?", old.ID).Scan(&original)
+	if e != nil {
+		return Deployment{}, false, e
+	}
+	d.Operation = old.Operation
+	if original != s.requestFingerprint(a, d, len(create) > 0 && create[0]) {
+		return Deployment{}, false, ErrIdempotencyConflict
+	}
+	return old, true, nil
 }

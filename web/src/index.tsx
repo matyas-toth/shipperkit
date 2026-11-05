@@ -9,6 +9,7 @@ import AuthPage from "./pages/Auth";
 import Shell from "./components/Shell";
 import Applications from "./pages/Applications";
 import Settings from "./pages/Settings";
+import System from "./pages/System";
 import NewApplication from "./pages/NewApplication";
 import Application from "./pages/Application";
 import { Button, ErrorNotice } from "./components/Controls";
@@ -32,7 +33,7 @@ function App() {
     <Show when={!session.isPending} fallback={<div class="boot-screen" role="status" aria-label="Loading Shipper"><span class="loading-line" /></div>}>
       <Show when={!session.error} fallback={<div class="boot-screen"><ErrorNotice message={session.error?.message ?? "Shipper could not be reached"} retry={() => void session.refetch()} /></div>}>
         <Show when={session.data?.user} fallback={<AuthPage setup={session.data?.setupRequired ?? false} onAuthenticated={value => queryClient.setQueryData(["session"], value)} refreshSession={() => session.refetch()} />}>
-          <Router root={Shell}><Route path="/" component={Applications} /><Route path="/settings" component={Settings} />
+          <Router root={Shell}><Route path="/" component={Applications} /><Route path="/settings" component={Settings} /><Route path="/system" component={System}/>
             <Route path="/new" component={NewApplication} /><Route path="/applications/:id" component={Application} />
             <Route path="*404" component={() => <div class="content content-narrow"><h1>Page not found</h1><Button onClick={() => window.location.assign("/")}>Applications</Button></div>} />
           </Router>

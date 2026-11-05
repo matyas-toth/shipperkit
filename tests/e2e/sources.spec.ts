@@ -77,7 +77,7 @@ test("connections, private repository selection, immutable queue controls and im
   await page.goto("/new");
   await page.getByLabel("Name", { exact: true }).fill("Fieldnotes");
   await page
-    .getByLabel("Source", { exact: true })
+    .getByLabel("Connection", { exact: true })
     .selectOption("github-fixture");
   await page
     .getByLabel("Repository", { exact: true })

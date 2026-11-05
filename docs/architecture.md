@@ -210,3 +210,28 @@ and validates the whole archive before any workload mutation. Database copies an
 new retained volumes preserve originals; reviewed configuration changes perform the
 application switch. Offline instance recovery only installs into an empty directory
 and pauses schedules, push automation and captured work. See [operations](backups.md).
+
+## Phase 9 shared operations
+
+`internal/operations` collects bounded Docker/data-filesystem facts and delivers
+transition notifications inside the existing control plane. Its observation loop
+belongs to the deployment worker's renewable lease and stops before that lease is
+released. Durable maintenance records use the same serialized worker, rather than
+introducing another daemon or execution queue service. Observation transitions and
+the notification outbox share a transaction. Deployment state remains independently
+recoverable; periodic reconciliation repairs the latest observed condition.
+
+`internal/cli` is a thin client of allowlisted `/api/v1` handlers. Expiring hashed
+operations tokens carry capabilities and optional application scope. Session UI
+and automation share validation, source/configuration review, idempotency and job
+execution. Sensitive command projections use retention metadata, like masked
+variables, so a permitted configuration round trip does not accidentally remove
+commands the caller cannot read.
+
+Immutable local-source adapters reuse existing builders and Compose loading.
+Archive authentication/ownership, regular-file/path bounds, quotas and content
+digests precede use. Retained inputs participate in instance recovery. Source
+cleanup and operation enqueue recheck references under serialized SQLite writes.
+The diagnostic playbook guides investigation; deterministic code retains all
+execution, permission and data-consistency decisions. See [the supported
+operations boundary](operations.md).

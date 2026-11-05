@@ -56,6 +56,33 @@ software producing a safe supported outcome.
 12. Exercise data-preserving uninstall and authorized cleanup; report manual
     SSH/provider intervention needed during any normal or exceptional operation.
 
+## Complementary manual and agent journeys
+
+Keep the entire matrix above. In addition, exercise the following P9/P10 workflow
+with an external coding agent and an ordinary repository. This is an acceptance
+plan, not a claim that CLI/bootstrap/local-upload support already exists.
+
+- Give only the authorized test VPS/SSH access, repository and test-domain/DNS
+  authority needed for the task. Record required human authorization separately
+  from avoidable setup questions; never grant access to unrelated infrastructure.
+- Bootstrap one fresh supported VPS through the same installer, verify host
+  identity, securely claim/pair management access, inspect the local project,
+  review effects, upload an immutable snapshot, deploy and watch the operation.
+- Verify the active release and declared readiness/routing/HTTPS/endpoint results
+  without dashboard navigation, GitHub connection or hand-configured Docker/proxy.
+  Record the vantage and limits of checks, including any external probe.
+- Repeat with wrong ports, missing variables, dependency readiness delays, failed
+  updates, low disk and interrupted uploads/watches. Exercise idempotent retry,
+  stale-plan rejection, unknown task outcomes and recovery while preserving data
+  and the previous healthy release where supported.
+- Run the equivalent installer/dashboard journey by hand without an agent or CLI.
+  Local-source apps remain inspectable and operable through the normal dashboard.
+- Record task completion, elapsed time, human interventions, operation/evidence
+  references, tool calls/tokens when available and resource/data preservation.
+  For comparative runs against direct SSH/Docker and Coolify, hold workloads,
+  server resources, permissions and agent/model versions equivalent; disclose
+  configuration differences and failure cases instead of claiming assumed wins.
+
 ## Evidence
 
 Record commit/artifact identity, OS/architecture/engine/Compose versions, setup,

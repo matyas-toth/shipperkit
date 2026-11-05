@@ -63,7 +63,7 @@ func Open(dir string) (*Store, error) {
 	_, keyError := os.Stat(keyFile)
 	if os.IsNotExist(keyError) {
 		var encrypted int
-		_ = db.QueryRow("SELECT (SELECT COUNT(*) FROM applications WHERE instr(config_json,'sealed:v1:')>0)+(SELECT COUNT(*) FROM deployments WHERE instr(config_json,'sealed:v1:')>0 OR instr(compose_plan,'sealed:v1:')>0)+(SELECT count(*) FROM tasks)+(SELECT count(*) FROM task_runs)+(SELECT count(*) FROM connections)+(SELECT count(*) FROM backup_plans)+(SELECT count(*) FROM backup_runs)+(SELECT count(*) FROM backup_destinations)+(SELECT count(*) FROM settings WHERE key='recovery_identity')").Scan(&encrypted)
+		_ = db.QueryRow("SELECT (SELECT COUNT(*) FROM applications WHERE instr(config_json,'sealed:v1:')>0)+(SELECT COUNT(*) FROM deployments WHERE instr(config_json,'sealed:v1:')>0 OR instr(compose_plan,'sealed:v1:')>0)+(SELECT count(*) FROM tasks)+(SELECT count(*) FROM task_runs)+(SELECT count(*) FROM connections)+(SELECT count(*) FROM backup_plans)+(SELECT count(*) FROM backup_runs)+(SELECT count(*) FROM backup_destinations)+(SELECT count(*) FROM settings WHERE instr(value,'sealed:v1:')>0)").Scan(&encrypted)
 		if encrypted > 0 {
 			db.Close()
 			return nil, errors.New("Restore encryption.key before opening encrypted application configuration")

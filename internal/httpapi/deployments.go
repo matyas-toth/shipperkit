@@ -36,16 +36,16 @@ func (s *Server) application(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for i := range ds {
-		ds[i] = store.PublicDeployment(ds[i])
+		ds[i] = publicDeployment(r, ds[i])
 	}
 	var active *store.Deployment
 	if a.ActiveDeploymentID != "" {
 		if d, e := s.db.Deployment(r.Context(), a.ActiveDeploymentID); e == nil {
-			public := store.PublicDeployment(d)
+			public := publicDeployment(r, d)
 			active = &public
 		}
 	}
-	s.json(w, 200, map[string]any{"application": store.PublicApplication(a), "deployments": ds, "activeDeployment": active})
+	s.json(w, 200, map[string]any{"application": publicApplication(r, a), "deployments": ds, "activeDeployment": active})
 }
 func (s *Server) resourceError(w http.ResponseWriter, e error) {
 	if errors.Is(e, sql.ErrNoRows) {
@@ -73,8 +73,10 @@ func (s *Server) deploymentLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 type applicationInput struct {
-	Name   string             `json:"name"`
-	Config store.StaticConfig `json:"config"`
+	ID       string             `json:"id,omitempty"`
+	Revision string             `json:"revision,omitempty"`
+	Name     string             `json:"name"`
+	Config   store.StaticConfig `json:"config"`
 }
 
 func validName(name string) bool {
@@ -162,7 +164,7 @@ func (s *Server) enqueueJob(w http.ResponseWriter, r *http.Request, a store.Appl
 	s.cfg.Worker.Trigger()
 	s.hub.Publish()
 	w.Header().Set("Location", "/api/applications/"+d.ApplicationID)
-	s.json(w, 202, store.PublicDeployment(d))
+	s.json(w, 202, publicDeployment(r, d))
 }
 func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 	if !s.mutationAvailable(w) {
@@ -173,9 +175,19 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a := store.Application{ID: auth.Token()[:24], Name: strings.TrimSpace(input.Name), Config: input.Config}
+	if input.ID != "" {
+		if !regexp.MustCompile(`^[a-f0-9]{24}$`).MatchString(input.ID) || input.Revision == "" {
+			s.problem(w, 422, "invalid_plan", "Use the identity and revision returned by plan")
+			return
+		}
+		a.ID = input.ID
+	}
 	if e := store.MergeVariables(&a.Config, store.Config{}); e != nil {
 		s.problem(w, 422, "invalid_variables", e.Error())
 		return
+	}
+	if a.Name == "" && a.Config.LocalSource != "" {
+		a.Name = "Local application"
 	}
 	if a.Name == "" && a.Config.Method == "compose" && a.Config.ComposeSource == "paste" {
 		a.Name = "Compose application"
@@ -200,6 +212,28 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 	if !s.validateComposeDomains(w, r, a.Config, a.Config.Domains, "") {
 		return
 	}
+	if a.Config.LocalSource != "" {
+		source, e := s.db.SourceSnapshot(r.Context(), a.Config.LocalSource)
+		if e != nil || source.ApplicationID != "" && source.ApplicationID != a.ID {
+			if e == nil && input.ID == "" && !strings.HasSuffix(r.URL.Path, "/plan") {
+				old, found, err := s.db.ReplayRequest(r.Context(), r.Header.Get("Idempotency-Key"), a, store.Deployment{Operation: "deploy"}, true)
+				if err == nil && found && old.ApplicationID == source.ApplicationID {
+					s.json(w, 202, publicDeployment(r, old))
+					return
+				}
+			}
+			s.problem(w, 403, "source_denied", "Upload a source for this application")
+			return
+		}
+	}
+	if strings.HasSuffix(r.URL.Path, "/plan") {
+		s.json(w, 200, map[string]any{"applicationId": a.ID, "revision": s.db.ChangeRevision(store.Application{}, a), "operation": "deploy", "config": store.PublicConfig(a.Config), "changes": []string{"Create application", "Build immutable source and start services", "Preserve declared persistent storage"}})
+		return
+	}
+	if input.ID != "" && input.Revision != s.db.ChangeRevision(store.Application{}, a) {
+		s.problem(w, 409, "configuration_changed", "The planned inputs changed; review again")
+		return
+	}
 	s.enqueue(w, r, a, "deploy", true)
 }
 func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +245,7 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") || a.Method == "" {
+	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline" && a.SourceKind != "local") || a.Method == "" {
 		s.problem(w, 422, "unsupported_method", "Only applications deployed by Shipper can be redeployed")
 		return
 	}
@@ -225,10 +259,6 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	current := a
-	if input.Revision != "" && input.Revision != s.db.ConfigRevision(a) {
-		s.problem(w, 409, "configuration_changed", "Configuration changed; review the changes again")
-		return
-	}
 	if input.Config != nil {
 		next := *input.Config
 		if (a.Config.Method == "compose") != (next.Method == "compose") {
@@ -277,6 +307,13 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 	if !s.validateComposeDomains(w, r, a.Config, a.Domains, a.ActiveDeploymentID) {
 		return
 	}
+	if a.Config.LocalSource != "" {
+		source, e := s.db.SourceSnapshot(r.Context(), a.Config.LocalSource)
+		if e != nil || source.ApplicationID != "" && source.ApplicationID != a.ID {
+			s.problem(w, 403, "source_denied", "Upload a source for this application")
+			return
+		}
+	}
 	if strings.HasSuffix(r.URL.Path, "/changes") {
 		old := current.Config
 		if current.ActiveDeploymentID != "" {
@@ -286,8 +323,17 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		}
 		old.AutoDeploy = current.Config.AutoDeploy
 		plan := deploy.PlanChanges(old, a.Config)
-		plan.Revision = s.db.ConfigRevision(current)
+		plan.Revision = s.db.ChangeRevision(current, a)
 		s.json(w, 200, plan)
+		return
+	}
+	if input.Revision != "" && input.Revision != s.db.ChangeRevision(current, a) {
+		old, found, err := s.db.ReplayRequest(r.Context(), r.Header.Get("Idempotency-Key"), a, store.Deployment{NoCache: input.NoCache})
+		if err == nil && found {
+			s.json(w, 202, publicDeployment(r, old))
+			return
+		}
+		s.problem(w, 409, "configuration_changed", "Configuration or planned inputs changed; review again")
 		return
 	}
 	operation := "deploy"
@@ -454,5 +500,5 @@ func (s *Server) deployment(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 404, "not_found", "The deployment was not found")
 		return
 	}
-	s.json(w, 200, store.PublicDeployment(d))
+	s.json(w, 200, publicDeployment(r, d))
 }

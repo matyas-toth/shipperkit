@@ -1,9 +1,9 @@
 # Roadmap
 
-Updated 2026-11-04. Phases 1–7 and the Phase 8 recovery core are implemented in 0.8.0.
-The next deliverables are operational visibility, a mandatory UI
-refactor, and a tested installation and server-care workflow. Phase 10 remains
-the single-server 1.0 release gate.
+Updated 2026-11-05. Phases 1–9 core are implemented in 0.9.0, including
+shared diagnostics/operations, a focused CLI and immutable local-project deployment.
+The next deliverables are the mandatory UI refactor and a tested installation and
+server-care workflow. Phase 10 remains the single-server 1.0 release gate.
 
 The [Coolify parity audit](../feature_parity.md) tracks eventual capability breadth.
 A smaller, dependable 1.0 takes priority over completing every parity milestone.
@@ -20,10 +20,28 @@ open Shipper, connect a source, and deploy. Routine deployment and server care
 should happen through Shipper without requiring Docker commands or repeated SSH
 sessions. This is planned behavior, not the current installation experience.
 
+The lightweight, information-dense Coolify alternative and agent-accessible
+deployment environment are complementary product paths. The dashboard remains a
+complete, fast way to perform supported everyday work by hand. A developer or
+external coding agent should also be able to take an ordinary local project to a
+verified, recoverable deployment without first opening the dashboard or connecting
+a Git provider. Both paths use the same application model and operation contracts;
+neither requires an AI subscription, embedded model or new infrastructure hierarchy.
+
 - Keep one implicit local server and one application model. An application can
   contain web services, workers and databases without becoming several resources.
 - Manage Shipper applications and the infrastructure required to run them. Do not
   adopt, expose or remove unrelated containers and data.
+- Keep Dockerfiles and Compose as ordinary, editable application definitions.
+  Support agent-authored definitions through the same validation as human input;
+  retain source detection, maintained examples and optional recipes for people
+  deploying by hand. A large catalog is not a prerequisite for broad app support.
+- Let external agents inspect projects, propose configuration and investigate
+  evidence. Shipper deterministically validates, executes, verifies and recovers
+  operations; deployment ordering and data protection never depend on a model.
+- Give UI, API, CLI and eventual MCP clients shared identities, permissions,
+  reviewed effects and durable results. Adapters must not introduce separate
+  deployment engines or let a token bypass application ownership checks.
 - Treat HTTPS as built-in infrastructure: seed the ACME contact automatically from
   the first administrator email, then handle issuance, renewal and recovery without
   a separate email field, certificate upload or recurring operator task.
@@ -38,6 +56,9 @@ sessions. This is planned behavior, not the current installation experience.
   daemon, queue or monitoring platform for each feature.
 - Make perceived speed an acceptance criterion: cached navigation, stable layouts,
   bounded data, incremental logs, immediate queue feedback and background work.
+- Make agent interactions efficient too: bounded summaries first, selective detail,
+  stable machine-readable output and operation watches instead of repeated full
+  inventory/log dumps. Collect only useful history within explicit resource budgets.
 - Follow DESIGN.md and AGENTS.md. Use components suited to the decision, concise
   labels and progressive disclosure. Do not compensate for confusing layouts with
   taglines or walls of helper text. Shared validation and operation contracts must
@@ -48,6 +69,24 @@ still owns the VPS account, billing, capacity decisions, domain ownership and
 application/data compatibility. Provider outages and unsupported host repairs
 need explicit diagnostics and a documented recovery path. DNS changes require
 operator action or a separately connected provider integration.
+
+### Complementary journeys and scope
+
+- Human: install, claim the administrator account, open the dashboard, select a
+  source, review relevant essentials and deploy; configure and operate everything
+  in application/service context without writing prompts or installing a CLI.
+- Developer/agent: securely connect to a supported installation, inspect or submit
+  a local project, review effects, deploy, watch the operation and verify its result.
+  P10 adds bootstrap of a fresh authorized VPS through the same installer.
+- Keep the existing source/provider, routing, recovery, collaboration, remote-host,
+  specialist compatibility and QoL backlog. The new path changes priority and
+  shared foundations without removing those commitments.
+- Prioritize a few complete workflows before broad CLI/MCP coverage. Specialized
+  data-consistency/restore adapters remain necessary even when agents can generate
+  database services. State clearly which recovery formats are actually supported.
+- Embedded AI chat, model hosting, arbitrary generated dashboard scripts and a
+  custom micro-VM/isolate runtime are outside the 1.0 core. Optional integrations
+  can extend the same contracts later without adding idle services by default.
 
 ## Phase 1: Foundation
 
@@ -154,9 +193,9 @@ can still require SSH or a provider console and must be documented.
 | 6 | GitHub private source/revision selection, signed push, cancel/retry and image workflows, with real-account acceptance | Additional providers, SSH/private Git hosts, previews and broad build inputs |
 | 7 | Common per-service routing/runtime controls, recorded rollback and VPS/dashboard HTTPS | Wildcard/custom certificates, general proxy overrides and specialist Docker/Compose/network compatibility |
 | 8 | Recoverable Shipper state/key/certificates, supported application-data backups, off-server copies, retention and tested restores | Every database adapter, general portability and Coolify migration |
-| 9 | Focused diagnostics, quiet actionable alerts, safe retention/server-care actions and scoped operations API | Full CLI/MCP, file browser, broad collectors/channels/traffic analytics and bulk operations |
+| 9 | Focused diagnostics/evidence, quiet actionable alerts, safe retention/server care, scoped operations API, a focused CLI and immutable local-project deployment | Full CLI/MCP coverage, file browser, broad collectors/channels/traffic analytics and bulk operations |
 | 9.5 | Adaptive creation flow, meaningful choice components, contextual settings, guided schedule picker and UI/performance regression checks | Broader optional organisation; mandatory hierarchy remains excluded |
-| 10 | One-command provisioning, first-admin ACME setup and built-in HTTPS, TOTP/enforcement, reboot recovery, tested updates/maintenance, real-system acceptance, recovery and data-preserving uninstall | Universal Linux support, VPS purchasing/provisioning, remote fleets and general host administration |
+| 10 | One-command installation and narrow authorized SSH bootstrap, first-admin ACME setup and built-in HTTPS, TOTP/enforcement, reboot recovery, tested updates/maintenance, human/agent acceptance, recovery and data-preserving uninstall | Universal Linux support, VPS purchasing/provisioning, remote fleets and general host administration |
 
 Phase 9.5 is mandatory even if every backend feature already works. Phase 10 is
 an acceptance gate, not just publishing an installer. Teams, remote targets,
@@ -249,49 +288,129 @@ ACME/domain recovery and distribution acceptance continue in the Phase 10 lab.
 ## Phase 9: Operations, diagnostics and bounded server care
 
 Outcome: explain a failure near the affected application, give an appropriate
-next action, and support the same authorized operations through the UI and API.
+next action, and support the same authorized operations through the UI, API and a
+focused CLI. Existing manual workflows remain first-class throughout this phase.
+
+Implementation: the 0.9.0 core is available within the [operations support
+boundary](operations.md). Dependency checks establish declared network/readiness
+prerequisites, not arbitrary application-protocol transactions. Proxy repair is
+reviewed and leased; boot/OS readiness and disruptive host maintenance are verified
+with the P10 installer. Local tests do not replace the real-VPS performance,
+SMTP/provider, public HTTPS or installation acceptance gate. Full CLI/MCP and the
+wider terminal/collector/channel backlog remain open.
 
 ### P9.1: Focused operations, required for 1.0
 
-- [ ] Bounded CPU/RAM/restart/OOM/disk observations and dependency connectivity checks
-- [ ] Distinguish build, task, readiness, routing, certificate, daemon and storage
+- [x] Bounded CPU/RAM/restart/OOM/disk observations and dependency connectivity checks
+- [x] Distinguish build, task, readiness, routing, certificate, daemon and storage
   failures; keep serving state separate from the latest deployment result
-- [ ] Focused failed-stage view with logs, exit status and duration
-- [ ] Pause/resume log following, useful search and bounded copy/export
-- [ ] A focused System area for the implicit host's health, storage, installed
-  versions, updates and recovery, without adding server-selection steps to apps
-- [ ] Recheck Docker/proxy/boot readiness and propose bounded repairs with actual
-  effects and results; disruptive host actions require explicit review
+- [x] Focused failed-stage view with logs, exit status and duration
+- [x] Pause/resume log following, useful search and bounded copy/export
+- [x] A focused System area for the implicit host's health, storage, installed
+  versions and recovery, without adding server-selection steps to apps
+- [ ] Complete update availability and installed boot-service reporting with P10
+- [x] Recheck Docker/proxy readiness and review bounded proxy repairs with actual
+  effects and results; installed boot checks and disruptive host care follow P10
+- [x] One bounded diagnostic report for desired configuration, serving release,
+  latest operation/failed stage, service health, dependencies, routing/DNS/TLS,
+  relevant resource pressure, backup freshness and changes since last success
+- [x] Summary-first JSON and human views with selective detail, stable evidence
+  references, observation timestamps, freshness and explicit unknown/unobserved
+  states. Separate observed facts from possible causes; redact sensitive material
+- [x] Separate build, start, readiness, route and endpoint verification results.
+  Respect workers/private services and configured authenticated health checks;
+  distinguish host-origin probes from independent external reachability evidence
+- [x] Versioned diagnostic playbooks describing how to gather and interpret facts;
+  playbooks do not replace deterministic validation, deployment or repair code.
+  Treat repository content and workload logs as untrusted data, not instructions
 
 ### P9.2: Events, protection and retention, required for 1.0
 
-- [ ] One durable event/outbox path for deploy, task, health, backup, disk,
+- [x] One durable event/outbox path for deploy, task, health, backup, disk,
   certificate and update failures, including recovery events
-- [ ] Webhook/email first, configurable event choices, delivery tests, deduplication
-  and quiet unchanged state; aggregate repeated failures instead of alert storms
-- [ ] Disk-pressure detection and previewable retention for eligible images, build
+- [x] Webhook/email first, configurable event choices, local delivery tests,
+  transition deduplication, quiet unchanged state and bounded retry batches
+- [ ] Verify real mailbox/provider delivery and repeated-failure aggregation
+- [x] Disk-pressure detection and previewable retention for eligible images, build
   cache, logs, samples and generated files, with narrowly scoped opt-in automation
-- [ ] Preserve active releases, configured rollback retention, live resources and
+- [x] Preserve active releases, configured rollback retention, live resources and
   persistent data; refuse cleanup when ownership or references cannot be proven
-- [ ] Measure idle cost, API latency, event delay and background-work limits
+- [x] Bound observation cycles, sample counts, delivery retries and retained history
+- [ ] Record idle cost, API latency and event delay on the offered VPS lab
+- [x] Correlate bounded operation, service-exit/restart/OOM, readiness, route,
+  protection and host-pressure history by stable instance/app/service/operation IDs;
+  support incident windows and last-success comparisons without a metrics platform
+- [x] Preflight observed data-filesystem capacity and serialize expensive builds;
+  expose container memory observations without inventing host memory headroom
+- [ ] Verify memory/disk pressure behavior on inexpensive VPSs with P10
 
 ### P9.3: Automation contract, required core and later adapters
 
-- [ ] Required: scoped, versioned operations API with revocable/expiring tokens,
+- [x] Required: scoped, versioned operations API with revocable/expiring tokens,
   structured results/errors, idempotency and operation/event watches
-- [ ] Required: separate read, secret reveal, execution, destructive and host-admin
+- [x] Required: separate read, secret reveal, execution, destructive and host-admin
   capabilities; UI and agents use the same ownership and permission checks
-- [ ] Later parity: full Go CLI/JSON command coverage and a thin MCP adapter
+- [x] Required: extend existing reviewed changes to record rebuild/restart/routing,
+  commands, storage effects, expected downtime and additional capability needs.
+  Bind apply to reviewed source/configuration identities; reject stale plans
+- [x] Required: stable application/service identities independent of container
+  names, documented schemas/error codes, bounded pagination/log cursors, evidence
+  links and a version/capability discovery response for compatible clients
+- [x] Required: idempotent submissions return the existing operation; distinguish
+  accepted/queued, running, succeeded, failed, cancelled and uncertain results.
+  Reconnect/watch after interruption without blindly rerunning migrations or tasks
+- [x] Required: record actor and operation provenance. Support prior authorization
+  for routine scoped actions; consequential actions outside that authority require
+  effect review. Keep secret reveal, workload execution and host powers separate;
+  Compose/build access is not a hostile-workload sandbox
+- [ ] Later parity: full Go CLI/JSON command coverage and a thin MCP adapter over
+  these same operations, with focused discovery rather than an enormous tool list
 - [ ] Later parity: managed-service interactive terminal/file tooling, broad
   notification/log-drain adapters, traffic analytics and optional collectors
 - [ ] Later parity: favorites/tags, command palette and reviewed bulk operations;
   none may introduce mandatory organisation or separate execution semantics
+
+### P9.4: Focused CLI and local-project deployment, required for 1.0
+
+- [x] Extend the Go client/executable with secure connection/pairing, application
+  lookup, inspect/diagnose, plan, deploy, operation watch and focused logs; include
+  supported reviewed rollback and saved-task execution through explicit capabilities
+- [x] Human output and versioned JSON, meaningful exit codes, noninteractive input,
+  bounded waits and resumable operation references. Enqueue success is distinct
+  from deployment success; timeout/disconnection does not imply cancellation
+- [x] Store credentials outside repositories with restrictive local permissions.
+  A non-secret project association can remember the instance/application identity;
+  resolve names unambiguously and require explicit target changes
+- [x] Add local-directory upload as an optional source alongside Git, images and
+  pasted definitions. Support declared Dockerfile, Compose, static and automatic
+  build paths using existing builders/workers; no Git connection or push required
+- [x] Preview selected files/size and apply documented ignore rules and safe secret
+  defaults. Exclude credential/private-key material by default, handle required
+  secrets deliberately, reject unsafe paths/links and bound archive/extraction sizes
+- [x] Snapshot content immutably with a digest and provenance, including Git commit
+  and dirty state when available; retain required build inputs under declared
+  retention. Apply uses exactly the reviewed snapshot, not a changed working tree
+- [x] Upload authentication, integrity, quotas, interruption/retry and abandoned
+  upload cleanup share ownership/resource limits. Reuse immutable input on an
+  eligible retry and do not silently substitute a newer local tree or Git revision
+- [x] Expose local-source identity/history in the dashboard and allow subsequent
+  manual operation. An explicit reviewed transition can connect Git automation
+  later; the CLI and upload path do not become dashboard prerequisites
+
+The focused command/source contracts are documented in [operations](operations.md)
+and the [API](api.md). Broader command coverage and MCP remain later adapters
+rather than prerequisites for ordinary dashboard use.
 
 Acceptance: diagnose representative deployment, dependency, low-disk and daemon
 failures; receive one useful failure/recovery notification; inspect/wait/retry an
 operation through an appropriately scoped API token. A read-only token cannot run
 commands, reveal secrets or administer the host. Cleanup preserves data and retained
 releases; disabled optional integrations add no collector or mandatory service.
+Also complete local project -> plan -> deploy -> watch -> evidence-backed result
+without a browser or Git connection. Exercise stale plans, changed local files,
+interrupted uploads/watches and idempotent retries. Diagnose a failed update while
+the previous release serves; preserve data and report uncertain command outcomes.
+
 
 ## Phase 9.5: UI refactor and guided scheduling, mandatory before 1.0
 
@@ -316,12 +435,17 @@ P9.5 completes the cross-flow audit and acceptance before P10.
   lightweight log toolbar, multi-domain controls and existing QoL register
 - [ ] Share components, validation and operation contracts for consistent UX/DX/AX;
   avoid a generic form framework or large new frontend dependency
+- [ ] Present the same reviewed effects, diagnostic facts and verification states
+  used by automation in compact contextual components. Keep manual creation,
+  editing and recovery complete without an agent, CLI or prompt-writing step
 
 ### P9.5.2: Adaptive application creation
 
 - [ ] Source choices for Git, container image and Compose, with inline Dockerfile
   and specialist input paths available through additional options
 - [ ] Source-specific connection/repository/revision or image/Compose fields
+- [ ] Include the local-upload source where supported, with file review and recorded
+  snapshot identity; preserve the quick Git/image/pasted-Compose paths
 - [ ] Inspect source without executing it, present a detected recommendation and
   clear build-method cards for deliberate overrides, and preview Compose services
 - [ ] Configure only relevant essentials: inferred/overridden ports, optional
@@ -416,6 +540,14 @@ Start with a small, explicitly tested Linux distribution/architecture matrix.
   databases/internal services private, and report provider-firewall prerequisites
 - [ ] Provision the dedicated local host by default. Existing-Docker/manual installs
   keep an explicit compatibility/ownership boundary and remain documented
+- [ ] A narrow CLI bootstrap entry point can connect to one explicitly authorized
+  fresh VPS over SSH and invoke this same installer. Verify host identity, review
+  host effects/privileges, preserve key handling and resume recorded setup stages;
+  it does not introduce remote deployment targets or a permanent SSH control plane
+- [ ] Use an expiring single-use first-admin claim and deliberate secure CLI pairing
+  to obtain scoped/revocable management credentials. Never scrape browser cookies,
+  save SSH keys in project files, expose reusable setup credentials in logs or
+  bypass interactive account/factor policy to establish automation access
 
 ### P10.2: Ongoing host care
 
@@ -476,6 +608,17 @@ Start with a small, explicitly tested Linux distribution/architecture matrix.
   release/API/schema notes, examples, update/recovery/uninstall instructions and
   contributor guidance. Compare platforms only through equivalent measured workloads
 - [ ] Complete the P9.5 UI gate and preserve all shipped QoL regression requirements
+- [ ] Prove complementary end-to-end journeys on the authorized lab: a human uses
+  the installer/dashboard, and an external agent with an ordinary repository and
+  authorized SSH/DNS access bootstraps, deploys local code and verifies the result
+  without manual Docker/GitHub/proxy setup or dashboard navigation
+- [ ] Repeat with wrong ports, missing variables, dependency readiness failures,
+  failed updates, low disk and interrupted connections. Record success rate,
+  elapsed time, human interventions, tool calls/tokens when available and data/
+  workload preservation. Separate required human authorization from avoidable friction
+- [ ] Compare equivalent tasks against direct SSH/Docker and Coolify using declared
+  workloads, agent/model versions and access. Publish measured results and failure
+  cases; CLI/MCP availability alone is not evidence of a competitive advantage
 
 Acceptance: repeat the full fresh-host lifecycle on every declared supported
 configuration. No production-ready claim rests only on local mocks or generated
@@ -569,6 +712,8 @@ creation path remains unchanged and a source connection never becomes login auth
 
 Exit: remote execution preserves ownership and reports partial failure correctly;
 adding replicas does not imply database or control-plane high availability.
+P10 remote bootstrap installs one independent local Shipper instance; it does not
+complete P12 multi-target management or isolation for untrusted agent workloads.
 
 ## Phase 13: Optional catalog and integration breadth
 
@@ -578,9 +723,20 @@ adding replicas does not imply database or control-plane high availability.
 - [ ] Dedicated GitHub Actions runner integration
 - [ ] Alternate proxy handoff and lazy-loaded relationship/canvas views
 - [ ] Per-recipe/provider support declarations instead of broad unsupported parity claims
+- [ ] Broader CLI coverage and a thin MCP adapter using P9 contracts, plus versioned
+  external-agent skills/playbooks. No model, chatbot or separate execution engine
+  is required on the VPS; optional adapters remain cheap when disabled
+- [ ] Optional constrained incident charts/tables/timelines using existing evidence
+  and UI components. Arbitrary generated HTML/scripts and a general canvas runtime
+  are deferred until a concrete need and explicit isolation model are established
 
 Exit: enabling an optional capability does not add dependencies or workflow steps
 for installations that do not use it.
+Keep the existing catalog/translation backlog optional. Improve generic Dockerfile/
+Compose deployment and reliable operational adapters first; catalog size is not a
+release gate. Provider provisioning starts with operator-owned accounts, declared
+API/cloud-init support and explicit billing/creation authorization, not reseller
+or provider signup/payment responsibilities.
 
 ## Phase 14: Exact legacy and specialist compatibility
 

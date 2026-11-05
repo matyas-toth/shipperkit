@@ -98,7 +98,8 @@ export default function Shell(props: RouteSectionProps) {
       </header>
       <div class="app-panel">
         <nav class="primary-navigation" aria-label="Main navigation">
-          <a href="/" class="nav-link" classList={{ active: location.pathname !== "/settings" }} aria-current={location.pathname !== "/settings" ? "page" : undefined} onClick={event => { event.preventDefault();navigate("/"); }}>Applications</a>
+          <a href="/" class="nav-link" classList={{ active: location.pathname !== "/settings"&&location.pathname!=="/system" }} aria-current={location.pathname !== "/settings"&&location.pathname!=="/system" ? "page" : undefined} onClick={event => { event.preventDefault();navigate("/"); }}>Applications</a>
+          <A href="/system" activeClass="active" class="nav-link">System</A>
           <A href="/settings" activeClass="active" class="nav-link">Settings</A>
         </nav>
         <main class="page-scroll">{props.children}</main>

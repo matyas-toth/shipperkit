@@ -18,13 +18,15 @@ import (
 )
 
 type Worker struct {
-	DB      *store.Store
-	Runtime Runtime
-	Source  Source
-	Hub     *events.Hub
-	DataDir string
-	wake    chan struct{}
-	Refresh func()
+	DB          *store.Store
+	Runtime     Runtime
+	Source      Source
+	Hub         *events.Hub
+	DataDir     string
+	wake        chan struct{}
+	Refresh     func()
+	Operations  func(context.Context)
+	Maintenance func(context.Context) bool
 }
 
 func NewWorker(db *store.Store, r Runtime, hub *events.Hub, dir string) *Worker {
@@ -68,6 +70,11 @@ func (w *Worker) Run(ctx context.Context) {
 func (w *Worker) runOwned(ctx context.Context, owner string) {
 	work, stop := context.WithCancel(ctx)
 	defer stop()
+	var operationsDone chan struct{}
+	if w.Operations != nil {
+		operationsDone = make(chan struct{})
+		go func() { defer close(operationsDone); w.Operations(work) }()
+	}
 	heartbeatDone := make(chan struct{})
 	go func() {
 		defer close(heartbeatDone)
@@ -86,12 +93,22 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 			}
 		}
 	}()
-	defer func() { stop(); <-heartbeatDone; w.DB.ReleaseLease(context.Background(), owner) }()
+	defer func() {
+		stop()
+		<-heartbeatDone
+		if operationsDone != nil {
+			<-operationsDone
+		}
+		w.DB.ReleaseLease(context.Background(), owner)
+	}()
 	if e := w.cleanWorkspaces(); e != nil {
 		slog.Error("Deployment workspace cleanup failed", "error", e)
 		return
 	}
 	_ = w.DB.InterruptBackups(work)
+	if e := w.DB.ResetSourceClaims(work); e != nil {
+		return
+	}
 	if e := w.cleanBackupWorkspaces(); e != nil {
 		slog.Error("Backup workspace cleanup failed", "error", e)
 		return
@@ -166,6 +183,9 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 			continue
 		}
 		if w.ProcessBackup(work) {
+			continue
+		}
+		if w.Maintenance != nil && w.Maintenance(work) {
 			continue
 		}
 		select {
@@ -529,6 +549,22 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				return e
 			}
 		}
+		if d.ImageID == "" {
+			facts, err := w.DB.Observations(ctx, "")
+			if err != nil {
+				return err
+			}
+			for _, fact := range facts {
+				if fact.ID == "disk" && !fact.Stale {
+					var disk struct {
+						Free uint64 `json:"free"`
+					}
+					if json.Unmarshal(fact.Details, &disk) == nil && disk.Free < 128<<20 {
+						return errors.New("Data filesystem has less than 128 MiB available; review storage before building")
+					}
+				}
+			}
+		}
 		if Method(d.Config) == "compose" {
 			return w.deployCompose(ctx, &d)
 		}
@@ -536,7 +572,11 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			if e := w.stage(ctx, &d, "cloning"); e != nil {
 				return e
 			}
-			w.log(d, "Cloning "+d.Config.Repository)
+			if d.Config.LocalSource != "" {
+				w.log(d, "Loading local source")
+			} else {
+				w.log(d, "Cloning "+d.Config.Repository)
+			}
 			root := filepath.Join(w.DataDir, "work")
 			if e := os.MkdirAll(root, 0700); e != nil {
 				return e

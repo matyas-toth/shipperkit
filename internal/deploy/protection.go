@@ -282,6 +282,11 @@ func (w *Worker) protect(ctx context.Context, v *store.BackupRun) error {
 			return e
 		}
 		files["shipper.db"] = dbfile
+		sources := filepath.Join(work, "sources.tar")
+		if e = w.DB.BundleSources(ctx, dbfile, sources); e != nil {
+			return e
+		}
+		files["sources.tar"] = sources
 		keyfile := filepath.Join(work, "encryption.key")
 		if e = copyPrivate(filepath.Join(w.DataDir, "encryption.key"), keyfile); e != nil {
 			return e
@@ -490,7 +495,7 @@ func RecoverInstance(ctx context.Context, archive, keyfile, target string) error
 		return errors.New("Choose an instance recovery archive")
 	}
 	for _, v := range m.Files {
-		if v.Name != "shipper.db" && v.Name != "encryption.key" && v.Name != "acme.json" && v.Name != "proxy.json" {
+		if v.Name != "shipper.db" && v.Name != "encryption.key" && v.Name != "acme.json" && v.Name != "proxy.json" && v.Name != "sources.tar" {
 			return errors.New("Unexpected instance recovery file")
 		}
 	}
@@ -507,11 +512,17 @@ func RecoverInstance(ctx context.Context, archive, keyfile, target string) error
 	if e = store.PrepareRecovery(stage); e != nil {
 		return e
 	}
+	if e = store.RestoreSourceBundle(stage); e != nil {
+		return e
+	}
 	db, e := store.Open(stage)
 	if e != nil {
 		return e
 	}
 	id, e := db.Setting(ctx, "instance_id", "")
+	if e == nil {
+		e = db.VerifyRecoveredSources(ctx)
+	}
 	if e == nil {
 		_, e = db.PrivateSetting(ctx, "recovery_identity", "")
 	}

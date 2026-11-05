@@ -27,6 +27,7 @@ const engine = http.createServer((request, response) => {
   else if (path === "/info") response.end(JSON.stringify({ Name: "local-docker", ServerVersion: "29.8.2", OperatingSystem: "Linux", Architecture: "x86_64", NCPU: 4, MemTotal: 8589934592 }));
   else if (path === "/version") response.end(JSON.stringify({ Version: "29.8.2", ApiVersion: "1.56", MinAPIVersion: "1.44", Os: "linux" }));
   else if (/^\/containers\/[^/]+\/json$/.test(path)) { const id = path.split("/")[2], c = containers.find(c => c.Id === id);if (!c) { response.writeHead(404);response.end("{}");return; }response.end(JSON.stringify({ Id:c.Id,Config:{Labels:c.Labels,Tty:true},State:{Running:true} })); }
+  else if (/^\/containers\/[^/]+\/stats$/.test(path)) {const tick=Date.now();response.end(JSON.stringify({read:new Date().toISOString(),cpu_stats:{cpu_usage:{total_usage:tick*100000},system_cpu_usage:tick*1000000,online_cpus:4},memory_stats:{usage:33554432,limit:134217728}}));}
   else if (/^\/containers\/[^/]+\/logs$/.test(path)) { response.setHeader("Content-Type","application/vnd.docker.raw-stream");response.end("2026-11-01T12:00:00Z Application listening on port 3000\n2026-11-01T12:00:01Z GET /health 200\nRuntime generation " + runtimeGeneration + "\n"); }
   else if (path === "/volumes") response.end(JSON.stringify({Volumes:[],Warnings:[]}));
   else if (path === "/containers/json") response.end(JSON.stringify(containers));

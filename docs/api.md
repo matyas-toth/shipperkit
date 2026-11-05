@@ -1,5 +1,54 @@
 # HTTP API
 
+## Phase 9 operations contract
+
+Session clients keep `/api` with cookie + CSRF. Automation uses an explicitly
+allowlisted subset under `/api/v1` with `Authorization: Bearer TOKEN` and the same
+handlers, validation, ownership and durable worker. Capabilities are `read`,
+`logs`, `deploy`, `execute`, `secrets`, `destructive`, and `host-admin`, optionally
+restricted to application IDs. Empty application scope means the whole instance.
+Tokens expire, can be revoked, and are never interchangeable with browser sessions
+or legacy application deploy tokens. Unsupported v1 routes are denied by default.
+
+| Session path | Contract | Automation capability |
+| --- | --- | --- |
+| `GET /capabilities` | API version, feature and limit discovery | read |
+| `GET /applications`, `/applications/{id}` | Masked owned applications/release history | read, filtered to application scope |
+| `GET /applications/{id}/diagnostics` | Bounded facts, serving/latest state, checks and references | read; `?include=logs` additionally needs logs |
+| `GET /applications/{id}/observations` | Current timestamped samples and stale flags | read |
+| `GET /applications/{id}/incidents` | Latest 100 ascending events; `after` retrieves the next cursor page | read |
+| `POST /operation-tokens`, `GET /operation-tokens`, `POST /operation-tokens/{token}/revoke` | Create/list/revoke scoped expiring credentials | Session only |
+| `GET /system/operations`, `GET /system/retention` | System facts, delivery counts, cleanup preview/history | read with instance scope |
+| `POST /system/recheck`, `/system/repair`, `/system/retention` | Reconcile or review/queue narrow maintenance; repair accepts `{review:true}` then `{revision}` | host-admin with instance scope |
+| `GET /notifications`, `POST /notifications`, `POST /notifications/test` | Masked optional webhook/SMTP settings and deliberate delivery test | Session only |
+| `POST /sources?application=ID&provenance=TEXT` | Raw `application/x-tar`, bounded regular files; immutable snapshot metadata | deploy; target application must match token scope |
+| `POST /plan` | New `{name,config}` returns application ID, normalized public configuration, revision and effects | deploy with instance scope |
+| `POST /applications` | Optional reviewed `{id,revision,name,config}`; changed planned inputs fail | deploy with instance scope |
+| `POST /applications/{id}/changes`, `/deployments` | Review/apply bound to current state and proposed configuration | deploy |
+| `GET /applications/{id}/deployments/{deployment}` | Durable operation watch/poll | read |
+| Existing deployment/runtime log resources | Cursor pages or bounded SSE | logs |
+| Existing recorded rollback, cancel/retry, domains/check routes | Same reviewed/scoped handlers | deploy |
+| `POST /applications/{id}/tasks/{task}/run` | Existing saved-task queue | execute |
+| `POST /applications/{id}/variables/reveal` | Explicit secret read | secrets |
+| `POST /applications/{id}/delete` | Existing named confirmation and scoped deletion | destructive |
+
+Read-only projections omit command bodies; `commandsKeep:true` preserves those
+fields during a round-trip update. Secret variables keep the existing retention
+metadata. Read alone cannot retrieve logs, reveal secrets, execute saved tasks,
+delete workloads or administer the host. Deployment authority still permits
+workload code execution; Docker builds/Compose are not hostile-code isolation.
+
+`config.localSource` selects an immutable retained upload alongside the existing
+build method. It is incompatible with simultaneous Git automation, pasted Compose,
+inline Dockerfile or direct-image input. Source ownership/application scope is
+validated before use; workers verify content digest before materializing it.
+Creation/apply retain existing 202/idempotency behavior. A repeated identical saved
+plan returns its original operation even after promotion; changed bodies conflict.
+
+See [operations](operations.md) for bounds, CLI syntax, credential storage,
+notification delivery and cleanup/recovery guarantees. The existing routes below
+remain supported; this section does not expose every session route to tokens.
+
 Session routes are same-origin and prefixed with `/api`. Public provider callbacks,
 signed webhooks and Bearer deployment requests are documented in [sources](sources.md). JSON errors have the shape:
 

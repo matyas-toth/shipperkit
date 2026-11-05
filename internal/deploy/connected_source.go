@@ -15,6 +15,10 @@ type ConnectedSource struct {
 }
 
 func (s ConnectedSource) Clone(ctx context.Context, c store.Config, dir string, log func(string)) (string, error) {
+	if c.LocalSource != "" {
+		log("Loading immutable local source")
+		return s.DB.MaterializeSource(ctx, c.LocalSource, dir)
+	}
 	if c.Method == "inline" {
 		root := filepath.Join(dir, "repository")
 		if e := os.MkdirAll(root, 0700); e != nil {

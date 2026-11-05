@@ -16,7 +16,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return body as T;
 }
-export function post<T>(path: string, body: unknown, csrf?: string) {
-  return api<T>(path, { method: "POST", body: JSON.stringify(body), headers: csrf ? { "X-CSRF-Token": csrf } : {} });
+export function post<T>(path: string, body: unknown, csrf?: string, idempotencyKey?:string) {
+  return api<T>(path, { method: "POST", body: JSON.stringify(body), headers: {...(csrf ? { "X-CSRF-Token": csrf } : {}),...(idempotencyKey?{"Idempotency-Key":idempotencyKey}:{})} });
 }
 
