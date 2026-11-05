@@ -47,8 +47,8 @@ test("Compose overview service logs survive inventory refreshes without replay",
   const service={name:"api",image:"example/api:v1",port:3000,healthPath:"/",volumes:[],variables:[]};
   const release={...original.activeDeployment,id:"service-log-release",applicationId:"compose-browser",operation:"deploy",state:"succeeded",services:[service]};
   const application={...original.application,id:"compose-browser",name:"Service logs",sourceKind:"compose",method:"compose",activeMethod:"compose",latestDeployment:release,activeDeploymentId:release.id,config:{...original.application.config,method:"compose",composeSource:"paste"},containers:[{...original.application.containers[0],id:"service-container",service:"api",state:"running"}]};
-  let revision=0,connections=0;
-  await page.route("**/api/applications/compose-browser",route=>route.fulfill({json:{application:{...application,updatedAt:++revision},deployments:[release],activeDeployment:release}}));
+  let revision=0,connections=0,stopped=false;
+  await page.route("**/api/applications/compose-browser",route=>route.fulfill({json:{application:{...application,updatedAt:++revision,containers:application.containers.map(c=>({...c,state:stopped?"exited":"running"}))},deployments:[release],activeDeployment:release}}));
   await page.route("**/api/applications/compose-browser/diagnostics",route=>route.fulfill({json:{checks:[],observations:[],changesSinceServing:[],unknowns:[],durationSeconds:1,servingRelease:release,latestOperation:release}}));
   await page.route("**/api/applications/compose-browser/incidents",route=>route.fulfill({json:{items:[]}}));
   await page.route("**/api/applications/compose-browser/logs?**",route=>{connections++;return route.fulfill({contentType:"text/event-stream",body:'event: reset\ndata: {}\n\nevent: log\ndata: {"line":"Service is ready"}\n\nevent: end\ndata: {}\n\n'})});
@@ -60,10 +60,15 @@ test("Compose overview service logs survive inventory refreshes without replay",
   await page.getByRole("button",{name:"Resume runtime logs",exact:true}).click();expect(connections).toBe(before);
   await page.getByLabel("Search runtime logs").fill("ready");const download=page.waitForEvent("download");await page.getByRole("button",{name:"Download runtime logs",exact:true}).click();expect((await download).suggestedFilename()).toBe("runtime.log");
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-service-logs.png")});
+  stopped=true;
+  await page.request.post("/api/refresh",{headers:{"X-CSRF-Token":session.csrfToken},data:{}});
+  await expect(page.getByText("History",{exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Pause runtime logs",exact:true})).toHaveCount(0);
+  await expect(page.getByRole("log",{name:"Runtime logs"})).toContainText("Service is ready");
 });
 
 test("Local folder source can be reviewed without connecting Git",async({page})=>{
- await login(page);await page.goto("/new");await page.getByLabel("Source",{exact:true}).selectOption("local");
- const directory=await mkdtemp(join(tmpdir(),"shipper-folder-test-"));folders.push(directory);await writeFile(join(directory,"index.html"),"local folder fixture");await writeFile(join(directory,".env"),"SECRET=must-not-upload");await page.getByLabel("Project folder").setInputFiles(directory);
- await expect(page.locator(".source-file-list")).toContainText("index.html");await expect(page.locator(".source-file-list")).not.toContainText(".env");await page.getByRole("button",{name:"Use these files",exact:true}).click();await expect(page.locator(".local-source-input>.mono")).toHaveText(/^[a-f0-9]{12}$/);await expect(page.getByLabel("Git repository",{exact:true})).toHaveCount(0);await page.screenshot({path:join(tmpdir(),"shipper-phase9-local-source.png")});
+ await login(page);await page.goto("/new");await page.getByRole("button",{name:"More sources",exact:true}).click();await page.getByRole("radio",{name:"Local files",exact:true}).check();
+ const directory=await mkdtemp(join(tmpdir(),"shipper-folder-test-"));folders.push(directory);await writeFile(join(directory,"index.html"),"local folder fixture");await writeFile(join(directory,".env"),"SECRET=must-not-upload");await writeFile(join(directory,".vpsenv"),"DUMMY=must-not-upload");await page.getByLabel("Project folder").setInputFiles(directory);
+ await expect(page.locator(".source-file-list")).toContainText("index.html");await expect(page.locator(".source-file-list")).not.toContainText(".env");await expect(page.locator(".source-file-list")).not.toContainText(".vpsenv");await page.getByRole("button",{name:"Use these files",exact:true}).click();await expect(page.locator(".local-source-input>.mono")).toHaveText(/^[a-f0-9]{12}$/);await expect(page.getByRole("textbox",{name:"Repository URL",exact:true})).toHaveCount(0);await page.getByRole("button",{name:"Review with defaults",exact:true}).click();await expect(page.locator(".creation-review")).toContainText("Static site (automatic)");await expect(page.locator(".creation-review")).toContainText("Snapshot");await page.screenshot({path:join(tmpdir(),"shipper-phase95-local-review.png")});
 });

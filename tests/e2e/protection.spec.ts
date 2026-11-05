@@ -114,11 +114,11 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   ).toBeVisible();
   await page.getByRole("button", { name: "New backup", exact: true }).click();
   await page
-    .getByRole("button", { name: "Persistent volume", exact: true })
-    .click();
+    .getByRole("radio", { name: "Persistent volume", exact: true })
+    .check();
   await expect(page.getByLabel("Volume", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Database", exact: true }).click();
-  await page.getByLabel("Database", { exact: true }).fill("appdb");
+  await page.getByRole("radio", { name: "Database", exact: true }).check();
+  await page.getByLabel("Database name", { exact: true }).fill("appdb");
   await page
     .locator(".backup-editor summary")
     .filter({ hasText: "Schedule" })

@@ -341,13 +341,16 @@ func (s *Store) ConfigRevision(a Application) string {
 }
 
 // ChangeRevision binds the proposed inputs as well as the current serving state.
-func (s *Store) ChangeRevision(current, next Application) string {
+func (s *Store) ChangeRevision(current, next Application, commit ...string) string {
 	data, _ := json.Marshal(struct {
 		Current string
 		Next    Application
 	}{s.ConfigRevision(current), Application{ID: next.ID, Name: next.Name, Config: next.Config}})
 	mac := hmac.New(sha256.New, s.signingKey)
 	mac.Write(data)
+	if len(commit) > 0 && commit[0] != "" {
+		mac.Write([]byte("\x00" + commit[0]))
+	}
 	return fmt.Sprintf("%x", mac.Sum(nil))
 }
 

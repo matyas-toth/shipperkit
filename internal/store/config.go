@@ -337,15 +337,18 @@ func (s *Store) SetDesiredState(ctx context.Context, id, state string) error {
 	return e
 }
 
-func (s *Store) SetDomainCheck(ctx context.Context, id string, domain Domain, state, message string) error {
+func (s *Store) SetDomainCheck(ctx context.Context, id string, domain Domain, state, message string, release ...string) error {
 	tx, e := s.db.BeginTx(ctx, nil)
 	if e != nil {
 		return e
 	}
 	defer tx.Rollback()
-	var data string
-	if e = tx.QueryRowContext(ctx, "SELECT domains_json FROM applications WHERE id=? AND deleted_at=0", id).Scan(&data); e != nil {
+	var data, active string
+	if e = tx.QueryRowContext(ctx, "SELECT domains_json,active_deployment_id FROM applications WHERE id=? AND deleted_at=0", id).Scan(&data, &active); e != nil {
 		return e
+	}
+	if len(release) > 0 && release[0] != active {
+		return errors.New("The active release changed during verification")
 	}
 	var domains []Domain
 	if e = json.Unmarshal([]byte(data), &domains); e != nil {

@@ -124,7 +124,14 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
 	initialized := false
+	contact := ""
 	for work.Err() == nil {
+		if runtime, ok := w.Runtime.(*DockerRuntime); ok && runtime.Config.AutoHTTPS {
+			if c, err := runtime.EffectiveProxy(work); err == nil && c.ACMEEmail != contact {
+				contact = c.ACMEEmail
+				initialized = false
+			}
+		}
 		pending, e := w.DB.Pending(work)
 		if e != nil {
 			slog.Error("Deployment queue read failed", "error", e)

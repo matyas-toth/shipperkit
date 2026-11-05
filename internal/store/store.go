@@ -63,7 +63,7 @@ func Open(dir string) (*Store, error) {
 	_, keyError := os.Stat(keyFile)
 	if os.IsNotExist(keyError) {
 		var encrypted int
-		_ = db.QueryRow("SELECT (SELECT COUNT(*) FROM applications WHERE instr(config_json,'sealed:v1:')>0)+(SELECT COUNT(*) FROM deployments WHERE instr(config_json,'sealed:v1:')>0 OR instr(compose_plan,'sealed:v1:')>0)+(SELECT count(*) FROM tasks)+(SELECT count(*) FROM task_runs)+(SELECT count(*) FROM connections)+(SELECT count(*) FROM backup_plans)+(SELECT count(*) FROM backup_runs)+(SELECT count(*) FROM backup_destinations)+(SELECT count(*) FROM settings WHERE instr(value,'sealed:v1:')>0)").Scan(&encrypted)
+		_ = db.QueryRow("SELECT (SELECT COUNT(*) FROM applications WHERE instr(config_json,'sealed:v1:')>0)+(SELECT COUNT(*) FROM deployments WHERE instr(config_json,'sealed:v1:')>0 OR instr(compose_plan,'sealed:v1:')>0)+(SELECT count(*) FROM tasks)+(SELECT count(*) FROM task_runs)+(SELECT count(*) FROM connections)+(SELECT count(*) FROM backup_plans)+(SELECT count(*) FROM backup_runs)+(SELECT count(*) FROM backup_destinations)+(SELECT count(*) FROM settings WHERE instr(value,'sealed:v1:')>0)+(SELECT count(*) FROM account_factors)+(SELECT count(*) FROM factor_enrollments)").Scan(&encrypted)
 		if encrypted > 0 {
 			db.Close()
 			return nil, errors.New("Restore encryption.key before opening encrypted application configuration")
@@ -142,8 +142,13 @@ func (s *Store) CreateAdmin(ctx context.Context, user User, hash, csrf string, e
 	if err != nil {
 		return err
 	}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO sessions VALUES (?,?,?,?)", hash, user.ID, csrf, expiry); err != nil {
+	if _, err = tx.ExecContext(ctx, "INSERT INTO settings(key,value) VALUES ('acme_contact',?) ON CONFLICT(key) DO NOTHING", user.Email); err != nil {
 		return err
+	}
+	if hash != "" {
+		if _, err = tx.ExecContext(ctx, "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at) VALUES (?,?,?,?)", hash, user.ID, csrf, expiry); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }
@@ -167,7 +172,7 @@ func (s *Store) CreateSession(ctx context.Context, hash, userID, csrf string, ex
 	if _, err = tx.ExecContext(ctx, "DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT -1 OFFSET 19)", userID); err != nil {
 		return err
 	}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO sessions VALUES (?,?,?,?)", hash, userID, csrf, expiry); err != nil {
+	if _, err = tx.ExecContext(ctx, "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at) VALUES (?,?,?,?)", hash, userID, csrf, expiry); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -175,7 +180,10 @@ func (s *Store) CreateSession(ctx context.Context, hash, userID, csrf string, ex
 
 func (s *Store) Session(ctx context.Context, hash string) (Session, error) {
 	var v Session
-	err := s.db.QueryRowContext(ctx, `SELECT a.id,a.email,s.csrf_token,s.expires_at FROM sessions s JOIN administrators a ON a.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, hash, time.Now().Unix()).Scan(&v.User.ID, &v.User.Email, &v.CSRF, &v.ExpiresAt)
+	err := s.db.QueryRowContext(ctx, `SELECT a.id,a.email,s.csrf_token,s.expires_at,s.factor_verified,
+		EXISTS(SELECT 1 FROM account_factors f WHERE f.user_id=a.id),
+		EXISTS(SELECT 1 FROM settings WHERE key='require_factor' AND value='true')
+		FROM sessions s JOIN administrators a ON a.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, hash, time.Now().Unix()).Scan(&v.User.ID, &v.User.Email, &v.CSRF, &v.ExpiresAt, &v.Verified, &v.Factor.Enrolled, &v.Factor.Required)
 	return v, err
 }
 

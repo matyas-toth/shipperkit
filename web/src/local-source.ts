@@ -1,5 +1,5 @@
 export function excludedSource(name: string): boolean {
-  return name.split("/").some(part => {const v=part.toLowerCase();return [".git","node_modules",".shipper",".ssh",".aws",".env","id_rsa","id_ed25519"].includes(v)||v.startsWith(".env.")&&![".env.example",".env.sample",".env.template"].includes(v)||v.endsWith(".pem")||v.endsWith(".key");});
+  return name.split("/").some(part => {const v=part.toLowerCase();return [".git","node_modules",".shipper",".ssh",".aws",".env",".vpsenv","id_rsa","id_ed25519"].includes(v)||v.startsWith(".env.")&&![".env.example",".env.sample",".env.template"].includes(v)||v.endsWith(".pem")||v.endsWith(".key");});
 }
 export function sourceArchive(files: {name:string;file:File}[]): Blob {
   const chunks: BlobPart[]=[],encoder=new TextEncoder();let total=0;

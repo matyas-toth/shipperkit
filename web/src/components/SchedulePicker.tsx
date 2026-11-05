@@ -8,7 +8,7 @@ import {
 } from "solid-js";
 import { post } from "../api";
 import { useAuth } from "../context";
-import { ErrorNotice } from "./Controls";
+import { Button, ErrorNotice } from "./Controls";
 import {
   parseSchedule,
   scheduleExpression,
@@ -75,6 +75,11 @@ export default function SchedulePicker(props: {
   });
   const time = () =>
     `${String(choice().hour).padStart(2, "0")}:${String(choice().minute).padStart(2, "0")}`;
+  const manual = () => choice().mode === "custom";
+  const guided = () => {
+    const candidate = parseSchedule(props.value);
+    return candidate.mode !== "manual" && candidate.mode !== "custom" && scheduleExpression(candidate) === props.value ? candidate : undefined;
+  };
   return (
     <div class="schedule-picker">
       <div class="form-fields">
@@ -88,12 +93,12 @@ export default function SchedulePicker(props: {
           }
         >
           <option value="manual">Manually</option>
-          <option value="minutes">Every few minutes</option>
-          <option value="hourly">Every hour</option>
-          <option value="hours">Every few hours</option>
-          <option value="daily">Every day</option>
-          <option value="weekly">Every week</option>
-          <option value="monthly">Every month</option>
+          <option value="minutes" disabled={manual()}>Every few minutes</option>
+          <option value="hourly" disabled={manual()}>Every hour</option>
+          <option value="hours" disabled={manual()}>Every few hours</option>
+          <option value="daily" disabled={manual()}>Every day</option>
+          <option value="weekly" disabled={manual()}>Every week</option>
+          <option value="monthly" disabled={manual()}>Every month</option>
           <option value="custom">Custom cron</option>
         </select>
         <Show when={choice().mode === "minutes" || choice().mode === "hours"}>
@@ -155,6 +160,7 @@ export default function SchedulePicker(props: {
                 <button
                   type="button"
                   aria-pressed={choice().days.includes(day)}
+                  disabled={choice().days.length === 1 && choice().days.includes(day)}
                   classList={{ selected: choice().days.includes(day) }}
                   onClick={() =>
                     update({
@@ -204,6 +210,9 @@ export default function SchedulePicker(props: {
             value={props.timezone}
             onInput={(e) => props.change(props.value, e.currentTarget.value)}
           />
+          <Show when={manual() && guided()}>{candidate =>
+            <Button variant="ghost" class="use-guided" onClick={() => setChoice(candidate())}>Use guided controls</Button>
+          }</Show>
         </Show>
       </div>
       <Show when={error()}>

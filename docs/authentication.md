@@ -1,10 +1,12 @@
-# Planned authentication and account provisioning
+# Authentication and account provisioning
 
-Status: planned contract, not current functionality. Personal/instance-enforced
-TOTP and owner recovery are P10 requirements; multiple accounts and the
-Google/GitHub/Discord login adapters are P11 collaboration work. Current 0.7.0
-supports a token-protected first administrator and password sessions only.
-See the [roadmap](roadmap.md) and [security boundary](../SECURITY.md).
+The 1.0 release candidate supports a single owner, password sessions, personal
+TOTP, instance-wide TOTP enforcement, one-use recovery codes and offline owner
+recovery. Managed installations claim the first owner through `shipperctl claim`.
+The multi-user provisioning and Google, GitHub and Discord sign-in below are the
+planned P11 contract. GitHub repository access is a separate integration.
+See [installation and recovery](installation.md), the [roadmap](roadmap.md) and
+the [security boundary](../SECURITY.md).
 
 ## Accounts are provisioned by administrators
 

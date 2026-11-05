@@ -133,7 +133,7 @@ func (s *Server) updateDomains(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") || a.Method == "" {
+	if !a.Managed() {
 		s.problem(w, 422, "unsupported_application", "Domains can be changed for applications deployed by Shipper")
 		return
 	}
@@ -165,8 +165,8 @@ func (s *Server) updateDomains(w http.ResponseWriter, r *http.Request) {
 			s.problem(w, 422, "reserved_domain", "This hostname belongs to the Shipper dashboard")
 			return
 		}
-		if d.HTTPS && s.cfg.Proxy.ACMEEmail == "" {
-			s.problem(w, 422, "https_unconfigured", "Set SHIPPER_ACME_EMAIL before enabling HTTPS")
+		if d.HTTPS && !s.hasACME() {
+			s.problem(w, 422, "https_unconfigured", "Automatic HTTPS is unavailable on this installation")
 			return
 		}
 	}
@@ -200,7 +200,7 @@ func (s *Server) lifecycle(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if a.ActiveDeploymentID == "" || (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") {
+	if a.ActiveDeploymentID == "" || !a.Managed() {
 		s.problem(w, 409, "no_active_deployment", "Deploy the application before using lifecycle controls")
 		return
 	}
@@ -234,6 +234,11 @@ func (s *Server) lifecycle(w http.ResponseWriter, r *http.Request) {
 	s.enqueue(w, r, a, input.Action, false)
 }
 func (s *Server) runtimeLogs(w http.ResponseWriter, r *http.Request) {
+	changes := s.authChanges()
+	if _, err := s.session(r); err != nil {
+		s.problem(w, 403, "factor_required", "Sign in again to follow logs")
+		return
+	}
 	a, e := s.db.Application(r.Context(), chi.URLParam(r, "id"))
 	if e != nil {
 		s.resourceError(w, e)
@@ -323,6 +328,8 @@ func (s *Server) runtimeLogs(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-ctx.Done():
+			return
+		case <-changes:
 			return
 		case line := <-lines:
 			if !send("log", map[string]string{"line": line}) {

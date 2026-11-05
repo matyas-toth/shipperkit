@@ -23,8 +23,8 @@ func ValidateDashboard(c ProxyConfig) error {
 	if e != nil || target.Scheme != "http" || target.Hostname() == "" || target.User != nil || target.RawQuery != "" || target.Fragment != "" || (target.Path != "" && target.Path != "/") {
 		return errors.New("SHIPPER_DASHBOARD_UPSTREAM must be an HTTP origin reachable from the proxy")
 	}
-	if c.ACMEEmail == "" || c.HTTPPort != 80 || c.HTTPSPort != 443 || c.BindIP == "127.0.0.1" || c.BindIP == "::1" {
-		return errors.New("Dashboard HTTPS needs an ACME email and publicly bound ports 80 and 443")
+	if c.ACMEEmail == "" && !c.AutoHTTPS || c.HTTPPort != 80 || c.HTTPSPort != 443 || c.BindIP == "127.0.0.1" || c.BindIP == "::1" {
+		return errors.New("Dashboard HTTPS needs automatic HTTPS or an ACME email, and publicly bound ports 80 and 443")
 	}
 	return nil
 }
@@ -48,7 +48,7 @@ func (r *DockerRuntime) connectDashboard(ctx context.Context) error {
 }
 
 func (r *DockerRuntime) dashboardRoute(config map[string]any) {
-	if r.Config.DashboardUpstream == "" {
+	if r.Config.DashboardUpstream == "" || r.Config.ACMEEmail == "" {
 		return
 	}
 	u, e := url.Parse(r.Config.DashboardURL)

@@ -5,11 +5,12 @@ import { useAuth } from "../context";
 import type { Application } from "../types";
 import type { Observation } from "../components/Diagnostics";
 import { Button, ErrorNotice, Status } from "../components/Controls";
-import { bytes, createdDate } from "../data";
+import { bytes, createdDate, logDateTime } from "../data";
 import Retention from "../components/Retention";
 import ChangeReview from "../components/ChangeReview";
 import type {ChangePlan,SystemInfo} from "../types";
 
+interface HostStatus { observedAt: number; stale: boolean; dockerAtBoot: boolean; shipperAtBoot: boolean; rebootRequired: boolean; securityServiceEnabled: boolean; clockSynchronized: boolean }
 interface Credential { id: string; name: string; scopes: string[]; applications: string[]; expiresAt: number }
 interface Notifications { enabled: boolean; kind: string; events: string[]; configured?: boolean; webhook?: string; private: boolean; smtp?: string; username?: string; password?: string; from?: string; to?: string }
 const permissionLabel:Record<string,string>={read:"Read",logs:"Logs",deploy:"Deploy",execute:"Run tasks",secrets:"Reveal secrets",destructive:"Delete applications","host-admin":"Host maintenance"};
@@ -20,7 +21,7 @@ export default function System() {
   const [error, setError] = createSignal(""), [busy, setBusy] = createSignal(false), [token, setToken] = createSignal("");
   const [name, setName] = createSignal(""), [scope, setScope] = createSignal(["read"]), [app, setApp] = createSignal(""), [days, setDays] = createSignal(30);
   const [notification, setNotification] = createSignal<Notifications>(), [result, setResult] = createSignal("");
-  const query = createQuery(() => ({ queryKey: ["system", "operations"], queryFn: () => api<{ items: Observation[]; notifications: { pending: number; failed: number } }>("/system/operations"), refetchInterval: 15000 }));
+  const query = createQuery(() => ({ queryKey: ["system", "operations"], queryFn: () => api<{ items: Observation[]; host?: HostStatus; notifications: { pending: number; failed: number } }>("/system/operations"), refetchInterval: 15000 }));
   const credentials = createQuery(() => ({ queryKey: ["operation-tokens"], queryFn: () => api<{ items: Credential[] }>("/operation-tokens") }));
   const applications = createQuery(() => ({ queryKey: ["system", "applications"], queryFn: () => api<{ items: Application[] }>("/applications") }));
   const notifications = createQuery(() => ({ queryKey: ["notifications"], queryFn: () => api<Notifications>("/notifications") }));
@@ -43,11 +44,19 @@ export default function System() {
   return <div class="content content-wide system-page">
     <header class="page-heading"><h1>System</h1><Button icon="refresh" variant="ghost" disabled={busy()} onClick={() => void action(async () => { await post("/system/recheck", {}, auth.session()?.csrfToken); await query.refetch(); })}>Recheck</Button></header>
     <Show when={error() || query.error}><ErrorNotice message={error() || query.error!.message} /></Show>
-    <section class="settings-section"><h2>Health</h2><div class="table-tray"><table class="inventory-table"><thead><tr><th>Component</th><th>Status</th><th>Observed</th></tr></thead><tbody><For each={query.data?.items}>{fact => <tr><td>{fact.kind}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{createdDate(fact.observedAt)}</td></tr>}</For></tbody></table></div>
+    <section class="settings-section"><h2>Health</h2><div class="table-tray"><table class="inventory-table"><thead><tr><th>Component</th><th>Status</th><th>Observed</th></tr></thead><tbody><For each={query.data?.items}>{fact => <tr><td>{fact.kind}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{logDateTime(fact.observedAt)}</td></tr>}</For></tbody></table></div>
       <For each={query.data?.items.filter(v => v.kind === "storage")}>{fact => <dl class="settings-group"><div class="setting-row"><dt>{fact.details.scope}</dt><dd>{bytes(fact.details.free ?? 0)} free / {bytes(fact.details.total ?? 0)}</dd></div></dl>}</For>
     </section>
     <section class="settings-section"><div class="section-toolbar"><h2>Runtime</h2><Button small variant="ghost" disabled={busy()} onClick={()=>void action(async()=>setRepair(await post<ChangePlan>("/system/repair",{review:true},auth.session()?.csrfToken)))}>Repair proxy</Button></div><dl class="settings-group"><div class="setting-row"><dt>Shipper</dt><dd>{system.data?.version||"Loading"}</dd></div><div class="setting-row"><dt>Docker Engine</dt><dd>{system.data?.docker.engine.version||"Unavailable"}</dd></div><div class="setting-row"><dt>Docker host</dt><dd>{system.data?.docker.engine.os||"Unavailable"}</dd></div><div class="setting-row"><dt>Shipper heap</dt><dd>{bytes(system.data?.runtime.heapBytes||0)}</dd></div><div class="setting-row"><dt>Recovery</dt><dd><a class="inline-link" href="/settings#recovery">Open recovery</a></dd></div></dl></section>
     <Show when={repair()}>{plan=><ChangeReview plan={plan()} title="Repair proxy" confirm="Repair proxy" close={()=>setRepair(undefined)} apply={async()=>{await post("/system/repair",{revision:plan().revision},auth.session()?.csrfToken);setRepair(undefined);await query.refetch()}}/>}</Show>
+    <Show when={query.data?.host}>{host => <section class="settings-section"><h2>Host maintenance</h2>
+      <dl class="settings-group">
+        <div class="setting-row"><dt>Boot services</dt><dd>{host().stale ? "Not observed" : host().dockerAtBoot && host().shipperAtBoot ? "Ready" : "Check Docker and Shipper"}</dd></div>
+        <div class="setting-row"><dt>Security updates</dt><dd>{host().stale ? "Not observed" : host().securityServiceEnabled ? "System service enabled" : "Operator managed"}</dd></div>
+        <div class="setting-row"><dt>Reboot</dt><dd>{host().stale ? "Not observed" : host().rebootRequired ? "Required" : "Not required"}</dd></div>
+        <div class="setting-row"><dt>System clock</dt><dd>{host().stale ? "Not observed" : host().clockSynchronized ? "Synchronized" : "Not synchronized"}</dd></div>
+      </dl>
+    </section>}</Show>
     <Retention/>
     <section class="settings-section"><h2>Notifications</h2><Show when={config()}>{c => <form onSubmit={saveNotifications}>
       <label class="checkbox-label"><input type="checkbox" checked={c().enabled} onChange={e => change({ enabled: e.currentTarget.checked })} />Enabled</label>
@@ -64,7 +73,7 @@ export default function System() {
         <For each={["deployment", "service", "backup", "storage", "certificate", "daemon", "proxy", "task", "update"]}>{kind => <label><input type="checkbox" checked={c().events.includes(kind)} onChange={e => change({ events: e.currentTarget.checked ? [...c().events, kind] : c().events.filter(v => v !== kind) })} />{kind}</label>}</For>
         <label><input type="checkbox" checked={c().private} onChange={e => change({ private: e.currentTarget.checked })} />Allow private destinations</label>
       </div></details></Show>
-      <div class="form-actions"><Show when={result()}><span role="status">{result()}</span></Show><Button variant="ghost" disabled={busy() || !c().enabled} onClick={() => void action(async () => { await post("/notifications/test", {}, auth.session()?.csrfToken); setResult("Delivered"); })}>Test delivery</Button><Button type="submit" disabled={busy()}>Save</Button></div>
+      <div class="form-actions"><Show when={result()}><span role="status">{result()}</span></Show><Button variant="ghost" disabled={busy() || !c().enabled} onClick={() => void action(async () => { await post("/notifications/test", { config: config() }, auth.session()?.csrfToken); setResult("Delivered"); })}>Test delivery</Button><Button type="submit" disabled={busy()}>Save</Button></div>
     </form>}</Show><Show when={query.data?.notifications.failed}><div class="deployment-error">{query.data!.notifications.failed} failed deliveries</div></Show></section>
     <section class="settings-section"><h2>Access tokens</h2><Show when={credentials.error}><ErrorNotice message={credentials.error!.message} /></Show>
       <div class="table-tray"><table class="inventory-table"><thead><tr><th>Name</th><th>Permissions</th><th>Expires</th><th /></tr></thead><tbody><For each={credentials.data?.items}>{credential => <tr><td>{credential.name}</td><td>{credential.scopes.map(v=>permissionLabel[v]||v).join(", ")}</td><td>{createdDate(credential.expiresAt)}</td><td><Button small variant="ghost" disabled={busy()} onClick={() => void action(async () => { await post(`/operation-tokens/${credential.id}/revoke`, {}, auth.session()?.csrfToken); await credentials.refetch(); })}>Revoke</Button></td></tr>}</For></tbody></table></div>

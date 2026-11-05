@@ -166,4 +166,25 @@ func TestOperationsCapabilitiesSourcesAndBoundReviews(t *testing.T) {
 	if code != 422 {
 		t.Fatal("Scoped token changed private connection", code, body)
 	}
+
+	gitConfig := store.Config{Method: "auto", Repository: "https://github.com/example/web.git", Branch: "main"}
+	commit := strings.Repeat("a", 40)
+	code, body = call("POST", "/api/plan", "", map[string]any{"name": "Reviewed Git", "config": gitConfig, "commit": commit})
+	if code != 200 {
+		t.Fatal(code, body)
+	}
+	json.Unmarshal([]byte(body), &plan)
+	input := map[string]any{"id": plan.ApplicationID, "revision": plan.Revision, "name": "Reviewed Git", "config": gitConfig, "commit": strings.Repeat("b", 40)}
+	if code, body = call("POST", "/api/applications", "", input); code != 409 {
+		t.Fatal("A changed Git commit passed review", code, body)
+	}
+	input["commit"] = commit
+	if code, body = call("POST", "/api/applications", "", input); code != 202 {
+		t.Fatal(code, body)
+	}
+	var job store.Deployment
+	json.Unmarshal([]byte(body), &job)
+	if job.Commit != commit || job.Config.Branch != "main" {
+		t.Fatal("Creation did not preserve the reviewed commit and configured branch", job)
+	}
 }

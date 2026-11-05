@@ -2,9 +2,9 @@
 
 **Audit date:** 2026-11-02, Europe/Budapest.  
 **Shipper baseline:** version `0.4.0`, commit `5831782a85a2431cc30baa9e07f72524c72103a7`, including Phases 1–4.  
-**Shipper implementation update:** 2026-11-05, Phase 9 core / `0.9.0`; the original comparison baseline above remains pinned. See [operations](docs/operations.md).
+**Shipper implementation update:** 2026-11-05, Phase 10 / `1.0.0-rc.5`; the original comparison baseline above remains pinned. See [release acceptance](docs/release-acceptance.md) and [operations](docs/operations.md).
 **Planning update:** 2026-11-04, expanded VPS provisioning/server care, mandatory P9.5 interaction design and guided cron scheduling. These are planned work, not added implementation claims. Automatic first-admin ACME setup, built-in certificate lifecycle, the offered Contabo/domain lab and admin-provisioned provider/2FA policy are specified in the linked roadmap/contracts.
-**Human/agent workflow update:** 2026-11-05, the lightweight dashboard now shares diagnostic evidence, scoped operations and immutable local-project deployment with the focused Go CLI. Narrow SSH bootstrap, full CLI/MCP coverage and broader adapters remain planned. These implementation updates are not new Coolify audit findings.
+**Human/agent workflow update:** 2026-11-05, the lightweight dashboard now shares diagnostic evidence, scoped operations and immutable local-project deployment with the focused Go CLI. Narrow SSH bootstrap is available for the supported Ubuntu profile. Full CLI/MCP coverage and broader adapters remain planned. These implementation updates are not new Coolify audit findings.
 **Coolify baseline:** release tag `v4.6.0`, commit `0becfba9113063336b09860579627fd218cb3fc4`.  
 **Additional source checked:** Coolify `main` at `67b29ff24af8d54905341f8de8585c3302f67311` and the production docs repository at `b4f93fae4a2417817d4159c0b2377f24a265e5b8`.
 
@@ -928,8 +928,8 @@ the complexity already removed from `.env`, logs and static-site views.
 | Q37 | Backups and a tested restore action | P8 | A green upload result is not proof that application data can be recovered. |
 | Q38 | Maintenance mode without stopping workers/databases | Present; preserve | Change routing separately from workload/data lifecycle. |
 | Q39 | Guided task recurrence, visible generated cron and manual mode | Implemented in P8; preserve P9.5 | Common schedules through a picker; cron remains readable/copyable, timezone/next runs visible and manual patterns lossless. |
-| Q40 | Adaptive application creation and quick path | Planned; P9.5 | Source, detected method, essentials and review; skip irrelevant steps and preserve drafts. |
-| Q41 | Choice cards and purpose-built information components | Planned; P9.5 | Use choice cards, service summaries, compact history tables and status/review panels in the appropriate contexts. |
+| Q40 | Adaptive application creation and quick path | Implemented in P9.5 | Source, detected method, essentials and review; skip irrelevant steps and preserve drafts. |
+| Q41 | Choice cards and purpose-built information components | Implemented in P9.5 | Use choice cards, service summaries, compact history tables and status/review panels in the appropriate contexts. |
 | Q42 | One-command dedicated-VPS setup with dependencies | Planned; P10 | Detect/install compatible Docker/tooling, configure boot/proxy and secure onboarding; reruns preserve state and other workloads. |
 | Q43 | Routine server care through Shipper | Planned; P9/P10 | Focused System health/storage/updates/recovery, safe retention, explicit maintenance policies and narrow audited host actions. |
 | Q44 | Built-in HTTPS and automatic first-admin ACME contact | Planned; P10 | First-admin email initializes ACME; public domain issuance, renewal/retry and certificate persistence need no recurring operator task. |
@@ -950,8 +950,8 @@ the complexity already removed from `.env`, logs and static-site views.
 Phase 5–7 core with real GitHub and public HTTPS acceptance; tested Shipper/key/
 certificate and supported application-data recovery with off-server backups;
 focused diagnostics, actionable notifications, bounded retention and a scoped
-operations API and focused local-project CLI; the mandatory P9.5 UI and
-guided-scheduling gate; and the complete
+operations API, focused local-project CLI and guided P9.5 UI and scheduling;
+and the complete
 P10 provisioning, server-care, maintenance, security, upgrade, recovery and
 performance lifecycle on fresh dedicated supported Linux VPSs.
 Include secure single-VPS SSH bootstrap and both manual and external-agent

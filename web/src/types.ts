@@ -1,5 +1,5 @@
 export interface User { id: string; email: string }
-export interface Session { setupRequired: boolean; user: User | null; csrfToken?: string }
+export interface Session { setupRequired: boolean; user: User | null; csrfToken?: string; authStep?: "enroll" | "verify"; factor?: { enrolled: boolean; required: boolean }; recoveryCodes?: string[] }
 export interface Port { ip: string; private: number; public: number; protocol: string }
 export interface Container {
   id: string; name: string; image: string; state: string; status: string; health: string;
@@ -21,7 +21,7 @@ export interface Deployment { rollbackId?:string; digest?:string;cancelRequested
 export interface Application { id: string; name: string; sourceKind: string; sourceRef: string; method: string; state: string; createdAt: number; updatedAt: number; containers: Container[]; config: StaticConfig; activeDeploymentId: string; latestDeployment?: Deployment; domains: Domain[]; desiredState: string; activeMethod?: string }
 export interface ApplicationDetail { application: Application; deployments: Deployment[]; activeDeployment?: Deployment | null }
 export interface LogLine { number: number; sequence: number; step: string; line: string; createdAt: number }
-export interface ProxyConfig { dashboardURL?:string; dashboardUpstream?:string; bindIP: string; httpPort: number; httpsPort: number; acmeEmail: string; acmeCA: string }
+export interface ProxyConfig { dashboardURL?:string; dashboardUpstream?:string; bindIP: string; httpPort: number; httpsPort: number; acmeEmail: string; acmeCA: string; autoHTTPS?: boolean }
 export interface Inventory { items: Application[]; docker: DockerHealth }
 export interface SystemInfo {
   version: string; instanceId: string; docker: DockerHealth;

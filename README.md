@@ -2,11 +2,16 @@
 
 A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
 
-**Phases 1–9 core.** Deploy local projects, public/private GitHub repositories, direct images,
+Deploy local projects, public/private GitHub repositories, direct images,
 inline Dockerfiles or Compose applications. Configure lifecycle commands and
 scheduled tasks, automate signed push deployments, review configuration changes,
 and restore recorded releases. Dockerfile, Railpack and static Apache builds
 share the same application model.
+
+New applications use a guided source, configuration and review flow. Automatic
+build selection recommends a method after inspecting the source. Workers skip
+HTTP settings, and Compose previews show services and their route targets.
+Review with defaults skips the configuration step when no overrides are needed.
 
 Service logs, editable environments, domain routing, health checks, persistent
 volumes, and application lifecycle controls are available from the dashboard.
@@ -22,9 +27,10 @@ model. The dashboard remains a complete manual workflow. See
 See [backups and recovery](docs/backups.md), [Compose operations](docs/compose.md) and [commands and tasks](docs/commands.md).
 The [feature parity audit](feature_parity.md) compares Coolify capabilities and
 sets the next [phases and milestones](docs/roadmap.md).
-The planned [account and authentication model](docs/authentication.md) and
-[VPS acceptance lab](docs/vps-test-plan.md) describe future access controls and
-real-system release checks, separately from shipped functionality.
+The 1.0 release candidate adds a [managed Ubuntu installer](docs/installation.md),
+automatic HTTPS and [owner 2FA](docs/authentication.md). See
+[release acceptance](docs/release-acceptance.md) for what has been verified and
+what remains before the stable release.
 
 ## Run locally
 
@@ -114,7 +120,12 @@ When putting Shipper behind an HTTPS reverse proxy, set `SHIPPER_PUBLIC_URL` to
 its exact external origin. This enables Secure cookies and canonical origin
 checks. Forwarded headers are intentionally not trusted. The default loopback
 listener is for local operation. Traefik is provisioned lazily for the first
-deployment; no public installer is published yet.
+deployment in manual setups.
+
+For a dedicated Ubuntu 24.04 x86-64 VPS, see [managed installation, updates,
+and recovery](docs/installation.md). The release candidate installer can be
+tested with a verified local image archive. Public release assets are not
+published yet.
 
 ## What the dashboard shows
 

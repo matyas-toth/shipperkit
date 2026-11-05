@@ -70,3 +70,20 @@ export function scheduleExpression(c: ScheduleChoice): string {
       return c.custom;
   }
 }
+
+export function describeSchedule(expression: string): string {
+  const c = parseSchedule(expression);
+  const minute = String(c.minute).padStart(2, "0");
+  const time = String(c.hour).padStart(2, "0") + ":" + minute;
+  switch (c.mode) {
+    case "manual": return "Manual";
+    case "minutes": return c.interval === 1 ? "Every minute" : "Every " + c.interval + " minutes";
+    case "hourly": return "Hourly at :" + minute;
+    case "hours": return c.interval === 1 ? "Hourly at :" + minute : "Every " + c.interval + " hours at :" + minute;
+    case "daily": return "Daily at " + time;
+    case "weekly": return [1, 2, 3, 4, 5, 6, 0].filter(day => c.days.includes(day))
+      .map(day => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day]).join(", ") + " at " + time;
+    case "monthly": return "Monthly on day " + c.day + " at " + time;
+    case "custom": return "Custom cron";
+  }
+}

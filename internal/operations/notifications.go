@@ -10,11 +10,13 @@ import (
 	"net"
 	"net/http"
 	"net/mail"
+	"net/netip"
 	"net/smtp"
 	"net/url"
 	"strings"
 	"time"
 
+	"shipper/internal/netguard"
 	"shipper/internal/store"
 )
 
@@ -84,7 +86,8 @@ func SafeDial(ctx context.Context, network, address string, private bool) (net.C
 		return nil, errors.New("Notification host could not be resolved")
 	}
 	for _, v := range ips {
-		if !private && (!v.IP.IsGlobalUnicast() || v.IP.IsPrivate() || v.IP.IsLoopback() || v.IP.IsLinkLocalUnicast()) {
+		ip, ok := netip.AddrFromSlice(v.IP)
+		if !private && (!ok || !netguard.Public(ip)) {
 			return nil, errors.New("Private notification destinations require explicit permission")
 		}
 	}

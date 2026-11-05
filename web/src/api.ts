@@ -9,6 +9,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const body = await response.json();
   if (!response.ok) {
+    if (response.status === 403 && body.error?.code === "factor_required" && !path.startsWith("/auth/")) {
+      window.dispatchEvent(new Event("shipper:session-changed"));
+    }
     if (response.status === 401 && !path.startsWith("/auth/")) {
       window.dispatchEvent(new Event("shipper:session-expired"));
     }

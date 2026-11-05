@@ -10,6 +10,7 @@ import (
 
 type SourceInspection struct {
 	Method         string   `json:"method"`
+	Commit         string   `json:"commit,omitempty"`
 	InstallCommand string   `json:"installCommand"`
 	BuildCommand   string   `json:"buildCommand"`
 	StartCommand   string   `json:"startCommand"`

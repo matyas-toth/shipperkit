@@ -163,7 +163,15 @@ func (s *Server) systemOperations(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, e)
 		return
 	}
-	s.json(w, 200, map[string]any{"observedAt": time.Now().Unix(), "items": facts, "notifications": status, "sampleIntervalSeconds": 15, "maxContainersPerCycle": 32, "bootReadiness": "not_verified", "docker": s.monitor.Health()})
+	host := operations.InstalledHostStatus()
+	boot := "not_verified"
+	if host != nil && !host.Stale {
+		boot = "not_ready"
+		if host.DockerAtBoot && host.ShipperAtBoot {
+			boot = "ready"
+		}
+	}
+	s.json(w, 200, map[string]any{"observedAt": time.Now().Unix(), "items": facts, "notifications": status, "sampleIntervalSeconds": 15, "maxContainersPerCycle": 32, "bootReadiness": boot, "host": host, "docker": s.monitor.Health()})
 }
 func (s *Server) diagnostics(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -350,13 +358,33 @@ func (s *Server) saveNotifications(w http.ResponseWriter, r *http.Request) {
 	s.notificationSettings(w, r)
 }
 func (s *Server) testNotification(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Config *operations.NotificationConfig `json:"config,omitempty"`
+	}
+	if !s.decode(w, r, &input) {
+		return
+	}
 	c, e := operations.LoadNotifications(r.Context(), s.db)
 	if e != nil {
 		s.internal(w, e)
 		return
 	}
+	if input.Config != nil {
+		next := *input.Config
+		if next.Webhook == "" {
+			next.Webhook = c.Webhook
+		}
+		if next.Password == "" {
+			next.Password = c.Password
+		}
+		c = next
+	}
 	if !c.Enabled {
 		s.problem(w, 422, "notifications_disabled", "Enable notifications first")
+		return
+	}
+	if e = c.Validate(); e != nil {
+		s.problem(w, 422, "invalid_notification", e.Error())
 		return
 	}
 	e = operations.Send(r.Context(), c, store.OperationEvent{Kind: "test", State: "healthy", Summary: "Shipper notification test", CreatedAt: time.Now().Unix()})

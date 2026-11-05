@@ -1,7 +1,7 @@
 # Security
 
-Shipper controls security-critical infrastructure. Version 0.7.0 is development
-software and has not had an independent security review.
+Shipper controls security-critical infrastructure. The 1.0 release candidate
+has not had an independent security review.
 
 Keep it on loopback or behind authenticated private access. Configure the
 canonical HTTPS public origin when using a reverse proxy. A Docker socket grants
@@ -9,8 +9,9 @@ host-level control; a read-only mount does not restrict Docker API operations.
 
 Administrator passwords use bcrypt. Session tokens are random, hashed in SQLite,
 HttpOnly, SameSite=Strict, and Secure under HTTPS. Authenticated mutations require
-CSRF tokens. First-run administrator creation requires a private local token.
-Local password recovery revokes existing sessions.
+CSRF tokens. Managed first-run setup uses `shipperctl claim` through host access.
+Manually hosted first-run setup uses a private expiring local token. Offline
+owner recovery revokes existing sessions.
 
 Protect the data directory and backups. POSIX permissions are restrictive;
 Windows operators must also enforce appropriate directory ACLs. The setup-token
@@ -48,8 +49,8 @@ environment. Back up encryption.key with the database. See
 [full application operations](docs/full-applications.md) and
 [source credentials and triggers](docs/sources.md). Signed GitHub deliveries and
 application-scoped deploy tokens do not grant dashboard access. A formal security
-audit and [real-system ACME/reboot/recovery acceptance](docs/vps-test-plan.md)
-remain release prerequisites; offered lab access is not evidence of completed tests.
+audit and the outstanding [real-system acceptance checks](docs/release-acceptance.md)
+remain release prerequisites.
 
 
 Compose sources and resolved plans are encrypted and hidden from ordinary API
@@ -60,10 +61,10 @@ volumes are used without adoption or deletion. Compose is an administrator-only
 workload capability, not a sandbox for hostile tenants. Supported options and
 stateful rollback limits are documented in [Compose operations](docs/compose.md).
 
-## Planned authentication and HTTPS policy
+## Authentication and HTTPS policy
 
 The [authentication contract](docs/authentication.md) and
-[roadmap](docs/roadmap.md) are future requirements, not current OAuth/2FA support.
+[roadmap](docs/roadmap.md) describe future collaboration and OAuth support.
 There is no planned public registration: admins provision accounts, while the
 existing private first-admin capability remains the bootstrap exception.
 
@@ -75,18 +76,19 @@ but stable provider subjects identify established links. Unverified/ambiguous or
 non-authoritative claims cannot silently link or create users. Login credentials
 remain separate from repository connections.
 
-Personal TOTP, recovery and instance-wide enforcement are required before 1.0.
-Every enrolled interactive login needs Shipper's own second factor, including
-future OAuth login. Password-change/enrollment/factor gates restrict both UI and
-API/stream access. Forced enrollment covers active admin/user sessions and cannot
-be bypassed by disabling a required factor or using an old personal token.
-Audit factor resets and offline owner recovery; do not log or expose TOTP secrets
-or recovery codes through ordinary APIs.
+Personal TOTP, recovery and instance-wide enforcement are implemented in the
+candidate. Every enrolled interactive login needs Shipper's own second factor.
+Enrollment and factor gates restrict UI, API and stream access, including active
+sessions. Separately scoped operations and deploy tokens remain automation
+identities; they cannot create browser sessions or change the account policy.
+Factor resets and offline recovery are audited. Ordinary APIs do not expose
+TOTP secrets or recovery codes.
 
-Planned managed HTTPS seeds ACME contact from the first administrator's email and
-owns issuance, renewal, persistence, bounded retry and actionable failure reporting.
-Current 0.7.0 still uses explicit proxy/ACME configuration. Preserve existing CA
-accounts, contact overrides and certificate storage during migration and recovery.
+Managed HTTPS seeds the ACME contact from the first administrator's email.
+Traefik issues and renews certificates; Shipper observes readiness and expiry.
+The candidate preserved the certificate store through a real reboot; actual
+renewal is a separate acceptance check. Preserve deliberate CA and contact
+overrides during migration and recovery.
 
 
 Phase 8 recovery archives use age authenticated encryption. Keep the separately

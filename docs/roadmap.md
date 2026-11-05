@@ -1,24 +1,25 @@
 # Roadmap
 
-Updated 2026-11-05. Phases 1–9 core are implemented in 0.9.0, including
-shared diagnostics/operations, a focused CLI and immutable local-project deployment.
-The next deliverables are the mandatory UI refactor and a tested installation and
-server-care workflow. Phase 10 remains the single-server 1.0 release gate.
+Updated 2026-11-05. Phases 1–9.5 deliver the shared operations contract,
+local-project deployment and guided creation. The Phase 10 release candidate
+is implemented on the supported Ubuntu profile and under
+[release acceptance](release-acceptance.md).
 
 The [Coolify parity audit](../feature_parity.md) tracks eventual capability breadth.
 A smaller, dependable 1.0 takes priority over completing every parity milestone.
-The planned [VPS test lab](vps-test-plan.md) and [account/authentication contract](authentication.md)
+The [VPS test lab](vps-test-plan.md) and [account/authentication contract](authentication.md)
 record the real-system acceptance resources and the future access model.
 Implemented code, locally verified behavior, and public-VPS acceptance are separate
-statuses; GitHub onboarding/private checkout/public push delivery and public ACME
-issuance/renewal still require external acceptance before release.
+statuses. Public ACME issuance passed on staging. Actual renewal and GitHub
+onboarding/private checkout/public push delivery remain release gates.
 
 ## Product and operating principles
 
 The target experience is: buy a supported Linux VPS, run one installer command,
 open Shipper, connect a source, and deploy. Routine deployment and server care
 should happen through Shipper without requiring Docker commands or repeated SSH
-sessions. This is planned behavior, not the current installation experience.
+sessions. The release candidate implements managed installation on Ubuntu
+24.04 x86-64; the remaining production checks are listed in Phase 10.
 
 The lightweight, information-dense Coolify alternative and agent-accessible
 deployment environment are complementary product paths. The dashboard remains a
@@ -420,41 +421,49 @@ This is an interaction-design pass using the existing visual identity. Shared
 components, including the schedule picker, can land alongside P8/P9 features;
 P9.5 completes the cross-flow audit and acceptance before P10.
 
+Implementation: 0.9.5 shares native choice controls, service cards, review panels
+and build fields without adding a UI framework. Creation reuses the operations
+plan: Git inspection can pin the first build without changing the branch used
+for later deploys. Local and pasted sources preserve their reviewed inputs.
+Image tags resolve at deployment; a digest can pin the image. Web roles can
+override the resolved port; workers omit HTTP fields. Updates remain a Phase 10
+workflow. Real provider, VPS and performance acceptance are tracked there.
+
 ### P9.5.1: Shared choice and information components
 
-- [ ] Audit creation, configuration, .env, domains, services, tasks, backups,
+- [x] Audit creation, configuration, .env, domains, services, tasks, backups,
   updates and recovery against actual user journeys and DESIGN.md
-- [ ] Choice cards for meaningful alternatives, service summaries for stacks,
+- [x] Choice cards for meaningful alternatives, service summaries for stacks,
   compact tables for dense history, and structured status/review panels for
   diagnostics and consequential changes; avoid presenting everything as a list
-- [ ] Separate source type, build method and runtime role. Automatic is a selection
+- [x] Separate source type, build method and runtime role. Automatic is a selection
   mode that recommends a detected method, rather than a peer of every build method
-- [ ] Make selected/recommended states, defaults, inheritance and overrides clear
+- [x] Make selected/recommended states, defaults, inheritance and overrides clear
   through layout and controls; keep advanced options contextual
-- [ ] Keep one primary action per task and preserve the minimal .env editor,
+- [x] Keep one primary action per task and preserve the minimal .env editor,
   lightweight log toolbar, multi-domain controls and existing QoL register
-- [ ] Share components, validation and operation contracts for consistent UX/DX/AX;
+- [x] Share components, validation and operation contracts for consistent UX/DX/AX;
   avoid a generic form framework or large new frontend dependency
-- [ ] Present the same reviewed effects, diagnostic facts and verification states
+- [x] Present the same reviewed effects, diagnostic facts and verification states
   used by automation in compact contextual components. Keep manual creation,
   editing and recovery complete without an agent, CLI or prompt-writing step
 
 ### P9.5.2: Adaptive application creation
 
-- [ ] Source choices for Git, container image and Compose, with inline Dockerfile
+- [x] Source choices for Git, container image and Compose, with inline Dockerfile
   and specialist input paths available through additional options
-- [ ] Source-specific connection/repository/revision or image/Compose fields
-- [ ] Include the local-upload source where supported, with file review and recorded
+- [x] Source-specific connection/repository/revision or image/Compose fields
+- [x] Include the local-upload source where supported, with file review and recorded
   snapshot identity; preserve the quick Git/image/pasted-Compose paths
-- [ ] Inspect source without executing it, present a detected recommendation and
+- [x] Inspect source without executing it, present a detected recommendation and
   clear build-method cards for deliberate overrides, and preview Compose services
-- [ ] Configure only relevant essentials: inferred/overridden ports, optional
+- [x] Configure only relevant essentials: inferred/overridden ports, optional
   domains, required .env values and persistent storage; workers skip HTTP fields
-- [ ] Review source/revision, deployment method, public services, storage and
+- [x] Review source/revision, deployment method, public services, storage and
   commands before enqueueing the first deploy
-- [ ] A quick path for experienced users; allow direct section edits from review,
+- [x] A quick path for experienced users; allow direct section edits from review,
   preserve drafts when going back, and keep secrets out of persistent browser storage
-- [ ] Do not turn a trivial deploy into mandatory empty steps. Domain setup can
+- [x] Do not turn a trivial deploy into mandatory empty steps. Domain setup can
   happen later and a single-container app does not need service selection
 
 ### P9.5.3: Intuitive task recurrence picker (Q39)
@@ -513,24 +522,24 @@ Start with a small, explicitly tested Linux distribution/architecture matrix.
 
 - [ ] Detect supported OS/architecture, resource availability, privilege requirements,
   package-manager locks, port/network conflicts and incompatible existing software
-- [ ] Install supported Docker Engine, Compose/build tooling and required system
+- [x] Install supported Docker Engine, Compose/build tooling and required system
   dependencies when absent; reuse compatible installations without silently
   overwriting daemon configuration, other workloads or host policy
-- [ ] Establish Shipper directories, permissions, persistent state, managed networks,
+- [x] Establish Shipper directories, permissions, persistent state, managed networks,
   proxy and boot services; workloads get language runtimes through build images
 - [ ] A resumable, idempotent installer with durable stage results, readable logs,
   versioned artifacts/integrity checks and useful retry/repair outcomes
-- [ ] Secure first-admin setup and dashboard URL. Creating the first administrator
+- [x] Secure first-admin setup and dashboard URL. Creating the first administrator
   automatically persists that email as the initial ACME contact and queues resolver
   setup; no separate ACME email prompt or environment variable is required
 - [ ] Make fresh setup and ACME initialization recoverable across partial failure.
   Preserve existing CA accounts and deliberate legacy contact overrides on upgrade;
   later login-email changes do not silently replace the stored ACME contact
-- [ ] Guide only domain/DNS prerequisites. Once a valid reachable hostname is
+- [x] Guide only domain/DNS prerequisites. Once a valid reachable hostname is
   configured, automatically issue and attach its dashboard/application certificate
   and redirect ordinary HTTP traffic to HTTPS; localhost/internal services keep
   their explicit supported behavior
-- [ ] Default supported new public domains to HTTPS, with explicit HTTP/external
+- [x] Default supported new public domains to HTTPS, with explicit HTTP/external
   termination choices under advanced settings; preserve deliberate existing route
   policy on upgrade rather than silently changing serving behavior
 - [ ] Reconcile the proxy safely when automatic ACME setup is first enabled, with
@@ -538,13 +547,13 @@ Start with a small, explicitly tested Linux distribution/architecture matrix.
   users must not remove proxy containers or hand-edit files to activate HTTPS
 - [ ] Apply only reviewed/declared firewall changes, preserve SSH access, keep
   databases/internal services private, and report provider-firewall prerequisites
-- [ ] Provision the dedicated local host by default. Existing-Docker/manual installs
+- [x] Provision the dedicated local host by default. Existing-Docker/manual installs
   keep an explicit compatibility/ownership boundary and remain documented
-- [ ] A narrow CLI bootstrap entry point can connect to one explicitly authorized
+- [x] A narrow CLI bootstrap entry point can connect to one explicitly authorized
   fresh VPS over SSH and invoke this same installer. Verify host identity, review
   host effects/privileges, preserve key handling and resume recorded setup stages;
   it does not introduce remote deployment targets or a permanent SSH control plane
-- [ ] Use an expiring single-use first-admin claim and deliberate secure CLI pairing
+- [x] Use an expiring single-use first-admin claim and deliberate secure CLI pairing
   to obtain scoped/revocable management credentials. Never scrape browser cookies,
   save SSH keys in project files, expose reusable setup credentials in logs or
   bypass interactive account/factor policy to establish automation access
@@ -563,10 +572,10 @@ Start with a small, explicitly tested Linux distribution/architecture matrix.
   operations/events introduced in P8/P9
 - [ ] Narrow, audited privileged actions with permission checks, preflight, effect
   review, bounded execution and persisted results; never arbitrary host commands
-- [ ] Version-pinned Shipper updates with compatibility checks, verified pre-update
+- [x] Version-pinned Shipper updates with compatibility checks, verified pre-update
   backups, migration handling and a tested recovery route; do not assume an old
   binary can read a newer database schema
-- [ ] Explicit Docker/dependency/OS-security maintenance policy, maintenance windows
+- [x] Explicit Docker/dependency/OS-security maintenance policy, maintenance windows
   and reboot-required status. Disruptive upgrades/reboots need an operator-approved
   action or previously configured policy, not a surprise during an app deployment
 - [ ] Detect unsupported/foreign dependencies and preserve them; diagnose uncertain
@@ -576,12 +585,12 @@ Start with a small, explicitly tested Linux distribution/architecture matrix.
 
 ### P10.3: Security, compatibility and production acceptance
 
-- [ ] Personal TOTP 2FA with generated secret, issuer Shipper, QR/manual setup and
+- [x] Personal TOTP 2FA with generated secret, issuer Shipper, QR/manual setup and
   confirmation, hashed recovery codes and recent-auth protection for factor changes
-- [ ] An administrator can require 2FA instance-wide. Existing sessions and new
+- [x] An administrator can require 2FA instance-wide. Existing sessions and new
   logins, including the administrator's, are restricted to enrollment/recovery
   until enrolled and verified; enforce this in APIs/streams as well as navigation
-- [ ] Enrolled users complete Shipper's own second-factor step at every interactive
+- [x] Enrolled users complete Shipper's own second-factor step at every interactive
   login. Optional 2FA can be disabled after verification; enforced 2FA cannot be
   disabled by the user. Preserve this gate for all P11 OAuth login methods
 - [ ] Account/session management, audited offline owner recovery and credential/token

@@ -498,13 +498,25 @@ func ValidateBackupSpec(c *store.BackupSpec) error {
 	return nil
 }
 func (r *DockerRuntime) databaseContainer(ctx context.Context, d store.Deployment, c store.BackupSpec) (string, error) {
-	cs, e := r.Client.ContainerList(ctx, client.ContainerListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.application.id="+d.ApplicationID).Add("label", "io.shipper.deployment.id="+d.ID)})
+	var items []container.Summary
+	var e error
+	if ReleaseMethod(d) == "compose" {
+		// Compose retains unchanged service containers across releases. Its
+		// owned project is the stable identity, not a deployment label.
+		items, e = r.composeContainers(ctx, d.ApplicationID)
+	} else {
+		var listed client.ContainerListResult
+		listed, e = r.Client.ContainerList(ctx, client.ContainerListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.application.id="+d.ApplicationID).Add("label", "io.shipper.deployment.id="+d.ID)})
+		items = listed.Items
+	}
 	if e != nil {
 		return "", e
 	}
 	ids := []string{}
-	for _, v := range cs.Items {
-		if owned(v.Labels, r.Instance, d.ApplicationID) && (c.Service == "" || v.Labels["com.docker.compose.service"] == c.Service) {
+	for _, v := range items {
+		if v.State == "running" && owned(v.Labels, r.Instance, d.ApplicationID) &&
+			!strings.EqualFold(v.Labels["com.docker.compose.oneoff"], "true") &&
+			(c.Service == "" || v.Labels["com.docker.compose.service"] == c.Service) {
 			ids = append(ids, v.ID)
 		}
 	}

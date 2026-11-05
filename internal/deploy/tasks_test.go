@@ -149,6 +149,17 @@ func TestCronSchedules(t *testing.T) {
 			t.Fatal(c, got, e)
 		}
 	}
+	for _, c := range []struct{ expr, zone, after, want string }{
+		{"30 2 * * *", "Europe/Budapest", "2026-10-25T00:29:00Z", "2026-10-25T00:30:00Z"},
+		{"30 2 * * *", "Europe/Budapest", "2026-10-25T00:30:00Z", "2026-10-25T01:30:00Z"},
+		{"0 9 31 * *", "Europe/Budapest", "2026-04-01T00:00:00Z", "2026-05-31T07:00:00Z"},
+	} {
+		after, _ := time.Parse(time.RFC3339, c.after)
+		got, e := NextSchedule(c.expr, c.zone, after)
+		if e != nil || got.Format(time.RFC3339) != c.want {
+			t.Fatal(c, got, e)
+		}
+	}
 	for _, bad := range []string{"* * *", "61 * * * *", "*/0 * * * *", "x * * * *", "0 0 31 2 *"} {
 		if _, e := NextSchedule(bad, "UTC", time.Now()); e == nil {
 			t.Fatal("accepted", bad)

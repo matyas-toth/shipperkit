@@ -5,6 +5,7 @@ internal/ui/dist
 bin
 .shipper*
 .env*
+.vpsenv
 test-results
 playwright-report
 

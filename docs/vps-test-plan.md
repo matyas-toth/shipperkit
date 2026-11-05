@@ -1,16 +1,22 @@
-# Planned real-system acceptance lab
+# Real-system acceptance lab
 
-Status: offered resources and future test plan. Access has not been supplied in
-this discussion and these tests are not claimed complete. Credentials never
-belong in this document. See the [roadmap](roadmap.md).
+Status: testing started on 2026-11-05. Verified results and remaining release
+gates are tracked in [release acceptance](release-acceptance.md). Credentials
+are stored locally in `.vpsenv`, excluded from Git and Docker build contexts.
+See the [roadmap](roadmap.md).
 
 ## Resources and scope
 
-The user will provide a disposable Contabo VPS with 8 GB RAM, permission to
-reinstall it with multiple Linux distributions, and 3–4 domains for deployment
-and DNS/address-resolution testing. Record its actual CPU architecture, disk,
-network, provider image and distro versions when access arrives. The 8 GB host
-is not a measured minimum requirement or proof of other architectures.
+The authorized host is one disposable Contabo staging VPS, currently running
+Ubuntu. Free Linux reinstalls and management of this host are authorized.
+The local `.vpsenv` identifies the exact VPS, Cloudflare account and two authorized
+zones. DNS changes may include apex records in those zones. All other hosts,
+accounts, zones and paid operations are outside scope. Record actual CPU
+architecture, memory, disk and distro versions when testing begins.
+
+For the installer, test the same script intended for the release. A temporary
+raw URL may help during development; public acceptance should use a Shipper
+repository or release asset pinned to the version under test.
 
 Record the exact authorized VPS and test domains/records before execution.
 Reinstallation and destructive tests apply only to that host. Keep redacted

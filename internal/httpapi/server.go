@@ -32,15 +32,17 @@ import (
 const cookieName = "shipper_session"
 
 type Config struct {
-	GitHub     *gitprovider.GitHub
-	PublicURL  string
-	SetupToken string
-	Assets     http.Handler
-	Version    string
-	InstanceID string
-	Worker     *deploy.Worker
-	Proxy      deploy.ProxyConfig
-	Operations *operations.Service
+	GitHub         *gitprovider.GitHub
+	PublicURL      string
+	SetupToken     string
+	Assets         http.Handler
+	Version        string
+	InstanceID     string
+	Worker         *deploy.Worker
+	Proxy          deploy.ProxyConfig
+	EffectiveProxy func(context.Context) (deploy.ProxyConfig, error)
+	SetupClaim     func() (string, error)
+	Operations     *operations.Service
 }
 type Server struct {
 	github          *gitprovider.GitHub
@@ -53,6 +55,8 @@ type Server struct {
 	authSlots       chan struct{}
 	logSlots        chan struct{}
 	protectionSlots chan struct{}
+	authMu          sync.Mutex
+	authChanged     chan struct{}
 }
 type contextKey int
 
@@ -64,6 +68,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 	}
 	dummy, _ := auth.Password(auth.Token()[:32])
 	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1)}
+	s.authChanged = make(chan struct{})
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, s.headers)
 	r.Get("/connect/github/manifest", s.githubManifest)
@@ -76,6 +81,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		r.Get("/auth/session", s.currentSession)
 		r.With(s.limit, s.hashCapacity).Post("/auth/setup", s.setup)
 		r.With(s.limit, s.hashCapacity).Post("/auth/login", s.login)
+		s.factorRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireSession)
 			s.operationsRoutes(r)
@@ -122,7 +128,6 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.With(s.csrf, s.limit).Post("/applications/{id}/domain-check", s.checkDomain)
 			r.Get("/system", s.system)
 			r.Get("/events", s.stream)
-			r.With(s.csrf).Post("/auth/logout", s.logout)
 			r.With(s.csrf, s.limit).Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
 				s.monitor.Trigger()
 				s.json(w, 202, map[string]string{"status": "queued"})
@@ -193,6 +198,10 @@ func (s *Server) requireSession(next http.Handler) http.Handler {
 		}
 		session, err := s.session(r)
 		if err != nil {
+			if errors.Is(err, errFactorGate) {
+				s.problem(w, 403, "factor_required", "Complete two-factor authentication")
+				return
+			}
 			s.problem(w, 401, "unauthenticated", "Sign in to continue")
 			return
 		}
@@ -218,6 +227,14 @@ func (s *Server) session(r *http.Request) (store.Session, error) {
 		t, e := s.db.OperationToken(r.Context(), strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 		return store.Session{User: store.User{ID: t.UserID}, ExpiresAt: t.ExpiresAt}, e
 	}
+	session, err := s.browserSession(r)
+	if err == nil && session.AuthStep() != "" {
+		err = errFactorGate
+	}
+	return session, err
+}
+
+func (s *Server) browserSession(r *http.Request) (store.Session, error) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
 		return store.Session{}, err
@@ -233,12 +250,12 @@ func (s *Server) currentSession(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
-	session, err := s.session(r)
+	session, err := s.browserSession(r)
 	if err != nil {
 		s.json(w, 200, map[string]any{"setupRequired": !configured, "user": nil})
 		return
 	}
-	s.json(w, 200, map[string]any{"setupRequired": false, "user": session.User, "csrfToken": session.CSRF})
+	s.writeSession(w, 200, session, nil)
 }
 
 type credentials struct {
@@ -279,7 +296,15 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 409, "setup_complete", "Shipper already has an administrator")
 		return
 	}
-	if s.cfg.SetupToken == "" || !auth.Equal(input.SetupToken, s.cfg.SetupToken) {
+	claim := s.cfg.SetupToken
+	if s.cfg.SetupClaim != nil {
+		claim, err = s.cfg.SetupClaim()
+		if err != nil {
+			s.problem(w, 403, "setup_token_expired", "Get a fresh setup token on the server")
+			return
+		}
+	}
+	if claim == "" || !auth.Equal(input.SetupToken, claim) {
 		s.problem(w, 403, "setup_token_invalid", "The setup token is invalid")
 		return
 	}
@@ -305,6 +330,9 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.cookie(w, token, expiry)
+	if s.cfg.Worker != nil {
+		s.cfg.Worker.Trigger()
+	}
 	s.json(w, 201, map[string]any{"setupRequired": false, "user": user, "csrfToken": csrf})
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -324,15 +352,23 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	token, csrf := auth.Token(), auth.Token()
 	expiry := time.Now().Add(7 * 24 * time.Hour).Unix()
+	factor, err := s.db.FactorState(r.Context(), user.ID)
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	if factor.Enrolled || factor.Required {
+		expiry = time.Now().Add(10 * time.Minute).Unix()
+	}
 	if err = s.db.CreateSession(r.Context(), auth.Hash(token), user.ID, csrf, expiry); err != nil {
 		s.internal(w, err)
 		return
 	}
 	s.cookie(w, token, expiry)
-	s.json(w, 200, map[string]any{"setupRequired": false, "user": user, "csrfToken": csrf})
+	s.writeSession(w, 200, store.Session{User: user, CSRF: csrf, ExpiresAt: expiry, Factor: factor}, nil)
 }
 func (s *Server) cookie(w http.ResponseWriter, token string, expiry int64) {
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.cfg.PublicURL, "https://"), SameSite: http.SameSiteStrictMode, Expires: time.Unix(expiry, 0), MaxAge: 7 * 24 * 60 * 60})
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.cfg.PublicURL, "https://"), SameSite: http.SameSiteStrictMode, Expires: time.Unix(expiry, 0), MaxAge: max(1, int(expiry-time.Now().Unix()))})
 }
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
@@ -393,6 +429,11 @@ func (s *Server) system(w http.ResponseWriter, r *http.Request) {
 	s.json(w, 200, map[string]any{"version": s.cfg.Version, "instanceId": s.cfg.InstanceID, "docker": s.monitor.Health(), "database": map[string]any{"engine": "SQLite", "journal": "WAL", "counts": counts}, "runtime": map[string]any{"go": runtime.Version(), "heapBytes": memory.HeapAlloc, "goroutines": runtime.NumGoroutine()}})
 }
 func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
+	changes := s.authChanges()
+	if _, err := s.session(r); err != nil {
+		s.problem(w, 403, "factor_required", "Sign in again to follow events")
+		return
+	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		s.problem(w, 500, "stream_unavailable", "Streaming is unavailable")
@@ -413,6 +454,8 @@ func (s *Server) stream(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
+			return
+		case <-changes:
 			return
 		case event, ok := <-messages:
 			if !ok {

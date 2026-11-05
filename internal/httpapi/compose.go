@@ -48,6 +48,10 @@ func (s *Server) previewCompose(w http.ResponseWriter, r *http.Request) {
 	if !s.validateConfig(w, &c, "preview") {
 		return
 	}
+	if e := s.validateSource(r.Context(), &c); e != nil {
+		s.problem(w, 422, "invalid_source", e.Error())
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
 	root := filepath.Join(s.cfg.Worker.DataDir, "work")
@@ -62,10 +66,11 @@ func (s *Server) previewCompose(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(dir)
 	repository := filepath.Join(dir, "repository")
+	commit := ""
 	if c.ComposeSource == "paste" {
 		e = os.MkdirAll(repository, 0700)
 	} else {
-		_, e = s.cfg.Worker.Source.Clone(ctx, c, dir, func(string) {})
+		commit, e = s.cfg.Worker.Source.Clone(ctx, c, dir, func(string) {})
 	}
 	if e != nil {
 		s.problem(w, 422, "repository_unavailable", deploy.Redact(c, e.Error()))
@@ -106,7 +111,10 @@ func (s *Server) previewCompose(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 422, "invalid_compose", deploy.Redact(c, e.Error()))
 		return
 	}
-	s.json(w, 200, map[string]any{"services": deploy.ComposeServices(p, c), "files": files, "composeFile": c.ComposeFile})
+	if c.LocalSource != "" {
+		commit = ""
+	}
+	s.json(w, 200, map[string]any{"services": deploy.ComposeServices(p, c), "files": files, "composeFile": c.ComposeFile, "commit": commit})
 }
 
 func (s *Server) composeSource(w http.ResponseWriter, r *http.Request) {

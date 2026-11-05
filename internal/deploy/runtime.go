@@ -125,7 +125,7 @@ func (r *DockerRuntime) Logs(ctx context.Context, appID, containerID string, tai
 	if tail < 1 || tail > 500 {
 		tail = 200
 	}
-	logs, e := r.Client.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Tail: strconv.Itoa(tail), Timestamps: true})
+	logs, e := r.Client.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: info.Container.State != nil && info.Container.State.Running, Tail: strconv.Itoa(tail), Timestamps: true})
 	if e != nil {
 		return e
 	}

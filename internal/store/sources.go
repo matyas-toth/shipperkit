@@ -22,7 +22,7 @@ var sourceID = regexp.MustCompile(`^[a-f0-9]{24}$`)
 func SourceExcluded(name string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(name), "/") {
 		lower := strings.ToLower(part)
-		if lower == ".git" || lower == "node_modules" || lower == ".shipper" || lower == ".ssh" || lower == ".aws" || lower == ".env" || strings.HasPrefix(lower, ".env.") && lower != ".env.example" && lower != ".env.sample" && lower != ".env.template" || lower == "id_rsa" || lower == "id_ed25519" || strings.HasSuffix(lower, ".pem") || strings.HasSuffix(lower, ".key") {
+		if lower == ".git" || lower == "node_modules" || lower == ".shipper" || lower == ".ssh" || lower == ".aws" || lower == ".vpsenv" || lower == ".env" || strings.HasPrefix(lower, ".env.") && lower != ".env.example" && lower != ".env.sample" && lower != ".env.template" || lower == "id_rsa" || lower == "id_ed25519" || strings.HasSuffix(lower, ".pem") || strings.HasSuffix(lower, ".key") {
 			return true
 		}
 	}

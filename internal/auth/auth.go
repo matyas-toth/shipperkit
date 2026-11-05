@@ -7,9 +7,11 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -49,18 +51,17 @@ func SetupToken(dir, override string) (string, error) {
 		return override, nil
 	}
 	file := filepath.Join(dir, "setup-token")
-	existing, err := os.ReadFile(file)
+	token, err := ReadSetupClaim(dir)
 	if err == nil {
-		token := strings.TrimSpace(string(existing))
-		if len(token) != 64 {
-			return "", errors.New("invalid setup-token file")
-		}
 		return token, nil
+	}
+	if errors.Is(err, ErrClaimExpired) {
+		return RotateSetupClaim(dir)
 	}
 	if !os.IsNotExist(err) {
 		return "", err
 	}
-	token := Token()
+	token = Token()
 	handle, err := os.OpenFile(file, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if os.IsExist(err) {
 		return SetupToken(dir, override)
@@ -74,4 +75,48 @@ func SetupToken(dir, override string) (string, error) {
 		return "", writeErr
 	}
 	return token, closeErr
+}
+
+var ErrClaimExpired = errors.New("the setup token expired")
+
+func ReadSetupClaim(dir string) (string, error) {
+	file, err := os.Open(filepath.Join(dir, "setup-token"))
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return "", err
+	}
+	if !info.Mode().IsRegular() || info.Size() > 128 {
+		return "", errors.New("invalid setup-token file")
+	}
+	if time.Since(info.ModTime()) >= 30*time.Minute {
+		return "", ErrClaimExpired
+	}
+	data := make([]byte, info.Size())
+	if _, err = io.ReadFull(file, data); err != nil {
+		return "", err
+	}
+	token := strings.TrimSpace(string(data))
+	if len(token) != 64 {
+		return "", errors.New("invalid setup-token file")
+	}
+	return token, nil
+}
+
+func RotateSetupClaim(dir string) (string, error) {
+	file, err := os.CreateTemp(dir, "setup-token-")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(file.Name())
+	token := Token()
+	_, err = file.WriteString(token + "\n")
+	closeErr := file.Close()
+	if err != nil || closeErr != nil {
+		return "", errors.Join(err, closeErr)
+	}
+	return token, os.Rename(file.Name(), filepath.Join(dir, "setup-token"))
 }

@@ -23,7 +23,28 @@ import (
 	"shipper/internal/store"
 )
 
-func (s *Server) proxyInfo(w http.ResponseWriter, r *http.Request) { s.json(w, 200, s.cfg.Proxy) }
+func (s *Server) proxyInfo(w http.ResponseWriter, r *http.Request) {
+	config := s.cfg.Proxy
+	if s.cfg.EffectiveProxy != nil {
+		var e error
+		if config, e = s.cfg.EffectiveProxy(r.Context()); e != nil {
+			s.internal(w, e)
+			return
+		}
+	}
+	s.json(w, 200, config)
+}
+
+func (s *Server) hasACME() bool {
+	if s.cfg.Proxy.ACMEEmail != "" {
+		return true
+	}
+	if s.cfg.Proxy.AutoHTTPS {
+		contact, e := s.db.ACMEContact(context.Background())
+		return e == nil && contact != ""
+	}
+	return false
+}
 func (s *Server) application(w http.ResponseWriter, r *http.Request) {
 	a, e := s.db.Application(r.Context(), chi.URLParam(r, "id"))
 	if e != nil {
@@ -75,6 +96,7 @@ func (s *Server) deploymentLogs(w http.ResponseWriter, r *http.Request) {
 type applicationInput struct {
 	ID       string             `json:"id,omitempty"`
 	Revision string             `json:"revision,omitempty"`
+	Commit   string             `json:"commit,omitempty"`
 	Name     string             `json:"name"`
 	Config   store.StaticConfig `json:"config"`
 }
@@ -102,17 +124,17 @@ func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id
 		c.HTTPS = primary.HTTPS
 	}
 
-	if c.Domain == "" && c.Method != "compose" && c.StartupPolicy != "process" {
+	if c.Domain == "" && c.Method != "compose" && c.StartupPolicy != "process" && !s.cfg.Proxy.AutoHTTPS {
 		c.Domain = id + ".localhost"
 		c.HTTPS = false
 	}
-	if e := deploy.Validate(c); e != nil {
+	if e := deploy.Validate(c, s.cfg.Proxy.AutoHTTPS); e != nil {
 		s.problem(w, 422, "invalid_configuration", e.Error())
 		return false
 	}
 	for _, d := range c.Domains {
-		if d.HTTPS && s.cfg.Proxy.ACMEEmail == "" {
-			s.problem(w, 422, "https_unconfigured", "Set SHIPPER_ACME_EMAIL before enabling HTTPS")
+		if d.HTTPS && !s.hasACME() {
+			s.problem(w, 422, "https_unconfigured", "Automatic HTTPS is unavailable on this installation")
 			return false
 		}
 	}
@@ -126,14 +148,15 @@ func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id
 			return false
 		}
 	}
-	if c.HTTPS && s.cfg.Proxy.ACMEEmail == "" {
-		s.problem(w, 422, "https_unconfigured", "Set SHIPPER_ACME_EMAIL before enabling HTTPS")
+	if c.HTTPS && !s.hasACME() {
+		s.problem(w, 422, "https_unconfigured", "Automatic HTTPS is unavailable on this installation")
 		return false
 	}
 	return true
 }
 
 var keyPattern = regexp.MustCompile(`^[A-Za-z0-9._:-]{1,128}$`)
+var reviewedCommit = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 
 func (s *Server) enqueue(w http.ResponseWriter, r *http.Request, a store.Application, operation string, create bool, noCache ...bool) {
 	s.enqueueJob(w, r, a, store.Deployment{Operation: operation, NoCache: len(noCache) > 0 && noCache[0]}, create)
@@ -209,6 +232,11 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 	if !s.validateConfig(w, &a.Config, a.ID) {
 		return
 	}
+	planning := strings.HasSuffix(r.URL.Path, "/plan")
+	if input.Commit != "" && (!reviewedCommit.MatchString(input.Commit) || a.Config.Repository == "" || !planning && input.ID == "") {
+		s.problem(w, 422, "invalid_commit", "Use the full commit from the Git source inspection")
+		return
+	}
 	if !s.validateComposeDomains(w, r, a.Config, a.Config.Domains, "") {
 		return
 	}
@@ -226,15 +254,16 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if strings.HasSuffix(r.URL.Path, "/plan") {
-		s.json(w, 200, map[string]any{"applicationId": a.ID, "revision": s.db.ChangeRevision(store.Application{}, a), "operation": "deploy", "config": store.PublicConfig(a.Config), "changes": []string{"Create application", "Build immutable source and start services", "Preserve declared persistent storage"}})
+	revision := s.db.ChangeRevision(store.Application{}, a, input.Commit)
+	if planning {
+		s.json(w, 200, map[string]any{"applicationId": a.ID, "revision": revision, "operation": "deploy", "name": a.Name, "commit": input.Commit, "config": store.PublicConfig(a.Config), "changes": []string{"Create application", "Prepare the source and start services", "Preserve declared persistent storage"}})
 		return
 	}
-	if input.ID != "" && input.Revision != s.db.ChangeRevision(store.Application{}, a) {
+	if input.ID != "" && input.Revision != revision {
 		s.problem(w, 409, "configuration_changed", "The planned inputs changed; review again")
 		return
 	}
-	s.enqueue(w, r, a, "deploy", true)
+	s.enqueueJob(w, r, a, store.Deployment{Operation: "deploy", Commit: input.Commit}, true)
 }
 func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 	if !s.mutationAvailable(w) {
@@ -245,7 +274,7 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		s.resourceError(w, e)
 		return
 	}
-	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline" && a.SourceKind != "local") || a.Method == "" {
+	if !a.Managed() {
 		s.problem(w, 422, "unsupported_method", "Only applications deployed by Shipper can be redeployed")
 		return
 	}
@@ -364,7 +393,7 @@ func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 422, "confirmation_required", "Enter the application name to confirm deletion")
 		return
 	}
-	if (a.SourceKind != "git" && a.SourceKind != "compose" && a.SourceKind != "image" && a.SourceKind != "inline") || a.Method == "" {
+	if !a.Managed() {
 		s.problem(w, 422, "unsupported_method", "This application was discovered from Docker and cannot be deleted here")
 		return
 	}

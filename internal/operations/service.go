@@ -23,6 +23,10 @@ type Service struct {
 	Docker            *client.Client
 	Monitor           *inventory.Monitor
 	Instance, DataDir string
+	DashboardURL      string
+	Publish           func()
+	certificateOffset int
+	certificates      map[string]certificateSchedule
 	offset            int
 	previous          map[string]container.CPUStats
 }
@@ -111,7 +115,7 @@ func (s *Service) Collect(ctx context.Context) {
 			}(), State: state, Summary: "Latest " + d.Operation + " is " + d.State, Reference: d.ID})
 		}
 		for _, d := range a.Domains {
-			if !d.HTTPS {
+			if !d.HTTPS || s.DashboardURL != "" {
 				continue
 			}
 			state = "unknown"
@@ -164,6 +168,7 @@ func (s *Service) Collect(ctx context.Context) {
 			}
 		}
 	}
+	s.checkCertificate(ctx, apps)
 	// A rotating budget avoids inspecting hundreds of containers every interval.
 	// Unvisited samples retain their own timestamps and become visibly stale.
 	if s.Docker != nil && h.Connected && len(all) > 0 {

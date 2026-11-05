@@ -33,7 +33,7 @@ import (
 	"shipper/internal/ui"
 )
 
-var version = "0.9.0-dev"
+var version = "1.0.0-rc.5"
 
 func main() {
 	if err := run(); err != nil {
@@ -67,6 +67,8 @@ func run() error {
 		switch os.Args[1] {
 		case "connect", "apps", "inspect", "doctor", "plan", "deploy", "watch", "logs", "rollback", "task":
 			return cli.Run(os.Args[1:], os.Stdout)
+		case "bootstrap":
+			return cli.Bootstrap(os.Args[2:], os.Stdout, os.Stderr)
 		case "version":
 			fmt.Println(version)
 			return nil
@@ -89,21 +91,59 @@ func run() error {
 		case "healthcheck":
 			return healthcheck()
 		case "help", "--help", "-h":
-			fmt.Println("Usage: shipper [connect|apps|inspect|doctor|plan|deploy|watch|logs|rollback|task|version|healthcheck|reset-password|restore]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, DOCKER_HOST")
+			fmt.Println("Usage: shipper [bootstrap|connect|apps|inspect|doctor|plan|deploy|watch|logs|rollback|task|version|healthcheck|claim|rotate-claim|reset-password|reset-factor|restore]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, DOCKER_HOST")
 			return nil
-		case "reset-password":
+		case "reset-password", "reset-factor", "claim", "rotate-claim", "update-ready", "checkpoint", "restore-checkpoint":
 		default:
 			return errors.New("usage: shipper [version|healthcheck|reset-password|restore]")
 		}
 	}
 	dataDir := env("SHIPPER_DATA_DIR", ".shipper")
+	if len(os.Args) > 1 && os.Args[1] == "restore-checkpoint" {
+		id, err := checkpointFlag(os.Args[2:])
+		if err != nil {
+			return err
+		}
+		if os.Getenv("SHIPPER_MANAGED_INSTALL") != "1" {
+			return errors.New("Update checkpoint recovery is reserved for the managed installer")
+		}
+		return store.RestoreCheckpoint(context.Background(), dataDir, id)
+	}
 	db, err := store.Open(dataDir)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 	if len(os.Args) > 1 {
-		return resetPassword(db)
+		switch os.Args[1] {
+		case "reset-password":
+			return resetPassword(db)
+		case "reset-factor":
+			return resetFactor(db)
+		case "claim":
+			return claimOwner(db, dataDir, os.Args[2:])
+		case "update-ready":
+			return db.UpdateReady(context.Background())
+		case "checkpoint":
+			id, err := checkpointFlag(os.Args[2:])
+			if err != nil {
+				return err
+			}
+			return db.WriteCheckpoint(context.Background(), id)
+		case "rotate-claim":
+			configured, err := db.Configured(context.Background())
+			if err != nil {
+				return err
+			}
+			if configured {
+				return store.ErrAlreadyConfigured
+			}
+			if _, err = auth.RotateSetupClaim(dataDir); err != nil {
+				return err
+			}
+			fmt.Println("A new setup token is available in the data directory for 30 minutes.")
+			return nil
+		}
 	}
 	recovered, e := deploy.RecoveredProxy(dataDir)
 	if e != nil {
@@ -163,6 +203,7 @@ func run() error {
 		}
 		return "127.0.0.1"
 	}()), HTTPPort: httpPort, HTTPSPort: httpsPort, ACMEEmail: env("SHIPPER_ACME_EMAIL", recovered.ACMEEmail), ACMECA: env("SHIPPER_ACME_CA", recovered.ACMECA)}
+	proxyConfig.AutoHTTPS = os.Getenv("SHIPPER_AUTO_HTTPS") == "1" && httpPort == 80 && httpsPort == 443 && !net.ParseIP(proxyConfig.BindIP).IsLoopback()
 	if proxyConfig.ACMEEmail != "" {
 		address, e := mail.ParseAddress(proxyConfig.ACMEEmail)
 		if e != nil || address.Address != proxyConfig.ACMEEmail {
@@ -201,9 +242,10 @@ func run() error {
 		}
 
 	}
-	worker := deploy.NewWorker(db, &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig, DataDir: dataDir}, hub, dataDir)
+	dockerRuntime := &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig, DataDir: dataDir, ACMEContact: db.ACMEContact}
+	worker := deploy.NewWorker(db, dockerRuntime, hub, dataDir)
 	worker.Refresh = monitor.Trigger
-	operator := &operations.Service{DB: db, Docker: docker.Client(), Monitor: monitor, Instance: instance, DataDir: dataDir}
+	operator := &operations.Service{DB: db, Docker: docker.Client(), Monitor: monitor, Instance: instance, DataDir: dataDir, DashboardURL: proxyConfig.DashboardURL, Publish: hub.Publish}
 	worker.Operations = operator.Run
 	worker.Maintenance = operator.ProcessMaintenance
 	operator.RepairProxy = worker.RepairProxy
@@ -214,9 +256,42 @@ func run() error {
 	monitorDone := make(chan struct{})
 	go func() { defer close(monitorDone); monitor.Run(ctx) }()
 	workerDone := make(chan struct{})
-	go func() { defer close(workerDone); worker.Run(ctx) }()
+	updateLock := filepath.Join(dataDir, "update.lock")
+	managed := os.Getenv("SHIPPER_MANAGED_INSTALL") == "1"
+	updating := func() bool {
+		if !managed {
+			return false
+		}
+		_, e := os.Stat(updateLock)
+		return !errors.Is(e, os.ErrNotExist)
+	}
+	go func() {
+		defer close(workerDone)
+		for updating() {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(250 * time.Millisecond):
+			}
+		}
+		worker.Run(ctx)
+	}()
 	addr := env("SHIPPER_ADDR", "127.0.0.1:8080")
-	server := &http.Server{Addr: addr, Handler: httpapi.New(db, monitor, hub, httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, Operations: operator}), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
+	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator}
+	if !configured && os.Getenv("SHIPPER_SETUP_TOKEN") == "" {
+		apiConfig.SetupClaim = func() (string, error) { return auth.ReadSetupClaim(dataDir) }
+	}
+	handler := httpapi.New(db, monitor, hub, apiConfig)
+	server := &http.Server{Addr: addr, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/health" && updating() {
+			w.Header().Set("Retry-After", "5")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"error":{"code":"updating","message":"Shipper is being updated"}}`))
+			return
+		}
+		handler.ServeHTTP(w, r)
+	}), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, IdleTimeout: 60 * time.Second}
 	serverErrors := make(chan error, 1)
 	go func() { serverErrors <- server.ListenAndServe() }()
 	slog.Info("Shipper is listening", "address", addr, "version", version)
@@ -239,6 +314,18 @@ func run() error {
 	<-monitorDone
 	<-workerDone
 	return nil
+}
+
+func checkpointFlag(args []string) (string, error) {
+	flags := flag.NewFlagSet("checkpoint", flag.ContinueOnError)
+	id := flags.String("id", "", "Checkpoint identity")
+	if err := flags.Parse(args); err != nil {
+		return "", err
+	}
+	if *id == "" || flags.NArg() != 0 {
+		return "", errors.New("Provide --id CHECKPOINT")
+	}
+	return *id, nil
 }
 
 func healthcheck() error {

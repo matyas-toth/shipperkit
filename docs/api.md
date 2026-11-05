@@ -22,8 +22,8 @@ or legacy application deploy tokens. Unsupported v1 routes are denied by default
 | `POST /system/recheck`, `/system/repair`, `/system/retention` | Reconcile or review/queue narrow maintenance; repair accepts `{review:true}` then `{revision}` | host-admin with instance scope |
 | `GET /notifications`, `POST /notifications`, `POST /notifications/test` | Masked optional webhook/SMTP settings and deliberate delivery test | Session only |
 | `POST /sources?application=ID&provenance=TEXT` | Raw `application/x-tar`, bounded regular files; immutable snapshot metadata | deploy; target application must match token scope |
-| `POST /plan` | New `{name,config}` returns application ID, normalized public configuration, revision and effects | deploy with instance scope |
-| `POST /applications` | Optional reviewed `{id,revision,name,config}`; changed planned inputs fail | deploy with instance scope |
+| `POST /plan` | New `{name,config,commit?}` returns application ID, normalized name and public configuration, reviewed commit, revision and effects | deploy with instance scope |
+| `POST /applications` | Optional reviewed `{id,revision,name,config,commit?}`; changed planned inputs fail | deploy with instance scope |
 | `POST /applications/{id}/changes`, `/deployments` | Review/apply bound to current state and proposed configuration | deploy |
 | `GET /applications/{id}/deployments/{deployment}` | Durable operation watch/poll | read |
 | Existing deployment/runtime log resources | Cursor pages or bounded SSE | logs |
@@ -44,6 +44,12 @@ inline Dockerfile or direct-image input. Source ownership/application scope is
 validated before use; workers verify content digest before materializing it.
 Creation/apply retain existing 202/idempotency behavior. A repeated identical saved
 plan returns its original operation even after promotion; changed bodies conflict.
+For an inspected Git source, include the full commit in both plan and apply.
+The revision binds that commit to the proposed configuration. The worker uses it
+for the first deployment while retaining `config.branch` for subsequent deploys.
+Repository inspection and Compose preview read source files without executing
+workload code. An image tag is resolved during deployment; specify a digest to
+review a pinned image.
 
 See [operations](operations.md) for bounds, CLI syntax, credential storage,
 notification delivery and cleanup/recovery guarantees. The existing routes below

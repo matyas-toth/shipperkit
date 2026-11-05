@@ -8,13 +8,30 @@ import { statusOf } from "../data";
 import Variables from "./Variables";
 import RuntimeLogs from "./RuntimeLogs";
 import Domains from "./Domains";
+import ServiceSummary from "./ServiceSummary";
 
 export function ServiceList(props: { application: Application; services: Service[]; select: (name: string) => void }) {
-  return <section class="containers-section"><h2>Services</h2><div class="table-tray"><table class="inventory-table services-table"><thead><tr><th>Service</th><th>Status</th><th>Image</th><th aria-label="Details" /></tr></thead><tbody><For each={props.services}>{service => {
-    const containers = () => props.application.containers.filter(c => c.service === service.name);
-    const status = () => service.oneShot && containers()[0]?.state === "exited" && containers()[0]?.status.startsWith("Exited (0)") ? "completed" : containers().some(c => statusOf(c) === "unhealthy") ? "unhealthy" : containers()[0] ? statusOf(containers()[0]) : props.application.activeDeploymentId ? "unavailable" : "created";
-    return <tr role="button" tabindex="0" class="container-row" aria-label={"Open service " + service.name} onClick={() => props.select(service.name)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault();props.select(service.name); } }}><td><span class="identity"><Icon name="box" />{service.name}</span></td><td><Status value={status()} /></td><td><span class="truncate image-name">{service.image || "Build from source"}</span></td><td class="row-chevron"><Icon name="chevron" /></td></tr>;
-  }}</For><Show when={!props.services.length}><tr class="empty-row"><td colspan="4">Not deployed</td></tr></Show></tbody></table></div></section>;
+  const byService = createMemo(() => {
+    const groups = new Map<string, Application["containers"]>();
+    for (const container of props.application.containers) {
+      if (!container.service) continue;
+      const group = groups.get(container.service) ?? [];
+      group.push(container);
+      groups.set(container.service, group);
+    }
+    return groups;
+  });
+  function status(service: Service) {
+    const containers = byService().get(service.name) ?? [];
+    if (service.oneShot && containers[0]?.state === "exited" && containers[0].status.startsWith("Exited (0)")) return "completed";
+    if (containers.some(c => statusOf(c) === "unhealthy")) return "unhealthy";
+    return containers[0] ? statusOf(containers[0]) : props.application.activeDeploymentId ? "unavailable" : "created";
+  }
+  return <section class="containers-section"><h2>Services</h2>
+    <Show when={props.services.length} fallback={<div class="empty-state">Not deployed</div>}>
+      <ServiceSummary services={props.services} open={props.select} status={status} />
+    </Show>
+  </section>;
 }
 
 export function ServicePanel(props: { application: Application; services: Service[]; name: string; proxy?: ProxyConfig; busy: boolean; save: (config: StaticConfig) => Promise<boolean | void>; saveDomains: (domains: Domain[]) => Promise<void>; close: () => void; lifecycle:(action:string)=>Promise<void>; editCompose: () => void }) {

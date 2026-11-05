@@ -10,6 +10,29 @@ type Session struct {
 	User      User
 	CSRF      string
 	ExpiresAt int64
+	Factor    FactorState
+	Verified  bool
+}
+
+func (a Application) Managed() bool {
+	if a.Method == "" {
+		return false
+	}
+	switch a.SourceKind {
+	case "git", "compose", "image", "inline", "local":
+		return true
+	}
+	return false
+}
+
+func (s Session) AuthStep() string {
+	if s.Factor.Enrolled && !s.Verified {
+		return "verify"
+	}
+	if s.Factor.Required && !s.Factor.Enrolled {
+		return "enroll"
+	}
+	return ""
 }
 
 type Port struct {

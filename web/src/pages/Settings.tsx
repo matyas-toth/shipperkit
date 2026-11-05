@@ -9,6 +9,7 @@ import { Button, ErrorNotice } from "../components/Controls";
 import Connections from "../components/Connections";
 import Backups from "../components/Backups";
 import { Icon } from "../components/Icon";
+import AccountSecurity from "../components/AccountSecurity";
 
 export default function Settings() {
   const auth = useAuth();
@@ -56,7 +57,7 @@ export default function Settings() {
         <section class="settings-section" id="account"><h2>Account</h2><dl class="settings-group">
           <div class="setting-row"><dt>Email</dt><dd>{auth.session()?.user?.email}</dd></div>
           <div class="setting-row"><dt>Session</dt><dd><Button small onClick={() => void logout()}>Sign out</Button></dd></div>
-        </dl></section>
+        </dl><AccountSecurity /></section>
         <section class="settings-section" id="proxy"><h2>Proxy</h2><dl class="settings-group">
           <div class="setting-row"><dt>Proxy</dt><dd>Traefik</dd></div><div class="setting-row"><dt>HTTP port</dt><dd>{proxy.data?.httpPort ?? "Loading"}</dd></div><div class="setting-row"><dt>HTTPS port</dt><dd>{proxy.data?.httpsPort ?? "Loading"}</dd></div><div class="setting-row"><dt>Bind address</dt><dd>{proxy.data?.bindIP ?? "Loading"}</dd></div><div class="setting-row"><dt>ACME email</dt><dd>{proxy.data?.acmeEmail || "Not configured"}</dd></div>
         </dl><ProxyCheck proxy={proxy.data}/></section>

@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"shipper/internal/netguard"
 	"sync"
 	"time"
 
@@ -28,7 +30,8 @@ var domainPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:
 var commitPattern = regexp.MustCompile(`^(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$`)
 var branchPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,127}$`)
 
-func Validate(c *store.StaticConfig) error {
+func Validate(c *store.StaticConfig, allowNoDomain ...bool) error {
+	internal := len(allowNoDomain) > 0 && allowNoDomain[0]
 	if e := ValidateBuild(c); e != nil {
 		return e
 	}
@@ -65,7 +68,7 @@ func Validate(c *store.StaticConfig) error {
 		c.RepositoryID = 0
 		c.RootDirectory = "."
 		c.Dockerfile = "Dockerfile"
-		if c.Domain == "" && c.StartupPolicy == "process" {
+		if c.Domain == "" && (c.StartupPolicy == "process" || internal) {
 			return nil
 		}
 		if !domainPattern.MatchString(c.Domain) {
@@ -121,7 +124,7 @@ func Validate(c *store.StaticConfig) error {
 		return errors.New("Choose a valid routing mode")
 	}
 	c.Domain = strings.ToLower(strings.TrimSpace(c.Domain))
-	if (c.Method == "compose" || c.StartupPolicy == "process") && c.Domain == "" {
+	if c.Domain == "" && (c.Method == "compose" || c.StartupPolicy == "process" || internal) {
 		return nil
 	}
 	if len(c.Domain) > 253 || !domainPattern.MatchString(c.Domain) || net.ParseIP(c.Domain) != nil {
@@ -133,16 +136,7 @@ func Validate(c *store.StaticConfig) error {
 	return nil
 }
 func publicAddress(a netip.Addr) bool {
-	a = a.Unmap()
-	if !a.IsGlobalUnicast() || a.IsPrivate() || a.IsLoopback() || a.IsLinkLocalUnicast() {
-		return false
-	}
-	for _, raw := range []string{"0.0.0.0/8", "100.64.0.0/10", "192.0.0.0/24", "192.0.2.0/24", "198.18.0.0/15", "198.51.100.0/24", "203.0.113.0/24", "240.0.0.0/4", "2001:db8::/32"} {
-		if netip.MustParsePrefix(raw).Contains(a) {
-			return false
-		}
-	}
-	return true
+	return netguard.Public(a)
 }
 func PublicAddress(a netip.Addr) bool { return publicAddress(a) }
 

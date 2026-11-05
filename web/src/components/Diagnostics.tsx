@@ -4,6 +4,7 @@ import { api } from "../api";
 import { Button, ErrorNotice, Status } from "./Controls";
 import { createdDate, formatDuration, bytes, logDateTime } from "../data";
 import type { Deployment } from "../types";
+import { ReviewFact, ReviewPanel } from "./ReviewPanel";
 
 export interface Observation {
   stale?:boolean; id: string; kind: string; state: string; summary: string; reference: string; observedAt: number;
@@ -21,11 +22,20 @@ export default function Diagnostics(props: { applicationId: string; view: (id: s
     <div class="section-toolbar"><h2>Diagnostics</h2><Button small variant="ghost" icon="refresh" disabled={query.isFetching} onClick={() => void query.refetch()}>Recheck</Button></div>
     <Show when={query.error}><ErrorNotice message={query.error!.message} /></Show>
     <Show when={query.data}>{data => <>
-      <dl class="application-overview">
-        <div><dt>Serving release</dt><dd class="mono">{data().servingRelease?.id.slice(0, 12) || "None"}</dd></div>
-        <div><dt>Latest operation</dt><dd><Show when={data().latestOperation}>{d => <button class="inline-link" onClick={() => props.view(d().id)}>{d().state} <span class="mono">{formatDuration(data().durationSeconds)}</span></button>}</Show></dd></div>
-      </dl>
-      <Show when={data().latestOperation?.state === "failed"}><div class="deployment-error"><span>{data().failedStage || "Deployment"}</span><Button small variant="ghost" onClick={() => props.view(data().latestOperation!.id)}>Open failed stage</Button></div></Show>
+      <ReviewPanel title="Deployment">
+        <dl>
+          <ReviewFact label="Serving release"><code class="mono">{data().servingRelease?.id.slice(0, 12) || "None"}</code></ReviewFact>
+          <ReviewFact label="Latest operation">
+            <Show when={data().latestOperation} fallback="None">{d =>
+              <button class="inline-link diagnostic-operation" onClick={() => props.view(d().id)}>
+                <Status value={d().state} /><span class="mono">{formatDuration(data().durationSeconds)}</span>
+              </button>}</Show>
+          </ReviewFact>
+          <Show when={data().latestOperation?.state === "failed"}><ReviewFact label="Failed stage">
+            <Button small variant="ghost" class="diagnostic-operation" onClick={() => props.view(data().latestOperation!.id)}>{data().failedStage || "Open deployment logs"}</Button>
+          </ReviewFact></Show>
+        </dl>
+      </ReviewPanel>
       <div class="table-tray"><table class="inventory-table diagnostic-table"><thead><tr><th>Check</th><th>Status</th><th>Observed</th></tr></thead><tbody>
         <For each={data().checks}>{check => <tr><td><span class="diagnostic-layer">{({daemon:"Docker",runtime:"Runtime",route:"Routing",certificate:"HTTPS",build:"Build",readiness:"Readiness",task:"Task","dependency-network":"Dependency network"} as Record<string,string>)[check.layer]||check.layer}</span><Show when={["route","certificate","dependency-network","task"].includes(check.layer)}><span class="mono">{check.summary}</span></Show></td><td><Status value={check.state} /></td><td>{check.observedAt ? logDateTime(check.observedAt) : "Not observed"}</td></tr>}</For>
       </tbody></table></div>

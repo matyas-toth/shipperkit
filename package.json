@@ -1,6 +1,6 @@
 {
   "name": "shipper",
-  "version": "0.9.0",
+  "version": "1.0.0-rc.5",
   "private": true,
   "description": "A lightweight self-hosted application platform",
   "license": "MIT",
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "npm run build --prefix web && node scripts/go.mjs build -trimpath -o bin/ ./cmd/shipper",
+    "build": "npm run build --prefix web && node scripts/go.mjs generate ./internal/startup && node scripts/go.mjs build -trimpath -o bin/ ./cmd/shipper",
     "check": "npm run check --prefix web",
     "test": "node scripts/go.mjs test ./... && npm run test --prefix web",
     "test:e2e": "npm run build --prefix web && playwright test",

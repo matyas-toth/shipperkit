@@ -194,12 +194,21 @@ test("connections, private repository selection, immutable queue controls and im
       await r.fulfill({ status: 202, json: deployment });
     },
   );
+  await page.route("**/api/repositories/inspect", r => r.fulfill({json:{method:"dockerfile",commit:"a".repeat(40),variables:[]}}));
+  await page.route("**/api/plan", r => {
+    const input = r.request().postDataJSON();
+    return r.fulfill({json:{name:input.name,config:input.config,applicationId:"d".repeat(24),revision:"fixture",commit:input.commit}});
+  });
+  await page.getByRole("button", { name: "Review with defaults", exact: true }).click();
+  await expect(page.locator(".creation-review")).toContainText("Dockerfile (automatic)");
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Fieldnotes", exact: true }),
   ).toBeVisible();
   expect(submitted.config.sourceId).toBe("github-fixture");
   expect(submitted.config.repositoryId).toBe(55);
+  expect(submitted.config.branch).toBe("develop");
+  expect(submitted.commit).toBe("a".repeat(40));
   expect(submitted.config.autoDeploy.paths).toEqual(["apps/web/**"]);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.locator(".log-heading")).toContainText("Cancelled");
@@ -208,9 +217,9 @@ test("connections, private repository selection, immutable queue controls and im
   await expect(page.locator(".log-heading")).toContainText("Queued");
   await page.goto("/new");
   await page
-    .getByLabel("Deployment method", { exact: true })
-    .selectOption("image");
-  await expect(page.getByLabel("Git repository", { exact: true })).toHaveCount(
+    .getByRole("radio", {name:"Container image",exact:true})
+    .check();
+  await expect(page.getByRole("textbox", { name: "Repository URL", exact: true })).toHaveCount(
     0,
   );
   await page.getByLabel("Name", { exact: true }).fill("Image worker");
@@ -220,8 +229,13 @@ test("connections, private repository selection, immutable queue controls and im
   await page
     .getByLabel("Registry", { exact: true })
     .selectOption("registry-fixture");
-  await page.getByText("Configuration", { exact: true }).click();
-  await page.getByLabel("Readiness", { exact: true }).selectOption("process");
+  await page.getByRole("button",{name:"Continue",exact:true}).click();
+  await page.getByRole("radio",{name:"Worker",exact:true}).check();
+  await expect(page.getByLabel("Domain",{exact:true})).toHaveCount(0);
+  await expect(page.getByLabel("Container port",{exact:true})).toHaveCount(0);
+  await page.getByRole("button",{name:"Review deployment",exact:true}).click();
+  await expect(page.locator(".creation-review")).toContainText("Worker");
+  await expect(page.locator(".creation-review")).not.toContainText("Domain");
   await page.screenshot({ path: join(tmpdir(), "shipper-phase6-image.png") });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({

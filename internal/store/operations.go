@@ -160,7 +160,11 @@ func (s *Store) Observations(ctx context.Context, app string) ([]Observation, er
 		}
 		o.Details = json.RawMessage(details)
 		o.AgeSeconds = max(0, time.Now().Unix()-o.ObservedAt)
-		o.Stale = o.ObservedAt == 0 || o.AgeSeconds > 60
+		staleAfter := int64(60)
+		if o.Kind == "certificate" {
+			staleAfter = 15 * 60
+		}
+		o.Stale = o.ObservedAt == 0 || o.AgeSeconds > staleAfter
 		items = append(items, o)
 	}
 	return items, rows.Err()

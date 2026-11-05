@@ -37,6 +37,7 @@ type ProxyConfig struct {
 	HTTPSPort int    `json:"httpsPort"`
 	ACMEEmail string `json:"acmeEmail"`
 	ACMECA    string `json:"acmeCA"`
+	AutoHTTPS bool   `json:"autoHTTPS,omitempty"`
 }
 type Runtime interface {
 	Ensure(context.Context) error
@@ -49,10 +50,11 @@ type Runtime interface {
 	ProbeLocal(context.Context, store.Deployment) (bool, error)
 }
 type DockerRuntime struct {
-	Client   *client.Client
-	Instance string
-	Config   ProxyConfig
-	DataDir  string
+	Client      *client.Client
+	Instance    string
+	Config      ProxyConfig
+	DataDir     string
+	ACMEContact func(context.Context) (string, error)
 }
 
 func (r *DockerRuntime) prefix() string  { return "shipper-" + r.Instance[:12] }
@@ -86,6 +88,26 @@ func owned(labels map[string]string, instance, app string) bool {
 	return labels["io.shipper.instance"] == instance && (app == "" || labels["io.shipper.application.id"] == app)
 }
 func (r *DockerRuntime) Ensure(ctx context.Context) error {
+	config, err := r.EffectiveProxy(ctx)
+	if err != nil {
+		return err
+	}
+	resolved := *r
+	resolved.Config = config
+	return resolved.ensureProxy(ctx)
+}
+
+func (r *DockerRuntime) EffectiveProxy(ctx context.Context) (ProxyConfig, error) {
+	c := r.Config
+	if c.AutoHTTPS && c.ACMEEmail == "" && r.ACMEContact != nil {
+		var err error
+		c.ACMEEmail, err = r.ACMEContact(ctx)
+		return c, err
+	}
+	return c, nil
+}
+
+func (r *DockerRuntime) ensureProxy(ctx context.Context) error {
 	if info, e := r.Client.NetworkInspect(ctx, r.network(), client.NetworkInspectOptions{}); e == nil {
 		if !owned(info.Network.Labels, r.Instance, "") {
 			return errors.New("The proxy network name is already in use")
@@ -118,17 +140,37 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 			return errors.New("The proxy container name is already in use")
 		}
 		if inspected.Container.Config.Labels["io.shipper.proxy.config"] != r.configHash() {
-			return errors.New("Proxy configuration changed; recreate the Shipper proxy container while retaining its data volume, then redeploy")
-		}
-		if e = r.restoreACME(ctx, r.proxy()); e != nil {
+			previous := *r
+			previous.Config.ACMEEmail = ""
+			if !r.Config.AutoHTTPS || r.Config.ACMEEmail == "" || inspected.Container.Config.Labels["io.shipper.proxy.config"] != previous.configHash() {
+				return errors.New("Proxy configuration differs from the installed settings")
+			}
+			// Only the one-way first-contact transition is automatic. Keep the
+			// certificate/routes volume and check the image before releasing ports.
+			if e = r.pull(ctx, TraefikImage, func(string) {}); e != nil {
+				return e
+			}
+			if _, e = r.Client.ContainerRemove(ctx, inspected.Container.ID, client.ContainerRemoveOptions{Force: true}); e != nil {
+				return e
+			}
+		} else {
+			if e = r.restoreACME(ctx, r.proxy()); e != nil {
+				return e
+			}
+			created, err := r.prepareACMEFile(ctx, r.proxy())
+			if err != nil {
+				return err
+			}
+			if !inspected.Container.State.Running {
+				_, e = r.Client.ContainerStart(ctx, r.proxy(), client.ContainerStartOptions{})
+			} else if created {
+				// Traefik skips a resolver that cannot create its store at boot.
+				// Restart it once after repairing that missing store.
+				_, e = r.Client.ContainerRestart(ctx, r.proxy(), client.ContainerRestartOptions{Timeout: ptr(5)})
+			}
 			return e
 		}
-		if !inspected.Container.State.Running {
-			_, e = r.Client.ContainerStart(ctx, r.proxy(), client.ContainerStartOptions{})
-		}
-		return e
-	}
-	if !errdefs.IsNotFound(e) {
+	} else if !errdefs.IsNotFound(e) {
 		return e
 	}
 	if e = r.pull(ctx, TraefikImage, func(string) {}); e != nil {
@@ -160,8 +202,31 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 	if e = r.restoreACME(ctx, created.ID); e != nil {
 		return e
 	}
+	if _, e = r.prepareACMEFile(ctx, created.ID); e != nil {
+		return e
+	}
 	_, e = r.Client.ContainerStart(ctx, created.ID, client.ContainerStartOptions{})
 	return e
+}
+
+func (r *DockerRuntime) prepareACMEFile(ctx context.Context, proxy string) (bool, error) {
+	if r.Config.ACMEEmail == "" {
+		return false, nil
+	}
+	stat, e := r.Client.ContainerStatPath(ctx, proxy, client.ContainerStatPathOptions{Path: "/data/acme.json"})
+	if e == nil {
+		if !stat.Stat.Mode.IsRegular() || stat.Stat.Mode.Perm() != 0600 {
+			return false, errors.New("Certificate storage must be a regular file with mode 0600")
+		}
+		return false, nil
+	}
+	if !errdefs.IsNotFound(e) {
+		return false, e
+	}
+	// A newly mounted named volume is owned by root on Linux. Seed the file
+	// as the proxy's unprivileged UID instead of changing volume permissions.
+	e = r.copy(ctx, proxy, "/data", map[string][]byte{"acme.json": []byte("{}")})
+	return e == nil, e
 }
 func ptr[T any](v T) *T { return &v }
 func (r *DockerRuntime) configHash() string {
@@ -644,8 +709,14 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 }
 
 func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, active map[string]store.Deployment) error {
+	config, e := r.EffectiveProxy(ctx)
+	if e != nil {
+		return e
+	}
+	resolved := *r
+	resolved.Config = config
 	configuration := Routes(apps, active)
-	r.dashboardRoute(configuration)
+	resolved.dashboardRoute(configuration)
 	data, e := json.Marshal(configuration)
 	if e != nil {
 		return e

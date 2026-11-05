@@ -6,6 +6,7 @@ import type { Application, Service, StaticConfig } from "../types";
 import { bytes, formatDuration } from "../data";
 import { Button, ErrorNotice, IconButton, Status } from "./Controls";
 import SchedulePicker from "./SchedulePicker";
+import { ChoiceCards } from "./Choices";
 
 interface Spec {
   kind: string;
@@ -374,10 +375,7 @@ export default function Backups(props: {
         </dl>
         <details class="configuration">
           <summary>Recover an installation</summary>
-          <pre class="recovery-command">
-            shipper restore --archive backup.age --identity
-            shipper-recovery-key.txt --data-dir /new/shipper
-          </pre>
+          <pre class="recovery-command"><code>shipper restore --archive backup.age --identity shipper-recovery-key.txt --data-dir /new/shipper</code></pre>
           <dl class="settings-group">
             <div class="setting-row">
               <dt>Target</dt>
@@ -461,24 +459,13 @@ export default function Backups(props: {
               />
             </div>
             <Show when={props.application}>
-              <div class="backup-kinds" role="group" aria-label="Backup type">
-                <button
-                  type="button"
-                  classList={{
-                    selected: editing()!.config.kind === "database",
-                  }}
-                  onClick={() => spec({ kind: "database" })}
-                >
-                  Database
-                </button>
-                <button
-                  type="button"
-                  classList={{ selected: editing()!.config.kind === "volume" }}
-                  onClick={() => spec({ kind: "volume" })}
-                >
-                  Persistent volume
-                </button>
-              </div>
+              <ChoiceCards<"database" | "volume"> label="Backup type"
+                value={editing()!.config.kind === "volume" ? "volume" : "database"}
+                choices={[
+                  { value: "database", label: "Database", icon: "database" },
+                  { value: "volume", label: "Persistent volume", icon: "box" },
+                ]}
+                change={kind => spec({ kind })} />
               <div class="form-fields">
                 <Show when={editing()!.config.kind === "database"}>
                   <Show when={props.application?.method === "compose"}>
@@ -507,7 +494,7 @@ export default function Backups(props: {
                     <option value="mysql">MySQL</option>
                     <option value="mariadb">MariaDB</option>
                   </select>
-                  <label for="backup-database">Database</label>
+                  <label for="backup-database">Database name</label>
                   <input
                     id="backup-database"
                     class="input"
