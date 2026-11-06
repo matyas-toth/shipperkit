@@ -31,6 +31,15 @@ type Service struct {
 	previous          map[string]container.CPUStats
 }
 
+func (s *Service) dashboardURL(ctx context.Context) string {
+	if s.DB != nil {
+		if domain, e := s.DB.Setting(ctx, "dashboard_domain", ""); e == nil && domain != "" {
+			return "https://" + domain
+		}
+	}
+	return s.DashboardURL
+}
+
 func (s *Service) Run(ctx context.Context) {
 	tick := time.NewTicker(15 * time.Second)
 	defer tick.Stop()
@@ -93,6 +102,7 @@ func (s *Service) Collect(ctx context.Context) {
 	if e != nil {
 		return
 	}
+	dashboard := s.dashboardURL(ctx)
 	all := []store.Container{}
 	for _, a := range apps {
 		if ctx.Err() != nil {
@@ -115,7 +125,7 @@ func (s *Service) Collect(ctx context.Context) {
 			}(), State: state, Summary: "Latest " + d.Operation + " is " + d.State, Reference: d.ID})
 		}
 		for _, d := range a.Domains {
-			if !d.HTTPS || s.DashboardURL != "" {
+			if !d.HTTPS || dashboard != "" {
 				continue
 			}
 			state = "unknown"

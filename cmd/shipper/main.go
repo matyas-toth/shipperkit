@@ -149,7 +149,39 @@ func run() error {
 	if e != nil {
 		return e
 	}
+	dashboardDomain, e := db.Setting(context.Background(), "dashboard_domain", "")
+	if e != nil {
+		return e
+	}
+	if dashboardDomain == "" {
+		if raw, readErr := os.ReadFile(filepath.Join(dataDir, "dashboard-domain")); readErr == nil {
+			domain, normalizeErr := deploy.NormalizeDashboardDomain(string(raw))
+			if normalizeErr != nil {
+				return normalizeErr
+			}
+			if domain != "" {
+				if e = db.SaveSetting(context.Background(), "dashboard_domain", domain); e != nil {
+					return e
+				}
+				dashboardDomain = domain
+			}
+			_ = os.Remove(filepath.Join(dataDir, "dashboard-domain"))
+		}
+	}
 	publicURL := env("SHIPPER_PUBLIC_URL", recovered.DashboardURL)
+	if dashboardDomain == "" && publicURL != "" {
+		if u, parseErr := url.Parse(publicURL); parseErr == nil && u.Scheme == "https" && u.Hostname() != "" {
+			if domain, normalizeErr := deploy.NormalizeDashboardDomain(u.Hostname()); normalizeErr == nil && domain != "" {
+				if e = db.SaveSetting(context.Background(), "dashboard_domain", domain); e != nil {
+					return e
+				}
+				dashboardDomain = domain
+			}
+		}
+	}
+	if dashboardDomain != "" {
+		publicURL = "https://" + dashboardDomain
+	}
 	if err = httpapi.ValidatePublicURL(publicURL); err != nil {
 		return err
 	}
@@ -214,6 +246,9 @@ func run() error {
 		return errors.New("SHIPPER_PROXY_BIND must be an IP address")
 	}
 	upstream := env("SHIPPER_DASHBOARD_UPSTREAM", recovered.DashboardUpstream)
+	if os.Getenv("SHIPPER_MANAGED_INSTALL") == "1" && upstream == "" {
+		upstream = "auto"
+	}
 	if upstream != "" {
 		proxyConfig.DashboardURL = publicURL
 		if upstream == "auto" {
@@ -222,27 +257,31 @@ func run() error {
 		} else {
 			proxyConfig.DashboardUpstream = upstream
 		}
-		if err = deploy.ValidateDashboard(proxyConfig); err != nil {
-			return err
-		}
-		dashboard, _ := url.Parse(publicURL)
-		apps, e := db.Applications(context.Background())
-		if e != nil {
-			return e
-		}
-		for _, app := range apps {
-			if app.Config.Domain == dashboard.Hostname() {
-				return errors.New("Move the application's dashboard hostname before enabling dashboard HTTPS")
+		if publicURL != "" {
+			if err = deploy.ValidateDashboard(proxyConfig); err != nil {
+				return err
 			}
-			for _, domain := range app.Domains {
-				if domain.Hostname == dashboard.Hostname() {
+			dashboard, _ := url.Parse(publicURL)
+			apps, e := db.Applications(context.Background())
+			if e != nil {
+				return e
+			}
+			for _, app := range apps {
+				if app.Config.Domain == dashboard.Hostname() {
 					return errors.New("Move the application's dashboard hostname before enabling dashboard HTTPS")
+				}
+				for _, domain := range app.Domains {
+					if domain.Hostname == dashboard.Hostname() {
+						return errors.New("Move the application's dashboard hostname before enabling dashboard HTTPS")
+					}
 				}
 			}
 		}
-
 	}
-	dockerRuntime := &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig, DataDir: dataDir, ACMEContact: db.ACMEContact}
+	dockerRuntime := &deploy.DockerRuntime{Client: docker.Client(), Instance: instance, Config: proxyConfig, DataDir: dataDir, ACMEContact: db.ACMEContact, DashboardDomain: func(ctx context.Context) string {
+		domain, _ := db.Setting(ctx, "dashboard_domain", "")
+		return domain
+	}}
 	worker := deploy.NewWorker(db, dockerRuntime, hub, dataDir)
 	worker.Refresh = monitor.Trigger
 	operator := &operations.Service{DB: db, Docker: docker.Client(), Monitor: monitor, Instance: instance, DataDir: dataDir, DashboardURL: proxyConfig.DashboardURL, Publish: hub.Publish}

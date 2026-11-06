@@ -292,7 +292,10 @@ func (w *Worker) protect(ctx context.Context, v *store.BackupRun) error {
 			return e
 		}
 		files["encryption.key"] = keyfile
-		proxy := runtime.Config
+		proxy, e := runtime.EffectiveProxy(ctx)
+		if e != nil {
+			return e
+		}
 		if proxy.DashboardContainer != "" {
 			proxy.DashboardUpstream = "auto"
 		}

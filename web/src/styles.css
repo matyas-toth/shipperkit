@@ -8060,7 +8060,34 @@ h2 {
   justify-self: stretch;
   position: sticky;
   top: 24px;
+  gap: 22px;
+}
+.settings-nav-group {
+  display: flex;
+  flex-direction: column;
   gap: 3px;
+}
+.settings-nav-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 3px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.settings-nav-heading .icon {
+  width: 13px;
+  height: 13px;
+}
+.dashboard-domain .form-actions {
+  margin-top: 14px;
+}
+.settings-result {
+  margin: 10px 0 0;
+  color: var(--success);
+  font-size: 13px;
 }
 .settings-page .settings-content {
   padding: 0;
@@ -9211,6 +9238,13 @@ body:has(.confirm-dialog) .page-actions {
     width: 100%;
     position: static;
     overflow-x: auto;
+    gap: 4px;
+  }
+  .settings-nav-group {
+    display: contents;
+  }
+  .settings-nav-heading {
+    display: none;
   }
   .settings-page .settings-content {
     padding: 0;

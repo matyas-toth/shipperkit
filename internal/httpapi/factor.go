@@ -110,7 +110,7 @@ func (s *Server) startFactor(w http.ResponseWriter, r *http.Request) {
 	}
 	secret := auth.FactorSecret()
 	account := session.User.Email
-	if parsed, _ := url.Parse(s.cfg.PublicURL); parsed != nil && parsed.Hostname() != "" {
+	if parsed, _ := url.Parse(s.publicURL()); parsed != nil && parsed.Hostname() != "" {
 		account += " (" + parsed.Hostname() + ")"
 	}
 	image, e := qrcode.Encode(auth.FactorURI(secret, account), qrcode.Medium, 220)
@@ -222,6 +222,6 @@ func (s *Server) factorSession(w http.ResponseWriter, r *http.Request, token str
 		s.internal(w, e)
 		return
 	}
-	s.cookie(w, token, fresh.ExpiresAt)
+	s.cookie(w, r, token, fresh.ExpiresAt)
 	s.writeSession(w, 200, fresh, codes)
 }

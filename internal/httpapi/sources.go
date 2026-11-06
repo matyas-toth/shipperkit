@@ -265,13 +265,9 @@ func (s *Server) validateSource(ctx context.Context, c *store.Config) error {
 	return nil
 }
 func (s *Server) beginGitHub(w http.ResponseWriter, r *http.Request) {
-	origin := s.cfg.PublicURL
+	origin := s.publicURL()
 	if origin == "" {
-		scheme := "http"
-		if r.TLS != nil {
-			scheme = "https"
-		}
-		origin = scheme + "://" + r.Host
+		origin = requestOrigin(r)
 	}
 	parsed, e := url.Parse(origin)
 	if e != nil || parsed.Host == "" {

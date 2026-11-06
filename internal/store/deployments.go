@@ -25,6 +25,11 @@ func (s *Store) Setting(ctx context.Context, key, initial string) (string, error
 	return value, err
 }
 
+func (s *Store) SaveSetting(ctx context.Context, key, value string) error {
+	_, err := s.db.ExecContext(ctx, "INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", key, value)
+	return err
+}
+
 // Enqueue commits the desired configuration and operation together. A unique partial
 // index prevents concurrent operations on the same application, including deletion.
 func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, requestKey string, create bool) (Deployment, error) {

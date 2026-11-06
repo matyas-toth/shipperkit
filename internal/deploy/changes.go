@@ -53,7 +53,11 @@ func comparisonConfig(c store.Config) store.Config {
 	// Historical releases can predate optional defaults. Compare effective values
 	// so opening a legacy form does not manufacture a list of pending changes.
 	data, _ := json.Marshal(c)
-	json.Unmarshal(data, &c)
+	var clone store.Config
+	if e := json.Unmarshal(data, &clone); e != nil {
+		return c
+	}
+	c = clone
 	_ = ValidateBuild(&c)
 	if c.StartupPolicy == "" {
 		c.StartupPolicy = "http"

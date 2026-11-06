@@ -13,8 +13,9 @@ import (
 
 // Only the configured canonical dashboard is probed; no arbitrary URL is accepted.
 func (s *Server) checkProxy(w http.ResponseWriter, r *http.Request) {
-	u, e := url.Parse(s.cfg.Proxy.DashboardURL)
-	if e != nil || u.Hostname() == "" || s.cfg.Proxy.DashboardUpstream == "" {
+	config := s.effectiveProxy(r.Context())
+	u, e := url.Parse(config.DashboardURL)
+	if e != nil || u.Hostname() == "" || config.DashboardUpstream == "" {
 		s.problem(w, 409, "dashboard_unconfigured", "Configure dashboard HTTPS before checking it")
 		return
 	}
@@ -45,7 +46,7 @@ func (s *Server) checkProxy(w http.ResponseWriter, r *http.Request) {
 	}}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: 7 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	req, _ := http.NewRequestWithContext(ctx, "GET", s.cfg.Proxy.DashboardURL+"/api/health", nil)
+	req, _ := http.NewRequestWithContext(ctx, "GET", config.DashboardURL+"/api/health", nil)
 	res, e := client.Do(req)
 	if e != nil {
 		respond("tls_pending", "HTTPS verification failed; check DNS, ports 80/443 and the proxy logs")
@@ -66,8 +67,7 @@ func (s *Server) checkProxy(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) dashboardDomain(host string) bool {
-	u, e := url.Parse(s.cfg.Proxy.DashboardURL)
-	return e == nil && s.cfg.Proxy.DashboardUpstream != "" && u.Hostname() == host
+	return host != "" && s.dashboardName() == host
 }
 
 func domainProbePath(d store.Domain) string {

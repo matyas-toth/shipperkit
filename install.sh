@@ -9,7 +9,9 @@ release=https://github.com/matyas-toth/shipperkit/releases/download
 export DOCKER_HOST=unix:///var/run/docker.sock
 unset DOCKER_CONTEXT
 domain= version= image= archive= checksum=
-apply=false
+apply=true
+check=false
+explicit_apply=false
 uninstall=false
 die() { printf 'Shipper: %s\n' "$*" >&2; exit 1; }
 stage() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$1"; }
@@ -23,18 +25,23 @@ while (($#)); do
         --archive) archive=$2;; --sha256) checksum=$2;;
       esac
       shift;;
-    --apply) apply=true;;
-    --check) apply=false;;
+    --apply) apply=true; explicit_apply=true;;
+    --check) check=true;;
     --uninstall) uninstall=true;;
     -h|--help)
-      printf '%s\n' 'install.sh --domain shipper.example.com --version X.Y.Z [--apply]' \
-        'install.sh --domain shipper.example.com --image IMAGE --archive FILE --sha256 HASH [--apply]' \
-        'install.sh --uninstall [--apply]' 'Without --apply, check the host and print the effects.'
+      printf '%s\n' 'install.sh [--version X.Y.Z] [--check]' \
+        'install.sh --image IMAGE --archive FILE --sha256 HASH [--check]' \
+        'install.sh --uninstall [--apply]' 'Use --check to review the host checks without applying them.'
       exit 0;;
     *) die "Unknown option $1";;
   esac
   shift
 done
+if $check; then
+  apply=false
+elif $uninstall && ! $explicit_apply; then
+  apply=false
+fi
 [[ $(uname -s) == Linux && -r /etc/os-release ]] || die 'This installer requires Linux'
 . /etc/os-release
 [[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 24.04 && $(uname -m) == x86_64 ]] || die 'Use Ubuntu 24.04 on x86-64'
@@ -66,19 +73,17 @@ if $uninstall; then
 fi
 if [[ -f $cfg/instance.env ]]; then
   old_domain=$(sed -n 's/^SHIPPER_DOMAIN=//p' "$cfg/instance.env")
-  [[ -z $domain || $domain == "$old_domain" ]] || die 'Keep the existing dashboard hostname'
-  domain=$old_domain
+  [[ -n $domain ]] || domain=$old_domain
 elif ! $installed; then
   [[ ! -e /etc/systemd/system/$unit && ! -e /usr/local/bin/shipperctl ]] || die 'The service or CLI path is already in use'
   for port in 80 443 8080; do
     [[ -z $(ss -ltnH "sport = :$port") ]] || die "TCP port $port is already in use"
   done
 fi
-[[ $domain =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$ &&
-   ${#domain} -le 253 && $domain != *.localhost && ! $domain =~ ^[0-9.]+$ ]] || die 'Provide a public hostname with --domain'
 memory=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
 disk=$(df -Pk /var/lib | awk 'NR==2 {print $4}')
 (( memory >= 1000000 && disk >= 8*1024*1024 )) || die 'Shipper needs 1 GiB RAM and 8 GiB available disk'
+latest=${SHIPPER_RELEASE_BASE:-https://github.com/matyas-toth/shipperkit/releases/latest/download}
 pin='^ghcr\.io/matyas-toth/shipperkit@sha256:[0-9a-f]{64}$'
 semver='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
 if [[ -n $archive ]]; then
@@ -86,10 +91,15 @@ if [[ -n $archive ]]; then
       $image =~ ^[a-zA-Z0-9][a-zA-Z0-9._/:@-]{0,250}$ ]] || die 'A local archive needs --image and its SHA-256'
   sum=$(sha256sum -- "$archive")
   [[ ${sum%% *} == "${checksum,,}" ]] || die 'The image archive checksum did not match'
-elif [[ -n $image ]]; then
-  [[ -z $version && $image =~ $pin ]] || die 'Use a pinned Shipper image digest'
-else
+elif [[ -n $version ]]; then
   [[ $version =~ $semver ]] || die 'Provide a release version or a pinned image'
+elif [[ -z $image ]]; then
+  if [[ -f image.txt ]]; then
+    image=$(<image.txt)
+  else
+    image=$(curl -fsSL --proto '=https' --retry 3 "$latest/image.txt") || die 'No Shipper release image is available'
+  fi
+  [[ -n $image ]] || die 'No Shipper release image is available'
 fi
 engine=install
 if command -v docker >/dev/null; then
@@ -102,8 +112,16 @@ if command -v docker >/dev/null; then
 elif command -v dockerd >/dev/null || command -v containerd >/dev/null || command -v podman >/dev/null; then
   die 'Found an existing container runtime without a compatible Docker CLI'
 fi
-printf 'Host: Ubuntu 24.04 x86-64\nDocker: %s\nDashboard: https://%s\n' "$engine" "$domain"
-printf '%s\n' 'Bind app traffic on TCP 80/443 and the control plane on loopback. Keep firewall and SSH settings.'
+public_ip=
+if command -v curl >/dev/null 2>&1; then
+  public_ip=$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)
+fi
+if [[ ! $public_ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  public_ip=$(hostname -I | awk '{print $1}')
+fi
+[[ -n $public_ip ]] || public_ip='<server-ip>'
+printf 'Host: Ubuntu 24.04 x86-64\nDocker: %s\nDashboard: http://%s:8080\n' "$engine" "$public_ip"
+printf '%s\n' 'Bind app traffic on TCP 80/443 and the dashboard on TCP 8080. Keep firewall and SSH settings.'
 $apply || exit 0
 begin
 stage 'preflight: passed'
@@ -145,8 +163,11 @@ if [[ -n $version ]]; then
   image=$(curl -fsSL --proto '=https' --retry 3 "$release/v$version/image.txt")
   [[ $image =~ $pin ]] || die 'The release did not provide a valid image digest'
 fi
+if [[ -z $archive && ! $image =~ $pin ]] && ! docker image inspect "$image" >/dev/null 2>&1; then
+  die 'Use a pinned Shipper image digest or a locally loaded image'
+fi
 stage 'artifact: loading and checking the image'
-if [[ -n $archive ]]; then docker load -i "$archive"; else docker pull "$image"; fi
+if [[ -n $archive ]]; then docker load -i "$archive"; elif ! docker image inspect "$image" >/dev/null 2>&1; then docker pull "$image"; fi
 image_id=$(docker image inspect --format '{{.Id}}' "$image")
 [[ $image_id =~ ^sha256:[0-9a-f]{64}$ ]] || die 'Invalid local image identity'
 reported=$(docker run --rm --network none --pull never "$image_id" version)
@@ -157,6 +178,11 @@ if ! $installed; then
 fi
 [[ -d $data ]] || install -d -o 65532 -g 65532 -m 0700 "$data"
 [[ $(stat -c %u "$data") == 65532 ]] || die 'Unexpected data directory ownership'
+if [[ -n $domain ]]; then
+  printf '%s\n' "$domain" >"$data/dashboard-domain"
+  chown 65532:65532 "$data/dashboard-domain"
+  chmod 0600 "$data/dashboard-domain"
+fi
 install -d -m 0755 "$state/status"
 previous=
 checkpoint=
@@ -198,9 +224,8 @@ services:
   shipper:
     image: "${SHIPPER_IMAGE}"
     pull_policy: never
-    ports: ["127.0.0.1:8080:8080"]
+    ports: ["0.0.0.0:8080:8080"]
     environment:
-      SHIPPER_PUBLIC_URL: "https://${SHIPPER_DOMAIN}"
       SHIPPER_DASHBOARD_UPSTREAM: auto
       SHIPPER_PROXY_BIND: 0.0.0.0
       SHIPPER_HTTP_PORT: "80"
@@ -305,7 +330,7 @@ AccuracySec=5s
 WantedBy=timers.target
 TIMER
 chmod 0644 /etc/systemd/system/shipper-host-status.service /etc/systemd/system/shipper-host-status.timer
-printf 'SHIPPER_IMAGE=%s\nSHIPPER_DOMAIN=%s\nSHIPPER_DOCKER_GID=%s\n' "$image_id" "$domain" "$gid" >"$cfg/instance.next"
+printf 'SHIPPER_IMAGE=%s\nSHIPPER_DOCKER_GID=%s\n' "$image_id" "$gid" >"$cfg/instance.next"
 mv -f "$cfg/instance.next" "$cfg/instance.env"
 systemctl daemon-reload
 systemctl enable "$unit"
@@ -323,5 +348,5 @@ fi
 stage "service: Shipper $reported is ready"
 systemctl enable --now shipper-host-status.timer
 systemctl start shipper-host-status.service
-printf 'Dashboard: https://%s\n' "$domain"
-printf '%s\n' 'For a fresh installation, run sudo shipperctl claim. Point the hostname at this server and allow TCP 80 and 443.'
+printf 'Open Shipper: http://%s:8080\n' "$public_ip"
+printf '%s\n' 'For a fresh installation, run sudo shipperctl claim, then add the dashboard domain in Settings.'

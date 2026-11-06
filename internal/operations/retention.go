@@ -112,6 +112,9 @@ func (s *Service) RepairRevision(ctx context.Context) (string, error) {
 		return "", e
 	}
 	values := []string{s.Instance, s.ConfigIdentity}
+	if domain, e := s.DB.Setting(ctx, "dashboard_domain", ""); e == nil && domain != "" {
+		values = append(values, "dashboard:"+domain)
+	}
 	for _, a := range apps {
 		values = append(values, a.ID+":"+s.DB.ConfigRevision(a))
 		for _, d := range a.Domains {

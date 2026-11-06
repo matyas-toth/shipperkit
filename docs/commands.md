@@ -12,12 +12,14 @@ optional **Detect commands** action reads supported package scripts and lockfile
 without executing repository code. Existing command overrides are preserved.
 
 Set **Before deploy** under Deployment commands for a migration. It runs from the
-candidate image before consumers start, including the first deployment. A Compose
-command selects its service. Required dependencies start first using their saved
-Compose health/completion conditions. Cycles that would start the consumer are
-rejected. Compose updates can have downtime, and container recovery does not undo
-schema or data changes. Use a migration framework's database lock when several
-applications share one database.
+candidate image before consumers start, including the first deployment. In
+Compose, use the service tabs to edit **All services** or one service at a time.
+An all-services command runs in every service container, and it runs before that
+service's own command at the same stage. Required dependencies start first using
+their saved Compose health/completion conditions. Cycles that would start the
+consumer are rejected. Compose updates can have downtime, and container recovery
+does not undo schema or data changes. Use a migration framework's database lock
+when several applications share one database.
 
 Other stages are under **More commands**:
 

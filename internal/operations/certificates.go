@@ -73,7 +73,8 @@ type certificateSchedule struct {
 }
 
 func (s *Service) checkCertificate(ctx context.Context, apps []store.Application) {
-	if s.DashboardURL == "" {
+	dashboardURL := s.dashboardURL(ctx)
+	if dashboardURL == "" {
 		return
 	}
 	if s.certificates == nil {
@@ -84,7 +85,7 @@ func (s *Service) checkCertificate(ctx context.Context, apps []store.Application
 		domain                                store.Domain
 	}
 	targets := []target{}
-	if u, e := url.Parse(s.DashboardURL); e == nil && u.Scheme == "https" && u.Hostname() != "" {
+	if u, e := url.Parse(dashboardURL); e == nil && u.Scheme == "https" && u.Hostname() != "" {
 		if contact, e := s.DB.ACMEContact(ctx); e == nil && contact != "" {
 			targets = append(targets, target{id: "certificate/dashboard", host: u.Hostname(), path: "/api/health", header: "X-Shipper-Instance", identity: s.Instance})
 		}

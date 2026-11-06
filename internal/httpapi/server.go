@@ -57,6 +57,9 @@ type Server struct {
 	protectionSlots chan struct{}
 	authMu          sync.Mutex
 	authChanged     chan struct{}
+	urlMu           sync.RWMutex
+	publicURLValue  string
+	dashboardValue  string
 }
 type contextKey int
 
@@ -67,7 +70,17 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		cfg.GitHub = gitprovider.New()
 	}
 	dummy, _ := auth.Password(auth.Token()[:32])
-	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1)}
+	dashboard, _ := db.Setting(context.Background(), "dashboard_domain", "")
+	if dashboard == "" {
+		if u, e := url.Parse(cfg.Proxy.DashboardURL); e == nil && u.Scheme == "https" {
+			dashboard = u.Hostname()
+		}
+	}
+	publicURL := cfg.PublicURL
+	if dashboard != "" {
+		publicURL = "https://" + dashboard
+	}
+	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1), publicURLValue: publicURL, dashboardValue: dashboard}
 	s.authChanged = make(chan struct{})
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, s.headers)
@@ -109,6 +122,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/retry", s.retryDeployment)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/rollback", s.rollbackRelease)
 			r.With(s.csrf, s.limit).Post("/proxy/check", s.checkProxy)
+			r.With(s.csrf, s.limit).Post("/proxy", s.saveProxy)
 			r.Get("/proxy", s.proxyInfo)
 			r.Get("/domain-options", s.domainOptions)
 			r.With(s.csrf, s.limit).Post("/compose/preview", s.previewCompose)
@@ -143,6 +157,36 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 	r.Handle("/*", cfg.Assets)
 	return s.automation(r)
 }
+func (s *Server) publicURL() string {
+	s.urlMu.RLock()
+	defer s.urlMu.RUnlock()
+	return s.publicURLValue
+}
+func (s *Server) dashboardName() string {
+	s.urlMu.RLock()
+	defer s.urlMu.RUnlock()
+	return s.dashboardValue
+}
+func (s *Server) setDashboard(domain string) {
+	s.urlMu.Lock()
+	s.dashboardValue = domain
+	if domain != "" {
+		s.publicURLValue = "https://" + domain
+	} else {
+		s.publicURLValue = s.cfg.PublicURL
+	}
+	s.urlMu.Unlock()
+}
+func (s *Server) secureRequest(r *http.Request) bool {
+	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+}
+func requestOrigin(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
+}
 func (s *Server) headers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -150,7 +194,7 @@ func (s *Server) headers(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com")
-		if strings.HasPrefix(s.cfg.PublicURL, "https://") {
+		if s.secureRequest(r) {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000")
 		}
 		if strings.HasPrefix(r.URL.Path, "/api") {
@@ -167,15 +211,9 @@ func (s *Server) origin(next http.Handler) http.Handler {
 			return
 		}
 		if origin := r.Header.Get("Origin"); origin != "" {
-			allowed := s.cfg.PublicURL
-			if allowed == "" {
-				scheme := "http"
-				if r.TLS != nil {
-					scheme = "https"
-				}
-				allowed = scheme + "://" + r.Host
-			}
-			if origin != allowed {
+			allowed := s.publicURL()
+			current := requestOrigin(r)
+			if origin != allowed && origin != current {
 				s.problem(w, 403, "origin_denied", "The request origin is not allowed")
 				return
 			}
@@ -329,7 +367,7 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	s.cookie(w, token, expiry)
+	s.cookie(w, r, token, expiry)
 	if s.cfg.Worker != nil {
 		s.cfg.Worker.Trigger()
 	}
@@ -364,11 +402,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
-	s.cookie(w, token, expiry)
+	s.cookie(w, r, token, expiry)
 	s.writeSession(w, 200, store.Session{User: user, CSRF: csrf, ExpiresAt: expiry, Factor: factor}, nil)
 }
-func (s *Server) cookie(w http.ResponseWriter, token string, expiry int64) {
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.cfg.PublicURL, "https://"), SameSite: http.SameSiteStrictMode, Expires: time.Unix(expiry, 0), MaxAge: max(1, int(expiry-time.Now().Unix()))})
+func (s *Server) cookie(w http.ResponseWriter, r *http.Request, token string, expiry int64) {
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: s.secureRequest(r), SameSite: http.SameSiteStrictMode, Expires: time.Unix(expiry, 0), MaxAge: max(1, int(expiry-time.Now().Unix()))})
 }
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	cookie, _ := r.Cookie(cookieName)
@@ -376,7 +414,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.cfg.PublicURL, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: -1, Expires: time.Unix(1, 0)})
+	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: "", Path: "/", HttpOnly: true, Secure: s.secureRequest(r), SameSite: http.SameSiteStrictMode, MaxAge: -1, Expires: time.Unix(1, 0)})
 	s.json(w, 200, map[string]bool{"ok": true})
 }
 func (s *Server) containers(w http.ResponseWriter, r *http.Request) {

@@ -50,11 +50,12 @@ type Runtime interface {
 	ProbeLocal(context.Context, store.Deployment) (bool, error)
 }
 type DockerRuntime struct {
-	Client      *client.Client
-	Instance    string
-	Config      ProxyConfig
-	DataDir     string
-	ACMEContact func(context.Context) (string, error)
+	Client          *client.Client
+	Instance        string
+	Config          ProxyConfig
+	DataDir         string
+	ACMEContact     func(context.Context) (string, error)
+	DashboardDomain func(context.Context) string
 }
 
 func (r *DockerRuntime) prefix() string  { return "shipper-" + r.Instance[:12] }
@@ -99,6 +100,17 @@ func (r *DockerRuntime) Ensure(ctx context.Context) error {
 
 func (r *DockerRuntime) EffectiveProxy(ctx context.Context) (ProxyConfig, error) {
 	c := r.Config
+	if c.DashboardContainer != "" && r.DashboardDomain != nil {
+		if domain := r.DashboardDomain(ctx); domain != "" {
+			c.DashboardURL = "https://" + domain
+			if c.DashboardUpstream == "" {
+				c.DashboardUpstream = "http://dashboard-" + r.Instance[:12] + ":8080"
+			}
+		} else {
+			c.DashboardURL = ""
+			c.DashboardUpstream = ""
+		}
+	}
 	if c.AutoHTTPS && c.ACMEEmail == "" && r.ACMEContact != nil {
 		var err error
 		c.ACMEEmail, err = r.ACMEContact(ctx)

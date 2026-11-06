@@ -9,6 +9,19 @@ import (
 	"shipper/internal/store"
 )
 
+func TestPlanChangesDoesNotReorderCallerHooks(t *testing.T) {
+	next := store.Config{Method: "compose", Hooks: []store.Hook{
+		{Stage: "before_start", Command: store.Command{Service: "", Shell: "start"}},
+		{Stage: "before_deploy", Command: store.Command{Service: "web", Shell: "deploy"}},
+	}}
+	before, _ := json.Marshal(next.Hooks)
+	PlanChanges(store.Config{Method: "compose"}, next)
+	after, _ := json.Marshal(next.Hooks)
+	if string(before) != string(after) {
+		t.Fatal("planning reordered the caller's hooks", string(before), string(after))
+	}
+}
+
 func TestPlanNamesInlineSourceEditsWithoutRevealingContents(t *testing.T) {
 	for _, tt := range []struct {
 		label string

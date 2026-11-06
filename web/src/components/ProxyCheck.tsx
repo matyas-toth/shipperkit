@@ -33,7 +33,9 @@ export default function ProxyCheck(props: { proxy?: ProxyConfig }) {
       <dl class="settings-group">
         <div class="setting-row">
           <dt>Dashboard HTTPS</dt>
-          <dd>{props.proxy?.dashboardURL || "Not configured"}</dd>
+          <dd><Show when={props.proxy?.dashboardURL} fallback="Not configured">{url =>
+            <a class="inline-link" href={url()} target="_blank" rel="noreferrer">{url()}</a>
+          }</Show></dd>
         </div>
         <div class="setting-row">
           <dt>Certificate renewal</dt>

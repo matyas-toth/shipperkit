@@ -36,6 +36,31 @@ All 13 desktop and mobile browser journeys passed. The staging update preserved
 the five previously checked HTTPS routes. Linux image manifest:
 `sha256:455893524c631aa5b67aa69c4f2c88eeae811444b89011031de7745d8d73e051`.
 
+A staging update on 2026-11-06 exercised the deployment command scopes, release
+history layout, protected volume ordering and background refresh behavior. A
+Compose fixture with two services and three volumes proved that an all-services
+command runs before the service command for before deploy, before start, after
+deploy and before stop, and that the volume API and backup UI return adata,
+mdata, zdata in stable order. The release history rendered 34 entries without
+clipping, the Recheck control stayed enabled through 18 background refresh
+samples, and a reviewed all-services command edit applied from the dashboard.
+The interface test also caught a revision bug where planning reordered the
+caller's hooks; the fix clones the comparison configuration before sorting. Full
+Go and frontend suites passed after the fix. Linux image manifest:
+`sha256:799e45fe84c4947b2bdd3728f6a863a2a15e84a4a3f6caebb1b23a33f76ec06b`.
+
+A fresh staging reinstall on 2026-11-06 removed the previous control plane,
+proxy, applications, volumes, images and data, then ran the installer with no
+arguments against a locally loaded image. It printed
+`http://13.140.218.79:8080`, started the control plane and proxy, and accepted the
+web setup token. Settings now groups Account settings and Server settings, with
+Access policy as a server page and the dashboard domain on the Dashboard page.
+Saving `shipper-stage.askmyfridge.com` there created its own proxy route and a
+trusted Let's Encrypt certificate while the public IP continued to serve the
+control plane on 8080. Parameterless updates preserved the dashboard domain and
+the certificate. Final Linux image manifest:
+`sha256:bf14d2568a273b7d5188a1a2617192f793d1c6560c92e3f5cb681ac77bff76bb`.
+
 ## Remaining stable-release gates
 
 - Run with a real GitHub App and private repository; exercise signed public push

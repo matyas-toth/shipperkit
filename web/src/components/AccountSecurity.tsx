@@ -48,13 +48,14 @@ export function FactorEnrollment(props: { cancel: () => void; cancelLabel: strin
 }
 
 type Change = "disable" | "recovery_codes" | "policy";
-export default function AccountSecurity() {
+export default function AccountSecurity(props: { scope?: "account" | "instance" }) {
   const auth = useAuth();
   const [action, setAction] = createSignal<"enroll" | Change>();
   const [password, setPassword] = createSignal("");
   const [code, setCode] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
+  const instance = () => props.scope === "instance";
   const factor = () => auth.session()?.factor;
   const policyAction = () => factor()?.required ? "Make 2FA optional" : "Require 2FA";
   const label = () => action() === "disable" ? "Disable 2FA" : action() === "recovery_codes" ? "Replace recovery codes" : policyAction();
@@ -76,21 +77,25 @@ export default function AccountSecurity() {
   }
   return <div class="account-security">
     <dl class="settings-group">
-      <div class="setting-row"><dt>Two-factor authentication</dt><dd>
-        <Show when={factor()?.enrolled} fallback={<Button small onClick={() => choose("enroll")}>Set up 2FA</Button>}>
-          <span>Enabled</span>
-          <Show when={!factor()?.required}><Button small variant="ghost" onClick={() => choose("disable")}>Disable</Button></Show>
-        </Show>
-      </dd></div>
-      <div class="setting-row"><dt>Instance policy</dt><dd>
-        <span>{factor()?.required ? "Required" : "Optional"}</span>
-        <Button small onClick={() => choose("policy")}>{policyAction()}</Button>
-      </dd></div>
-      <Show when={factor()?.enrolled}><div class="setting-row"><dt>Recovery codes</dt><dd>
-        <Button small variant="ghost" onClick={() => choose("recovery_codes")}>Replace codes</Button>
-      </dd></div></Show>
+      <Show when={!instance()}>
+        <div class="setting-row"><dt>Two-factor authentication</dt><dd>
+          <Show when={factor()?.enrolled} fallback={<Button small onClick={() => choose("enroll")}>Set up 2FA</Button>}>
+            <span>Enabled</span>
+            <Show when={!factor()?.required}><Button small variant="ghost" onClick={() => choose("disable")}>Disable</Button></Show>
+          </Show>
+        </dd></div>
+        <Show when={factor()?.enrolled}><div class="setting-row"><dt>Recovery codes</dt><dd>
+          <Button small variant="ghost" onClick={() => choose("recovery_codes")}>Replace codes</Button>
+        </dd></div></Show>
+      </Show>
+      <Show when={instance()}>
+        <div class="setting-row"><dt>Two-factor authentication</dt><dd>
+          <span>{factor()?.required ? "Required" : "Optional"}</span>
+          <Button small onClick={() => choose("policy")}>{policyAction()}</Button>
+        </dd></div>
+      </Show>
     </dl>
-    <Show when={action() === "enroll" && !factor()?.enrolled}><FactorEnrollment cancel={() => choose()} cancelLabel="Cancel" /></Show>
+    <Show when={!instance() && action() === "enroll" && !factor()?.enrolled}><FactorEnrollment cancel={() => choose()} cancelLabel="Cancel" /></Show>
     <Show when={action() && action() !== "enroll"}>
       <form class="factor-form" onSubmit={submit}>
         <h2>{label()}</h2>

@@ -6,9 +6,14 @@ bootstrap thresholds, not workload sizing guidance. Docker Engine API 1.48 or
 newer, Compose and Buildx are required. The installer can install missing Docker
 from the [signed Docker package repository](https://docs.docker.com/engine/install/ubuntu/).
 
-Use a versioned release after it has been published. The installer checks the
-host and shows its effects by default. Download and inspect it first if you want
-to review the script itself:
+Use the published installer. The default one-liner installs the latest release
+without arguments, then prints the public IP and port to open:
+
+```bash
+curl -fsSL https://github.com/matyas-toth/shipperkit/releases/latest/download/install.sh | sudo bash
+```
+
+To pin a version or inspect the script first:
 
 ```bash
 version=1.0.0
@@ -17,37 +22,32 @@ curl -fsSLO "$origin/install.sh"
 curl -fsSLO "$origin/image.txt"
 curl -fsSLO "$origin/SHA256SUMS"
 sha256sum -c SHA256SUMS
-sudo bash install.sh --version "$version" --domain shipper.example.com
-sudo bash install.sh --version "$version" --domain shipper.example.com --apply
-```
-
-The versioned one-line form is:
-
-```bash
-curl -fsSL https://github.com/matyas-toth/shipperkit/releases/download/v1.0.0/install.sh | sudo bash -s -- --version 1.0.0 --domain shipper.example.com --apply
+sudo bash install.sh --version "$version" --check
+sudo bash install.sh --version "$version"
 ```
 
 The image is pulled by its release digest. An unpublished candidate can be tested
 by supplying a local Docker archive, its image name and its SHA-256 using
-`--archive`, `--image` and `--sha256`. Rerunning the installer reuses compatible
-Docker. Foreign services, conflicting ports and unmanaged Shipper data fail
-preflight. Installer stages are recorded in
+`--archive`, `--image` and `--sha256`. A local `image.txt` beside the installer
+selects an already loaded image for repeatable lab installs. Rerunning the
+installer reuses compatible Docker. Foreign services, conflicting ports and
+unmanaged Shipper data fail preflight. Installer stages are recorded in
 `/var/lib/shipper-installer/install.log`.
 
 ## First administrator
 
-Point the dashboard hostname at the server and allow TCP 80/443 through the
-provider firewall. Use DNS-only records when testing direct HTTP-01 issuance.
-Shipper does not edit firewall policy. It publishes only the proxy ports and
-binds the control plane's 8080 to loopback. Avoid publishing workload ports in
-Compose when those services should stay private.
+The installer prints the public address, for example `http://203.0.113.10:8080`.
+Open it. Create the first administrator with `sudo shipperctl claim` on the host,
+or use the setup token from `/var/lib/shipper/setup-token` on the setup form.
+Allow TCP 80, 443 and 8080 through the provider firewall.
 
-Run `sudo shipperctl claim` on the host. The password is read without echo;
-the first administrator's email becomes the persisted ACME contact. Open the
-dashboard when its trusted certificate is issued. Application domains use
-HTTPS by default on a managed install; an application may run without a public
-route. Explicit HTTP remains available. Traefik owns issuance and renewal using
-its [certificate resolver](https://doc.traefik.io/traefik/v3.6/reference/install-configuration/tls/certificate-resolvers/overview/).
+The dashboard initially runs without a domain. After signing in, open
+**Settings**, **Dashboard**, and enter the hostname Shipper should answer on.
+Point the DNS record at this server first. Shipper then adds its own route to the
+global proxy and requests a trusted certificate. Application domains use HTTPS by
+default on a managed install; an application may run without a public route.
+Explicit HTTP remains available. Traefik owns issuance and renewal using its
+[certificate resolver](https://doc.traefik.io/traefik/v3.6/reference/install-configuration/tls/certificate-resolvers/overview/).
 System and Domains show observed readiness, issuer and expiry where available.
 
 For manually hosted instances the existing setup form uses a private expiring
@@ -62,13 +62,14 @@ and `shipper connect` for ongoing scoped CLI pairing.
 
 ## Updates and recovery
 
-Use the installer with a new pinned version and review the checks before adding
-`--apply`. The managed update waits for queued work, stops the control plane,
-and verifies a SQLite checkpoint against its key and checksum. The candidate
-can report liveness before serving requests or running the worker. An unhealthy
-or interrupted candidate can restore the prior image and checkpoint; the
-candidate database is preserved for diagnosis. Keep an off-host encrypted
-instance backup independently of these local checkpoints.
+Use the installer with a new pinned version, or rerun the latest one-liner.
+Review the checks with `--check` before applying. The managed update waits for
+queued work, stops the control plane, and verifies a SQLite checkpoint against
+its key and checksum. The candidate can report liveness before serving requests
+or running the worker. An unhealthy or interrupted candidate can restore the
+prior image and checkpoint; the candidate database is preserved for diagnosis.
+Keep an off-host encrypted instance backup independently of these local
+checkpoints.
 
 The host's OS and Docker patch policy remains operator managed. System reports
 boot services, the distribution's security updates service, clock synchronization

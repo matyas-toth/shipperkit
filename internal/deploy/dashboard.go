@@ -13,7 +13,7 @@ import (
 func ValidateDashboard(c ProxyConfig) error {
 	u, e := url.Parse(c.DashboardURL)
 	if e != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || (u.Port() != "" && u.Port() != "443") {
-		return errors.New("Dashboard HTTPS needs SHIPPER_PUBLIC_URL with a public HTTPS hostname")
+		return errors.New("Dashboard HTTPS needs a public HTTPS hostname")
 	}
 	domains, e := NormalizeDomains([]store.Domain{{Hostname: u.Hostname(), HTTPS: true}})
 	if e != nil || len(domains) == 0 {
@@ -27,6 +27,18 @@ func ValidateDashboard(c ProxyConfig) error {
 		return errors.New("Dashboard HTTPS needs automatic HTTPS or an ACME email, and publicly bound ports 80 and 443")
 	}
 	return nil
+}
+
+func NormalizeDashboardDomain(raw string) (string, error) {
+	raw = strings.ToLower(strings.TrimSpace(raw))
+	if raw == "" {
+		return "", nil
+	}
+	domains, e := NormalizeDomains([]store.Domain{{Hostname: raw, HTTPS: true}})
+	if e != nil || len(domains) != 1 || strings.Contains(domains[0].Hostname, "*") {
+		return "", errors.New("Enter a public dashboard domain without a protocol or path")
+	}
+	return domains[0].Hostname, nil
 }
 
 func (r *DockerRuntime) connectDashboard(ctx context.Context) error {

@@ -23,16 +23,77 @@ import (
 	"shipper/internal/store"
 )
 
-func (s *Server) proxyInfo(w http.ResponseWriter, r *http.Request) {
+func (s *Server) effectiveProxy(ctx context.Context) deploy.ProxyConfig {
 	config := s.cfg.Proxy
 	if s.cfg.EffectiveProxy != nil {
-		var e error
-		if config, e = s.cfg.EffectiveProxy(r.Context()); e != nil {
+		if next, e := s.cfg.EffectiveProxy(ctx); e == nil {
+			config = next
+		}
+	}
+	return config
+}
+
+func (s *Server) proxyInfo(w http.ResponseWriter, r *http.Request) {
+	s.json(w, 200, s.effectiveProxy(r.Context()))
+}
+
+func (s *Server) saveProxy(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Domain string `json:"domain"`
+	}
+	if !s.decode(w, r, &input) {
+		return
+	}
+	domain, e := deploy.NormalizeDashboardDomain(input.Domain)
+	if e != nil {
+		s.problem(w, 422, "invalid_domain", e.Error())
+		return
+	}
+	previous := s.dashboardName()
+	if domain != "" {
+		if !s.hasACME() {
+			s.problem(w, 422, "https_unconfigured", "Automatic HTTPS is unavailable on this installation")
+			return
+		}
+		apps, e := s.db.Applications(r.Context())
+		if e != nil {
 			s.internal(w, e)
 			return
 		}
+		for _, app := range apps {
+			inUse := app.Config.Domain == domain
+			for _, item := range app.Domains {
+				inUse = inUse || item.Hostname == domain
+			}
+			if inUse {
+				s.problem(w, 409, "domain_in_use", "This domain is already assigned to an application")
+				return
+			}
+		}
 	}
-	s.json(w, 200, config)
+	if e = s.db.SaveSetting(r.Context(), "dashboard_domain", domain); e != nil {
+		s.internal(w, e)
+		return
+	}
+	s.setDashboard(domain)
+	if s.cfg.Worker == nil || s.cfg.Operations == nil {
+		s.json(w, 200, map[string]any{"domain": domain, "state": "saved"})
+		return
+	}
+	revision, e := s.operator().RepairRevision(r.Context())
+	if e != nil {
+		s.internal(w, e)
+		return
+	}
+	id := auth.Token()[:24]
+	if e = s.db.EnqueueMaintenance(r.Context(), store.MaintenanceRun{Actor: r.Context().Value(sessionKey).(store.Session).User.Email, ID: id, Kind: "proxy", Revision: revision}); e != nil {
+		_ = s.db.SaveSetting(r.Context(), "dashboard_domain", previous)
+		s.setDashboard(previous)
+		s.problem(w, 409, "operation_in_progress", "Maintenance is already queued")
+		return
+	}
+	s.cfg.Worker.Trigger()
+	s.json(w, 202, map[string]any{"domain": domain, "id": id, "state": "queued"})
 }
 
 func (s *Server) hasACME() bool {
