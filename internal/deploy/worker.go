@@ -344,13 +344,13 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			if action != "start" {
 				hookRelease := release
 				hookRelease.ID = d.ID
-				hookRelease.Config.Hooks = nil
-				for _, h := range release.Config.Hooks {
-					if h.Command.Service == d.Service {
-						hookRelease.Config.Hooks = append(hookRelease.Config.Hooks, h)
+				runs := []hookRun{}
+				for _, run := range hookRuns(release, "before_stop") {
+					if run.command.Service == d.Service {
+						runs = append(runs, run)
 					}
 				}
-				if e = w.hooks(ctx, hookRelease, "before_stop", true); e != nil {
+				if e = w.runHooks(ctx, hookRelease, runs, true); e != nil {
 					return e
 				}
 			}

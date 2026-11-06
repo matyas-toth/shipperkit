@@ -2,9 +2,11 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -79,9 +81,6 @@ func ValidateHooks(c *store.Config) error {
 			return errors.New("Use one command per service and lifecycle stage")
 		}
 		seen[key] = true
-		if c.Method == "compose" && h.Command.Service == "" {
-			return errors.New("Choose a service for each Compose command")
-		}
 		if c.Method != "compose" && h.Command.Service != "" {
 			return errors.New("Single-container commands do not need a service")
 		}
@@ -98,6 +97,18 @@ func ValidateHooks(c *store.Config) error {
 type TaskRuntime interface {
 	RunTask(context.Context, store.Deployment, *store.TaskRun, func() error, func(string)) error
 	CleanupTask(context.Context, store.Deployment, store.TaskRun) error
+}
+
+func hookStageLabel(stage string) string {
+	parts := strings.Split(stage, ":")
+	label := strings.ReplaceAll(parts[0], "_", " ")
+	for _, part := range parts[1:] {
+		if part == "all" {
+			part = "All services"
+		}
+		label += " · " + part
+	}
+	return label
 }
 
 func (w *Worker) runTask(ctx context.Context, d store.Deployment, stage string, c store.Command) error {
@@ -118,7 +129,7 @@ func (w *Worker) runTask(ctx context.Context, d store.Deployment, stage string, 
 	taskCtx, cancel := context.WithDeadline(ctx, time.Unix(r.StartedAt, 0).Add(time.Duration(r.Command.Timeout)*time.Second))
 	defer cancel()
 	checkpoint := func() error { return w.DB.SaveTaskRun(ctx, r) }
-	w.log(d, "Running "+strings.ReplaceAll(stage, "_", " "))
+	w.log(d, "Running "+hookStageLabel(stage))
 	e = runtime.RunTask(taskCtx, d, &r, checkpoint, func(line string) { w.log(d, line) })
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -147,21 +158,82 @@ func (w *Worker) runTask(ctx context.Context, d store.Deployment, stage string, 
 	}
 	return e
 }
-func (w *Worker) hooks(ctx context.Context, d store.Deployment, stage string, warning bool) error {
+
+type hookRun struct {
+	stage   string
+	command store.Command
+}
+
+func serviceNames(d store.Deployment) []string {
+	names := []string{}
+	seen := map[string]bool{}
+	for _, svc := range d.Services {
+		if svc.Name != "" && !seen[svc.Name] {
+			seen[svc.Name] = true
+			names = append(names, svc.Name)
+		}
+	}
+	if len(names) == 0 && ReleaseMethod(d) == "compose" {
+		var plan composePlan
+		if e := json.Unmarshal([]byte(d.ComposePlan), &plan); e == nil {
+			services, _ := plan.Project["services"].(map[string]any)
+			for name := range services {
+				if !seen[name] {
+					seen[name] = true
+					names = append(names, name)
+				}
+			}
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func hookRuns(d store.Deployment, stage string) []hookRun {
+	hooks := []store.Hook{}
 	for _, h := range d.Config.Hooks {
-		if h.Stage != stage {
-			continue
+		if h.Stage == stage {
+			hooks = append(hooks, h)
 		}
-		key := stage
-		if h.Command.Service != "" {
-			key += ":" + h.Command.Service
+	}
+	if ReleaseMethod(d) != "compose" {
+		runs := make([]hookRun, 0, len(hooks))
+		for _, h := range hooks {
+			runs = append(runs, hookRun{stage: stage, command: h.Command})
 		}
-		if e := w.runTask(ctx, d, key, h.Command); e != nil {
+		return runs
+	}
+	runs := []hookRun{}
+	for _, svc := range serviceNames(d) {
+		for _, h := range hooks {
+			if h.Command.Service != "" {
+				continue
+			}
+			command := h.Command
+			command.Service = svc
+			runs = append(runs, hookRun{stage: stage + ":all:" + svc, command: command})
+		}
+		for _, h := range hooks {
+			if h.Command.Service == svc {
+				runs = append(runs, hookRun{stage: stage + ":" + svc, command: h.Command})
+			}
+		}
+	}
+	return runs
+}
+
+func (w *Worker) hooks(ctx context.Context, d store.Deployment, stage string, warning bool) error {
+	return w.runHooks(ctx, d, hookRuns(d, stage), warning)
+}
+
+func (w *Worker) runHooks(ctx context.Context, d store.Deployment, runs []hookRun, warning bool) error {
+	for _, run := range runs {
+		if e := w.runTask(ctx, d, run.stage, run.command); e != nil {
 			if ctx.Err() != nil {
 				return e
 			}
 			if !warning {
-				return fmt.Errorf("%s: %w", stage, e)
+				return fmt.Errorf("%s: %w", run.stage, e)
 			}
 			w.log(d, "Warning: "+e.Error())
 		}

@@ -180,8 +180,42 @@ func TestHookValidationAndNoShellArgv(t *testing.T) {
 	}
 	c.Method = "compose"
 	c.Hooks[0].Command.Mode = "job"
-	if ValidateHooks(&c) == nil {
-		t.Fatal("allowed ambiguous service")
+	if ValidateHooks(&c) != nil {
+		t.Fatal("rejected a Compose command for all services")
+	}
+	c.Hooks[0].Command.Service = "web"
+	if ValidateHooks(&c) != nil {
+		t.Fatal("rejected a Compose command for one service")
+	}
+}
+
+func TestComposeAllServiceHooksRunFirstForEachService(t *testing.T) {
+	d := store.Deployment{
+		Services: []store.Service{{Name: "web"}, {Name: "db"}},
+		Config: store.Config{Method: "compose", Hooks: []store.Hook{
+			{Stage: "before_deploy", Command: store.Command{Service: "db", Shell: "db-specific"}},
+			{Stage: "before_deploy", Command: store.Command{Shell: "shared"}},
+		}},
+	}
+	runs := hookRuns(d, "before_deploy")
+	got := []string{}
+	for _, run := range runs {
+		got = append(got, run.stage+":"+run.command.Shell)
+	}
+	expected := "before_deploy:all:db:shared,before_deploy:db:db-specific,before_deploy:all:web:shared"
+	if strings.Join(got, ",") != expected {
+		t.Fatal(got)
+	}
+}
+
+func TestComposeStartupCommandsPutSharedFirst(t *testing.T) {
+	d := store.Deployment{Config: store.Config{Method: "compose", Hooks: []store.Hook{
+		{Stage: "before_start", Command: store.Command{Service: "web", Shell: "service-specific"}},
+		{Stage: "before_start", Command: store.Command{Shell: "shared"}},
+	}}}
+	commands := startupCommands(d, "web")
+	if len(commands) != 2 || commands[0].Shell != "shared" || commands[1].Shell != "service-specific" {
+		t.Fatal(commands)
 	}
 }
 

@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createUniqueId } from "solid-js";
+import { For, Show, createMemo, createSignal, createUniqueId } from "solid-js";
 import type { Command, Hook, StaticConfig } from "../types";
 import { Icon } from "./Icon";
 import { SegmentedChoice } from "./Choices";
@@ -11,7 +11,9 @@ const stages = [
 ] as const;
 
 export function commandStageLabel(stage: string) {
-  return stages.find(item => item.stage === stage)?.label ?? (stage.charAt(0).toUpperCase() + stage.slice(1)).replaceAll("_", " ");
+  const [base, ...rest] = stage.split(":");
+  const label = stages.find(item => item.stage === base)?.label ?? (base.charAt(0).toUpperCase() + base.slice(1)).replaceAll("_", " ");
+  return rest.length ? label + " · " + rest.map(part => part === "all" ? "All services" : part).join(" · ") : label;
 }
 
 export const emptyCommand = (): Command => ({ shell: "", service: "", directory: "", user: "", timeout: 300, mode: "job" });
@@ -81,19 +83,23 @@ export function CommandFields(props: { value: Command; change: (command: Command
 }
 
 export function LifecycleCommands(props: { config: StaticConfig; change: (hooks: Hook[]) => void; services?: string[]; compact?: boolean }) {
-  const id = createUniqueId();
   const [selected, setSelected] = createSignal<(typeof stages)[number]>();
-  const [service, setService] = createSignal(props.services?.[0] ?? props.config.hooks?.[0]?.command.service ?? "");
+  const [scope, setScope] = createSignal(props.config.hooks?.find(hook => hook.command.service)?.command.service ?? "");
   const [emptyStageDrafts, setEmptyStageDrafts] = createSignal<Record<string, Command>>({});
+  const services = createMemo(() => {
+    const names = new Set(props.services ?? []);
+    for (const hook of props.config.hooks ?? []) if (hook.command.service) names.add(hook.command.service);
+    return [...names].sort((a, b) => a.localeCompare(b));
+  });
   let editor: HTMLElement | undefined;
-  const key = (stage: Hook["stage"]) => stage + ":" + service();
+  const key = (stage: Hook["stage"]) => stage + ":" + scope();
   const commandFor = (stage: Hook["stage"]) =>
-    props.config.hooks?.find(hook => hook.stage === stage && hook.command.service === service())?.command ??
-    emptyStageDrafts()[key(stage)] ?? { ...emptyCommand(), service: service(), mode: stage === "before_stop" ? "exec" : "job" };
+    props.config.hooks?.find(hook => hook.stage === stage && hook.command.service === scope())?.command ??
+    emptyStageDrafts()[key(stage)] ?? { ...emptyCommand(), service: scope(), mode: stage === "before_stop" ? "exec" : "job" };
 
   function update(stage: Hook["stage"], command: Command) {
-    const hooks = (props.config.hooks ?? []).filter(hook => hook.stage !== stage || hook.command.service !== service());
-    if (hasCommand(command)) hooks.push({ stage, command: { ...command, service: service() } });
+    const hooks = (props.config.hooks ?? []).filter(hook => hook.stage !== stage || hook.command.service !== scope());
+    if (hasCommand(command)) hooks.push({ stage, command: { ...command, service: scope() } });
     else setEmptyStageDrafts(drafts => ({ ...drafts, [key(stage)]: command }));
     props.change(hooks);
   }
@@ -111,11 +117,10 @@ export function LifecycleCommands(props: { config: StaticConfig; change: (hooks:
   return <section class="lifecycle-settings">
     <Show when={!props.compact}><h2>Deployment commands</h2></Show>
     <Show when={props.config.method === "compose"}>
-      <div class="field lifecycle-service">
-        <label for={id + "service"}>Service</label>
-        <input id={id + "service"} class="input" list={id + "services"} value={service()} onInput={e => setService(e.currentTarget.value)} />
-        <datalist id={id + "services"}><For each={props.services}>{name => <option value={name} />}</For></datalist>
-      </div>
+      <nav class="service-tabs lifecycle-service-tabs" aria-label="Deployment command services">
+        <button type="button" classList={{ active: scope() === "" }} aria-current={scope() === "" ? "page" : undefined} onClick={() => setScope("")}>All services</button>
+        <For each={services()}>{name => <button type="button" classList={{ active: scope() === name }} aria-current={scope() === name ? "page" : undefined} onClick={() => setScope(name)}>{name}</button>}</For>
+      </nav>
     </Show>
     <div class="lifecycle-workspace" classList={{ "has-stage": !!selected() }}>
     <div class="lifecycle-stages" role="group" aria-label="Deployment stages">

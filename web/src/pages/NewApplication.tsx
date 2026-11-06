@@ -470,7 +470,7 @@ export default function NewApplication() {
                 <Show when={config.installCommand}><span>Install <code>{config.installCommand}</code></span></Show>
                 <Show when={config.buildCommand}><span>Build <code>{config.buildCommand}</code></span></Show>
                 <Show when={approved().inputs.startCommand}><span>Start <code>{approved().inputs.startCommand}</code></span></Show>
-                <For each={config.hooks}>{hook => <span>{hook.stage.replaceAll("_", " ")}{hook.command.service ? " · " + hook.command.service : ""} <code>{hook.command.shell || hook.command.argv?.join(" ")}</code></span>}</For>
+                <For each={config.hooks}>{hook => <span>{hook.stage.replaceAll("_", " ")}{hook.command.service ? " · " + hook.command.service : config.method === "compose" ? " · All services" : ""} <code>{hook.command.shell || hook.command.argv?.join(" ")}</code></span>}</For>
               </Show>
             </ReviewFact>
           </dl>

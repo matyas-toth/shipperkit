@@ -226,17 +226,14 @@ func (w *Worker) composeShutdownHooks(ctx context.Context, d, previous store.Dep
 	}
 	oldServices, _ := oldPlan.Project["services"].(map[string]any)
 	nextServices, _ := nextPlan.Project["services"].(map[string]any)
-	hooks := []store.Hook{}
-	for _, h := range previous.Config.Hooks {
-		if h.Stage == "before_stop" {
-			old, _ := json.Marshal(oldServices[h.Command.Service])
-			next, _ := json.Marshal(nextServices[h.Command.Service])
-			if string(old) != string(next) {
-				hooks = append(hooks, h)
-			}
+	runs := []hookRun{}
+	for _, run := range hookRuns(previous, "before_stop") {
+		old, _ := json.Marshal(oldServices[run.command.Service])
+		next, _ := json.Marshal(nextServices[run.command.Service])
+		if string(old) != string(next) {
+			runs = append(runs, run)
 		}
 	}
 	previous.ID = d.ID
-	previous.Config.Hooks = hooks
-	return w.hooks(ctx, previous, "before_stop", true)
+	return w.runHooks(ctx, previous, runs, true)
 }

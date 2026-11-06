@@ -85,17 +85,35 @@ func (r *DockerRuntime) startupImage(ctx context.Context, image string) (string,
 	committed, e := r.Client.ContainerCommit(ctx, helper.ID, client.ContainerCommitOptions{Reference: tag, Config: &cfg, Comment: "Shipper startup helper"})
 	return committed.ID, e
 }
-func wrapStartup(c store.Command, entry, cmd []string) ([]string, error) {
+func wrapStartup(commands []store.Command, entry, cmd []string) ([]string, error) {
 	main := append(append([]string{}, entry...), cmd...)
 	if len(main) == 0 {
 		return nil, errors.New("The image needs a start command")
 	}
-	raw, e := json.Marshal(c)
+	raw, e := json.Marshal(commands)
 	if e != nil {
 		return nil, e
 	}
 	return append([]string{startupPath, base64.RawStdEncoding.EncodeToString(raw)}, main...), nil
 }
+func startupCommands(d store.Deployment, service string) []store.Command {
+	commands := []store.Command{}
+	for _, h := range d.Config.Hooks {
+		if h.Stage == "before_start" && h.Command.Service == "" {
+			commands = append(commands, h.Command)
+		}
+	}
+	if service == "" {
+		return commands
+	}
+	for _, h := range d.Config.Hooks {
+		if h.Stage == "before_start" && h.Command.Service == service {
+			commands = append(commands, h.Command)
+		}
+	}
+	return commands
+}
+
 func (r *DockerRuntime) configureStartup(ctx context.Context, d store.Deployment, cfg *container.Config) error {
 	if d.TaskCommand != nil {
 		cfg.Entrypoint = CommandArgs(*d.TaskCommand)
@@ -105,35 +123,37 @@ func (r *DockerRuntime) configureStartup(ctx context.Context, d store.Deployment
 		cfg.Healthcheck = &container.HealthConfig{Test: []string{"NONE"}}
 		return nil
 	}
-	for _, h := range d.Config.Hooks {
-		if h.Stage != "before_start" || h.Command.Service != "" {
-			continue
-		}
-		image, e := r.Client.ImageInspect(ctx, cfg.Image)
-		if e != nil {
-			return e
-		}
-		entry, cmd := cfg.Entrypoint, cfg.Cmd
-		if entry == nil {
-			entry = image.Config.Entrypoint
-		}
-		if cmd == nil {
-			cmd = image.Config.Cmd
-		}
-		if image.Config.Healthcheck != nil {
-			raw, _ := json.Marshal(image.Config.Healthcheck)
-			var health container.HealthConfig
-			if e = json.Unmarshal(raw, &health); e != nil {
-				return e
-			}
-			health.StartPeriod = max(health.StartPeriod, time.Duration(h.Command.Timeout)*time.Second)
-			cfg.Healthcheck = &health
-		}
-		cfg.Entrypoint, e = wrapStartup(h.Command, entry, cmd)
-		cfg.Cmd = []string{}
+	commands := startupCommands(d, "")
+	if len(commands) == 0 {
+		return nil
+	}
+	image, e := r.Client.ImageInspect(ctx, cfg.Image)
+	if e != nil {
 		return e
 	}
-	return nil
+	entry, cmd := cfg.Entrypoint, cfg.Cmd
+	if entry == nil {
+		entry = image.Config.Entrypoint
+	}
+	if cmd == nil {
+		cmd = image.Config.Cmd
+	}
+	if image.Config.Healthcheck != nil {
+		raw, _ := json.Marshal(image.Config.Healthcheck)
+		var health container.HealthConfig
+		if e = json.Unmarshal(raw, &health); e != nil {
+			return e
+		}
+		startPeriod := time.Duration(0)
+		for _, c := range commands {
+			startPeriod = max(startPeriod, time.Duration(c.Timeout)*time.Second)
+		}
+		health.StartPeriod = max(health.StartPeriod, startPeriod)
+		cfg.Healthcheck = &health
+	}
+	cfg.Entrypoint, e = wrapStartup(commands, entry, cmd)
+	cfg.Cmd = []string{}
+	return e
 }
 func taskName(d store.Deployment, run store.TaskRun) string {
 	return ContainerName(d.ApplicationName, "task", run.ID)
@@ -465,11 +485,12 @@ func (r *DockerRuntime) composeStartup(ctx context.Context, d *store.Deployment)
 		return e
 	}
 	services, _ := plan.Project["services"].(map[string]any)
-	for _, h := range d.Config.Hooks {
-		if h.Stage != "before_start" {
+	for _, name := range serviceNames(*d) {
+		commands := startupCommands(*d, name)
+		if len(commands) == 0 {
 			continue
 		}
-		svc, ok := services[h.Command.Service].(map[string]any)
+		svc, ok := services[name].(map[string]any)
 		if !ok {
 			return errors.New("Startup service is unavailable")
 		}
@@ -501,18 +522,22 @@ func (r *DockerRuntime) composeStartup(ctx context.Context, d *store.Deployment)
 			entry = entry[2:]
 			cmd = nil
 		}
-		wrapped, e := wrapStartup(h.Command, entry, cmd)
+		wrapped, e := wrapStartup(commands, entry, cmd)
 		if e != nil {
 			return e
 		}
 		svc["image"] = id
 		svc["entrypoint"] = wrapped
 		svc["command"] = []string{}
+		timeout := 0
+		for _, c := range commands {
+			timeout = max(timeout, c.Timeout)
+		}
 		if raw, ok := svc["healthcheck"].(map[string]any); ok {
-			raw["start_period"] = fmt.Sprintf("%ds", h.Command.Timeout)
+			raw["start_period"] = fmt.Sprintf("%ds", timeout)
 		} else if info.Config.Healthcheck != nil {
 			health := info.Config.Healthcheck
-			svc["healthcheck"] = map[string]any{"test": health.Test, "interval": health.Interval.String(), "timeout": health.Timeout.String(), "retries": health.Retries, "start_period": fmt.Sprintf("%ds", h.Command.Timeout)}
+			svc["healthcheck"] = map[string]any{"test": health.Test, "interval": health.Interval.String(), "timeout": health.Timeout.String(), "retries": health.Retries, "start_period": fmt.Sprintf("%ds", timeout)}
 		}
 	}
 	b, e := json.Marshal(plan)

@@ -33,6 +33,7 @@ function configFingerprint(config: StaticConfig) {
 
 export default function ApplicationSettings(props: {
   application: Application;
+  services?: string[];
   showSource?: boolean;
   busy: boolean;
   save: (config: StaticConfig) => Promise<boolean | void>;
@@ -149,7 +150,7 @@ export default function ApplicationSettings(props: {
           </Show>
           <section class="app-settings-pane" data-settings-section="commands" hidden={area() !== "commands"}>
             <h3>Deployment commands</h3>
-            <LifecycleCommands compact config={config} services={props.application.latestDeployment?.services?.map(s => s.name)}
+            <LifecycleCommands compact config={config} services={props.services}
               change={hooks => setConfig("hooks", hooks)} />
           </section>
           <Show when={error()}><ErrorNotice message={error()} /></Show>

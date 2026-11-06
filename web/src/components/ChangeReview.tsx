@@ -66,6 +66,7 @@ export default function ChangeReview(props: {
   application?: string;
   release?: { serving?: Deployment; target: Deployment };
   hooks?: { before?: Hook[]; after?: Hook[] };
+  compose?: boolean;
   variables?: { before?: Variable[]; after?: Variable[] };
   plan: ChangePlan;
   apply: () => Promise<void>;
@@ -82,7 +83,7 @@ export default function ChangeReview(props: {
       if (JSON.stringify(current?.command) === JSON.stringify(next?.command)) return [];
       const hook = next ?? current!;
       return [{
-        stage: commandStageLabel(hook.stage), service: hook.command.service,
+        stage: commandStageLabel(hook.stage), service: hook.command.service || (props.compose ? "All services" : ""),
         change: current ? next ? "Updated" : "Removed" : "Added", before: current?.command, after: next?.command,
       }];
     });

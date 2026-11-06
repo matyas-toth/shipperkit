@@ -1,7 +1,7 @@
 //go:build linux
 
-// shipper-start runs the configured startup command before replacing itself with
-// the image's original entrypoint. It needs no shell unless the command uses one.
+// shipper-start runs the configured startup commands before replacing itself
+// with the image's original entrypoint. It needs no shell unless a command uses one.
 package main
 
 import (
@@ -100,12 +100,22 @@ func main() {
 		os.Exit(127)
 	}
 	raw, e := base64.RawStdEncoding.DecodeString(os.Args[1])
-	var c command
+	commands := []command{}
 	if e == nil {
-		e = json.Unmarshal(raw, &c)
+		if len(raw) > 0 && raw[0] == '[' {
+			e = json.Unmarshal(raw, &commands)
+		} else {
+			var single command
+			e = json.Unmarshal(raw, &single)
+			commands = append(commands, single)
+		}
 	}
 	if e == nil {
-		e = run(c)
+		for _, c := range commands {
+			if e = run(c); e != nil {
+				break
+			}
+		}
 	}
 	if e != nil {
 		fmt.Fprintln(os.Stderr, e)

@@ -141,9 +141,9 @@ export default function ApplicationPage() {
       <Show when={tab() === "env"}><Variables application={a()} busy={busy()} save={saveConfig} /></Show>
       <Show when={tab() === "backups"}><Backups application={a()} services={active()?.services??[]} save={saveConfig} editorScope={setEditorScope}/></Show>
       <Show when={tab() === "tasks"}><Tasks application={a()} services={active()?.services??[]} busy={busy()} deployments={query.data?.deployments??[]} editorScope={setEditorScope} view={id=>setSearch({tab:"deployments",deployment:id})}/></Show>
-      <Show when={tab() === "settings"}><ApplicationSettings application={a()} showSource={search.section === "source"} busy={busy()} save={saveConfig} rename={rename} remove={remove} /></Show>
+      <Show when={tab() === "settings"}><ApplicationSettings application={a()} services={active()?.services?.map(service => service.name) ?? a()?.latestDeployment?.services?.map(service => service.name)} showSource={search.section === "source"} busy={busy()} save={saveConfig} rename={rename} remove={remove} /></Show>
     </>}</Show>
-    <Show when={review()}>{r=><ChangeReview application={app()?.name} hooks={{ before: app()?.config.hooks, after: r().config.hooks }} variables={{ before: app()?.config.variables, after: r().config.variables }} plan={r().plan} close={closeReview} apply={applyReview}/>}</Show>
+    <Show when={review()}>{r=><ChangeReview application={app()?.name} compose={app()?.method === "compose"} hooks={{ before: app()?.config.hooks, after: r().config.hooks }} variables={{ before: app()?.config.variables, after: r().config.variables }} plan={r().plan} close={closeReview} apply={applyReview}/>}</Show>
     <Show when={rollback()}>{value=><ChangeReview title="Restore release" confirm="Restore release" application={app()?.name} release={value()} plan={value().plan} close={()=>setRollback(undefined)} apply={applyRollback}/>}</Show>
     <Show when={selected()}>{c => <ContainerDrawer container={c()} close={() => setSelected(undefined)} />}</Show>
   </div>;

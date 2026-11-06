@@ -1387,6 +1387,7 @@ input::placeholder {
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
+  flex: none;
   min-height: 70px;
   text-align: left;
   padding: 12px;
@@ -5706,8 +5707,8 @@ textarea::placeholder {
 .stage-editor .configuration-fields {
   padding-top: 8px;
 }
-.lifecycle-service {
-  max-width: 350px;
+.lifecycle-service-tabs {
+  margin: 14px 0 18px;
 }
 .cleanup-result dd {
   display: flex;
