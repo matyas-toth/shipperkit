@@ -57,9 +57,11 @@ Docker socket is mounted into Traefik.
 Proxy static configuration is fingerprinted. Changing ports, bind address, or
 ACME settings requires stopping and removing only that installation's proxy
 container, retaining its `shipper-<instance-prefix>-proxy-data` volume, and
-redeploying. The worker then recreates it with the new configuration. Existing
-site containers and certificates remain intact. This operator action causes a
-brief routing interruption, so schedule it accordingly.
+redeploying. The worker then recreates it with the new configuration. The
+dashboard hostname itself is a live **Settings → Dashboard** change and does not
+require proxy replacement. Existing site containers and certificates remain
+intact. This operator action causes a brief routing interruption, so schedule it
+accordingly.
 
 ## Routing and publish isolation
 

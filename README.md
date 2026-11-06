@@ -28,7 +28,9 @@ See [backups and recovery](docs/backups.md), [Compose operations](docs/compose.m
 The [feature parity audit](feature_parity.md) compares Coolify capabilities and
 sets the next [phases and milestones](docs/roadmap.md).
 The 1.0 release candidate adds a [managed Ubuntu installer](docs/installation.md),
-automatic HTTPS and [owner 2FA](docs/authentication.md). See
+automatic HTTPS and [owner 2FA](docs/authentication.md). The installer runs
+without arguments, opens the first-run dashboard on `http://<public-ip>:8080`,
+and leaves the dashboard domain to **Settings → Dashboard**. See
 [release acceptance](docs/release-acceptance.md) for what has been verified and
 what remains before the stable release.
 
@@ -102,7 +104,7 @@ administrator and metadata.
 | --- | --- | --- |
 | `SHIPPER_ADDR` | `127.0.0.1:8080` | HTTP listener |
 | `SHIPPER_DATA_DIR` | `.shipper` | Private SQLite and setup-token directory |
-| `SHIPPER_PUBLIC_URL` | Request origin | Canonical origin, e.g. `https://shipper.example.com`, without a trailing slash |
+| `SHIPPER_PUBLIC_URL` | Request origin | Optional canonical origin for manual installs, e.g. `https://shipper.example.com`, without a trailing slash. Managed installs store the dashboard domain in Settings. |
 | `SHIPPER_DASHBOARD_UPSTREAM` | unset | `auto` for packaged dashboard HTTPS, or an explicit Docker-reachable HTTP origin |
 | `SHIPPER_SETUP_TOKEN` | Generated local file | Optional first-run capability of at least 32 characters |
 | `DOCKER_HOST` | SDK platform default | Unix socket, Windows named pipe, or TLS-protected TCP |
@@ -117,15 +119,17 @@ administrator and metadata.
 | `SHIPPER_ACME_CA` | Let's Encrypt production | Optional ACME directory, including staging |
 
 When putting Shipper behind an HTTPS reverse proxy, set `SHIPPER_PUBLIC_URL` to
-its exact external origin. This enables Secure cookies and canonical origin
-checks. Forwarded headers are intentionally not trusted. The default loopback
-listener is for local operation. Traefik is provisioned lazily for the first
-deployment in manual setups.
+its exact external origin. This fixes the canonical origin used by OAuth callbacks
+and origin checks. Session cookies become Secure on HTTPS requests regardless.
+Forwarded host headers are intentionally not trusted. The default loopback listener is
+for local operation. Traefik is provisioned lazily for the first deployment or
+dashboard domain in manual setups.
 
 For a dedicated Ubuntu 24.04 x86-64 VPS, see [managed installation, updates,
-and recovery](docs/installation.md). The release candidate installer can be
-tested with a verified local image archive. Public release assets are not
-published yet.
+and recovery](docs/installation.md). The public one-liner installs the latest
+release with no arguments, prints the dashboard address and port, and stores the
+dashboard domain in Settings. The release candidate can still be tested with a
+verified local image archive; public release assets are not published yet.
 
 ## What the dashboard shows
 
@@ -152,10 +156,14 @@ Reconnects and periodic reconciliation repair missed Docker events.
 The inventory window is virtualized, and search/status filters run locally.
 Selecting an application opens Overview, Deployments, Logs, Domains, .env, Tasks, and Settings.
 Container inspection uses a drawer. Navigation retains the query cache and shell.
+Settings separates **Account settings** from **Server settings**. Account holds the
+signed-in profile and personal 2FA. Server holds Instance, Dashboard, Connections,
+Recovery and Access policy; the instance-wide 2FA requirement lives under Access
+policy and the canonical dashboard hostname lives under Dashboard.
 
 ## Deploy an application
 
-Connect GitHub in Settings to choose private repositories, or enter a public HTTPS
+Connect GitHub in **Settings → Connections** to choose private repositories, or enter a public HTTPS
 Git URL in **New application**. Direct images and inline Dockerfiles are also
 available. See [sources and deployment triggers](docs/sources.md). Select a branch or use
 the remote default, and choose **Deploy**. Automatic mode prefers a root Dockerfile,
@@ -266,6 +274,7 @@ See [architecture](docs/architecture.md), the [API contract](docs/api.md),
 [phase status](docs/roadmap.md). The interface is based on the measured
 [design reference](DESIGN.md), with the concise-copy rules in [AGENTS.md](AGENTS.md).
 
-The project is MIT licensed. There is no hosted service, selected distribution
-domain, or published one-line installer yet.
+The project is MIT licensed. There is no hosted service or selected distribution
+domain yet. Release assets, including the parameterless one-line installer, are
+not published yet.
 

@@ -155,7 +155,7 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F33 | Multiple domains, service routing, primary aliases and redirects | **Present** | Preserve hostname rows, per-service ownership, root-domain www expansion, independent HTTPS and verification. | [D03], [D19], [L02] |
-| F34 | Automatic public HTTPS, renewal and dashboard HTTPS | **Partial** pending public acceptance | Packaged HTTPS/renewal configuration and diagnostics exist. **P10** will seed ACME from first-admin email, automate issuance/renewal/recovery and verify on the offered VPS/domains; that bootstrap and live acceptance are not yet implemented/completed. | [D19], [L01] |
+| F34 | Automatic public HTTPS, renewal and dashboard HTTPS | **Partial** pending renewal acceptance | The managed installer starts without a domain, prints the public IP on 8080 and seeds ACME from the first-admin email. **Settings → Dashboard** owns the dashboard hostname, global proxy route and trusted certificate. Fresh staging issuance passed; controlled renewal proof remains. | [D19], [L01], [L07] |
 | F35 | Generated app domains and wildcard domain configuration | **Partial** | Single-container local addresses exist; add consistent local/service URLs and an optional operator-controlled wildcard base domain. **P7** | [D19], [L01] |
 | F36 | DNS challenge, wildcard certificates, custom certificates/resolvers | **Missing** | Advanced certificate options on the same domain model; HTTP challenge remains the short default path. **P7** | [D19] |
 | F37 | Traefik dynamic config, middleware, headers, auth, path routing and compression | **Partial** | Per-domain path/strip-prefix, compression and response headers ship in 0.7.0. Auth middleware, arbitrary scoped Traefik overrides and admin proxy plans remain later parity. | [D19], [C05] |
@@ -218,7 +218,7 @@ limits are part of the reference, not requirements to exceed accidentally.
 | F74 | MCP tools, resources and prompts | **Missing** | **P9.3:** shared operation contracts; **P13:** thin adapter and broader discovery/playbooks, without a chatbot or separate business-logic engine. Not a 1.0 requirement. | [D36], [C15] |
 | F75 | Projects, environments, optional canvas and relationship views | **Missing** | Saved views, optional groups and application variants. Canvas may become a lazy-loaded optional view, never the required deployment path. **P11/P13** | [D20], [D37] |
 | F76 | One-click application/service catalog | **Workaround** through pasted Compose | A few tested recipes first, then an on-demand catalog and Coolify recipe translator with per-recipe compatibility results. **P8/P13** | [C08] |
-| F77 | Installation, updates, downgrade/recovery, uninstall and instance settings | **Partial** | Local binary and non-root Docker package exist. **P10** adds one-command Docker/dependency provisioning, secure onboarding, boot recovery, bounded host care, maintenance policies, pinned update/restore paths and data-preserving uninstall on declared Linux hosts. | [D24], [D38], [L04] |
+| F77 | Installation, updates, downgrade/recovery, uninstall and instance settings | **Partial** | The managed installer runs without arguments, exposes the first-run dashboard on the public IP and port, stores the dashboard domain in Settings, supports checkpointed parameterless updates and preserves data on uninstall. Downgrade automation and broader host care remain later work. | [D24], [D38], [L06] |
 | F78 | Documented, reproducible user and automation workflows | **Partial** | Repository docs/tests exist; publish versioned API/schema, recovery guides, examples, migration guides and support diagnostics. **Every phase, release gate P10** | [D34], [D35], [L04] |
 
 ## 4. The architecture that keeps parity affordable
@@ -1163,3 +1163,7 @@ The linked site is convenient for reading; the audited source is available at th
 [D38]: https://coolify.io/docs/core/instance-management/instance-settings
 
 [L05]: docs/commands.md
+
+[L06]: docs/installation.md
+
+[L07]: docs/release-acceptance.md

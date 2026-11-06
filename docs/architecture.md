@@ -95,18 +95,31 @@ public DNS addresses, forbids redirects/private destinations, verifies TLS
 normally, and checks the active release's response identity. A ready route and a
 publicly issued certificate are separate states.
 
+The dashboard hostname is a SQLite setting (`dashboard_domain`) read by the proxy
+adapter and the HTTP origin policy. Saving it from Settings updates the setting,
+reserves the hostname, updates the server-side canonical URL, and queues the same
+serialized proxy repair used by route reconciliation. On restart the setting is
+authoritative, so the dashboard remains on its domain without a Compose variable.
+Upgrades from the earlier environment-based setup seed this setting from the old
+`SHIPPER_DOMAIN` value before the old environment is removed.
+
 ## Authentication and isolation
 
 First-admin creation requires a local capability and is atomic. Passwords use
 bcrypt; session tokens are stored only as SHA-256 hashes. Cookies are HttpOnly,
-SameSite Strict, and Secure under a canonical HTTPS URL. Mutations require JSON,
+SameSite Strict, and Secure on HTTPS requests. Mutations require JSON,
 same-origin requests, and CSRF tokens. Expensive password work and mutation rates
 are bounded. Local password recovery revokes all sessions.
 
-The management listener defaults to loopback and does not trust forwarded headers.
-Remote Docker requires verified TLS. A mounted Docker socket grants host-level
-control even when mounted `:ro`; keep the management plane private. The Git and
-publish isolation policy is documented in [static site operations](static-sites.md).
+The management listener defaults to loopback for local and manual runs. The
+managed installer publishes it on `0.0.0.0:8080` for first-run claim and recovery,
+then introduces the dashboard domain through Settings and Traefik. The listener
+does not trust forwarded host headers for origin checks; it accepts the configured
+canonical origin or the direct request origin, and uses the forwarded protocol
+only as a transport-security hint for Secure cookies and HSTS. Remote Docker
+requires verified TLS. A mounted Docker socket grants host-level control even when
+mounted `:ro`; keep the management plane private. The Git and publish isolation
+policy is documented in [static site operations](static-sites.md).
 
 ## Realtime and perceived speed
 
@@ -125,8 +138,10 @@ live updates. The frontend uses Tabler Solid components with tree-shaken imports
 
 Vite produces embedded assets; production requires no Node server. Docker builds
 both layers and runs the control plane as UID/GID 65532 with a read-only root.
-Native development uses Go, Node, Git, and Docker CLI/Buildx; runtime Docker
-packaging includes Git and Docker CLI/Buildx.
+The managed installer publishes the control plane on 8080, binds Traefik on 80
+and 443, and stores the dashboard domain in SQLite. Native development uses Go,
+Node, Git, and Docker CLI/Buildx; runtime Docker packaging includes Git and Docker
+CLI/Buildx.
 
 Tests cover auth/origin/CSRF, additive migrations, worker/domain exclusivity,
 ownership, failure preservation, recovery, inventory events, and bounded streams.

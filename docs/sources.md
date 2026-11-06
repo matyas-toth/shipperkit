@@ -17,9 +17,11 @@ parameters or command arguments. Editing a connection retains blank credentials;
 provide a replacement to rotate them. Disconnecting an in-use connection is blocked.
 
 The GitHub App requests read access to contents and metadata and receives push
-events. A public HTTPS SHIPPER_PUBLIC_URL is required for inbound GitHub webhooks.
-Local onboarding works, but localhost cannot receive GitHub deliveries. After
-moving to a public endpoint, update and activate the App's webhook in GitHub.
+events. A public HTTPS dashboard origin is required for inbound GitHub webhooks.
+Managed installs get it from **Settings → Dashboard**; manual installs can set
+`SHIPPER_PUBLIC_URL`. Local onboarding works, but localhost cannot receive GitHub
+deliveries. After moving to a public endpoint, update and activate the App's
+webhook in GitHub.
 The explicit Webhook action reveals the URL and signing secret for manual setup.
 Manifest and installation callbacks have expiring, one-use state, and verify the
 installation against the newly created App.

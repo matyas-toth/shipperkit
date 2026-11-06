@@ -53,12 +53,15 @@ Review the recovered applications, restore their data, and deliberately restart 
 redeploy them and re-enable schedules. Do not run the original and recovered
 installation against the same Docker daemon or application storage.
 
-Proxy settings are retained in `proxy-recovery.json`; explicit `SHIPPER_*`
+Static proxy settings are retained in `proxy-recovery.json`; the dashboard
+hostname is stored in SQLite and recovered with the database. Explicit `SHIPPER_*`
 environment values take precedence. Update old host-specific bindings/upstreams
 for the new machine. Recovered ACME state is installed privately into the owned
 proxy data volume before the proxy starts. Conflicting existing certificate state
 is rejected instead of overwritten. Public DNS/ports still need to reach the new
-host. The installer and real-distribution/domain acceptance remain Phase 10 work.
+host. The managed installer and public dashboard/application acceptance are
+complete for the current candidate; controlled renewal and broader host coverage
+remain release gates.
 
 ## Protect application data
 
@@ -181,10 +184,11 @@ round trips/tampering/redirect rejection. Browser tests cover real metadata back
 and downloads, schedule editing, S3 configuration, mobile layout and existing Tasks.
 Fixtures only remove resources with their own random instance identity.
 
-Cloud-provider interoperability, real public ACME/domain recovery and the planned
-Contabo distribution matrix still require the real-system acceptance lab. MongoDB,
-SQLite, ClickHouse, Redis-family policies, generic SQL imports, application cloning
-and Coolify migration remain P8.3 later parity.
+Cloud-provider interoperability, real domain recovery after a host rebuild, and
+the planned Contabo distribution matrix still require the real-system acceptance
+lab. Public dashboard ACME issuance has passed on staging. MongoDB, SQLite,
+ClickHouse, Redis-family policies, generic SQL imports, application cloning and
+Coolify migration remain P8.3 later parity.
 
 ## Phase 9 local sources and automation
 

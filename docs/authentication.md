@@ -82,11 +82,11 @@ removed account. Account revocation applies across every provider.
 
 ## TOTP without administrator configuration
 
-A user selects Set up 2FA. Shipper generates a cryptographically random per-user
-secret and authenticator QR/manual setup value, with issuer/service name `Shipper`
-and the email plus instance hostname in the account label, so entries from
-different VPSs are distinguishable. No external client registration or
-authenticator service is required.
+A user selects Set up 2FA under **Settings → Account**. Shipper generates a
+cryptographically random per-user secret and authenticator QR/manual setup value,
+with issuer/service name `Shipper` and the email plus instance hostname in the
+account label, so entries from different VPSs are distinguishable. No external
+client registration or authenticator service is required.
 
 Enrollment remains pending until a correct code is submitted. Only then activate
 the factor and provide one-time recovery codes. Encrypt TOTP secrets, hash
@@ -106,8 +106,9 @@ equivalent protection and invalidates stale challenges/credentials as appropriat
 
 ## Require 2FA for the instance
 
-The admin's Require 2FA setting includes the admin, existing signed-in users
-without a factor, fresh password accounts and fresh OAuth-only accounts.
+The admin's **Settings → Access policy** Require 2FA setting includes the admin,
+existing signed-in users without a factor, fresh password accounts and fresh
+OAuth-only accounts.
 
 | State | Allowed next action |
 | --- | --- |

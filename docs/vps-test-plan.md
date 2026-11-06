@@ -1,9 +1,12 @@
 # Real-system acceptance lab
 
-Status: testing started on 2026-11-05. Verified results and remaining release
-gates are tracked in [release acceptance](release-acceptance.md). Credentials
-are stored locally in `.vpsenv`, excluded from Git and Docker build contexts.
-See the [roadmap](roadmap.md).
+Status: testing started on 2026-11-05. On 2026-11-06 the staging host was
+reinstalled from scratch with the parameterless installer, the dashboard domain
+was moved into Settings, and the settings navigation was split into Account and
+Server groups. Verified results and remaining release gates are tracked in
+[release acceptance](release-acceptance.md). Credentials are stored locally in
+`.vpsenv`, excluded from Git and Docker build contexts. See the
+[roadmap](roadmap.md).
 
 ## Resources and scope
 

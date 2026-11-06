@@ -80,7 +80,8 @@ signed webhooks and Bearer deployment requests are documented in [sources](sourc
 | POST | /applications/{id}/delete | Cookie + CSRF | Confirm by `confirmName`, enqueue route/container removal; return 202 |
 | GET | /applications/{id}/deployments/{deployment}/logs?after=0 | Cookie | Up to 500 ordered log lines after the sequence cursor |
 | POST | /applications/{id}/domain-check | Cookie + CSRF | DNS, reachability, release identity, and TLS verification |
-| GET | /proxy | Cookie | Proxy ports, bind address, ACME email and CA directory |
+| GET | /proxy | Cookie | Proxy ports, bind address, ACME contact, CA directory, dashboard URL and upstream |
+| POST | /proxy | Cookie + CSRF | Save `{domain}` as the instance dashboard hostname and queue the proxy route update |
 | POST | /repositories/branches | Cookie + CSRF | Public repository `items` and `default` branch |
 | GET | /domain-options?hostname=example.com | Cookie | `canIncludeWWW` using the public suffix list |
 | POST | /variables/parse | Cookie + CSRF | Parse `{content}` into variable `items` |
@@ -93,8 +94,9 @@ signed webhooks and Bearer deployment requests are documented in [sources](sourc
 POST bodies require `Content-Type: application/json`. Setup accepts
 `email`, `password`, and `setupToken`; login accepts `email` and `password`.
 Passwords must be between 12 and 72 UTF-8 bytes. Session cookies are HttpOnly,
-SameSite=Strict, and Secure when the canonical public URL uses HTTPS.
-Sessions expire after seven days and are not extended by background traffic.
+SameSite=Strict, and Secure when the request arrives over TLS or reports an HTTPS
+forwarded protocol. Sessions expire after seven days and are not extended by
+background traffic.
 
 Authenticated mutations need `X-CSRF-Token` from the session response.
 All supplied Origin headers must match the canonical public origin or direct
@@ -310,7 +312,11 @@ Domain fields add `pathPrefix`, `stripPrefix`, `compress`, `maintenance`, and
 only to whole single-container release replacement. See the supported ranges and
 inheritance rules in [routing and releases](routing-and-releases.md).
 
-`GET /proxy` includes optional dashboardURL/dashboardUpstream.
-`POST /proxy/check` requires cookie + CSRF and probes only the configured dashboard,
-returning state, message, observed DNS addresses and trusted certificate metadata.
-It never accepts an arbitrary target URL.
+`GET /proxy` includes optional dashboardURL/dashboardUpstream. `POST /proxy`
+accepts `{domain}` and stores the instance dashboard hostname. An empty domain
+removes the dashboard route. Shipper rejects a hostname already owned by an
+application with 409, validates public DNS-safe naming, and queues the serialized
+proxy repair that adds or removes the route. The request returns 202 while the
+route update is queued. `POST /proxy/check` requires cookie + CSRF and probes only
+the configured dashboard, returning state, message, observed DNS addresses and
+trusted certificate metadata. It never accepts an arbitrary target URL.

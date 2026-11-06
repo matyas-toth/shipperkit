@@ -1,6 +1,6 @@
 # Operations and local deployments
 
-Phase 9 core, version 0.9.0. The dashboard and focused Go CLI use the same
+1.0.0-rc.6. The dashboard and focused Go CLI use the same
 application identities, validation, reviewed configuration and durable worker.
 No model, MCP server, separate collector or additional database is required.
 

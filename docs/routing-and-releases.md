@@ -30,58 +30,45 @@ validation. Successful HTTPS checks record certificate issuer and expiry in the
 routing options. Results are on-demand observations, not a background expiry
 monitor. A 503 is a valid verified response for deliberate maintenance mode.
 
-## VPS and dashboard HTTPS
+## Dashboard and instance HTTPS
 
-The instructions below describe current 0.7.0 configuration. Planned P10 managed
-HTTPS will automatically use the first administrator's email as the initial ACME
-contact, initialize the resolver and own certificate issuance/renewal without
-asking for a separate email field, environment edit or manual proxy recreation.
-It will preserve existing CA state/explicit overrides and surface only actionable
-prerequisite/failure states. See the [roadmap](roadmap.md) and
-[real-system test plan](vps-test-plan.md); this automatic bootstrap is not implemented yet.
+The managed Ubuntu installer now starts without a domain. It binds the control
+plane on `0.0.0.0:8080`, prints `http://<public-ip>:8080`, and lets the first
+administrator claim the instance or use the setup token in
+`/var/lib/shipper/setup-token`. Allow TCP 80, 443 and 8080 through the provider
+firewall for the first run.
 
-For a fresh packaged Linux installation, point a public hostname to the VPS and
-allow inbound TCP 80/443. Keep the dashboard's direct port bound to loopback.
-Set these values in Compose's environment file before starting Shipper:
+After signing in, open **Settings → Dashboard** and enter the hostname Shipper
+should answer on. Shipper validates it, reserves it from application assignment,
+stores it as the instance dashboard domain, adds its own route to the global
+proxy, and requests a trusted certificate through the owner's ACME contact.
+Point DNS at the server first. The dashboard route uses HTTP-01, redirects HTTP
+to HTTPS, and carries the instance identity header used by verification.
 
-```dotenv
-SHIPPER_PUBLIC_URL=https://shipper.example.com
-SHIPPER_DASHBOARD_UPSTREAM=auto
-SHIPPER_PROXY_BIND=0.0.0.0
-SHIPPER_HTTP_PORT=80
-SHIPPER_HTTPS_PORT=443
-SHIPPER_ACME_EMAIL=owner@example.com
-```
+The direct `http://<public-ip>:8080` listener remains available as the initial
+setup and recovery path. Once HTTPS is working, use the dashboard domain for
+normal authenticated writes. Removing the domain from Settings removes only the
+dashboard route; the control plane stays reachable on 8080.
 
-`docker compose up -d --build` starts Shipper. The worker provisions its private
-Traefik container even before the first application, connects the explicitly
-labelled control-plane container to its own edge network, and adds the canonical
-dashboard route. HTTP redirects to HTTPS; the dashboard uses Secure session
-cookies. Its hostname is reserved from application assignment. The direct
-loopback listener remains a recovery path through SSH port forwarding; once the
-canonical HTTPS origin is set, use that origin for normal authenticated writes.
-A fresh first-admin setup capability is still required.
+For manual or reverse-proxied installations, `SHIPPER_PUBLIC_URL` can still set
+the canonical external origin, and `SHIPPER_DASHBOARD_UPSTREAM=auto` can connect
+the labelled control-plane container to Shipper's edge network. Managed installs
+use the SQLite dashboard-domain setting instead of a Compose domain variable.
 
-Traefik obtains and renews certificates through HTTP-01 and persists its ACME
-state in the instance-owned proxy-data volume. Leave ports 80/443 reachable for
+Traefik obtains and renews certificates through HTTP-01 and persists ACME state
+in the instance-owned proxy-data volume. Leave ports 80/443 reachable for
 renewals. A DNS AAAA record must point to a reachable IPv6 listener, or be removed.
-An existing reverse proxy may instead terminate dashboard TLS; leave the managed
-dashboard upstream unset and set the canonical public URL to its external origin.
-Native deployments can explicitly configure a Docker-reachable HTTP upstream;
-`auto` is supported only inside the labelled packaged control plane.
 
-Changing published ports, bind address or ACME static settings on an existing
-proxy is intentionally not a live UI edit. Shipper reports a configuration
-mismatch and leaves the existing proxy intact. During a maintenance window,
-remove only the instance's labelled proxy **container**, retain its proxy-data
+Changing the dashboard hostname is a live settings action. Changing published
+ports, bind address or static ACME settings still requires a maintenance window:
+remove only the instance's labelled proxy container, retain its proxy-data
 volume, and restart Shipper to recreate it. Do not delete `acme.json` or volumes
-as part of an ordinary upgrade. Broad proxy replacement with reviewed automatic
-recovery remains later parity work.
+as part of an ordinary upgrade.
 
-Settings > Proxy > Verify dashboard checks the configured hostname, a trusted
-certificate and this instance's health route. It reports DNS/TLS/routing failures
-and observed certificate expiry. An existing application with the same hostname
-must move before enabling the dashboard route. No DNS provider account is needed.
+**Settings → Dashboard → Verify dashboard** checks DNS, a trusted certificate
+and this instance's health route. It reports DNS/TLS/routing failures and
+observed certificate expiry. An application that already uses the hostname must
+move before the dashboard can claim it. No DNS provider account is needed.
 
 ## Runtime limits
 
@@ -138,8 +125,9 @@ GPU/devices and trusted host mounts remain explicit later-parity milestones.
 Local suites cover recorded rollback, missing artifacts, skipped migration hooks,
 source/image serving, route-only path/header/maintenance changes, runtime limits,
 Compose persistence, desktop/mobile review and trusted local certificate routing.
-Public ACME issuance and renewal require a reachable VPS/domain and remain a
-Phase 10 release-gate check, not a claim inferred from a local TLS fixture.
+Public ACME issuance has passed on the staging VPS, including the dashboard
+hostname. Controlled renewal, DNS changes and failure recovery remain release
+gates, not claims inferred from a local TLS fixture.
 
 References: [Traefik HTTP-01 and renewal](https://doc.traefik.io/traefik/v3.2/https/acme/),
 [Traefik empty-service maintenance responses](https://doc.traefik.io/traefik/getting-started/faq/).

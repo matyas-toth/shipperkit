@@ -6,8 +6,10 @@ bootstrap thresholds, not workload sizing guidance. Docker Engine API 1.48 or
 newer, Compose and Buildx are required. The installer can install missing Docker
 from the [signed Docker package repository](https://docs.docker.com/engine/install/ubuntu/).
 
-Use the published installer. The default one-liner installs the latest release
-without arguments, then prints the public IP and port to open:
+Use the published installer. The public assets are not released yet; the same
+script can be run from a checked-out repository or a lab artifact. The default
+one-liner installs the latest release without arguments, then prints the public
+IP and port to open:
 
 ```bash
 curl -fsSL https://github.com/matyas-toth/shipperkit/releases/latest/download/install.sh | sudo bash

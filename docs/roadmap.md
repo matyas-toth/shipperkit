@@ -1,9 +1,12 @@
 # Roadmap
 
-Updated 2026-11-05. Phases 1–9.5 deliver the shared operations contract,
-local-project deployment and guided creation. The Phase 10 release candidate
-is implemented on the supported Ubuntu profile and under
-[release acceptance](release-acceptance.md).
+Updated 2026-11-06. Phases 1–9.5 deliver the shared operations contract,
+local-project deployment and guided creation. The Phase 10 release candidate is
+implemented on the supported Ubuntu profile and under
+[release acceptance](release-acceptance.md). The managed installer now runs
+without arguments, opens the first-run dashboard on the public IP and 8080, and
+stores the dashboard domain under Settings. Settings is grouped into Account and
+Server scopes.
 
 The [Coolify parity audit](../feature_parity.md) tracks eventual capability breadth.
 A smaller, dependable 1.0 takes priority over completing every parity milestone.
