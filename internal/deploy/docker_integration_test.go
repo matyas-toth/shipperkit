@@ -126,9 +126,18 @@ func TestDockerStaticPipeline(t *testing.T) {
 	}
 	request := func(p string) (int, string, string) {
 		t.Helper()
-		req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://127.0.0.1:%d%s", runtime.Config.HTTPPort, p), nil)
-		req.Host = app.Config.Domain
-		response, e := http.DefaultClient.Do(req)
+		var response *http.Response
+		var e error
+		deadline := time.Now().Add(15 * time.Second)
+		for {
+			req, _ := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://127.0.0.1:%d%s", runtime.Config.HTTPPort, p), nil)
+			req.Host = app.Config.Domain
+			response, e = http.DefaultClient.Do(req)
+			if e == nil || time.Now().After(deadline) {
+				break
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
 		if e != nil {
 			t.Fatal(e)
 		}
