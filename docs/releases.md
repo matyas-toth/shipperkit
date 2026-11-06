@@ -35,7 +35,13 @@ continuous real-host acceptance path.
 
 Versions use SemVer. The source of truth is `package.json`, mirrored in `web/package.json` and the development default in `cmd/shipper/main.go` by `release-please`.
 
-Do not bump the version in ordinary feature branches. The release PR owns the bump. A release tag is `vX.Y.Z` or `vX.Y.Z-rc.N`.
+Do not bump the version in ordinary feature branches. The release PR owns the bump.
+
+Shipper is on the `1.0.0-rc.N` line, so `release-please` uses the `rc` prerelease
+strategy. Feature and fix commits advance the release candidate and mark the
+GitHub release as a prerelease. To graduate to a stable release, add a
+`Release-As: 1.0.0` footer to a commit and switch the versioning strategy back to
+the default once the stable line begins.
 
 ## Release workflow
 
