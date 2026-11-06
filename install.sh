@@ -83,7 +83,7 @@ fi
 memory=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
 disk=$(df -Pk /var/lib | awk 'NR==2 {print $4}')
 (( memory >= 1000000 && disk >= 8*1024*1024 )) || die 'Shipper needs 1 GiB RAM and 8 GiB available disk'
-latest=${SHIPPER_RELEASE_BASE:-https://github.com/matyas-toth/shipperkit/releases/latest/download}
+latest=${SHIPPER_RELEASE_BASE:-https://raw.githubusercontent.com/matyas-toth/shipperkit/latest}
 pin='^ghcr\.io/matyas-toth/shipperkit@sha256:[0-9a-f]{64}$'
 semver='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
 if [[ -n $archive ]]; then

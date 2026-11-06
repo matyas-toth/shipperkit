@@ -1,5 +1,8 @@
 # Shipper
 
+[![CI](https://github.com/matyas-toth/shipperkit/actions/workflows/ci.yml/badge.svg)](https://github.com/matyas-toth/shipperkit/actions/workflows/ci.yml)
+[![Release](https://github.com/matyas-toth/shipperkit/actions/workflows/release.yml/badge.svg)](https://github.com/matyas-toth/shipperkit/actions/workflows/release.yml)
+
 A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
 
 Deploy local projects, public/private GitHub repositories, direct images,
@@ -125,11 +128,16 @@ Forwarded host headers are intentionally not trusted. The default loopback liste
 for local operation. Traefik is provisioned lazily for the first deployment or
 dashboard domain in manual setups.
 
-For a dedicated Ubuntu 24.04 x86-64 VPS, see [managed installation, updates,
-and recovery](docs/installation.md). The public one-liner installs the latest
-release with no arguments, prints the dashboard address and port, and stores the
-dashboard domain in Settings. The release candidate can still be tested with a
-verified local image archive; public release assets are not published yet.
+For a dedicated Ubuntu 24.04 x86-64 VPS, run:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash
+```
+
+The installer prints the dashboard address and port, and stores the dashboard
+domain in Settings. The same script can be run from a checked-out repository or a
+verified local image archive. See [managed installation, updates, and recovery](docs/installation.md)
+and [releases, CI and staging](docs/releases.md).
 
 ## What the dashboard shows
 

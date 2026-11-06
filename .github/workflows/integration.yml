@@ -1,0 +1,52 @@
+name: Integration
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix web
+      - run: npx playwright install --with-deps chromium
+      - name: Browser journeys
+        run: npm run test:e2e
+      - name: Real Docker deployment and routing
+        run: |
+          npm run test:deploy
+          npm run test:full
+          npm run test:compose
+          npm run test:tasks
+          npm run test:sources
+          npm run test:backups
+      - name: Production image package test
+        run: |
+          npm run build
+          docker build --build-arg VERSION=0.0.0-integration -t shipper:integration .
+          SHIPPER_TEST_IMAGE=shipper:integration npm run test:package

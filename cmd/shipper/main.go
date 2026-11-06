@@ -33,7 +33,7 @@ import (
 	"shipper/internal/ui"
 )
 
-var version = "1.0.0-rc.6"
+var version = "1.0.0-rc.6" // x-release-please-version
 
 func main() {
 	if err := run(); err != nil {

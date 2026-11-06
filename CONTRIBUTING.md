@@ -38,3 +38,18 @@ belong in a pull request.
 Describe the concrete behavior change, the checks you ran, and any limitations.
 Do not claim deployment or performance guarantees without reproducible evidence.
 
+## Pull requests and releases
+
+Do not push feature work directly to `master`. Create a branch, open a pull
+request and let CI run. Use a conventional squash title such as `feat:`,
+`fix:`, `perf:`, `refactor:`, `docs:`, `test:` or `chore:`.
+
+`release-please` uses those titles to open a version PR with the changelog and
+version bump. Merging the version PR tags the release and publishes the image,
+installer assets and latest installer channel. See
+[releases, CI and staging](docs/releases.md) for the pipeline, required checks,
+staging secrets and the `shipperkit.dev` redirect.
+
+A live preview should use a separate host or preview instance. Do not run a
+second control plane against the same Docker socket on the staging host.
+
