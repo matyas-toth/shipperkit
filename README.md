@@ -278,9 +278,10 @@ Production data and generated builds are ignored by Git.
 ## Project
 
 See [architecture](docs/architecture.md), the [API contract](docs/api.md),
-[contributing](CONTRIBUTING.md), [security](SECURITY.md), and
-[phase status](docs/roadmap.md). The interface is based on the measured
-[design reference](DESIGN.md), with the concise-copy rules in [AGENTS.md](AGENTS.md).
+[releases and staging](docs/releases.md), [contributing](CONTRIBUTING.md),
+[security](SECURITY.md), and [phase status](docs/roadmap.md). The interface is
+based on the measured [design reference](DESIGN.md), with the concise-copy rules
+in [AGENTS.md](AGENTS.md).
 
 The project is MIT licensed. There is no hosted service or selected distribution
 domain yet. Release assets, including the parameterless one-line installer, are
