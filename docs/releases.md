@@ -26,13 +26,10 @@ Shipper uses three channels:
 - Playwright browser journeys.
 - Docker image build and version check.
 
-`.github/workflows/integration.yml` is manual. It covers the real Docker
-deployment, routing, Compose, tasks, sources, backups and packaged-image suites.
-Run it on a Docker host where published container ports reach loopback. The
-staging workflow provides the continuous real-host acceptance path.
-
-Keep pull requests focused and make the fast checks pass before asking for the
-heavy suite.
+The real Docker deployment, routing, Compose, tasks, sources, backups and
+packaged-image suites remain in the repository scripts for a disposable Docker
+host. Run them locally or on a dedicated host. The staging workflow provides the
+continuous real-host acceptance path.
 
 ## Versioning
 
