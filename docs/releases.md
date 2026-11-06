@@ -86,9 +86,15 @@ Required repository secrets:
 
 | Secret | Purpose |
 | --- | --- |
+| `RELEASE_PLEASE_TOKEN` | Repository-scoped token used by release-please so its version PR triggers CI |
 | `STAGING_HOST` | Staging server address |
 | `STAGING_USER` | SSH user, normally `root` for the disposable host |
 | `STAGING_SSH_KEY` | Private key for the staging host |
+
+`RELEASE_PLEASE_TOKEN` is required because pull requests created with the default
+`GITHUB_TOKEN` do not start workflows, so the required checks would never appear.
+Use a fine-grained token limited to this repository with contents and pull request
+write access. Do not use a personal token with broader access.
 
 Staging uses the `staging` GitHub environment. Do not use a personal SSH key.
 
