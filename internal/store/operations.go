@@ -200,9 +200,12 @@ func (s *Store) NextNotification(ctx context.Context) (OperationEvent, int, erro
 	e := s.db.QueryRowContext(ctx, `SELECT e.sequence,e.application_id,e.kind,e.state,e.summary,e.reference,e.created_at,o.attempts FROM notification_outbox o JOIN operation_events e USING(sequence) WHERE delivered_at=0 AND attempts<5 AND next_at<=? ORDER BY sequence LIMIT 1`, time.Now().Unix()).Scan(&v.Sequence, &v.ApplicationID, &v.Kind, &v.State, &v.Summary, &v.Reference, &v.CreatedAt, &attempts)
 	return v, attempts, e
 }
-func (s *Store) FinishNotification(ctx context.Context, id int64, attempt int, success bool) error {
+func (s *Store) FinishNotification(ctx context.Context, id int64, attempt int, success bool, failure ...string) error {
 	delivered := int64(0)
 	message := "Delivery failed"
+	if len(failure) > 0 && failure[0] != "" {
+		message = failure[0]
+	}
 	if success {
 		delivered = time.Now().Unix()
 		message = ""
@@ -214,6 +217,44 @@ func (s *Store) NotificationStatus(ctx context.Context) (map[string]int, error) 
 	var pending, failed int
 	e := s.db.QueryRowContext(ctx, "SELECT COALESCE(SUM(delivered_at=0 AND attempts<5),0),COALESCE(SUM(delivered_at=0 AND attempts>=5),0) FROM notification_outbox").Scan(&pending, &failed)
 	return map[string]int{"pending": pending, "failed": failed}, e
+}
+
+type FailedNotification struct {
+	Sequence  int64  `json:"sequence"`
+	Kind      string `json:"kind"`
+	Summary   string `json:"summary"`
+	CreatedAt int64  `json:"createdAt"`
+	Attempts  int    `json:"attempts"`
+	Error     string `json:"error"`
+}
+
+func (s *Store) FailedNotifications(ctx context.Context) ([]FailedNotification, error) {
+	rows, e := s.db.QueryContext(ctx, `SELECT e.sequence,e.kind,e.summary,e.created_at,o.attempts,o.error FROM notification_outbox o JOIN operation_events e USING(sequence) WHERE o.delivered_at=0 AND o.attempts>=5 ORDER BY e.sequence DESC LIMIT 50`)
+	if e != nil {
+		return nil, e
+	}
+	defer rows.Close()
+	items := []FailedNotification{}
+	for rows.Next() {
+		var item FailedNotification
+		if e = rows.Scan(&item.Sequence, &item.Kind, &item.Summary, &item.CreatedAt, &item.Attempts, &item.Error); e != nil {
+			return nil, e
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s *Store) RetryNotification(ctx context.Context, sequence int64) error {
+	result, e := s.db.ExecContext(ctx, `UPDATE notification_outbox SET attempts=0,next_at=unixepoch(),error='' WHERE sequence=? AND delivered_at=0 AND attempts>=5`, sequence)
+	if e != nil {
+		return e
+	}
+	count, e := result.RowsAffected()
+	if e == nil && count == 0 {
+		return sql.ErrNoRows
+	}
+	return e
 }
 func (s *Store) SavePrivateSetting(ctx context.Context, key, value string) error {
 	sealed, e := s.seal(value, "setting:"+key)

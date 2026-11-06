@@ -195,9 +195,21 @@ func (s *Service) Deliver(ctx context.Context) {
 			wanted = wanted || kind == v.Kind
 		}
 		success := true
+		failure := ""
 		if c.Enabled && wanted {
-			success = Send(ctx, c, v) == nil
+			e = Send(ctx, c, v)
+			success = e == nil
+			if e != nil {
+				// Do not persist SMTP responses or destination URLs, which can echo credentials.
+				failure = "SMTP delivery failed"
+				if c.Kind == "webhook" {
+					failure = "Webhook delivery failed"
+				}
+				if strings.HasPrefix(e.Error(), "Webhook returned HTTP ") {
+					failure = e.Error()
+				}
+			}
 		}
-		_ = s.DB.FinishNotification(ctx, v.Sequence, n, success)
+		_ = s.DB.FinishNotification(ctx, v.Sequence, n, success, failure)
 	}
 }

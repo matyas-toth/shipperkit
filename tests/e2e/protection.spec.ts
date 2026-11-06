@@ -64,7 +64,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   ).toBeVisible();
   const keyPromise = page.waitForEvent("download");
   await recovery
-    .getByRole("button", { name: "Download key", exact: true })
+    .getByRole("button", { name: "Download recovery key", exact: true })
     .click();
   expect((await keyPromise).suggestedFilename()).toBe(
     "shipper-recovery-key.txt",
@@ -75,8 +75,8 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   });
   await recovery.locator(".backup-history tr[role=button]").first().click();
   await expect(
-    recovery.getByText("Encrypted archive verified", { exact: true }),
-  ).toBeVisible();
+    recovery.locator(".backup-checksum"),
+  ).toHaveText(/^[a-f0-9]{64}$/);
   const archive = page.waitForEvent("download");
   await recovery
     .getByRole("button", { name: "Download archive", exact: true })
@@ -86,7 +86,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
     .getByRole("button", { name: "Close backup details", exact: true })
     .click();
   await recovery
-    .getByRole("heading", { name: "Recovery", exact: true })
+    .getByRole("button", { name: "New backup", exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: join(tmpdir(), "shipper-phase8-recovery.png"),
@@ -117,7 +117,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   );
   await page.goto("/applications/application-web?tab=backups");
   await expect(
-    page.getByRole("heading", { name: "Backups", exact: true }),
+    page.getByRole("button", { name: "New backup", exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "New backup", exact: true }).click();
   await page

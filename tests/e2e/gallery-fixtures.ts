@@ -19,6 +19,15 @@ export async function installFixtures(page: Page) {
   const baseDiagnostics = await (await page.request.get("/api/applications/application-web/diagnostics")).json();
   const baseConfig = web.application.config;
   const t = now();
+  const session = await (await page.request.get("/api/auth/session")).json();
+  const schedules = ["0 */6 * * *", "0 3 * * 0", "0 2 * * *", "0 4 * * *"];
+  const nextRuns = await Promise.all(schedules.map(async schedule => {
+    const response = await page.request.post("/api/protection/schedule-preview", {
+      headers: { "X-CSRF-Token": session.csrfToken }, data: { schedule, timezone: "Europe/Budapest" },
+    });
+    if (!response.ok()) throw new Error("Could not preview gallery schedule: " + schedule);
+    return ((await response.json()).items as number[])[0];
+  }));
 
   const variables = [
     { name: "DATABASE_URL", value: "", secret: true, scope: "both", keep: true, hasValue: true },
@@ -215,8 +224,8 @@ export async function installFixtures(page: Page) {
 
   const tasks = {
     items: [
-      { id: "task-warm", applicationId: "application-web", name: "Warm cache", command: { shell: "bash", argv: ["-lc", "curl -fsS http://127.0.0.1:8080/ >/dev/null"], service: "", directory: "", user: "", timeout: 60, mode: "exec" }, enabled: true, schedule: "0 */6 * * *", timezone: "Europe/Budapest", overlap: "skip", missed: "skip", nextAt: t + 6 * 3600 },
-      { id: "task-prune", applicationId: "application-web", name: "Prune sessions", command: { shell: "bash", argv: ["-lc", "bin/prune-sessions --older-than 30d"], service: "", directory: "", user: "", timeout: 300, mode: "job" }, enabled: true, schedule: "0 3 * * 0", timezone: "Europe/Budapest", overlap: "queue", missed: "once", nextAt: t + 3 * 86_400 },
+      { id: "task-warm", applicationId: "application-web", name: "Warm cache", command: { shell: "bash", argv: ["-lc", "curl -fsS http://127.0.0.1:8080/ >/dev/null"], service: "", directory: "", user: "", timeout: 60, mode: "exec" }, enabled: true, schedule: "0 */6 * * *", timezone: "Europe/Budapest", overlap: "skip", missed: "skip", nextAt: nextRuns[0] },
+      { id: "task-prune", applicationId: "application-web", name: "Prune sessions", command: { shell: "bash", argv: ["-lc", "bin/prune-sessions --older-than 30d"], service: "", directory: "", user: "", timeout: 300, mode: "job" }, enabled: true, schedule: "0 3 * * 0", timezone: "Europe/Budapest", overlap: "queue", missed: "once", nextAt: nextRuns[1] },
       { id: "task-report", applicationId: "application-web", name: "Nightly report", command: { shell: "bash", argv: ["-lc", "bin/report >> /var/log/report.log"], service: "", directory: "", user: "", timeout: 120, mode: "job" }, enabled: false, schedule: "0 1 * * *", timezone: "Europe/Budapest", overlap: "skip", missed: "skip", nextAt: 0 },
     ],
     runs: [
@@ -228,8 +237,8 @@ export async function installFixtures(page: Page) {
 
   const protection = {
     plans: [
-      { id: "plan-postgres", applicationId: "application-web", name: "Nightly database", config: { kind: "database", service: "", volume: "uploads", engine: "postgres", database: "atlas", user: "atlas", password: "", host: "127.0.0.1", port: 5432, tls: "prefer", destination: "s3-eu", keep: 14 }, enabled: true, schedule: "0 2 * * *", timezone: "Europe/Budapest", nextAt: t + 5 * 3600 },
-      { id: "plan-uploads", applicationId: "application-web", name: "Uploads volume", config: { kind: "volume", service: "", volume: "uploads", engine: "", database: "", user: "", password: "", host: "", port: 0, tls: "", destination: "s3-eu", keep: 7 }, enabled: true, schedule: "0 4 * * *", timezone: "Europe/Budapest", nextAt: t + 7 * 3600 },
+      { id: "plan-postgres", applicationId: "application-web", name: "Nightly database", config: { kind: "database", service: "", volume: "uploads", engine: "postgres", database: "atlas", user: "atlas", password: "", host: "127.0.0.1", port: 5432, tls: "prefer", destination: "s3-eu", keep: 14 }, enabled: true, schedule: "0 2 * * *", timezone: "Europe/Budapest", nextAt: nextRuns[2] },
+      { id: "plan-uploads", applicationId: "application-web", name: "Uploads volume", config: { kind: "volume", service: "", volume: "uploads", engine: "", database: "", user: "", password: "", host: "", port: 0, tls: "", destination: "s3-eu", keep: 7 }, enabled: true, schedule: "0 4 * * *", timezone: "Europe/Budapest", nextAt: nextRuns[3] },
     ],
     runs: [
       { id: "run-4", planId: "plan-postgres", operation: "backup", state: "succeeded", createdAt: t - 3600 * 2, startedAt: t - 3600 * 2, finishedAt: t - 3600 * 2 + 74, error: "", bytes: 184_320_000, checksum: "sha256:2b6f8a", objectKey: "backups/website/2026-11-06.dump.age", result: "", sourceId: "", verifiedAt: t - 3600 * 2 + 92, kind: "database" },
@@ -338,6 +347,7 @@ export async function installFixtures(page: Page) {
   await route("**/api/system/operations", json(operations));
   await route("**/api/system/retention", json(retention));
   await route("**/api/notifications", json(notifications));
+  await route("**/api/notifications/deliveries", json({ items: [{ sequence: 42, kind: "deployment", summary: "Checkout deployment failed", createdAt: t - 3600, attempts: 5, error: "Webhook returned HTTP 503" }] }));
   await route("**/api/operation-tokens", json(tokens));
   await route("**/api/connections", json(connections));
   await route("**/api/proxy", json(proxy));

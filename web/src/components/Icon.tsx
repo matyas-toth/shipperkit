@@ -3,10 +3,10 @@ import { Dynamic } from "solid-js/web";
 import { IconCube, IconSearch, IconRefresh, IconChevronRight, IconX, IconCopy, IconCheck, IconSettings,
   IconAdjustmentsHorizontal, IconLogout, IconEye, IconPlug, IconDatabase, IconArrowUp, IconAlertTriangle,
   IconPlus, IconExternalLink, IconArrowLeft, IconBrandGit, IconWorld, IconFileCode, IconRocket, IconTrash,
-  IconChevronDown, IconTerminal2, IconDots, IconPlayerPlay, IconPlayerPause, IconDownload, IconStack2, IconFolder, IconTextWrap, IconClock } from "@tabler/icons-solidjs";
+  IconChevronDown, IconTerminal2, IconDots, IconPlayerPlay, IconPlayerPause, IconDownload, IconStack2, IconFolder, IconTextWrap, IconClock, IconPencil } from "@tabler/icons-solidjs";
 
 const icons = { box: IconCube, search: IconSearch, refresh: IconRefresh, chevron: IconChevronRight, close: IconX,
-  copy: IconCopy, check: IconCheck, settings: IconSettings, sliders: IconAdjustmentsHorizontal, logout: IconLogout,
+  copy: IconCopy, check: IconCheck, edit: IconPencil, settings: IconSettings, sliders: IconAdjustmentsHorizontal, logout: IconLogout,
   eye: IconEye, plug: IconPlug, database: IconDatabase, arrow: IconArrowUp, warning: IconAlertTriangle,
   plus: IconPlus, external: IconExternalLink, back: IconArrowLeft, git: IconBrandGit, globe: IconWorld,
   code: IconFileCode, deploy: IconRocket, trash: IconTrash, down: IconChevronDown, terminal: IconTerminal2, more: IconDots, play: IconPlayerPlay, pause: IconPlayerPause, download: IconDownload, layers: IconStack2, folder: IconFolder, wrap: IconTextWrap, clock: IconClock };

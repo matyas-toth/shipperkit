@@ -57,7 +57,7 @@ export function GitConnectionFields(props: {
           </a>
         }
       >
-        <label for="source-connection">Connection</label>
+        <div class="field git-field"><label for="source-connection">Connection</label>
         <select
           id="source-connection"
           class="input"
@@ -75,7 +75,7 @@ export function GitConnectionFields(props: {
           >
             {(c) => <option value={c.id}>{c.name}</option>}
           </For>
-        </select>
+        </select></div>
       </Show>
       <Show when={props.config.sourceId}>
         <Show when={rows().length > 20}>

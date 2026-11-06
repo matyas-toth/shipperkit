@@ -8,6 +8,7 @@ import { Button, Disclosure, ErrorNotice, IconButton, Status } from "./Controls"
 import EditorActions from "./EditorActions";
 import SchedulePicker from "./SchedulePicker";
 import { ChoiceCards } from "./Choices";
+import { Icon } from "./Icon";
 
 interface Spec {
   kind: string;
@@ -349,6 +350,7 @@ export default function Backups(props: {
         <ErrorNotice message={error() || query.error!.message} />
       </Show>
       <div class="section-toolbar toolbar-end">
+        <Show when={!props.application && !editing() && !importing()}><h2>Recovery</h2></Show>
         <Show when={!editing() && !importing()}><div class="toolbar-actions">
           <Show when={props.application}>
             <Button
@@ -426,7 +428,7 @@ export default function Backups(props: {
                           {d.name}
                         </button>
                       </td>
-                      <td><span class="truncate" title={d.bucket}>{d.bucket}</span></td>
+                      <td><span class="destination-bucket">{d.bucket}</span></td>
                     </tr>
                   )}
                 </For>
@@ -832,7 +834,7 @@ export default function Backups(props: {
             }</Show>
           </div>
         </Show>
-        <div class="table-tray">
+        <div class="table-tray backup-plans" classList={{ "is-empty": !plans().length }}>
           <table class="inventory-table backups-table">
             <thead>
               <tr>
@@ -853,7 +855,7 @@ export default function Backups(props: {
                           setEditing(JSON.parse(JSON.stringify(p)));
                         }}
                       >
-                        {p.name}
+                        {p.name}<Icon name="edit" />
                       </button>
                     </td>
                     <td>
@@ -886,7 +888,9 @@ export default function Backups(props: {
               </For>
               <Show when={!plans().length}>
                 <tr class="empty-row">
-                  <td colspan="3">No scheduled backups</td>
+                  <td colspan="3"><div class="empty-backup-state"><span>No scheduled backups</span><Button small variant="ghost" icon="plus" onClick={() => {
+                    create(); setEditing(plan => plan ? { ...plan, schedule: "0 3 * * *" } : plan);
+                  }}>Add schedule</Button></div></td>
                 </tr>
               </Show>
             </tbody>
@@ -903,6 +907,7 @@ export default function Backups(props: {
                   <th>Backup</th>
                   <th>Status</th>
                   <th>Size</th>
+                  <th aria-label="Details" />
                 </tr>
               </thead>
               <tbody>
@@ -916,7 +921,7 @@ export default function Backups(props: {
                       aria-label={"Inspect backup " + r.id}
                       onClick={() => choose(r)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") choose(r);
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(r); }
                       }}
                     >
                       <td>
@@ -947,6 +952,7 @@ export default function Backups(props: {
                         />
                       </td>
                       <td class="mono">{r.bytes ? bytes(r.bytes) : ""}</td>
+                      <td class="row-chevron"><Icon name="chevron" /></td>
                     </tr>
                   )}
                 </For>
@@ -1139,7 +1145,7 @@ export default function Backups(props: {
                       <Show when={!props.application}>
                         <span class="backup-time">{v.applicationName}</span>
                       </Show>
-                      <span class="backup-time">{v.name}</span>
+                      <Show when={v.name !== v.logical}><span class="backup-time">{v.name}</span></Show>
                     </td>
                     <td>
                       {v.running

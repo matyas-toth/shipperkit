@@ -1,13 +1,13 @@
 import type { StaticConfig } from "../types";
-import { ChoiceCards, type Choice } from "./Choices";
+import { For, createUniqueId } from "solid-js";
 
 type Build = "auto" | "static" | "dockerfile" | "railpack" | "compose";
-const choices: readonly Choice<Build>[] = [
-  { value: "auto", label: "Automatic", icon: "sliders" },
-  { value: "dockerfile", label: "Dockerfile", icon: "code" },
-  { value: "railpack", label: "Railpack", icon: "box" },
-  { value: "static", label: "Static site", icon: "globe" },
-  { value: "compose", label: "Docker Compose", icon: "layers" },
+const choices: readonly { value: Build; label: string }[] = [
+  { value: "auto", label: "Automatic" },
+  { value: "dockerfile", label: "Dockerfile" },
+  { value: "railpack", label: "Railpack" },
+  { value: "static", label: "Static site" },
+  { value: "compose", label: "Docker Compose" },
 ];
 export const methodLabel = (method: StaticConfig["method"]) => ({
   auto: "Automatic", dockerfile: "Dockerfile", railpack: "Railpack", static: "Static site",
@@ -21,12 +21,13 @@ export default function BuildMethod(props: {
   visibleLegend?: boolean;
   change: (method: StaticConfig["method"]) => void;
 }) {
-  const methods = choices.map(choice => ({
-    ...choice,
-    get recommended() { return choice.value === props.detected; },
-    get detail() { return choice.value === "auto" && props.detected ? methodLabel(props.detected) : undefined; },
-  }));
-  return <ChoiceCards<Build> label="Build method" visibleLegend={props.visibleLegend} value={props.value as Build}
-    choices={methods.filter(c => props.allowCompose || c.value !== "compose")}
-    change={props.change} />;
+  const id = createUniqueId();
+  return <div class="field build-method-field">
+    <label for={id} classList={{ "sr-only": !props.visibleLegend }}>Build method</label>
+    <select id={id} class="input" value={props.value} onChange={e => props.change(e.currentTarget.value as Build)}>
+      <For each={choices.filter(c => props.allowCompose || c.value !== "compose")}>{choice =>
+        <option value={choice.value}>{choice.value === "auto" && props.detected ? "Automatic (" + methodLabel(props.detected) + ")" : choice.label}</option>
+      }</For>
+    </select>
+  </div>;
 }

@@ -7,7 +7,7 @@ import { statusLabel, createdDate, deploymentRef, deploymentLabel, operationTime
 import type { Deployment } from "../types";
 
 export interface Observation {
-  stale?:boolean; id: string; kind: string; state: string; summary: string; reference: string; observedAt: number;
+  stale?:boolean; applicationId?: string; id: string; kind: string; state: string; summary: string; reference: string; observedAt: number;
   details: { cpuPercent?: number; memoryBytes?: number; memoryLimit?: number; exitCode?: number; restarts?: number; oomKilled?: boolean; service?: string; free?: number; total?: number; scope?: string };
 }
 export interface Diagnostic {
@@ -68,13 +68,12 @@ export default function Diagnostics(props: { applicationId: string; query: Retur
     <Show when={query.error}><ErrorNotice message={query.error!.message} /></Show>
     <Show when={query.data}>{data => <>
       <div class="diagnostic-strip" classList={{ "has-issue": !checksHealthy() }}>
-        <div class="diagnostic-health">
+        <Show when={!diagnosticIssue(data())}><div class="diagnostic-health">
           <span class="diagnostic-health-icon"><Icon name={checksHealthy() ? "check" : "warning"} /></span>
           <div class="diagnostic-health-copy">
-            <strong>{checksHealthy() ? "No issues detected" : diagnosticIssue(data()) ? (checkNames[diagnosticIssue(data())!.layer] ?? diagnosticIssue(data())!.layer) + " needs attention" : "Checks need attention"}</strong>
-            <span>{checks().length} {checks().length === 1 ? "check" : "checks"}</span>
+            <strong>{checksHealthy() ? "No issues detected" : "Checks need attention"}</strong>
           </div>
-        </div>
+        </div></Show>
         <dl class="diagnostic-facts">
           <div><dt>Release</dt><dd><Show when={data().servingRelease} fallback="None">{release =>
             <button class="inline-link diagnostic-operation mono" title={release().commit || release().id} onClick={() => props.view(release().id)}>{deploymentRef(release())}</button>
@@ -103,7 +102,7 @@ export default function Diagnostics(props: { applicationId: string; query: Retur
           </tr>
         }</For></tbody>
       </table></div></Show>
-      <Show when={data().observations.some(v=>v.kind==="service")}><div class="table-tray resource-table"><table class="inventory-table"><thead><tr><th>Service</th><th>CPU</th><th>Memory</th><th>Restarts</th><th>Exit</th></tr></thead><tbody><For each={data().observations.filter(v=>v.kind==="service")}>{v=><tr><td>{v.details.service||"Application"}</td><td>{v.details.cpuPercent==null?"Unobserved":v.details.cpuPercent.toFixed(1)+"%"}</td><td>{v.details.memoryBytes==null?"Unobserved":bytes(v.details.memoryBytes)}</td><td>{v.details.restarts??"Unobserved"}</td><td>{v.details.oomKilled?"OOM":v.details.exitCode??"None"}</td></tr>}</For></tbody></table></div></Show>
+      <Show when={data().observations.some(v=>v.kind==="service")}><div class="table-tray resource-table" classList={{ "resources-expanded": checksExpanded() }}><table class="inventory-table"><thead><tr><th>Service</th><th>CPU</th><th>Memory</th><th>Restarts</th><th>Exit</th></tr></thead><tbody><For each={data().observations.filter(v=>v.kind==="service")}>{v=><tr><td>{v.details.service||"Application"}</td><td>{v.details.cpuPercent==null?"Unobserved":v.details.cpuPercent.toFixed(1)+"%"}</td><td>{v.details.memoryBytes==null?"Unobserved":bytes(v.details.memoryBytes)}</td><td>{v.details.restarts??"Unobserved"}</td><td>{v.details.oomKilled?"OOM":v.details.exitCode??"None"}</td></tr>}</For></tbody></table></div></Show>
       <Show when={data().changesSinceServing.length}><details class="configuration"><summary>Pending changes</summary><ul><For each={data().changesSinceServing}>{change => <li>{change}</li>}</For></ul></details></Show>
       <details class="configuration"><summary>Evidence</summary><div class="table-tray"><table class="inventory-table evidence-table"><thead><tr><th>Observation</th><th>Status</th><th>Time</th></tr></thead><tbody><For each={data().observations}>{fact => <tr><td>{fact.summary}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{logDateTime(fact.observedAt)}</td></tr>}</For><For each={data().unknowns}>{unknown => <tr class="evidence-unknown"><td>{unknown}</td><td><Status value="unknown" label="Not measured" /></td><td>—</td></tr>}</For></tbody></table></div></details>
     </>}</Show>

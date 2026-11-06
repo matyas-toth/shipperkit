@@ -74,7 +74,7 @@ test("Local folder source can be reviewed without connecting Git",async({page})=
  const directory=await mkdtemp(join(tmpdir(),"shipper-folder-test-"));folders.push(directory);await writeFile(join(directory,"index.html"),"local folder fixture");await writeFile(join(directory,"compose.yaml"),"services:\n  web:\n    image: nginx:alpine\n    expose: ['80']\n");await writeFile(join(directory,".env"),"SECRET=must-not-upload");await writeFile(join(directory,".vpsenv"),"DUMMY=must-not-upload");await page.getByLabel("Project folder").setInputFiles(directory);
  await expect(page.locator(".source-file-list")).toContainText("index.html");await expect(page.locator(".source-file-list")).not.toContainText(".env");await expect(page.locator(".source-file-list")).not.toContainText(".vpsenv");await page.getByRole("button",{name:"Use these files",exact:true}).click();await expect(page.locator(".local-source-input>.mono")).toHaveText(/^[a-f0-9]{12}$/);await expect(page.getByRole("textbox",{name:"Repository URL",exact:true})).toHaveCount(0);await page.getByRole("button",{name:"Review with defaults",exact:true}).click();await expect(page.locator(".creation-review")).toContainText("Static site (automatic)");await expect(page.locator(".creation-review")).toContainText("Snapshot");await page.screenshot({path:join(tmpdir(),"shipper-phase95-local-review.png")});
  await page.getByRole("button",{name:"Edit configuration",exact:true}).click();
- await page.getByRole("radio",{name:"Docker Compose",exact:true}).check();
+ await page.getByLabel("Build method",{exact:true}).selectOption("compose");
  await page.getByRole("button",{name:"Preview services",exact:true}).click();
  await expect(page.locator(".creation-services")).toContainText("nginx:alpine");
  await expect(page.getByLabel("Compose file",{exact:true})).toHaveValue("compose.yaml");
@@ -92,10 +92,10 @@ test("Local folder source can be reviewed without connecting Git",async({page})=
  await page.getByLabel("Repository URL",{exact:true}).fill(repository);
  await page.getByLabel("Branch or commit",{exact:true}).fill("develop");
  await page.getByRole("button",{name:"Continue",exact:true}).click();
- await page.getByRole("radio",{name:"Docker Compose",exact:true}).check();
+ await page.getByLabel("Build method",{exact:true}).selectOption("compose");
  await page.getByLabel("Compose file",{exact:true}).fill("deploy/compose.yaml");
  await page.getByRole("button",{name:"Review deployment",exact:true}).click();
- await expect(page.locator(".creation-review")).toContainText(repository);
+ await expect(page.locator(".creation-review").getByRole("link", {name:"example/compose-demo",exact:true})).toHaveAttribute("href",repository);
  await expect(page.locator(".creation-review")).toContainText(commit.slice(0,12));
  await expect(page.locator(".creation-review")).toContainText("deploy/compose.yaml");
 });

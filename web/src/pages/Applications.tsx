@@ -6,6 +6,7 @@ import { applicationState, methodLabel, operationTime, primaryDomain, deployment
 import { Icon } from "../components/Icon";
 import { Button, ErrorNotice, IconButton, Status } from "../components/Controls";
 import { mediaQuery } from "../media";
+import HighlightedText from "../components/HighlightedText";
 
 const WINDOW_ROWS = 32;
 export default function Applications() {
@@ -17,7 +18,7 @@ export default function Applications() {
   const rowHeight = () => compact() ? 88 : 56;
   onMount(() => { document.title = "Applications | Shipper"; });
   const items = createMemo(() => (inventory.data()?.items ?? []).filter(app =>
-    (status() === "all" || applicationState(app) === status() || status() === "running" && applicationState(app) === "serving") && (!search().trim() || [app.name, app.config.domain, app.sourceRef, ...(app.domains ?? []).map(d => d.hostname)].some(value => value?.toLowerCase().includes(search().trim().toLowerCase())))));
+    (status() === "all" || applicationState(app) === status() || status() === "running" && applicationState(app) === "serving") && (!search().trim() || [app.name, primaryDomain(app)?.hostname, methodLabel(app), app.sourceRef, ...(app.domains ?? []).map(d => d.hostname)].some(value => value?.toLowerCase().includes(search().trim().toLowerCase())))));
   const start = createMemo(() => Math.min(Math.max(0, Math.floor(scrollTop() / rowHeight()) - 5), Math.max(0, items().length - WINDOW_ROWS)));
   const visible = createMemo(() => items().slice(start(), start() + WINDOW_ROWS));
   function resetScroll() { if (viewport) viewport.scrollTop = 0; setScrollTop(0); }
@@ -43,8 +44,8 @@ export default function Applications() {
       <table class="inventory-table applications-table"><thead><tr><th>Application</th><th>Status</th><th>Domain</th><th>Method</th><th>Last activity</th><th aria-label="Details" /></tr></thead><tbody>
         <Show when={start() > 0}><tr class="virtual-spacer" aria-hidden="true"><td colspan="6" style={{ height: start() * rowHeight() + "px" }} /></tr></Show>
         <For each={visible()}>{app => <tr class="container-row" role="button" tabindex="0" aria-label={"View " + app.name} onClick={() => open(app)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(app); } }}>
-          <td><span class="identity"><Icon name={app.method === "static" ? "code" : "box"} /><span class="truncate" title={app.name}>{app.name}</span></span></td>
-          <td><Status value={applicationState(app)} /></td><td class="domain-cell"><Show when={primaryDomain(app)?.hostname} fallback={<span class="no-value">None</span>}>{hostname => <span class="truncate" title={hostname()}>{hostname()}</span>}</Show></td><td class="muted">{methodLabel(app)}</td>
+          <td><span class="identity"><Icon name={app.method === "static" ? "code" : "box"} /><span class="truncate" title={app.name}><HighlightedText text={app.name} query={search()} /></span></span></td>
+          <td><Status value={applicationState(app)} /></td><td class="domain-cell"><Show when={primaryDomain(app)?.hostname} fallback={<span class="no-value">None</span>}>{hostname => <span class="truncate" title={hostname()}><HighlightedText text={hostname()} query={search()} /></span>}</Show></td><td class="muted"><HighlightedText text={methodLabel(app)} query={search()} /></td>
           <td class="date-cell"><Show when={app.latestDeployment} fallback={<span class="no-value">None</span>}>{d => <span class="deployment-cell"><span class="activity-label">{deploymentLabel(d())}</span><time datetime={new Date(d().createdAt * 1000).toISOString()} title={new Date(d().createdAt * 1000).toLocaleString()}>{operationTime(d().createdAt)}</time></span>}</Show></td><td class="row-chevron"><Icon name="chevron" /></td>
         </tr>}</For>
         <Show when={items().length > start() + WINDOW_ROWS}><tr class="virtual-spacer" aria-hidden="true"><td colspan="6" style={{ height: (items().length - start() - WINDOW_ROWS) * rowHeight() + "px" }} /></tr></Show>

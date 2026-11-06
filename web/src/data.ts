@@ -1,5 +1,12 @@
 import type { Container, Port } from "./types";
 
+export function repositoryLabel(value: string): string {
+  try {
+    const url = new URL(value);
+    return url.pathname.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "") || url.host;
+  } catch { return value.replace(/\.git$/, ""); }
+}
+
 export function statusOf(container: Container): string {
   if (container.health === "unhealthy") return "unhealthy";
   if (container.state === "running" && container.health === "starting") return "starting";

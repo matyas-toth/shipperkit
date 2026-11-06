@@ -7,6 +7,7 @@ import type { Application, Deployment, ProxyConfig, Service, StaticConfig } from
 import { useAuth } from "../context";
 import { clearDraft, readDraft, safeConfigDraft, saveDraft, saveVolatileDraft } from "../drafts";
 import { emptyVariable } from "../env";
+import { repositoryLabel } from "../data";
 import { Button, ErrorNotice, validateForm } from "../components/Controls";
 import { Icon } from "../components/Icon";
 import { ChoiceCards, type Choice } from "../components/Choices";
@@ -294,7 +295,11 @@ export default function NewApplication() {
       <form onSubmit={e => { e.preventDefault(); go("configure"); if (!compose()) void inspect(); }}>
         <h2 ref={heading} class="sr-only" tabindex="-1">Source</h2>
         <fieldset class="creation-fields" disabled={pending()}>
-          <ChoiceCards<Source> label="Source type" value={source()} choices={sources} change={chooseSource} />
+          <ChoiceCards<Source> label="Source type" value={source()} choices={sources.slice(0, 3)} change={chooseSource} />
+          <details class="configuration source-more" open={source() === "inline" || source() === "compose"}>
+            <summary>Inline sources<Icon name="down" /></summary>
+            <ChoiceCards<Source> label="Inline source type" value={source()} choices={sources.slice(3)} change={chooseSource} />
+          </details>
           <div class="form-fields creation-inputs">
             <Show when={git()}><GitFields config={config} change={change} /></Show>
             <Show when={local()}>
@@ -422,7 +427,9 @@ export default function NewApplication() {
           <dl>
             <ReviewFact label="Application">{approved().plan.name}</ReviewFact>
             <ReviewFact label={git() ? "Repository" : source() === "image" ? "Image" : "Source"}>
-              <span class="mono">{git() ? approved().plan.config.repository : local() ? "Snapshot " + config.localSource : source() === "image" ? config.image : compose() ? "Pasted Compose YAML" : "Inline Dockerfile"}</span>
+              <Show when={git()} fallback={<span class="mono">{local() ? "Snapshot " + config.localSource : source() === "image" ? config.image : compose() ? "Pasted Compose YAML" : "Inline Dockerfile"}</span>}>
+                <a class="mono repository-reference" href={approved().plan.config.repository} title={approved().plan.config.repository} target="_blank" rel="noreferrer">{repositoryLabel(approved().plan.config.repository)}</a>
+              </Show>
             </ReviewFact>
             <Show when={git()}><ReviewFact label="Revision">
               {approved().plan.config.branch || "Default branch"}<Show when={approved().commit}><code class="mono" title={approved().commit}>{approved().commit!.slice(0, 12)}</code></Show>

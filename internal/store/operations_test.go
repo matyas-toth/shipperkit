@@ -80,6 +80,52 @@ func TestObservationsDeduplicateAndRecoverDurably(t *testing.T) {
 		t.Fatal("Recovery was not queued", next, e)
 	}
 }
+func TestFailedNotificationInspectionAndRetry(t *testing.T) {
+	db, e := Open(t.TempDir())
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	if e = db.Observe(ctx, Observation{ID: "proxy", Kind: "proxy", State: "failed", Summary: "Proxy is unavailable"}); e != nil {
+		t.Fatal(e)
+	}
+	event, _, e := db.NextNotification(ctx)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for attempt := 0; attempt < 5; attempt++ {
+		if e = db.FinishNotification(ctx, event.Sequence, attempt, false, "Webhook returned HTTP 503"); e != nil {
+			t.Fatal(e)
+		}
+	}
+	items, e := db.FailedNotifications(ctx)
+	if e != nil || len(items) != 1 || items[0].Error != "Webhook returned HTTP 503" || items[0].Attempts != 5 {
+		t.Fatal(items, e)
+	}
+	if e = db.RetryNotification(ctx, event.Sequence); e != nil {
+		t.Fatal(e)
+	}
+	// Retrying an already queued delivery must not reset an in-flight attempt.
+	if e = db.RetryNotification(ctx, event.Sequence); e == nil {
+		t.Fatal("Duplicate retry accepted")
+	}
+	next, attempts, e := db.NextNotification(ctx)
+	if e != nil || next.Sequence != event.Sequence || attempts != 0 {
+		t.Fatal(next, attempts, e)
+	}
+	if e = db.FinishNotification(ctx, next.Sequence, attempts, true); e != nil {
+		t.Fatal(e)
+	}
+	if e = db.RetryNotification(ctx, next.Sequence); e == nil {
+		t.Fatal("Delivered notification retried")
+	}
+	items, e = db.FailedNotifications(ctx)
+	if e != nil || len(items) != 0 {
+		t.Fatal(items, e)
+	}
+}
+
 func TestLocalSourceIntegrityAndRecovery(t *testing.T) {
 	dir := t.TempDir()
 	db, e := Open(dir)

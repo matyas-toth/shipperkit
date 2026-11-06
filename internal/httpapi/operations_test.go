@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -62,6 +63,34 @@ func TestOperationsCapabilitiesSourcesAndBoundReviews(t *testing.T) {
 		defer res.Body.Close()
 		data, _ := io.ReadAll(res.Body)
 		return res.StatusCode, string(data)
+	}
+	if e = db.Observe(ctx, store.Observation{ID: "proxy", Kind: "proxy", State: "failed", Summary: "Proxy is unavailable"}); e != nil {
+		t.Fatal(e)
+	}
+	event, _, e := db.NextNotification(ctx)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for attempt := 0; attempt < 5; attempt++ {
+		if e = db.FinishNotification(ctx, event.Sequence, attempt, false, "Webhook returned HTTP 503"); e != nil {
+			t.Fatal(e)
+		}
+	}
+	retryPath := "/api/notifications/deliveries/" + strconv.FormatInt(event.Sequence, 10) + "/retry"
+	if code, body := call("GET", "/api/notifications/deliveries", "", nil); code != 200 || !strings.Contains(body, "Webhook returned HTTP 503") {
+		t.Fatal(code, body)
+	}
+	if code, body := call("POST", retryPath, "", map[string]any{}); code != 422 {
+		t.Fatal(code, body)
+	}
+	if e = db.SavePrivateSetting(ctx, "notifications", `{"enabled":true,"kind":"webhook","webhook":"https://example.com/hook","events":["proxy"]}`); e != nil {
+		t.Fatal(e)
+	}
+	if code, body := call("POST", retryPath, "", map[string]any{}); code != 200 {
+		t.Fatal(code, body)
+	}
+	if code, body := call("POST", retryPath, "", map[string]any{}); code != 404 {
+		t.Fatal(code, body)
 	}
 	if code, body := call("GET", "/api/applications/one", "", nil); code != 200 || !strings.Contains(body, "private-command-body") {
 		t.Fatal("Command projection fixture is missing", code, body)

@@ -27,10 +27,41 @@ func (s *Server) operationsRoutes(r chi.Router) {
 	r.Get("/notifications", s.notificationSettings)
 	r.With(s.csrf, s.limit).Post("/notifications", s.saveNotifications)
 	r.With(s.csrf, s.limit).Post("/notifications/test", s.testNotification)
+	r.Get("/notifications/deliveries", s.failedNotifications)
+	r.With(s.csrf, s.limit).Post("/notifications/deliveries/{sequence}/retry", s.retryNotification)
 	r.With(s.csrf, s.limit).Post("/system/recheck", s.recheckSystem)
 	r.Get("/system/retention", s.retention)
 	r.With(s.csrf, s.limit).Post("/system/retention", s.saveRetention)
 	r.With(s.csrf, s.limit).Post("/system/repair", s.repairProxy)
+}
+func (s *Server) failedNotifications(w http.ResponseWriter, r *http.Request) {
+	items, e := s.db.FailedNotifications(r.Context())
+	if e != nil {
+		s.internal(w, e)
+		return
+	}
+	s.json(w, 200, map[string]any{"items": items})
+}
+func (s *Server) retryNotification(w http.ResponseWriter, r *http.Request) {
+	sequence, e := strconv.ParseInt(chi.URLParam(r, "sequence"), 10, 64)
+	if e != nil || sequence <= 0 {
+		s.problem(w, 400, "invalid_delivery", "Invalid delivery")
+		return
+	}
+	config, e := operations.LoadNotifications(r.Context(), s.db)
+	if e != nil {
+		s.internal(w, e)
+		return
+	}
+	if !config.Enabled {
+		s.problem(w, 422, "notifications_disabled", "Enable notifications before retrying delivery")
+		return
+	}
+	if e = s.db.RetryNotification(r.Context(), sequence); e != nil {
+		s.resourceError(w, e)
+		return
+	}
+	s.json(w, 200, map[string]any{"queued": true})
 }
 func (s *Server) repairProxy(w http.ResponseWriter, r *http.Request) {
 	var input struct {

@@ -78,8 +78,8 @@ export default function RuntimeFields(props: {
   </details>}>
     <div class="runtime-groups">
       <section class="runtime-group"><h4>Network and health</h4><div class="form-fields field-pairs">{props.connectivity}{limits(["startupSeconds"])}</div></section>
-      <section class="runtime-group"><h4>Resources</h4><div class="form-fields field-pairs">{props.memory}{limits(["cpus", "pids"])}</div></section>
-      <section class="runtime-group"><h4>Shutdown and restart</h4><div class="form-fields field-pairs">{limits(["stopSeconds", "drainSeconds"])}{restart()}</div></section>
+      <section class="runtime-group"><h4>Resources</h4><div class="form-fields field-pairs">{props.memory}{limits(["cpus"])}</div></section>
+      <details class="configuration runtime-configuration"><summary>Advanced runtime<Icon name="down" /></summary><div class="form-fields field-pairs configuration-fields">{limits(["pids", "stopSeconds", "drainSeconds"])}{restart()}</div></details>
     </div>
   </Show>;
 }

@@ -6,19 +6,17 @@ import { installFixtures } from "./gallery-fixtures";
 const token = "shipper-browser-test-setup-token-00000000000000000000000000000000";
 const account = { email: "owner@example.test", password: "shipper-browser-test-password" };
 const root = join(process.cwd(), ".shipper", "ui-gallery");
-const out = join(root, "round-01");
+const out = join(root, process.env.SHIPPER_GALLERY_ROUND || "round-01");
 const references = join(root, "references");
 test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 
 let index = 0;
 async function shot(page: import("@playwright/test").Page, name: string, options: { fullPage?: boolean; scroll?: boolean } = {}) {
   index += 1;
-  if (options.scroll !== false) {
-    await page.evaluate(() => {
-      document.querySelector<HTMLElement>(".page-scroll")?.scrollTo(0, 0);
-      window.scrollTo(0, 0);
-    });
-  }
+  await page.evaluate(resetContent => {
+    if (resetContent) document.querySelector<HTMLElement>(".page-scroll")?.scrollTo(0, 0);
+    window.scrollTo(0, 0);
+  }, options.scroll !== false);
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(140);
   await page.screenshot({ path: join(out, String(index).padStart(2, "0") + "-" + name + ".png"), fullPage: options.fullPage ?? false, animations: "disabled", caret: "hide" });
@@ -48,6 +46,8 @@ test("capture product surfaces", async ({ page }) => {
 
   await page.getByRole("textbox", { name: "Search applications", exact: true }).fill("at");
   await expect(page.getByRole("button", { name: "View Atlas API", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View Worker", exact: true })).toHaveCount(0);
+  await expect(page.locator(".search-match").first()).toBeVisible();
   await shot(page, "applications-search");
   await page.getByRole("textbox", { name: "Search applications", exact: true }).fill("zzz");
   await expect(page.getByText("No matching applications", { exact: true })).toBeVisible();
@@ -172,7 +172,7 @@ test("capture product surfaces", async ({ page }) => {
   await page.getByLabel("Name", { exact: true }).fill("Portfolio");
   await page.getByRole("textbox", { name: "Repository URL", exact: true }).fill("https://github.com/acme/portfolio.git");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(page.getByText("Railpack", { exact: false }).first()).toBeVisible();
+  await expect(page.getByLabel("Build method", { exact: true })).toContainText("Automatic (Railpack)");
   await page.waitForTimeout(500);
   await shot(page, "new-methods");
   await page.getByText("Configuration", { exact: true }).click();
@@ -198,9 +198,21 @@ test("capture product surfaces", async ({ page }) => {
   await shot(page, "system-maintenance");
   await page.goto("/system#notifications");
   await page.waitForTimeout(700);
+  await page.getByText("Inspect deliveries", { exact: true }).click();
+  await expect(page.getByText("Webhook returned HTTP 503", { exact: true })).toBeVisible();
   await shot(page, "system-notifications");
+  let deliveryRetried = false;
+  await page.route("**/api/notifications/deliveries/42/retry", route => {
+    expect(route.request().method()).toBe("POST");
+    deliveryRetried = true;
+    return route.fulfill({ json: { queued: true } });
+  });
+  await page.getByRole("button", { name: "Retry delivery", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Delivery queued");
+  expect(deliveryRetried).toBe(true);
   await page.goto("/system#tokens");
   await page.waitForTimeout(700);
+  await page.getByRole("button", { name: "Create token", exact: true }).click();
   await shot(page, "system-tokens");
 
   await page.goto("/settings");
@@ -230,6 +242,19 @@ test("capture product surfaces", async ({ page }) => {
   await shot(page, "mobile-overview");
   await page.getByRole("button", { name: "Deployments", exact: true }).click();
   await page.waitForTimeout(700);
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const navigation = page.getByRole("navigation", { name: "Application navigation", exact: true });
+    await expect(navigation.getByRole("button")).toHaveCount(3);
+    await expect(navigation.getByRole("combobox", { name: "Other application sections", exact: true })).toBeVisible();
+    expect(await navigation.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.children].every(child => {
+        const rect = child.getBoundingClientRect();
+        return rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1 && rect.width > 0;
+      });
+    })).toBe(true);
+  }
   await shot(page, "mobile-deployments");
 
   await copyFile(join(process.cwd(), ".shipper", "ui-gallery", "references-src", "t3code.png"), join(references, "t3code.png")).catch(() => {});

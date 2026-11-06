@@ -217,6 +217,7 @@ test("routing options, runtime limits, recorded release review and certificate d
   await page.goto("/applications/release-fixture?tab=settings");
   await page.getByRole("button", { name: "Runtime", exact: true }).click();
   await page.getByLabel("CPU limit", { exact: true }).fill("2");
+  await page.getByText("Advanced runtime", { exact: true }).click();
   await page.getByLabel("Stop grace (seconds)", { exact: true }).fill("20");
   await page.screenshot({ path: join(tmpdir(), "shipper-phase7-runtime.png") });
   await page.goto(

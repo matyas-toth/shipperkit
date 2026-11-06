@@ -18,7 +18,7 @@ export default function ServiceSummary(props: {
         </span>
         <span class="service-card-image" title={service.image}>{service.image || "Build from source"}</span>
         <span class="service-card-facts">
-          <span>{service.oneShot ? "Job" : service.port ? "HTTP " + service.port : "Internal"}</span>
+          <span>{service.oneShot ? "Job" : service.port ? "Port " + service.port : "Internal"}</span>
           <Show when={service.volumes?.length}><span>{service.volumes.length} {service.volumes.length === 1 ? "volume" : "volumes"}</span></Show>
         </span>
       </>;

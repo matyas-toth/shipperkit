@@ -146,19 +146,17 @@ export default function Connections() {
                   <td>{c.name}</td>
                   <td>{c.kind === "registry" ? c.host : "GitHub"}</td>
                   <td><div class="connection-actions">
-                    <IconButton
-                      icon="settings"
-                      label={"Edit " + c.name}
-                      ghost
+                    <Button
+                      small variant="ghost"
+                      aria-label={"Edit " + c.name}
                       onClick={() => edit(c)}
-                    />
+                    >Edit</Button>
                     <Show when={c.kind !== "registry"}>
-                      <IconButton
-                        icon="globe"
-                        label={"Webhook for " + c.name}
-                        ghost
+                      <Button
+                        small variant="ghost"
+                        aria-label={"Webhook for " + c.name}
                         onClick={() => void hook(c.id)}
-                      />
+                      >Webhook</Button>
                     </Show>
                     <IconButton
                       icon="trash"
