@@ -348,8 +348,7 @@ export default function Backups(props: {
       <Show when={query.error || error()}>
         <ErrorNotice message={error() || query.error!.message} />
       </Show>
-      <div class="section-toolbar">
-        <h2>{props.application ? "Backups" : "Recovery"}</h2>
+      <div class="section-toolbar toolbar-end">
         <Show when={!editing() && !importing()}><div class="toolbar-actions">
           <Show when={props.application}>
             <Button
@@ -427,7 +426,7 @@ export default function Backups(props: {
                           {d.name}
                         </button>
                       </td>
-                      <td>{d.bucket}</td>
+                      <td><span class="truncate" title={d.bucket}>{d.bucket}</span></td>
                     </tr>
                   )}
                 </For>

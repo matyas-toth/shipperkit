@@ -77,12 +77,11 @@ export default function LogViewer(props: {
           <time class="muted log-date" datetime={new Date(props.deployment.createdAt * 1000).toISOString()} title={operationTime(props.deployment.createdAt, true)}>{operationTime(props.deployment.createdAt)}</time>
         </div>
       </div>
-      <div class="release-serving">
+      <Show when={props.current?.id !== props.deployment.id}><div class="release-serving">
         <Show when={props.current} fallback="No current release">{current =>
-          current().id === props.deployment.id ? "Current release" :
-            <><span>Current release</span><code title={current().commit || current().id}>{deploymentRef(current())}</code></>
+          <><span>Serving release</span><code title={current().commit || current().id}>{deploymentRef(current())}</code></>
         }</Show>
-      </div>
+      </div></Show>
       <Show when={cancellable() || props.restore || retryable()}>
         <div class="log-operation-actions">
           <Show when={cancellable()}><Button small disabled={props.deployment.cancelRequested} onClick={props.cancel}>{props.deployment.cancelRequested ? "Cancelling" : "Cancel"}</Button></Show>

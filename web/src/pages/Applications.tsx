@@ -2,7 +2,7 @@ import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import type { Application } from "../types";
 import { useInventory } from "../context";
-import { applicationState, methodLabel, createdDate, primaryDomain, deploymentLabel } from "../data";
+import { applicationState, methodLabel, operationTime, primaryDomain, deploymentLabel } from "../data";
 import { Icon } from "../components/Icon";
 import { Button, ErrorNotice, IconButton, Status } from "../components/Controls";
 import { mediaQuery } from "../media";
@@ -45,10 +45,10 @@ export default function Applications() {
         <For each={visible()}>{app => <tr class="container-row" role="button" tabindex="0" aria-label={"View " + app.name} onClick={() => open(app)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(app); } }}>
           <td><span class="identity"><Icon name={app.method === "static" ? "code" : "box"} /><span class="truncate" title={app.name}>{app.name}</span></span></td>
           <td><Status value={applicationState(app)} /></td><td class="domain-cell"><Show when={primaryDomain(app)?.hostname} fallback={<span class="no-value">None</span>}>{hostname => <span class="truncate" title={hostname()}>{hostname()}</span>}</Show></td><td class="muted">{methodLabel(app)}</td>
-          <td class="date-cell"><Show when={app.latestDeployment} fallback={<span class="no-value">None</span>}>{d => <span class="deployment-cell"><span class="activity-label">{deploymentLabel(d())}</span><time datetime={new Date(d().createdAt * 1000).toISOString()} title={new Date(d().createdAt * 1000).toLocaleString()}>{createdDate(d().createdAt)}</time></span>}</Show></td><td class="row-chevron"><Icon name="chevron" /></td>
+          <td class="date-cell"><Show when={app.latestDeployment} fallback={<span class="no-value">None</span>}>{d => <span class="deployment-cell"><span class="activity-label">{deploymentLabel(d())}</span><time datetime={new Date(d().createdAt * 1000).toISOString()} title={new Date(d().createdAt * 1000).toLocaleString()}>{operationTime(d().createdAt)}</time></span>}</Show></td><td class="row-chevron"><Icon name="chevron" /></td>
         </tr>}</For>
         <Show when={items().length > start() + WINDOW_ROWS}><tr class="virtual-spacer" aria-hidden="true"><td colspan="6" style={{ height: (items().length - start() - WINDOW_ROWS) * rowHeight() + "px" }} /></tr></Show>
-        <Show when={!items().length}><tr class="empty-row"><td colspan="6"><Show when={!inventory.pending()} fallback={<span class="loading-line" aria-label="Loading applications" />}><div class="empty-state"><Icon name={search() ? "search" : "code"} /><span>{search() || status() !== "all" ? "No matching applications" : "No applications"}</span></div></Show></td></tr></Show>
+        <Show when={!items().length}><tr class="empty-row"><td colspan="6"><Show when={!inventory.pending()} fallback={<span class="loading-line" aria-label="Loading applications" />}><div class="empty-state"><Icon name={search() ? "search" : "code"} /><span>{search() || status() !== "all" ? "No matching applications" : "No applications"}</span><Show when={search() || status() !== "all"}><Button small onClick={() => { setSearch(""); setStatus("all"); resetScroll(); }}>Clear filters</Button></Show></div></Show></td></tr></Show>
         <tr class="table-footer"><td colspan="6">{items().length} {items().length === 1 ? "application" : "applications"}</td></tr>
       </tbody></table>
     </div>

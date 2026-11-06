@@ -92,7 +92,6 @@ export default function ApplicationSettings(props: {
     finally { setRenaming(false); }
   }
   return <div class="application-settings">
-    <h2>Application settings</h2>
     <div class="app-settings-workspace">
       <nav class="app-settings-navigation" aria-label="Application settings sections">
         <For each={visibleAreas()}>{item => <button type="button" aria-current={area() === item.id ? "page" : undefined} onClick={() => setArea(item.id)}>

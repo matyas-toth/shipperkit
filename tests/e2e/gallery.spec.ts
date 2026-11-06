@@ -58,6 +58,7 @@ test("capture product surfaces", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Website", exact: true })).toBeVisible();
   await page.waitForTimeout(600);
   await shot(page, "website-overview");
+  await page.getByRole("button", { name: "Show checks", exact: true }).click();
   await page.getByText("Evidence", { exact: true }).click();
   await page.locator(".diagnostics-section").scrollIntoViewIfNeeded();
   await page.waitForTimeout(250);
@@ -125,7 +126,7 @@ test("capture product surfaces", async ({ page }) => {
   await shot(page, "website-backups");
   await page.setViewportSize({ width: 1440, height: 1120 });
   await page.getByRole("button", { name: "Inspect backup run-4", exact: true }).click();
-  await page.locator(".backup-detail").scrollIntoViewIfNeeded();
+  await page.locator(".backup-history").evaluate(element => element.scrollIntoView({ block: "start" }));
   await page.waitForTimeout(400);
   await shot(page, "backup-detail", { scroll: false });
   await page.setViewportSize({ width: 1440, height: 900 });

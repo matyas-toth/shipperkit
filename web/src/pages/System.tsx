@@ -5,7 +5,7 @@ import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application } from "../types";
 import type { Observation } from "../components/Diagnostics";
-import { Button, Disclosure, ErrorNotice, Status } from "../components/Controls";
+import { Button, ErrorNotice, Status } from "../components/Controls";
 import { SegmentedChoice } from "../components/Choices";
 import { bytes, createdDate, operationTime } from "../data";
 import Retention from "../components/Retention";
@@ -25,7 +25,7 @@ export default function System() {
  const [repair,setRepair]=createSignal<ChangePlan>();
  const system=createQuery(()=>({queryKey:["system"],queryFn:()=>api<SystemInfo>("/system")}));
   const [error, setError] = createSignal(""), [busy, setBusy] = createSignal(false), [token, setToken] = createSignal("");
-  const [name, setName] = createSignal(""), [scope, setScope] = createSignal(["read"]), [app, setApp] = createSignal(""), [days, setDays] = createSignal(30);
+  const [name, setName] = createSignal(""), [scope, setScope] = createSignal(["read"]), [app, setApp] = createSignal(""), [days, setDays] = createSignal(30), [creating, setCreating] = createSignal(false);
   const [notification, setNotification] = createSignal<Notifications>(), [result, setResult] = createSignal("");
   const query = createQuery(() => ({ queryKey: ["system", "operations"], queryFn: () => api<{ items: Observation[]; host?: HostStatus; notifications: { pending: number; failed: number } }>("/system/operations"), refetchInterval: 15000 }));
   const credentials = createQuery(() => ({ queryKey: ["operation-tokens"], queryFn: () => api<{ items: Credential[] }>("/operation-tokens"), enabled: section() === "tokens" }));
@@ -41,7 +41,7 @@ export default function System() {
   async function createToken(e: SubmitEvent) {
     e.preventDefault(); await action(async () => {
       const value = await post<{ token: string }>("/operation-tokens", { name: name(), scopes: scope(), applications: app() ? [app()] : [], days: days() }, auth.session()?.csrfToken);
-      setToken(value.token); setName(""); await credentials.refetch();
+      setToken(value.token); setName(""); setCreating(false); await credentials.refetch();
     });
   }
   async function saveNotifications(e: SubmitEvent) {
@@ -73,7 +73,7 @@ export default function System() {
     <Retention/>
     </Show>
     <Show when={section() === "notifications"}>
-    <section class="settings-section notifications-settings"><h2>Notifications</h2><Show when={config()}>{c => <form onSubmit={saveNotifications} class="notification-editor">
+    <section class="settings-section notifications-settings"><Show when={config()}>{c => <form onSubmit={saveNotifications} class="notification-editor">
       <label class="checkbox-label"><input type="checkbox" checked={c().enabled} onChange={e => change({ enabled: e.currentTarget.checked })} />Enabled</label>
       <Show when={c().enabled}><div class="form-fields field-pairs notification-fields">
         <SegmentedChoice label="Delivery" value={c().kind} choices={[{value:"webhook",label:"Webhook"},{value:"email",label:"Email"}]} change={kind => change({kind})} />
@@ -92,14 +92,15 @@ export default function System() {
     </form>}</Show><Show when={query.data?.notifications.failed}><div class="deployment-error">{query.data!.notifications.failed} failed {query.data!.notifications.failed === 1 ? "delivery" : "deliveries"}</div></Show></section>
     </Show>
     <Show when={section() === "tokens"}>
-    <section class="settings-section"><h2>Access tokens</h2><Show when={credentials.error}><ErrorNotice message={credentials.error!.message} /></Show>
+    <section class="settings-section"><Show when={credentials.error}><ErrorNotice message={credentials.error!.message} /></Show>
+      <div class="section-toolbar toolbar-end"><Button icon="plus" disabled={busy()} onClick={() => setCreating(value => !value)}>{creating() ? "Cancel" : "Create token"}</Button></div>
       <div class="table-tray"><table class="inventory-table access-tokens-table"><thead><tr><th>Name</th><th>Permissions</th><th>Expires</th><th /></tr></thead><tbody><For each={credentials.data?.items}>{credential => <tr><td>{credential.name}</td><td>{credential.scopes.map(v=>permissionLabel[v]||v).join(", ")}</td><td>{createdDate(credential.expiresAt)}</td><td><Button small variant="ghost" disabled={busy()} onClick={() => void action(async () => { await post(`/operation-tokens/${credential.id}/revoke`, {}, auth.session()?.csrfToken); await credentials.refetch(); })}>Revoke</Button></td></tr>}</For></tbody></table></div>
       <Show when={token()}><div class="token-reveal"><input class="input mono" aria-label="New access token" readonly value={token()} /><Button onClick={() => void navigator.clipboard.writeText(token()).catch(() => setError("The token could not be copied"))}>Copy</Button><Button variant="ghost" onClick={() => setToken("")}>Dismiss</Button></div></Show>
-      <Disclosure label="Create token"><form onSubmit={createToken}><div class="form-fields">
+      <Show when={creating()}><form onSubmit={createToken} class="token-form"><div class="form-fields">
         <label for="token-name">Name</label><input id="token-name" class="input" required maxlength="80" value={name()} onInput={e => setName(e.currentTarget.value)} />
         <label for="token-app">Application</label><select id="token-app" class="input" value={app()} onChange={e => setApp(e.currentTarget.value)}><option value="">All applications</option><For each={applications.data?.items}>{a => <option value={a.id}>{a.name}</option>}</For></select>
         <label for="token-days">Expires in days</label><input id="token-days" class="input" type="number" min="1" max="365" value={days()} onInput={e => setDays(Number(e.currentTarget.value))} />
-      </div><div class="capability-choices"><For each={["read", "logs", "deploy", "execute", "secrets", "destructive", "host-admin"]}>{permission => <label><input type="checkbox" checked={scope().includes(permission)} onChange={e => setScope(e.currentTarget.checked ? [...scope(), permission] : scope().filter(v => v !== permission))} />{permissionLabel[permission]}</label>}</For></div><div class="form-actions"><Button variant="primary" type="submit" disabled={busy() || !scope().length}>Create token</Button></div></form></Disclosure>
+      </div><div class="capability-choices"><For each={["read", "logs", "deploy", "execute", "secrets", "destructive", "host-admin"]}>{permission => <label><input type="checkbox" checked={scope().includes(permission)} onChange={e => setScope(e.currentTarget.checked ? [...scope(), permission] : scope().filter(v => v !== permission))} />{permissionLabel[permission]}</label>}</For></div><div class="form-actions"><Button variant="primary" type="submit" disabled={busy() || !scope().length}>Create token</Button></div></form></Show>
     </section>
     </Show>
   </div>;

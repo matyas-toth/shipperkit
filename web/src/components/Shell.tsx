@@ -76,7 +76,7 @@ export default function Shell(props: RouteSectionProps) {
         </nav>
         <div class="topbar-actions">
           <span class={"connection " + (connected() ? "is-connected" : "")} title={query.data?.docker.error ?? "Docker connection"}>
-            <span class="status-dot" />{connected() ? "Connected" : "Reconnecting"}
+            <span class="status-dot" /><span class="connection-label">{connected() ? "Connected" : "Reconnecting"}</span>
           </span>
           <IconButton icon="search" label="Search applications" ghost onClick={focusSearch} />
           <div class="account">

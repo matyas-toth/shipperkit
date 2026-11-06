@@ -94,7 +94,11 @@ export default function ChangeReview(props: {
     return [...new Set([...before.keys(), ...after.keys()])].flatMap(name => {
       const current = before.get(name), next = after.get(name);
       if (current && next && variableSignature([current]) === variableSignature([next])) return [];
-      return [{ name, scope: variableScopeLabel((next ?? current)?.scope), change: current ? next ? "Updated" : "Removed" : "Added" }];
+      return [{
+        name, scope: variableScopeLabel((next ?? current)?.scope), change: current ? next ? "Updated" : "Removed" : "Added",
+        before: current && !current.secret ? current.value : undefined,
+        after: next && !next.secret ? next.value : undefined,
+      }];
     });
   });
   let panel!: HTMLElement;
@@ -145,7 +149,14 @@ export default function ChangeReview(props: {
             </Show>
             <Show when={change === "Environment variables" && variableChanges().length}>
               <dl class="hook-comparison"><For each={variableChanges()}>{variable => <div>
-                <dt class="mono">{variable.name}</dt><dd>{variable.change} · {variable.scope}</dd>
+                <dt class="mono">{variable.name}</dt><dd>{variable.change} · {variable.scope}
+                  <Show when={variable.change === "Updated" && (variable.before !== undefined || variable.after !== undefined)}>
+                    <div class="variable-diff">
+                      <div><span>Before</span><code>{variable.before || "None"}</code></div>
+                      <div><span>After</span><code>{variable.after || "None"}</code></div>
+                    </div>
+                  </Show>
+                </dd>
               </div>}</For></dl>
             </Show>
           </li>}</For>

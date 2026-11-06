@@ -209,11 +209,6 @@ export async function installFixtures(page: Page) {
       sourceRef: "", config: { ...atlasConfig, method: "image", image: "ghcr.io/acme/mailer:1.8" }, domains: [], containers: [],
       latestDeployment: { ...deployments[1], id: "deployment-mailer-3", applicationId: "application-mailer", createdAt: t - 86_400 * 4 },
     },
-    {
-      ...websiteDetail.application, id: "application-sandbox", name: "Sandbox",
-      domains: [{ ...domain, hostname: "sandbox.localhost" }], state: "exited", activeDeploymentId: "",
-      latestDeployment: { ...deployments[2], id: "deployment-sandbox-2", applicationId: "application-sandbox", operation: "stop", createdAt: t - 86_400 * 6 },
-    },
   ];
 
   const inventory = { ...apiInventory, items: inventoryApps };
@@ -317,7 +312,8 @@ export async function installFixtures(page: Page) {
           ["promoting", "Releasing to website.localhost"],
           ["promoting", "Release is serving traffic"],
         ];
-    const items = steps.map(([step, line], index) => ({ number: index + 1, sequence: index + 1, step, line, createdAt: t - 190 + index * 2 }));
+    const started = deploymentId.includes("checkout") ? t - 420 : deployments.find(d => d.id === deploymentId)?.createdAt ?? t - 190;
+    const items = steps.map(([step, line], index) => ({ number: index + 1, sequence: index + 1, step, line, createdAt: started + index * 2 }));
     return { items, state: failed ? "failed" : "succeeded", next: 0 };
   };
 
@@ -336,7 +332,7 @@ export async function installFixtures(page: Page) {
   await route("**/api/applications/*/protection", json(protection));
   await route("**/api/protection", json({ ...protection, plans: [], runs: protection.runs, destinations: protection.destinations, volumes: protection.volumes }));
   await route("**/api/system", async r => {
-    if (r.request().url().endsWith("/api/system")) return r.fulfill({ json: { ...system, database: { ...system.database, counts: { applications: 7, containers: 9, sessions: 1 } } } });
+    if (r.request().url().endsWith("/api/system")) return r.fulfill({ json: { ...system, database: { ...system.database, counts: { applications: inventoryApps.length, containers: 9, sessions: 1 } } } });
     return r.continue();
   });
   await route("**/api/system/operations", json(operations));
@@ -353,9 +349,17 @@ export async function installFixtures(page: Page) {
     const url = r.request().url();
     const id = url.match(/applications\/([^/]+)\/diagnostics/)?.[1];
     const checkHost = id === "application-atlas" ? "atlas.localhost" : id === "application-api" ? "api.localhost" : id === "application-checkout" ? "checkout.localhost" : "website.localhost";
+    const serviceObservations = id === "application-atlas"
+      ? [
+          { service: "api", cpuPercent: 2.4, memoryBytes: 184_320_000, memoryLimit: 536_870_912, restarts: 0 },
+          { service: "worker", cpuPercent: 0.6, memoryBytes: 92_274_688, memoryLimit: 536_870_912, restarts: 0 },
+          { service: "postgres", cpuPercent: 1.1, memoryBytes: 268_435_456, memoryLimit: 1_073_741_824, restarts: 0 },
+          { service: "redis", cpuPercent: 0.2, memoryBytes: 31_457_280, memoryLimit: 268_435_456, restarts: 0 },
+        ].map((details, index) => ({ stale: false, id: "service-" + index, kind: "service", state: "healthy", summary: "Service resources", reference: details.service, observedAt: t - 10 - index, details }))
+      : [{ stale: false, id: "runtime", kind: "service", state: "healthy", summary: "Service resources", reference: "apache", observedAt: t - 12, details: { service: "apache", cpuPercent: 1.8, memoryBytes: 184_320_000, memoryLimit: 536_870_912, restarts: 0 } }];
     const observations = [
       { stale: false, id: "route", kind: "route", state: "healthy", summary: "HTTP 200 from " + checkHost, reference: checkHost, observedAt: t - 18, details: {} },
-      { stale: false, id: "runtime", kind: "service", state: "healthy", summary: "Service resources", reference: id === "application-atlas" ? "api" : "website", observedAt: t - 12, details: { service: id === "application-atlas" ? "api" : "apache", cpuPercent: 1.8, memoryBytes: 184_320_000, memoryLimit: 536_870_912, restarts: 0 } },
+      ...serviceObservations,
       { stale: false, id: "artifact", kind: "artifact", state: "healthy", summary: "Serving release artifact is present", reference: "sha256:apache-fixture", observedAt: t - 900, details: {} },
     ];
     const detail = id === "application-atlas" ? atlasDetail : id === "application-api" ? apiDetail : websiteDetail;

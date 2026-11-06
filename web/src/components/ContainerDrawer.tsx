@@ -37,6 +37,7 @@ export default function ContainerDrawer(props: { container: Container; close: ()
     ...(props.container.service ? [["Service", props.container.service]] : []),
     ...(props.container.applicationId ? [["Application ID", props.container.applicationId]] : []),
   ];
+  const display = (label: string, value: string) => label === "Container ID" && value.length > 28 ? value.slice(0, 14) + "…" + value.slice(-8) : value;
   async function copy() { try { await navigator.clipboard.writeText(props.container.id); setCopied(true); } catch { setCopyError("The container ID could not be copied"); } }
   return <Portal>
     <div class="drawer-scrim" onClick={props.close} />
@@ -54,7 +55,7 @@ export default function ContainerDrawer(props: { container: Container; close: ()
       <div class="drawer-scroll">
         <Show when={copyError()}><ErrorNotice message={copyError()} /></Show>
         <dl class="details-list"><For each={rows()}>{([label, value]) =>
-          <div><dt>{label}</dt><dd classList={{ mono: label === "Container ID" || label === "Application ID" }} title={String(value)}>{value}</dd></div>
+          <div><dt>{label}</dt><dd classList={{ mono: label === "Container ID" || label === "Application ID" }} title={String(value)}>{display(label, String(value))}</dd></div>
         }</For></dl>
       </div>
       <Show when={copied()}><span class="sr-only" role="status">Container ID copied</span></Show>

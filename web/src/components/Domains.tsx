@@ -82,11 +82,10 @@ export default function Domains(props: { application: Application; proxy?: Proxy
     }));
   }
   return <form id={formId} noValidate onSubmit={save} class="domains-panel"><Show when={error()}><ErrorNotice message={error()} /></Show><Show when={props.application.latestDeployment?.operation === "domains" && props.application.latestDeployment.state === "failed"}><ErrorNotice message={props.application.latestDeployment!.error} /></Show>
-    <h2>Domains</h2>
     <Show when={canAdd()} fallback={<div class="domain-unavailable"><span>No HTTP port configured</span><Show when={props.configureService}><Button icon="settings" onClick={() => props.configureService?.()}>Service settings</Button></Show></div>}>
       <div class="domain-add">
         <Show when={pickService()}><select class="input domain-service" aria-label="Domain service" value={service()} onChange={e => setService(e.currentTarget.value)}><option value="" disabled>Choose service</option><For each={availableServices()}>{s => <option value={s.name}>{s.name}</option>}</For></select></Show>
-        <label class="sr-only" for="new-domain">New domain</label><input class="input" id="new-domain" placeholder="app.example.com" value={hostname()} onInput={e => { setHostname(e.currentTarget.value); setWWW(false); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
+        <div class="field domain-add-field"><label for="new-domain">New domain</label><input class="input" id="new-domain" placeholder="app.example.com" value={hostname()} onInput={e => { setHostname(e.currentTarget.value); setWWW(false); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); add(); } }} /></div>
         <Show when={hostname() && props.proxy?.acmeEmail && !hostname().endsWith(".localhost")}><label class="check-field"><input type="checkbox" checked={https()} onChange={e => setHTTPS(e.currentTarget.checked)} />HTTPS</label></Show>
         <Show when={options.data?.canIncludeWWW && lookup() === hostname()}><label class="check-field"><input type="checkbox" checked={www()} onChange={e => setWWW(e.currentTarget.checked)} />Include www</label></Show>
         <Button icon="plus" onClick={add} disabled={!hostname().trim() || props.busy || compose() && !service()}>Add domain</Button>

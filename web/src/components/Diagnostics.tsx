@@ -71,8 +71,8 @@ export default function Diagnostics(props: { applicationId: string; query: Retur
         <div class="diagnostic-health">
           <span class="diagnostic-health-icon"><Icon name={checksHealthy() ? "check" : "warning"} /></span>
           <div class="diagnostic-health-copy">
-            <strong>{checksHealthy() ? "All systems healthy" : diagnosticIssue(data()) ? (checkNames[diagnosticIssue(data())!.layer] ?? diagnosticIssue(data())!.layer) + " needs attention" : "Checks need attention"}</strong>
-            <span>{checks().length} {checks().length === 1 ? "check" : "checks"}{lastChecked() ? " · " + operationTime(lastChecked()) : ""}</span>
+            <strong>{checksHealthy() ? "No issues detected" : diagnosticIssue(data()) ? (checkNames[diagnosticIssue(data())!.layer] ?? diagnosticIssue(data())!.layer) + " needs attention" : "Checks need attention"}</strong>
+            <span>{checks().length} {checks().length === 1 ? "check" : "checks"}</span>
           </div>
         </div>
         <dl class="diagnostic-facts">
@@ -105,7 +105,7 @@ export default function Diagnostics(props: { applicationId: string; query: Retur
       </table></div></Show>
       <Show when={data().observations.some(v=>v.kind==="service")}><div class="table-tray resource-table"><table class="inventory-table"><thead><tr><th>Service</th><th>CPU</th><th>Memory</th><th>Restarts</th><th>Exit</th></tr></thead><tbody><For each={data().observations.filter(v=>v.kind==="service")}>{v=><tr><td>{v.details.service||"Application"}</td><td>{v.details.cpuPercent==null?"Unobserved":v.details.cpuPercent.toFixed(1)+"%"}</td><td>{v.details.memoryBytes==null?"Unobserved":bytes(v.details.memoryBytes)}</td><td>{v.details.restarts??"Unobserved"}</td><td>{v.details.oomKilled?"OOM":v.details.exitCode??"None"}</td></tr>}</For></tbody></table></div></Show>
       <Show when={data().changesSinceServing.length}><details class="configuration"><summary>Pending changes</summary><ul><For each={data().changesSinceServing}>{change => <li>{change}</li>}</For></ul></details></Show>
-      <details class="configuration"><summary>Evidence</summary><div class="table-tray"><table class="inventory-table"><thead><tr><th>Observation</th><th>Status</th><th>Time</th></tr></thead><tbody><For each={data().observations}>{fact => <tr><td>{fact.summary}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{logDateTime(fact.observedAt)}</td></tr>}</For></tbody></table></div><For each={data().unknowns}>{unknown => <div class="setting-row">{unknown}</div>}</For></details>
+      <details class="configuration"><summary>Evidence</summary><div class="table-tray"><table class="inventory-table evidence-table"><thead><tr><th>Observation</th><th>Status</th><th>Time</th></tr></thead><tbody><For each={data().observations}>{fact => <tr><td>{fact.summary}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{logDateTime(fact.observedAt)}</td></tr>}</For><For each={data().unknowns}>{unknown => <tr class="evidence-unknown"><td>{unknown}</td><td><Status value="unknown" label="Not measured" /></td><td>—</td></tr>}</For></tbody></table></div></details>
     </>}</Show>
     <Show when={incidents.data?.items.length}><details class="configuration"><summary>Activity</summary><div class="incident-list"><For each={[...(incidents.data?.items ?? [])].reverse()}>{event => <div class="incident-row"><Status value={event.state} /><span>{event.summary}</span><time>{createdDate(event.createdAt)}</time></div>}</For></div></details></Show>
   </section>;
