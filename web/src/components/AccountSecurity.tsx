@@ -84,7 +84,7 @@ export default function AccountSecurity() {
       </dd></div>
       <div class="setting-row"><dt>Instance policy</dt><dd>
         <span>{factor()?.required ? "Required" : "Optional"}</span>
-        <Button small variant="ghost" onClick={() => choose("policy")}>{policyAction()}</Button>
+        <Button small onClick={() => choose("policy")}>{policyAction()}</Button>
       </dd></div>
       <Show when={factor()?.enrolled}><div class="setting-row"><dt>Recovery codes</dt><dd>
         <Button small variant="ghost" onClick={() => choose("recovery_codes")}>Replace codes</Button>

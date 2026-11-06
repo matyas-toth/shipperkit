@@ -376,7 +376,7 @@ export default function Backups(props: {
                 <strong>{copyKind(copy())}</strong>
                 <time datetime={new Date((copy().finishedAt || copy().createdAt) * 1000).toISOString()}>{when(copy().finishedAt || copy().createdAt)}</time>
                 <Status value={copy().objectKey ? "succeeded" : "warning"} label={copy().objectKey ? "Local and off-server" : "Local copy only"} />
-                <Button small variant="ghost" onClick={() => choose(copy())}>Inspect latest copy</Button>
+                <Button small variant="neutral" onClick={() => choose(copy())}>Inspect latest copy</Button>
                 <Show when={attemptStatus().value !== "succeeded"}><Status value={attemptStatus().value} label={attemptStatus().label} /></Show>
               </div>
             }</Show>
@@ -532,7 +532,7 @@ export default function Backups(props: {
                   confirm: "Download recovery key",
                 })}
               >
-                {downloading() === "shipper-recovery-key.txt" ? "Downloading key" : "Download key"}
+                {downloading() === "shipper-recovery-key.txt" ? "Downloading recovery key" : "Download recovery key"}
               </Button>
             </dd>
           </div>
@@ -887,7 +887,7 @@ export default function Backups(props: {
               </For>
               <Show when={!plans().length}>
                 <tr class="empty-row">
-                  <td colspan="3">No backup plans</td>
+                  <td colspan="3">No scheduled backups</td>
                 </tr>
               </Show>
             </tbody>
@@ -911,6 +911,7 @@ export default function Backups(props: {
                   {(r) => (
                     <tr
                       class="container-row"
+                      classList={{ selected: selected()?.id === r.id }}
                       role="button"
                       tabindex="0"
                       aria-label={"Inspect backup " + r.id}
@@ -962,7 +963,8 @@ export default function Backups(props: {
               <h3>
                 {r.operation === "restore"
                   ? "Restore result"
-                  : "Backup details"}
+                  : plans().find(plan => plan.id === r.planId)?.name ?? "Imported backup"}
+                <time class="backup-detail-time">{when(r.createdAt)}</time>
               </h3>
               <IconButton
                 icon="close"
@@ -977,7 +979,7 @@ export default function Backups(props: {
             <dl class="settings-group">
               <div class="setting-row">
                 <dt>Result</dt>
-                <dd class="mono">{r.result || r.state}</dd>
+                <dd><Status value={r.state} label={r.state === "succeeded" ? "Backed up" : r.state === "failed" ? "Failed" : undefined} /></dd>
               </div>
               <div class="setting-row">
                 <dt>Duration</dt>

@@ -87,7 +87,7 @@ export default function LogViewer(props: {
         <div class="log-operation-actions">
           <Show when={cancellable()}><Button small disabled={props.deployment.cancelRequested} onClick={props.cancel}>{props.deployment.cancelRequested ? "Cancelling" : "Cancel"}</Button></Show>
           <Show when={props.restore}><Button small icon="back" onClick={props.restore}>Restore release</Button></Show>
-          <Show when={retryable()}><Button small variant="neutral" onClick={props.retry}>Retry release</Button></Show>
+          <Show when={retryable()}><Button small variant="primary" onClick={props.retry}>Retry release</Button></Show>
         </div>
       </Show>
     </section>
@@ -105,7 +105,7 @@ export default function LogViewer(props: {
         </div>
         <div class="deployment-result-actions">
           <Show when={failedStep()}><Button small variant="ghost" onClick={() => filter(failedStep()!)}>Show failed step</Button></Show>
-          <Show when={props.diagnostics && state() === "failed"}><Button small variant="primary" icon="terminal" onClick={props.diagnostics}>Diagnostics</Button></Show>
+          <Show when={props.diagnostics && state() === "failed"}><Button small variant="neutral" icon="terminal" onClick={props.diagnostics}>Diagnostics</Button></Show>
         </div>
       </section>
     </Show>
@@ -124,6 +124,7 @@ export default function LogViewer(props: {
       </div>
       <Show when={query.error || copyError()}><ErrorNotice message={copyError() || query.error!.message} /></Show>
       <LogViewport label="Deployment logs" rows={filtered()} lineNumber={line => line.number} message={line => line.line}
+        tone={line => /(^|\s)(error|failed|failure|fatal|panic)\b/i.test(line.line) || /^(failed|failure)$/i.test(line.step) ? "error" : undefined}
         details={presentation.details() ? details : undefined} wrap={presentation.wrap()}
         empty={!lines().length ? query.isPending ? "Loading logs" : operationPending(state()) ? "Waiting for deployment" : "No deployment logs" : !filtered().length ? "No matching logs" : undefined}
         ref={node => viewport = node} onFollow={value => follow = value} />

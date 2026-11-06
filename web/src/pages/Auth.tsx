@@ -49,7 +49,7 @@ export default function AuthPage(props: { setup: boolean; onAuthenticated: (sess
           </div>
         </div>
         <Show when={error()}><ErrorNotice message={error()} /></Show>
-        <Button type="submit" disabled={pending()} class="auth-submit">
+        <Button type="submit" variant="primary" disabled={pending()} class="auth-submit">
           {pending() ? (props.setup ? "Creating administrator" : "Signing in") : (props.setup ? "Create administrator" : "Sign in")}
         </Button>
       </form>

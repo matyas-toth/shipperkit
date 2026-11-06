@@ -14,7 +14,7 @@ export function DomainFields(props: ConfigFields & { acme: boolean; autoHTTPS?: 
   const [override, setOverride] = createSignal<boolean>();
   return <>
     <label for="domain">Domain</label>
-    <input class="input" id="domain" placeholder={props.autoHTTPS ? "Optional" : "Automatic .localhost address"}
+    <input class="input" id="domain" placeholder={props.autoHTTPS ? "Optional" : "Automatic"}
       value={props.config.domain} onInput={e => {
         const value = e.currentTarget.value;
         props.change("domain", value);
@@ -84,7 +84,7 @@ export function BuildDetails(props: ConfigFields & {
           onChange={e => props.change("htaccess", e.currentTarget.checked)} />.htaccess rewrites</label>
       </Show>
       <Show when={commands()}>
-        <div class="detected-commands"><Button variant="ghost" icon="refresh"
+        <div class="detected-commands"><Button icon="refresh"
           disabled={loading() || !props.config.repository && !props.config.localSource}
           onClick={() => void detectCommands()}>{loading() ? "Detecting" : props.hints ? "Use detected commands" : "Detect commands"}</Button></div>
         <Show when={error()}><ErrorNotice message={error()} /></Show>

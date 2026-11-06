@@ -98,7 +98,7 @@ export default function Domains(props: { application: Application; proxy?: Proxy
       const domain = domainFor(id);
       const target = () => domains().find(d => d.service === domain().service && d.primary)?.hostname;
       const verified = () => stored(domain())?.verificationState === "verified";
-      return <article class="domain-card" classList={{ "route-selected": editing() === id }}>
+      return <><article class="domain-card" classList={{ "route-selected": editing() === id }}>
         <header class="domain-card-heading">
           <div class="domain-identity">
             <Show when={stored(domain()) && props.application.activeDeploymentId} fallback={<strong>{domain().hostname}</strong>}>
@@ -122,12 +122,10 @@ export default function Domains(props: { application: Application; proxy?: Proxy
           </div>
         </header>
         <Show when={stored(domain())?.message && !verified()}><div class="domain-row-error" role="status">{stored(domain())?.message}</div></Show>
-      </article>;
-    }}</For></div>}</For><Show when={!domains().length && canAdd()}><div class="empty-state">No domains</div></Show></div>
-    <Show when={editing()} keyed>{id => {
-      const domain = domainFor(id);
-      return <section ref={editor} id={editorId} class="domain-editor" aria-labelledby={editorId + "-title"}>
-        <h3 id={editorId + "-title"}>Edit route</h3>
+      </article>
+      <Show when={editing() === id}>
+        <section ref={editor} id={editorId} class="domain-editor" aria-labelledby={editorId + "-title"}>
+          <h3 id={editorId + "-title"}>Edit route</h3>
           <div class="form-fields field-pairs domain-editor-grid">
             <div class="field" classList={{ "field-wide": !pickService() }}><label for={"host-" + id}>Hostname</label><input id={"host-" + id} class="input" aria-label={"Hostname " + domain().hostname} value={domain().hostname} required onInput={e => update(id, { hostname: e.currentTarget.value.trim().toLowerCase(), ...(e.currentTarget.value.endsWith(".localhost") ? { https: false } : {}) })} /></div>
             <Show when={pickService()}><div class="field"><label for={"service-" + id}>Service</label><select id={"service-" + id} class="input" aria-label={"Service for " + domain().hostname} value={domain().service || ""} onChange={e => move(id, e.currentTarget.value)}><For each={availableServices()}>{s => <option value={s.name}>{s.name}</option>}</For></select></div></Show>
@@ -138,9 +136,11 @@ export default function Domains(props: { application: Application; proxy?: Proxy
             </div>
           </div>
           <DomainOptions domain={domain()} change={value => update(id, value)} />
-        <DomainCertificate domain={savedHost(domain())} />
-      </section>;
-    }}</Show></div>
+          <DomainCertificate domain={savedHost(domain())} />
+        </section>
+      </Show>
+      </>;
+    }}</For></div>}</For><Show when={!domains().length && canAdd()}><div class="empty-state">No domains</div></Show></div></div>
     <Show when={domains().length || dirty()}><EditorActions docked={dirty()} measure="form" inlineWhenFits><Button variant="primary" type="submit" form={formId} icon="check" disabled={props.busy || !dirty()}>Save domains</Button></EditorActions></Show>
   </form>;
 }

@@ -123,7 +123,7 @@ export default function Connections() {
     <section class="settings-section" id="sources">
       <div class="section-toolbar">
         <h2>Connections</h2>
-        <Button icon="git" disabled={busy()} onClick={() => void connect()}>
+        <Button icon="git" variant="primary" disabled={busy()} onClick={() => void connect()}>
           Connect GitHub
         </Button>
       </div>
@@ -221,7 +221,7 @@ export default function Connections() {
               setEditing(true);
             }}
           >
-            Add connection
+            Add custom connection
           </Button>
         }
       >

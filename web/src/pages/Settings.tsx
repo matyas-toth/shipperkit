@@ -37,14 +37,14 @@ export default function Settings() {
       ["Architecture", value?.engine.architecture || "Unavailable"], ["CPUs", String(value?.engine.cpus ?? 0)],
       ["Memory", bytes(value?.engine.memory ?? 0)]];
   };
-  return <div class="content content-wide">
+  return <div class="content content-wide settings-page">
+    <header class="page-heading"><h1>Settings</h1></header>
     <div class="settings-layout">
       <nav class="settings-navigation" aria-label="Settings sections">
         <For each={sections}>{item => <a href={"/settings#" + item.id} class="settings-link"
           aria-current={section() === item.id ? "page" : undefined}><Icon name={item.icon} />{item.label}</a>}</For>
       </nav>
       <div class="settings-content">
-        <header class="page-heading"><h1>Settings</h1></header>
         <Show when={query.error}><ErrorNotice message={query.error!.message} retry={() => void query.refetch()} /></Show>
         <Show when={actionError()}><ErrorNotice message={actionError()} /></Show>
         <Show when={section() === "sources"}><Connections /></Show>

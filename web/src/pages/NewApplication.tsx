@@ -428,7 +428,7 @@ export default function NewApplication() {
               {approved().plan.config.branch || "Default branch"}<Show when={approved().commit}><code class="mono" title={approved().commit}>{approved().commit!.slice(0, 12)}</code></Show>
             </ReviewFact></Show>
             <Show when={(git() || local()) && approved().plan.config.rootDirectory !== "."}>
-              <ReviewFact label="Directory"><code>{approved().plan.config.rootDirectory}</code></ReviewFact>
+              <ReviewFact label="Directory"><code>{approved().plan.config.rootDirectory || "."}</code></ReviewFact>
             </Show>
             <Show when={compose() && !inlineCompose()}>
               <ReviewFact label="Compose file"><code>{approved().plan.config.composeFile}</code></ReviewFact>
@@ -445,7 +445,7 @@ export default function NewApplication() {
               <Show when={method() !== "static"}><ReviewFact label="Runtime">{worker() ? "Worker" : "Web service"}</ReviewFact></Show>
               <Show when={!worker()}>
                 <ReviewFact label="Port">{method() === "static" ? 8080 : config.port || "Automatic"}</ReviewFact>
-                <ReviewFact label="Domain" wide>{approved().plan.config.domain ? (approved().plan.config.https ? "https://" : "http://") + approved().plan.config.domain : "None"}</ReviewFact>
+                <ReviewFact label="Domain">{approved().plan.config.domain ? (approved().plan.config.https ? "https://" : "http://") + approved().plan.config.domain : "None"}</ReviewFact>
               </Show>
             </Show>
             <Show when={compose()}><ReviewFact label="Public routes">

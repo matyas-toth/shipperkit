@@ -13,6 +13,7 @@ import RuntimeFields from "./RuntimeFields";
 import { MemoryLimitField, RuntimeConnectivity } from "./DeployFields";
 import { Icon } from "./Icon";
 import EditorActions from "./EditorActions";
+import { createdDate, deploymentLabel, methodLabel, primaryDomain } from "../data";
 
 const areas = [
   { id: "general", label: "General", icon: "settings" },
@@ -112,6 +113,12 @@ export default function ApplicationSettings(props: {
             </div>
           </form>
           <Show when={renameError()}><ErrorNotice message={renameError()} /></Show>
+          <dl class="settings-group app-settings-facts">
+            <div class="setting-row"><dt>Domain</dt><dd>{primaryDomain(props.application)?.hostname || "None"}</dd></div>
+            <div class="setting-row"><dt>Method</dt><dd>{methodLabel(props.application)}</dd></div>
+            <div class="setting-row"><dt>Created</dt><dd>{createdDate(props.application.createdAt)}</dd></div>
+            <div class="setting-row"><dt>Last release</dt><dd>{props.application.latestDeployment ? deploymentLabel(props.application.latestDeployment) : "None"}</dd></div>
+          </dl>
           <div class="app-settings-secondary">
             <DeploymentTriggers applicationId={props.application.id} />
             <Disclosure label="Danger zone" icon="warning" class="delete-section">

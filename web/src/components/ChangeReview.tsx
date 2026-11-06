@@ -153,7 +153,7 @@ export default function ChangeReview(props: {
         <Show when={props.plan.effects?.length || props.plan.downtime}>
           <ul class="review-effects">
             <For each={props.plan.effects}>{effect => <li classList={{ caution: caution(effect) }}><Icon name={caution(effect) ? "warning" : "check"} />{effect}</li>}</For>
-            <Show when={props.plan.downtime}><li classList={{ caution: caution(props.plan.downtime!) }}><Icon name={caution(props.plan.downtime!) ? "warning" : "check"} />{props.plan.downtime}</li></Show>
+            <Show when={props.plan.downtime}><li classList={{ caution: caution(props.plan.downtime!) }}><Icon name={caution(props.plan.downtime!) ? "warning" : "clock"} />{props.plan.downtime}</li></Show>
           </ul>
         </Show>
       </div>

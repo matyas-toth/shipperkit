@@ -42,6 +42,7 @@ export default function ContainerDrawer(props: { container: Container; close: ()
     <div class="drawer-scrim" onClick={props.close} />
     <div ref={panel} class="drawer" role="dialog" aria-modal="true" aria-labelledby="container-title">
       <div class="drawer-toolbar">
+        <h2 id="container-title">{props.container.name}</h2>
         <Status value={statusOf(props.container)} />
         <div class="drawer-actions">
           <IconButton icon={copied() ? "check" : "copy"} label={copied() ? "Container ID copied" : "Copy container ID"} ghost onClick={() => void copy()} />
@@ -52,9 +53,8 @@ export default function ContainerDrawer(props: { container: Container; close: ()
       </div>
       <div class="drawer-scroll">
         <Show when={copyError()}><ErrorNotice message={copyError()} /></Show>
-        <h2 id="container-title">{props.container.name}</h2>
         <dl class="details-list"><For each={rows()}>{([label, value]) =>
-          <div><dt>{label}</dt><dd classList={{ mono: label === "Container ID" || label === "Application ID" }}>{value}</dd></div>
+          <div><dt>{label}</dt><dd classList={{ mono: label === "Container ID" || label === "Application ID" }} title={String(value)}>{value}</dd></div>
         }</For></dl>
       </div>
       <Show when={copied()}><span class="sr-only" role="status">Container ID copied</span></Show>
