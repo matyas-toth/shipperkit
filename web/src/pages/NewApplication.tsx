@@ -442,10 +442,10 @@ export default function NewApplication() {
               <ReviewFact label="Publish"><code>{approved().plan.config.publishDirectory}</code></ReviewFact>
             </Show>
             <Show when={!compose()}>
-              <ReviewFact label="Runtime">{method() === "static" ? "Static site" : worker() ? "Worker" : "Web service"}</ReviewFact>
+              <Show when={method() !== "static"}><ReviewFact label="Runtime">{worker() ? "Worker" : "Web service"}</ReviewFact></Show>
               <Show when={!worker()}>
                 <ReviewFact label="Port">{method() === "static" ? 8080 : config.port || "Automatic"}</ReviewFact>
-                <ReviewFact label="Domain">{approved().plan.config.domain ? (approved().plan.config.https ? "https://" : "http://") + approved().plan.config.domain : "None"}</ReviewFact>
+                <ReviewFact label="Domain" wide>{approved().plan.config.domain ? (approved().plan.config.https ? "https://" : "http://") + approved().plan.config.domain : "None"}</ReviewFact>
               </Show>
             </Show>
             <Show when={compose()}><ReviewFact label="Public routes">

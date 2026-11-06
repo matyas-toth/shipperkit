@@ -70,7 +70,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
     "shipper-recovery-key.txt",
   );
   await recovery.getByRole("button", { name: "Back up", exact: true }).click();
-  await expect(recovery.getByText("Backed up", { exact: true })).toBeVisible({
+  await expect(recovery.locator(".backup-history").getByText("Backed up", { exact: true })).toBeVisible({
     timeout: 15000,
   });
   await recovery.locator(".backup-history tr[role=button]").first().click();
@@ -237,7 +237,8 @@ test("reviewed database copy keeps existing data and requires the application na
   await expect(
     page.getByRole("button", { name: "Restore copy", exact: true }),
   ).toBeDisabled();
-  await page.getByLabel("Application name", { exact: true }).fill("Website");
+  await page.getByLabel("Confirm application name", { exact: true }).fill("Website");
+  await expect(page.getByRole("button", { name: "Restore copy", exact: true })).toBeEnabled();
   await page
     .locator(".restore-review")
     .screenshot({ path: join(tmpdir(), "shipper-phase8-restore.png") });

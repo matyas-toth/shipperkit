@@ -1,10 +1,11 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, onCleanup, createMemo, createSignal, createUniqueId, untrack } from "solid-js";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application, Service, StaticConfig } from "../types";
-import { bytes, formatDuration } from "../data";
+import { bytes, formatDuration, operationTime } from "../data";
 import { Button, Disclosure, ErrorNotice, IconButton, Status } from "./Controls";
+import EditorActions from "./EditorActions";
 import SchedulePicker from "./SchedulePicker";
 import { ChoiceCards } from "./Choices";
 
@@ -80,7 +81,7 @@ interface Protection {
   volumeError: string;
   revision: string;
 }
-const when = (n: number) => (n ? new Date(n * 1000).toLocaleString() : "");
+const when = (n: number) => n ? operationTime(n, true) : "";
 const freshSpec = (): Spec => ({
   kind: "database",
   service: "",
@@ -100,8 +101,9 @@ export default function Backups(props: {
   services?: Service[];
   service?: string;
   save?: (config: StaticConfig) => Promise<boolean | void>;
+  editorScope?: (name?: string) => void;
 }) {
-  const auth = useAuth(),
+  const formId = createUniqueId(), auth = useAuth(),
     client = useQueryClient(),
     base = () =>
       props.application
@@ -122,6 +124,7 @@ export default function Backups(props: {
   const [editing, setEditing] = createSignal<Plan>(),
     [error, setError] = createSignal(""),
     [busy, setBusy] = createSignal(false),
+    [downloading, setDownloading] = createSignal(""),
     [selected, setSelected] = createSignal<Run>(),
     [review, setReview] = createSignal<{
       revision: string;
@@ -142,6 +145,8 @@ export default function Backups(props: {
     [attaching, setAttaching] = createSignal<Volume>(),
     [logical, setLogical] = createSignal(""),
     [deleting, setDeleting] = createSignal<Volume>();
+  createEffect(() => props.editorScope?.(editing() ? editing()?.id ? "Edit backup" : "New backup" : importing() ? "Import backup" : undefined));
+  onCleanup(() => props.editorScope?.());
   const plans = () =>
     query.data?.plans.filter(
       (p) => !props.service || p.config.service === props.service,
@@ -205,6 +210,14 @@ export default function Backups(props: {
       await post(base() + "/plans", editing(), auth.session()?.csrfToken);
       setEditing(undefined);
     });
+  }
+  async function transfer(path: string, name: string, body?: unknown) {
+    if (downloading()) return;
+    setDownloading(name);
+    setError("");
+    try { await download(path, name, body); }
+    catch (e) { setError((e as Error).message); }
+    finally { setDownloading(""); }
   }
   async function download(path: string, name: string, body?: unknown) {
     if (body === undefined) {
@@ -316,18 +329,19 @@ export default function Backups(props: {
           ),
         ]
       : (props.application?.config.volumes.map((v) => v.name) ?? []);
-  const protectionState = () => {
-    const last = runs().find((r) => r.operation === "backup");
-    if (!last) return "Unprotected";
-    if (last.state === "queued" || last.state === "running")
-      return "Backing up";
-    if (last.state !== "succeeded") return "Backup failed";
-    const p = plans().find((p) => p.id === last.planId);
-    return p?.schedule && p.nextAt < Date.now() / 1000
-      ? "Overdue"
-      : Date.now() / 1000 - last.finishedAt > 86400
-        ? "Last backup " + when(last.finishedAt)
-        : "Backed up " + when(last.finishedAt);
+  const latestAttempt = createMemo(() => runs().find(run => run.operation === "backup"));
+  const latestCopy = createMemo(() => runs().find(run => run.operation === "backup" && run.state === "succeeded"));
+  const backupKinds: Record<string, string> = { instance: "Instance settings", database: "Database", volume: "Persistent volume" };
+  const copyKind = (run: Run) => backupKinds[run.kind || plans().find(plan => plan.id === run.planId)?.config.kind || ""] ?? "Encrypted archive";
+  const attemptStatus = () => {
+    const run = latestAttempt();
+    if (!run) return { value: "unknown", label: "No backups" };
+    if (run.state === "queued" || run.state === "running") return { value: "operating", label: "Backing up" };
+    if (run.state !== "succeeded") return { value: "failed", label: "Last backup failed" };
+    const plan = plans().find(item => item.id === run.planId);
+    return plan?.enabled && plan.schedule && plan.nextAt > 0 && plan.nextAt < Date.now() / 1000
+      ? { value: "warning", label: "Backup overdue" }
+      : { value: "succeeded", label: "Backed up" };
   };
   return (
     <section class="backups-panel">
@@ -336,7 +350,7 @@ export default function Backups(props: {
       </Show>
       <div class="section-toolbar">
         <h2>{props.application ? "Backups" : "Recovery"}</h2>
-        <div class="toolbar-actions">
+        <Show when={!editing() && !importing()}><div class="toolbar-actions">
           <Show when={props.application}>
             <Button
               variant="ghost"
@@ -351,24 +365,174 @@ export default function Backups(props: {
           <Button variant="primary" icon="plus" onClick={create} disabled={busy()}>
             New backup
           </Button>
-        </div>
+        </div></Show>
       </div>
-      <Show when={!props.application}>
+      <Show when={!props.application && !editing() && query.data}>
+        <div class="recovery-overview">
+          <section class="recovery-copy" aria-label="Latest recovery copy">
+            <h3>Latest recovery copy</h3>
+            <Show when={latestCopy()} fallback={<Status value={attemptStatus().value} label={attemptStatus().label} />}>{copy =>
+              <div class="recovery-copy-body">
+                <strong>{copyKind(copy())}</strong>
+                <time datetime={new Date((copy().finishedAt || copy().createdAt) * 1000).toISOString()}>{when(copy().finishedAt || copy().createdAt)}</time>
+                <Status value={copy().objectKey ? "succeeded" : "warning"} label={copy().objectKey ? "Local and off-server" : "Local copy only"} />
+                <Button small variant="ghost" onClick={() => choose(copy())}>Inspect latest copy</Button>
+                <Show when={attemptStatus().value !== "succeeded"}><Status value={attemptStatus().value} label={attemptStatus().label} /></Show>
+              </div>
+            }</Show>
+          </section>
+        <section class="backup-destinations">
+          <div class="section-toolbar">
+            <h3>Off-server storage</h3>
+            <Button
+              icon="plus"
+              onClick={() =>
+                setDestination({
+                  id: "",
+                  name: "",
+                  endpoint: "",
+                  region: "us-east-1",
+                  bucket: "",
+                  prefix: "",
+                  private: false,
+                })
+              }
+            >
+              Add S3 destination
+            </Button>
+          </div>
+          <Show when={query.data?.destinations.length}><div class="table-tray">
+            <table class="inventory-table backups-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Bucket</th>
+                </tr>
+              </thead>
+              <tbody>
+                <For each={query.data?.destinations}>
+                  {(d) => (
+                    <tr>
+                      <td>
+                        <button
+                          class="task-name"
+                          onClick={() =>
+                            setDestination({
+                              ...d,
+                              accessKey: "",
+                              secretKey: "",
+                            })
+                          }
+                        >
+                          {d.name}
+                        </button>
+                      </td>
+                      <td>{d.bucket}</td>
+                    </tr>
+                  )}
+                </For>
+              </tbody>
+            </table>
+          </div></Show>
+          <Show when={destination()}>
+            <form
+              class="backup-editor"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void action(async () => {
+                  await post(
+                    "/protection/destinations",
+                    destination(),
+                    auth.session()?.csrfToken,
+                  );
+                  setDestination(undefined);
+                });
+              }}
+            >
+              <div class="form-fields">
+                <For
+                  each={
+                    [
+                      ["name", "Name"],
+                      ["endpoint", "Endpoint"],
+                      ["region", "Region"],
+                      ["bucket", "Bucket"],
+                      ["prefix", "Prefix"],
+                      ["accessKey", "Access key"],
+                      ["secretKey", "Secret key"],
+                    ] as const
+                  }
+                >
+                  {([key, label]) => (
+                    <>
+                      <label for={"s3-" + key}>{label}</label>
+                      <input
+                        id={"s3-" + key}
+                        class="input"
+                        required={
+                          key !== "prefix" &&
+                          ((!destination()?.id &&
+                            (key === "accessKey" || key === "secretKey")) ||
+                            (key !== "accessKey" && key !== "secretKey"))
+                        }
+                        type={
+                          key === "secretKey" || key === "accessKey"
+                            ? "password"
+                            : "text"
+                        }
+                        autocomplete="off"
+                        value={String(destination()![key] ?? "")}
+                        onInput={(e) =>
+                          setDestination((d) =>
+                            d ? { ...d, [key]: e.currentTarget.value } : d,
+                          )
+                        }
+                      />
+                    </>
+                  )}
+                </For>
+              </div>
+              <details class="configuration">
+                <summary>Private endpoint</summary>
+                <label class="check-field">
+                  <input
+                    type="checkbox"
+                    checked={destination()!.private}
+                    onChange={(e) =>
+                      setDestination((d) =>
+                        d ? { ...d, private: e.currentTarget.checked } : d,
+                      )
+                    }
+                  />
+                  Allow private addresses and HTTP
+                </label>
+              </details>
+              <div class="form-actions">
+                <Button
+                  variant="ghost"
+                  onClick={() => setDestination(undefined)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={busy()}>
+                  Save destination
+                </Button>
+              </div>
+            </form>
+          </Show>
+        </section>
+          <div class="recovery-actions">
         <dl class="settings-group recovery-key">
           <div class="setting-row">
             <dt>Recovery key</dt>
             <dd>
               <Button
-                disabled={busy()}
-                onClick={() =>
-                  void action(() =>
-                    download("/protection/key", "shipper-recovery-key.txt", {
-                      confirm: "Download recovery key",
-                    }),
-                  )
-                }
+                disabled={!!downloading()}
+                onClick={() => void transfer("/protection/key", "shipper-recovery-key.txt", {
+                  confirm: "Download recovery key",
+                })}
               >
-                Download key
+                {downloading() === "shipper-recovery-key.txt" ? "Downloading key" : "Download key"}
               </Button>
             </dd>
           </div>
@@ -394,6 +558,8 @@ export default function Backups(props: {
             </div>
           </dl>
         </Disclosure>
+          </div>
+        </div>
       </Show>
       <Show when={importing()}>
         <form class="backup-editor" onSubmit={importFile}>
@@ -434,20 +600,31 @@ export default function Backups(props: {
           </div>
         </form>
       </Show>
-      <Show when={editing()} keyed>
+      <Show when={editing()}>
         {(p) => (
-          <form class="backup-editor" onSubmit={save}>
+          <form id={formId} class="backup-editor" onSubmit={save}>
             <div class="section-toolbar">
-              <h3>{p.id ? "Edit backup" : "New backup"}</h3>
+              <h3>{p().id ? "Edit backup" : "New backup"}</h3>
+              <div class="editor-heading-actions">
+            <label class="check-field">
+              <input
+                type="checkbox"
+                checked={editing()!.enabled}
+                onChange={(e) => update({ enabled: e.currentTarget.checked })}
+              />
+              Enabled
+            </label>
               <IconButton
                 icon="close"
                 label="Close backup"
                 ghost
                 onClick={() => setEditing(undefined)}
               />
+              </div>
             </div>
-            <div class="form-fields">
-              <label for="backup-name">Name</label>
+            <div class="operational-editor-grid"><div class="backup-definition">
+            <div class="form-fields field-pairs">
+              <div class="field"><label for="backup-name">Name</label>
               <input
                 id="backup-name"
                 class="input"
@@ -455,7 +632,7 @@ export default function Backups(props: {
                 maxlength="80"
                 value={editing()!.name}
                 onInput={(e) => update({ name: e.currentTarget.value })}
-              />
+              /></div>
             </div>
             <Show when={props.application}>
               <ChoiceCards<"database" | "volume"> label="Backup type"
@@ -465,10 +642,10 @@ export default function Backups(props: {
                   { value: "volume", label: "Persistent volume", icon: "box" },
                 ]}
                 change={kind => spec({ kind })} />
-              <div class="form-fields">
+              <div class="form-fields field-pairs">
                 <Show when={editing()!.config.kind === "database"}>
                   <Show when={props.application?.method === "compose"}>
-                    <label for="backup-service">Service</label>
+                    <div class="field"><label for="backup-service">Service</label>
                     <select
                       id="backup-service"
                       class="input"
@@ -480,9 +657,9 @@ export default function Backups(props: {
                       <For each={props.services}>
                         {(s) => <option value={s.name}>{s.name}</option>}
                       </For>
-                    </select>
+                    </select></div>
                   </Show>
-                  <label for="backup-engine">Engine</label>
+                  <div class="field"><label for="backup-engine">Engine</label>
                   <select
                     id="backup-engine"
                     class="input"
@@ -492,18 +669,18 @@ export default function Backups(props: {
                     <option value="postgres">PostgreSQL</option>
                     <option value="mysql">MySQL</option>
                     <option value="mariadb">MariaDB</option>
-                  </select>
-                  <label for="backup-database">Database name</label>
+                  </select></div>
+                  <div class="field"><label for="backup-database">Database name</label>
                   <input
                     id="backup-database"
                     class="input"
                     required
                     value={editing()!.config.database}
                     onInput={(e) => spec({ database: e.currentTarget.value })}
-                  />
+                  /></div>
                 </Show>
                 <Show when={editing()!.config.kind === "volume"}>
-                  <label for="backup-volume">Volume</label>
+                  <div class="field"><label for="backup-volume">Volume</label>
                   <select
                     id="backup-volume"
                     class="input"
@@ -520,14 +697,14 @@ export default function Backups(props: {
                         </option>
                       )}
                     </For>
-                  </select>
+                  </select></div>
                 </Show>
               </div>
             </Show>
             <details class="configuration">
-              <summary>Storage and retention</summary>
-              <div class="form-fields configuration-fields">
-                <label for="backup-destination">Destination</label>
+              <summary><span>Storage and retention</span><span class="disclosure-value">{editing()!.config.destination ? "Local + " + (query.data?.destinations.find(d => d.id === editing()!.config.destination)?.name ?? "S3") : "Local disk"} · Keep {editing()!.config.keep}</span></summary>
+              <div class="form-fields field-pairs configuration-fields">
+                <div class="field"><label for="backup-destination">Destination</label>
                 <select
                   id="backup-destination"
                   class="input"
@@ -538,8 +715,8 @@ export default function Backups(props: {
                   <For each={query.data?.destinations}>
                     {(d) => <option value={d.id}>Local + {d.name}</option>}
                   </For>
-                </select>
-                <label for="backup-keep">Keep backups</label>
+                </select></div>
+                <div class="field"><label for="backup-keep">Keep backups</label>
                 <input
                   id="backup-keep"
                   class="input"
@@ -548,22 +725,22 @@ export default function Backups(props: {
                   max="100"
                   value={editing()!.config.keep}
                   onInput={(e) => spec({ keep: Number(e.currentTarget.value) })}
-                />
+                /></div>
               </div>
             </details>
             <Show when={editing()!.config.kind === "database"}>
               <details class="configuration">
-                <summary>Connection</summary>
-                <div class="form-fields configuration-fields">
-                  <label for="backup-user">User</label>
+                <summary><span>Connection</span><span class="disclosure-value">{editing()!.config.service || editing()!.config.user || "Container defaults"}</span></summary>
+                <div class="form-fields field-pairs configuration-fields">
+                  <div class="field"><label for="backup-user">User</label>
                   <input
                     id="backup-user"
                     class="input"
                     placeholder="From service"
                     value={editing()!.config.user}
                     onInput={(e) => spec({ user: e.currentTarget.value })}
-                  />
-                  <label for="backup-password">Password</label>
+                  /></div>
+                  <div class="field"><label for="backup-password">Password</label>
                   <input
                     id="backup-password"
                     class="input"
@@ -572,8 +749,8 @@ export default function Backups(props: {
                     placeholder="From service"
                     value={editing()!.config.password}
                     onInput={(e) => spec({ password: e.currentTarget.value })}
-                  />
-                  <label for="backup-port">Port</label>
+                  /></div>
+                  <div class="field"><label for="backup-port">Port</label>
                   <input
                     id="backup-port"
                     class="input"
@@ -585,8 +762,8 @@ export default function Backups(props: {
                     onInput={(e) =>
                       spec({ port: Number(e.currentTarget.value) })
                     }
-                  />
-                  <label for="backup-tls">TLS</label>
+                  /></div>
+                  <div class="field"><label for="backup-tls">TLS</label>
                   <select
                     id="backup-tls"
                     class="input"
@@ -599,35 +776,28 @@ export default function Backups(props: {
                     <option value="verify-full">
                       Verify certificate and hostname
                     </option>
-                  </select>
+                  </select></div>
                 </div>
               </details>
             </Show>
-            <details class="configuration" open={!!editing()!.schedule}>
+            </div><div class="backup-schedule"><details class="configuration" open={!!untrack(() => p().schedule)}>
               <summary>Schedule</summary>
               <SchedulePicker
                 value={editing()!.schedule}
                 timezone={editing()!.timezone}
                 change={(schedule, timezone) => update({ schedule, timezone })}
               />
-            </details>
-            <label class="check-field">
-              <input
-                type="checkbox"
-                checked={editing()!.enabled}
-                onChange={(e) => update({ enabled: e.currentTarget.checked })}
-              />
-              Enabled
-            </label>
-            <div class="form-actions">
-              <Show when={p.id}>
+            </details></div></div>
+
+            <EditorActions measure="form" inlineWhenFits>
+              <Show when={p().id}>
                 <Button
                   variant="ghost"
                   disabled={busy()}
                   onClick={() =>
                     void action(async () => {
                       await post(
-                        base() + `/plans/${p.id}/delete`,
+                        base() + `/plans/${p().id}/delete`,
                         {},
                         auth.session()?.csrfToken,
                       );
@@ -641,17 +811,28 @@ export default function Backups(props: {
               <Button variant="ghost" onClick={() => setEditing(undefined)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={busy()}>
+              <Button type="submit" form={formId} variant="primary" disabled={busy()}>
                 {busy() ? "Saving" : "Save backup"}
               </Button>
-            </div>
+            </EditorActions>
           </form>
         )}
       </Show>
       <Show when={!editing()}>
-        <div class="protection-state" role="status">
-          {query.isPending ? "Loading backups" : protectionState()}
-        </div>
+        <Show when={props.application && query.data}>
+          <div class="backup-readiness" aria-label="Backup readiness">
+            <dl>
+              <div><dt>Backup status</dt><dd><Status value={attemptStatus().value} label={attemptStatus().label} /></dd></div>
+              <Show when={latestCopy()}>{copy => <>
+                <div><dt>Latest copy</dt><dd><strong>{copyKind(copy())}</strong><time datetime={new Date((copy().finishedAt || copy().createdAt) * 1000).toISOString()}>{when(copy().finishedAt || copy().createdAt)}</time></dd></div>
+                <div><dt>Storage</dt><dd>{copy().objectKey ? "Local and off-server" : "Local only"}</dd></div>
+              </>}</Show>
+            </dl>
+            <Show when={latestCopy()}>{copy =>
+              <Button small variant="neutral" onClick={() => choose(copy())}>Inspect latest copy</Button>
+            }</Show>
+          </div>
+        </Show>
         <div class="table-tray">
           <table class="inventory-table backups-table">
             <thead>
@@ -713,7 +894,7 @@ export default function Backups(props: {
           </table>
         </div>
       </Show>
-      <Show when={runs().length}>
+      <Show when={!editing() && runs().length}>
         <section class="backup-history">
           <h3>History</h3>
           <div class="table-tray">
@@ -824,17 +1005,10 @@ export default function Backups(props: {
             <Show when={r.operation === "backup" && r.state === "succeeded"}>
               <div class="toolbar-actions">
                 <Button
-                  disabled={busy()}
-                  onClick={() =>
-                    void action(() =>
-                      download(
-                        base() + `/runs/${r.id}/download`,
-                        `shipper-${r.id}.age`,
-                      ),
-                    )
-                  }
+                  disabled={!!downloading()}
+                  onClick={() => void transfer(base() + `/runs/${r.id}/download`, `shipper-${r.id}.age`)}
                 >
-                  Download archive
+                  {downloading() === `shipper-${r.id}.age` ? "Downloading archive" : "Download archive"}
                 </Button>
                 <Show when={props.application}>
                   <Button
@@ -849,10 +1023,15 @@ export default function Backups(props: {
             <Show when={review()}>
               <form class="restore-review" onSubmit={restore}>
                 <h3>Restore a copy</h3>
+                <strong class="review-application">{props.application?.name}</strong>
                 <dl class="settings-group">
                   <div class="setting-row">
                     <dt>Source</dt>
                     <dd>{review()!.database || review()!.volume}</dd>
+                  </div>
+                  <div class="setting-row">
+                    <dt>Backup</dt>
+                    <dd><time datetime={new Date(r.createdAt * 1000).toISOString()}>{operationTime(r.createdAt, true)}</time> <code class="mono" title={r.id}>{r.id.slice(-8)}</code></dd>
                   </div>
                   <div class="setting-row">
                     <dt>Existing data</dt>
@@ -860,12 +1039,12 @@ export default function Backups(props: {
                   </div>
                   <div class="setting-row">
                     <dt>Application switch</dt>
-                    <dd>Separate change review</dd>
+                    <dd>Requires a separate change</dd>
                   </div>
                 </dl>
-                <div class="form-fields">
+                <div class="form-fields field-pairs restore-fields">
                   <Show when={review()!.kind === "database"}>
-                    <label for="restore-target">New database</label>
+                    <div class="field"><label for="restore-target">New database</label>
                     <input
                       id="restore-target"
                       class="input"
@@ -873,16 +1052,16 @@ export default function Backups(props: {
                       pattern="[a-zA-Z_][a-zA-Z0-9_]{0,62}"
                       value={target()}
                       onInput={(e) => setTarget(e.currentTarget.value)}
-                    />
+                    /></div>
                   </Show>
-                  <label for="restore-confirm">Application name</label>
+                  <div class="field"><label for="restore-confirm">Confirm application name</label>
                   <input
                     id="restore-confirm"
                     class="input"
                     required
                     value={confirm()}
                     onInput={(e) => setConfirm(e.currentTarget.value)}
-                  />
+                  /></div>
                 </div>
                 <details class="configuration">
                   <summary>Recovery credentials</summary>
@@ -925,9 +1104,10 @@ export default function Backups(props: {
                   </Button>
                   <Button
                     type="submit"
+                    variant="primary"
                     disabled={busy() || confirm() !== props.application?.name}
                   >
-                    Restore copy
+                    {busy() ? "Restoring copy" : "Restore copy"}
                   </Button>
                 </div>
               </form>
@@ -1090,153 +1270,6 @@ export default function Backups(props: {
             </Button>
           </div>
         </form>
-      </Show>
-      <Show when={!props.application}>
-        <section class="backup-destinations">
-          <div class="section-toolbar">
-            <h3>Off-server storage</h3>
-            <Button
-              icon="plus"
-              onClick={() =>
-                setDestination({
-                  id: "",
-                  name: "",
-                  endpoint: "",
-                  region: "us-east-1",
-                  bucket: "",
-                  prefix: "",
-                  private: false,
-                })
-              }
-            >
-              Add S3 destination
-            </Button>
-          </div>
-          <div class="table-tray">
-            <table class="inventory-table backups-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Bucket</th>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={query.data?.destinations}>
-                  {(d) => (
-                    <tr>
-                      <td>
-                        <button
-                          class="task-name"
-                          onClick={() =>
-                            setDestination({
-                              ...d,
-                              accessKey: "",
-                              secretKey: "",
-                            })
-                          }
-                        >
-                          {d.name}
-                        </button>
-                      </td>
-                      <td>{d.bucket}</td>
-                    </tr>
-                  )}
-                </For>
-                <Show when={!query.data?.destinations.length}>
-                  <tr class="empty-row">
-                    <td colspan="2">No off-server destinations</td>
-                  </tr>
-                </Show>
-              </tbody>
-            </table>
-          </div>
-          <Show when={destination()}>
-            <form
-              class="backup-editor"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void action(async () => {
-                  await post(
-                    "/protection/destinations",
-                    destination(),
-                    auth.session()?.csrfToken,
-                  );
-                  setDestination(undefined);
-                });
-              }}
-            >
-              <div class="form-fields">
-                <For
-                  each={
-                    [
-                      ["name", "Name"],
-                      ["endpoint", "Endpoint"],
-                      ["region", "Region"],
-                      ["bucket", "Bucket"],
-                      ["prefix", "Prefix"],
-                      ["accessKey", "Access key"],
-                      ["secretKey", "Secret key"],
-                    ] as const
-                  }
-                >
-                  {([key, label]) => (
-                    <>
-                      <label for={"s3-" + key}>{label}</label>
-                      <input
-                        id={"s3-" + key}
-                        class="input"
-                        required={
-                          key !== "prefix" &&
-                          ((!destination()?.id &&
-                            (key === "accessKey" || key === "secretKey")) ||
-                            (key !== "accessKey" && key !== "secretKey"))
-                        }
-                        type={
-                          key === "secretKey" || key === "accessKey"
-                            ? "password"
-                            : "text"
-                        }
-                        autocomplete="off"
-                        value={String(destination()![key] ?? "")}
-                        onInput={(e) =>
-                          setDestination((d) =>
-                            d ? { ...d, [key]: e.currentTarget.value } : d,
-                          )
-                        }
-                      />
-                    </>
-                  )}
-                </For>
-              </div>
-              <details class="configuration">
-                <summary>Private endpoint</summary>
-                <label class="check-field">
-                  <input
-                    type="checkbox"
-                    checked={destination()!.private}
-                    onChange={(e) =>
-                      setDestination((d) =>
-                        d ? { ...d, private: e.currentTarget.checked } : d,
-                      )
-                    }
-                  />
-                  Allow private addresses and HTTP
-                </label>
-              </details>
-              <div class="form-actions">
-                <Button
-                  variant="ghost"
-                  onClick={() => setDestination(undefined)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={busy()}>
-                  Save destination
-                </Button>
-              </div>
-            </form>
-          </Show>
-        </section>
       </Show>
     </section>
   );

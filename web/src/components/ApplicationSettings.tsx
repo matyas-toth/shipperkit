@@ -1,5 +1,5 @@
 import { createStore } from "solid-js/store";
-import { Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { Application, StaticConfig } from "../types";
 import DeploymentTriggers from "./DeploymentTriggers";
@@ -9,6 +9,19 @@ import { Button, Disclosure, ErrorNotice, IconButton, validateForm } from "./Con
 import { clearDraft, readDraft, safeConfigDraft, saveDraft, saveVolatileDraft } from "../drafts";
 import { useAuth } from "../context";
 import Volumes from "./Volumes";
+import RuntimeFields from "./RuntimeFields";
+import { MemoryLimitField, RuntimeConnectivity } from "./DeployFields";
+import { Icon } from "./Icon";
+import EditorActions from "./EditorActions";
+
+const areas = [
+  { id: "general", label: "General", icon: "settings" },
+  { id: "source", label: "Source and build", icon: "layers" },
+  { id: "runtime", label: "Runtime", icon: "terminal" },
+  { id: "storage", label: "Storage", icon: "database" },
+  { id: "commands", label: "Deployment commands", icon: "code" },
+] as const;
+type SettingsArea = (typeof areas)[number]["id"];
 
 function configFingerprint(config: StaticConfig) {
   return JSON.stringify(safeConfigDraft(config), (_, value) =>
@@ -25,7 +38,7 @@ export default function ApplicationSettings(props: {
   rename: (name: string) => Promise<void>;
   remove: () => Promise<void>;
 }) {
-  const auth = useAuth();
+  const auth = useAuth(), formId = createUniqueId();
   const key = "settings:" + auth.session()?.user?.id + ":" + props.application.id;
   const [config, setConfig] = createStore(normalizedConfig(readDraft<StaticConfig>(key) ?? props.application.config));
   const [name, setName] = createSignal(props.application.name);
@@ -35,7 +48,8 @@ export default function ApplicationSettings(props: {
   const [reviewing, setReviewing] = createSignal(false);
   const [confirm, setConfirm] = createSignal(false);
   const inlineCompose = () => config.method === "compose" && config.composeSource === "paste";
-  const [sourceOpen, setSourceOpen] = createSignal(!!props.showSource || inlineCompose());
+  const [area, setArea] = createSignal<SettingsArea>(props.showSource || inlineCompose() ? "source" : "general");
+  const visibleAreas = () => areas.filter(item => config.method !== "compose" || !["runtime", "storage"].includes(item.id));
   const hasSavedCompose = () => props.application.config.composeSource === "paste" &&
     !!(props.application.config.composeKeep || props.application.config.composeHasValue);
   const composeEdited = () => inlineCompose() && (config.composeKeep === false && hasSavedCompose() || !!config.composeYAML);
@@ -51,10 +65,14 @@ export default function ApplicationSettings(props: {
     // Inline source can contain credentials. Keep edited YAML in memory only.
     saveVolatileDraft(key, composeEdited() ? { ...safe, composeYAML: config.composeYAML, composeKeep: config.composeKeep } : safe);
   });
-  createEffect(() => { if (props.showSource) setSourceOpen(true); });
+  createEffect(() => { if (props.showSource) setArea("source"); });
   async function save(e: SubmitEvent) {
     e.preventDefault();
-    if (props.busy || reviewing() || !dirty() || !validateForm(e.currentTarget as HTMLFormElement)) return;
+    if (props.busy || reviewing() || !dirty()) return;
+    const form = e.currentTarget as HTMLFormElement;
+    const invalidArea = form.querySelector(":invalid")?.closest<HTMLElement>("[data-settings-section]")?.dataset.settingsSection as SettingsArea | undefined;
+    if (invalidArea) setArea(invalidArea);
+    if (!validateForm(form)) return;
     setError("");
     setReviewing(true);
     try {
@@ -73,49 +91,69 @@ export default function ApplicationSettings(props: {
     finally { setRenaming(false); }
   }
   return <div class="application-settings">
-    <div class="app-settings-general">
-      <h2>Application settings</h2>
-      <form onSubmit={rename} class="rename-form">
-        <label for="application-name">Name</label>
-        <div>
-          <input id="application-name" class="input" value={name()} required maxlength={80} onInput={e => setName(e.currentTarget.value)} />
-          <Button type="submit" disabled={renaming() || !name().trim() || name().trim() === props.application.name}>Save name</Button>
-        </div>
-      </form>
-      <Show when={renameError()}><ErrorNotice message={renameError()} /></Show>
-    </div>
-    <form noValidate onSubmit={save} class="app-config-form">
-      <Disclosure label="Source and build" icon="layers" open={sourceOpen()} onToggle={e => setSourceOpen(e.currentTarget.open)}>
-        <div class="form-fields configuration-fields app-settings-fields">
-          <StaticFields config={config} change={(key, value) => setConfig(key, value as never)} applicationId={props.application.id}
-            expanded={sourceOpen()} hasSavedCompose={hasSavedCompose()} />
-        </div>
-      </Disclosure>
-      <Show when={config.method !== "compose"}>
-        <Disclosure label="Storage" icon="database">
-          <Volumes values={config.volumes} change={volumes => setConfig("volumes", volumes)} />
-        </Disclosure>
-      </Show>
-      <Disclosure label="Deployment commands" icon="terminal">
-        <div class="app-settings-disclosure-body">
-          <LifecycleCommands compact config={config} services={props.application.latestDeployment?.services?.map(s => s.name)}
-            change={hooks => setConfig("hooks", hooks)} />
-        </div>
-      </Disclosure>
-      <div class="app-settings-review">
-        <Show when={error()}><ErrorNotice message={error()} /></Show>
-        <Button variant="primary" type="submit" icon="deploy" disabled={props.busy || !dirty()} aria-disabled={reviewing() || undefined}>
-          {reviewing() ? "Reviewing changes" : "Review changes"}
-        </Button>
+    <h2>Application settings</h2>
+    <div class="app-settings-workspace">
+      <nav class="app-settings-navigation" aria-label="Application settings sections">
+        <For each={visibleAreas()}>{item => <button type="button" aria-current={area() === item.id ? "page" : undefined} onClick={() => setArea(item.id)}>
+          <Icon name={item.icon} />{item.label}
+        </button>}</For>
+      </nav>
+      <select class="input app-settings-select" aria-label="Application settings section" value={area()} onChange={e => setArea(e.currentTarget.value as SettingsArea)}>
+        <For each={visibleAreas()}>{item => <option value={item.id}>{item.label}</option>}</For>
+      </select>
+      <div class="app-settings-main">
+        <section class="app-settings-pane" hidden={area() !== "general"}>
+          <h3>General</h3>
+          <form onSubmit={rename} class="rename-form">
+            <label for="application-name">Name</label>
+            <div>
+              <input id="application-name" class="input" value={name()} required maxlength={80} onInput={e => setName(e.currentTarget.value)} />
+              <Button type="submit" disabled={renaming() || !name().trim() || name().trim() === props.application.name}>Save name</Button>
+            </div>
+          </form>
+          <Show when={renameError()}><ErrorNotice message={renameError()} /></Show>
+          <div class="app-settings-secondary">
+            <DeploymentTriggers applicationId={props.application.id} />
+            <Disclosure label="Danger zone" icon="warning" class="delete-section">
+              <div class="app-settings-disclosure-body">
+                <Button icon="trash" class="danger-button" disabled={props.busy} onClick={() => setConfirm(true)}>Delete application</Button>
+              </div>
+            </Disclosure>
+          </div>
+        </section>
+        <form id={formId} noValidate onSubmit={save} class="app-config-form" classList={{ "is-general": area() === "general" && !dirty() }}>
+          <section class="app-settings-pane" data-settings-section="source" hidden={area() !== "source"}>
+            <h3>Source and build</h3>
+            <div class="form-fields app-settings-fields">
+              <StaticFields config={config} change={(key, value) => setConfig(key, value as never)} applicationId={props.application.id}
+                expanded={area() === "source"} hasSavedCompose={hasSavedCompose()} />
+            </div>
+          </section>
+          <Show when={config.method !== "compose"}>
+            <section class="app-settings-pane" data-settings-section="runtime" hidden={area() !== "runtime"}>
+              <h3>Runtime</h3>
+              <RuntimeFields value={config.runtime} change={runtime => setConfig("runtime", runtime)} expanded
+                connectivity={<RuntimeConnectivity config={config} change={(key, value) => setConfig(key, value as never)} method={config.method} withoutMemory />}
+                memory={<MemoryLimitField config={config} change={(key, value) => setConfig(key, value as never)} />} />
+            </section>
+            <section class="app-settings-pane" data-settings-section="storage" hidden={area() !== "storage"}>
+              <h3>Storage</h3>
+              <Volumes values={config.volumes} change={volumes => setConfig("volumes", volumes)} />
+            </section>
+          </Show>
+          <section class="app-settings-pane" data-settings-section="commands" hidden={area() !== "commands"}>
+            <h3>Deployment commands</h3>
+            <LifecycleCommands compact config={config} services={props.application.latestDeployment?.services?.map(s => s.name)}
+              change={hooks => setConfig("hooks", hooks)} />
+          </section>
+          <Show when={error()}><ErrorNotice message={error()} /></Show>
+          <EditorActions docked={dirty()} measure="form" inlineWhenFits>
+            <Button variant="primary" type="submit" form={formId} icon="deploy" disabled={props.busy || !dirty()} aria-disabled={reviewing() || undefined}>
+              {reviewing() ? "Reviewing changes" : "Review changes"}
+            </Button>
+          </EditorActions>
+        </form>
       </div>
-    </form>
-    <div class="app-settings-secondary">
-      <DeploymentTriggers applicationId={props.application.id} />
-      <Disclosure label="Danger zone" icon="warning" class="delete-section">
-        <div class="app-settings-disclosure-body">
-          <Button icon="trash" class="danger-button" disabled={props.busy} onClick={() => setConfirm(true)}>Delete application</Button>
-        </div>
-      </Disclosure>
     </div>
     <Show when={confirm()}><DeleteDialog name={props.application.name} close={() => setConfirm(false)} remove={props.remove} /></Show>
   </div>;

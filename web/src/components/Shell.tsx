@@ -1,11 +1,12 @@
 import Logo from "./Logo";
+import { EditorActionsContext } from "./EditorActions";
 import { A, useLocation, useNavigate, type RouteSectionProps } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { Show, createSignal, onCleanup, onMount } from "solid-js";
 import { api, post } from "../api";
 import { InventoryContext, useAuth } from "../context";
 import type { Inventory } from "../types";
-import { IconButton, Button } from "./Controls";
+import { IconButton } from "./Controls";
 import { Icon } from "./Icon";
 
 export default function Shell(props: RouteSectionProps) {
@@ -14,6 +15,7 @@ export default function Shell(props: RouteSectionProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const query = createQuery(() => ({ queryKey: ["inventory"], queryFn: () => api<Inventory>("/applications"), staleTime: 60_000, reconcile: "id" }));
+  const [editorActions, setEditorActions] = createSignal<HTMLDivElement>();
   const [live, setLive] = createSignal(false);
   const [menu, setMenu] = createSignal(false);
   const [refreshing, setRefreshing] = createSignal(false);
@@ -66,9 +68,12 @@ export default function Shell(props: RouteSectionProps) {
     live, refresh, refreshing }}>
     <div class="app-frame">
       <header class="topbar">
-        <a class="brand" href="/" aria-label="Shipper" onClick={event => { event.preventDefault(); navigate("/"); }}><Logo /></a>
-        <span class="topbar-divider" />
-        <span class="host-name">Shipper</span>
+        <A class="brand" href="/" aria-label="Shipper"><span class="brand-mark"><Logo /></span><span>Shipper</span></A>
+        <nav class="primary-navigation" aria-label="Main navigation">
+          <A href="/" end activeClass="" class="nav-link" classList={{ active: !["/settings", "/system"].includes(location.pathname) }} aria-current={!["/settings", "/system"].includes(location.pathname) ? "page" : undefined}><Icon name="layers" />Applications</A>
+          <A href="/system" activeClass="active" class="nav-link"><Icon name="terminal" />System</A>
+          <A href="/settings" activeClass="active" class="nav-link"><Icon name="settings" />Settings</A>
+        </nav>
         <div class="topbar-actions">
           <span class={"connection " + (connected() ? "is-connected" : "")} title={query.data?.docker.error ?? "Docker connection"}>
             <span class="status-dot" />{connected() ? "Connected" : "Reconnecting"}
@@ -96,14 +101,10 @@ export default function Shell(props: RouteSectionProps) {
           </div>
         </div>
       </header>
-      <div class="app-panel">
-        <nav class="primary-navigation" aria-label="Main navigation">
-          <a href="/" class="nav-link" classList={{ active: location.pathname !== "/settings"&&location.pathname!=="/system" }} aria-current={location.pathname !== "/settings"&&location.pathname!=="/system" ? "page" : undefined} onClick={event => { event.preventDefault();navigate("/"); }}>Applications</a>
-          <A href="/system" activeClass="active" class="nav-link">System</A>
-          <A href="/settings" activeClass="active" class="nav-link">Settings</A>
-        </nav>
+      <EditorActionsContext.Provider value={editorActions}>
         <main class="page-scroll">{props.children}</main>
-      </div>
+        <div ref={setEditorActions} class="page-actions" />
+      </EditorActionsContext.Provider>
     </div>
   </InventoryContext.Provider>;
 }

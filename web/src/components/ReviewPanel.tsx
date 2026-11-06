@@ -10,6 +10,6 @@ export function ReviewPanel(props: { title: string; edit?: () => void; children:
   </section>;
 }
 
-export function ReviewFact(props: { label: string; children: JSX.Element }) {
-  return <div class="review-fact"><dt>{props.label}</dt><dd>{props.children}</dd></div>;
+export function ReviewFact(props: { label: string; wide?: boolean; children: JSX.Element }) {
+  return <div class="review-fact" classList={{ "review-fact-wide": props.wide }}><dt>{props.label}</dt><dd>{props.children}</dd></div>;
 }

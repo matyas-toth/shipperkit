@@ -41,11 +41,11 @@ export default function GitFields(props: {
   return <>
     <GitConnectionFields config={props.config} change={props.change} />
     <Show when={!props.config.sourceId}>
-      <label for="repository">Repository URL</label>
+      <div class="field git-field"><label for="repository">Repository URL</label>
       <input class="input" id="repository" type="url" required placeholder="https://github.com/owner/application"
-        autocomplete="off" value={props.config.repository} onInput={e => props.change("repository", e.currentTarget.value)} />
+        autocomplete="off" value={props.config.repository} onInput={e => props.change("repository", e.currentTarget.value)} /></div>
     </Show>
-    <label for="branch">Branch or commit</label>
+    <div class="field git-field"><label for="branch">Branch or commit</label>
     <div class="branch-field">
       <input ref={branchInput} class="input" id="branch"
         placeholder={branchDefault() ? "Default branch (" + branchDefault() + ")" : "Default branch"}
@@ -67,6 +67,6 @@ export default function GitFields(props: {
           <button type="button" class="branch-option" onClick={() => { props.change("branch", branch); setOpen(false); branchInput.focus(); }}>{branch}</button>
         }</For></div>
       </Show>
-    </div></Show>
+    </div></Show></div>
   </>;
 }

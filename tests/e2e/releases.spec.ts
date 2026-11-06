@@ -209,14 +209,13 @@ test("routing options, runtime limits, recorded release review and certificate d
   await page
     .getByRole("button", { name: "Remove fieldnotes.example.com", exact: true })
     .click();
-  await page.locator(".domain-card").first().locator(".domain-editor > summary").click();
-  await page.locator(".domain-card").first().locator(".domain-route-options > summary").click();
+  await page.getByRole("button", { name: "Edit alias.fieldnotes.example.com", exact: true }).click();
+  await page.getByLabel("Routing options for alias.fieldnotes.example.com", { exact: true }).click();
   await expect(
     page.getByLabel("Response headers", { exact: true }),
   ).toHaveValue("X-Test: alias");
   await page.goto("/applications/release-fixture?tab=settings");
-  await page.getByText("Source and build", { exact: true }).click();
-  await page.getByText("Runtime limits", { exact: true }).click();
+  await page.getByRole("button", { name: "Runtime", exact: true }).click();
   await page.getByLabel("CPU limit", { exact: true }).fill("2");
   await page.getByLabel("Stop grace (seconds)", { exact: true }).fill("20");
   await page.screenshot({ path: join(tmpdir(), "shipper-phase7-runtime.png") });

@@ -1,10 +1,10 @@
 import { Show, createSignal, createEffect, on, createMemo } from "solid-js";
 import type { Domain } from "../types";
+import { operationTime } from "../data";
 import { Icon } from "./Icon";
 
 export default function DomainOptions(props: {
   domain: Domain;
-  stored?: Domain;
   change: (value: Partial<Domain>) => void;
 }) {
   const [headers, setHeaders] = createSignal(
@@ -45,8 +45,8 @@ export default function DomainOptions(props: {
         Routing options
         <Icon name="down" />
       </summary>
-      <div class="form-fields configuration-fields">
-        <label for={"route-path-" + props.domain.id}>Path prefix</label>
+      <div class="form-fields field-pairs route-fields configuration-fields">
+        <div class="field"><label for={"route-path-" + props.domain.id}>Path prefix</label>
         <input
           id={"route-path-" + props.domain.id}
           class="input mono"
@@ -62,6 +62,7 @@ export default function DomainOptions(props: {
             })
           }
         />
+        </div><div class="route-switches">
         <label class="check-field">
           <input
             type="checkbox"
@@ -95,7 +96,7 @@ export default function DomainOptions(props: {
           />
           Maintenance mode
         </label>
-        <label for={"route-headers-" + props.domain.id}>Response headers</label>
+        </div><div class="field field-wide"><label for={"route-headers-" + props.domain.id}>Response headers</label>
         <textarea
           id={"route-headers-" + props.domain.id}
           class="input mono command-input"
@@ -106,23 +107,21 @@ export default function DomainOptions(props: {
             parseHeaders(e.currentTarget);
           }}
         />
-        <Show when={props.stored?.certificateExpiresAt}>
-          <dl class="settings-group">
-            <div class="setting-row">
-              <dt>Certificate issuer</dt>
-              <dd>{props.stored?.certificateIssuer}</dd>
-            </div>
-            <div class="setting-row">
-              <dt>Certificate expires</dt>
-              <dd>
-                {new Date(
-                  props.stored!.certificateExpiresAt! * 1000,
-                ).toLocaleString()}
-              </dd>
-            </div>
-          </dl>
-        </Show>
+        </div>
       </div>
     </details>
   );
+}
+
+
+export function DomainCertificate(props: { domain?: Domain }) {
+  return <Show when={props.domain?.certificateExpiresAt}>
+    <section class="route-certificate" aria-label="Certificate">
+      <h4>Certificate</h4>
+      <dl>
+        <div class="setting-row"><dt>Certificate issuer</dt><dd>{props.domain?.certificateIssuer}</dd></div>
+        <div class="setting-row"><dt>Certificate expires</dt><dd>{operationTime(props.domain!.certificateExpiresAt!, true)}</dd></div>
+      </dl>
+    </section>
+  </Show>;
 }

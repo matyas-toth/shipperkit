@@ -214,10 +214,10 @@ test("connections, private repository selection, immutable queue controls and im
   expect(submitted.commit).toBe("a".repeat(40));
   expect(submitted.config.autoDeploy.paths).toEqual(["apps/web/**"]);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(page.locator(".log-heading")).toContainText("Cancelled");
-  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Selected release" })).toContainText("Cancelled");
+  await page.getByRole("button", { name: "Retry release", exact: true }).click();
   await expect(page).toHaveURL(/deployment=retry-build/);
-  await expect(page.locator(".log-heading")).toContainText("Queued");
+  await expect(page.getByRole("region", { name: "Selected release" })).toContainText("Queued");
   await page.goto("/new");
   await page
     .getByRole("radio", {name:"Container image",exact:true})

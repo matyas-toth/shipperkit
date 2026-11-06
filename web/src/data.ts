@@ -7,8 +7,8 @@ export function statusOf(container: Container): string {
 }
 export function statusLabel(value: string): string {
   const labels: Record<string, string> = {
-    healthy:"Healthy",warning:"Warning",unknown:"Unobserved",stale:"Stale",stopped:"Stopped",
-    before_deploy: "Before deploy", prepared: "Preparing", uncertain: "Uncertain", cancelled:"Cancelled",pulling:"Pulling image",completed: "Completed", serving: "Serving", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
+    healthy:"Healthy",warning:"Warning",unknown:"Unobserved",stale:"Stale",stopped:"Stopped",unreachable:"Unreachable",disabled:"Disabled",not_applicable:"Not applicable",
+    before_deploy: "Before deploy", prepared: "Preparing", uncertain: "Uncertain", cancelled:"Cancelled",pulling:"Pulling image",completed: "Completed", serving: "Running", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
     restarting: "Restarting", dead: "Failed", removing: "Removing",
     unhealthy: "Unhealthy", starting: "Starting", missing: "Missing", failed: "Failed", degraded: "Degraded",
     queued: "Queued", cloning: "Cloning", packaging: "Packaging", checking: "Checking", promoting: "Promoting",
@@ -32,6 +32,14 @@ export function methodLabel(app: import("./types").Application) {
   return methods[app.method] ?? methods[app.latestDeployment?.resolvedMethod ?? ""] ?? (app.method === "auto" ? "Automatic" : app.containers.some(c => c.project) ? "Compose" : "Docker");
 }
 export function deploymentLabel(d: import("./types").Deployment) { if(d.state==="cloning"&&d.config.localSource)return "Loading files";return d.state !== "succeeded" ? statusLabel(d.state) : ({ rollback: "Restored", deploy: "Deployed", domains: "Domains updated", start: "Started", stop: "Stopped", restart: "Restarted", delete: "Deleted", apply: "Applied", task: "Task completed", service_start:"Service started",service_stop:"Service stopped",service_restart:"Service restarted" }[d.operation] ?? "Completed"); }
+const operatorTime = new Intl.DateTimeFormat(undefined, {
+  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+const fullOperatorTime = new Intl.DateTimeFormat(undefined, {
+  year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short", hourCycle: "h23",
+});
+export function operationTime(seconds: number, full = false) { return (full ? fullOperatorTime : operatorTime).format(seconds * 1000); }
+export function deploymentRef(d: import("./types").Deployment) { return d.commit.slice(0, 8) || d.id; }
 export function primaryDomain(app: import("./types").Application) { return app.domains?.find(d => d.primary) ?? app.domains?.[0]; }
 export function domainURL(domain: import("./types").Domain, proxy?: import("./types").ProxyConfig) { const port = domain.https ? proxy?.httpsPort : proxy?.httpPort; return (domain.https ? "https://" : "http://") + domain.hostname + (domain.hostname.endsWith(".localhost") && port && port !== (domain.https ? 443 : 80) ? ":" + port : "")+(domain.pathPrefix?domain.pathPrefix.replace(/\/$/,"")+"/":""); }
 export function applicationURL(config: import("./types").StaticConfig, proxy?: import("./types").ProxyConfig) {

@@ -18,6 +18,7 @@ export default function BuildMethod(props: {
   value: StaticConfig["method"];
   detected?: Exclude<Build, "auto">;
   allowCompose?: boolean;
+  visibleLegend?: boolean;
   change: (method: StaticConfig["method"]) => void;
 }) {
   const methods = choices.map(choice => ({
@@ -25,7 +26,7 @@ export default function BuildMethod(props: {
     get recommended() { return choice.value === props.detected; },
     get detail() { return choice.value === "auto" && props.detected ? methodLabel(props.detected) : undefined; },
   }));
-  return <ChoiceCards<Build> label="Build method" value={props.value as Build}
+  return <ChoiceCards<Build> label="Build method" visibleLegend={props.visibleLegend} value={props.value as Build}
     choices={methods.filter(c => props.allowCompose || c.value !== "compose")}
     change={props.change} />;
 }

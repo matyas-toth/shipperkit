@@ -479,43 +479,36 @@ components:
 
 ## Shipper interaction system
 
-This section describes Shipper's current UI. The OpenCode Console reconstruction
-below is a reference for the original visual language. Where the two differ,
-use Shipper's interaction rules and values here.
+The Shipper console uses monochrome charcoal surfaces, Inter, and Tabler icons.
+The OpenCode reconstruction below is historical reference. The product tokens
+in `web/src/styles.css` are the source of truth.
 
-- Keep the near-black frame, charcoal panels, Inter, Tabler icons, and dense
-  data views. Use 24/30 px for page titles, 16/22 px for section headings,
-  14/20 px for ordinary text and smaller headings, and 12–13 px for dense
-  data and metadata. Use monospace for values copied into tools or terminals.
-- Use a light filled button for the main decision in the current group. Give
-  secondary actions a visible neutral surface. Reserve quiet actions for
-  Cancel, Back, and contextual tools. Destructive actions keep their own
-  treatment and a review step. Put important actions next to the content they
-  affect. On touch screens use 44 px targets for form and disclosure controls.
-- A disclosure has a full-width surface, an explicit label, and a trailing
-  chevron that turns on expansion. Use native details and summary for keyboard
-  and screen reader behavior. Keep required fields visible; put overrides and
-  uncommon controls inside named disclosures. Keep small controls and the log
-  toolbar dense.
-- Show all viable source and build choices as labeled radio cards. Git and
-  local files support Automatic, Dockerfile, Railpack, Static site and Docker
-  Compose; inline inputs and container images imply their build method.
-  Selecting a method keeps the chosen source. Use radio segments for short
-  option sets and a searchable picker for a long list of names. Existing apps
-  keep their single-container or Compose topology during edits.
-- Settings and System show one section at a time and keep deep links. Use
-  navigation for distinct jobs and disclosures for optional fields within one
-  job. Domain cards show hostname, route and verification first; editing and
-  advanced routing open in place. App and service navigation wrap on narrow
-  screens so all destinations remain visible.
-- App settings use one column for the name, configuration, deploy token,
-  and danger zone. The configuration form ends with a padded review footer.
-  Inline Compose opens the source section with its editor ready; loading saved
-  source does not create a pending change.
-- Preserve the shallow nested radius on table trays and panels (6 px outer,
-  4 px inner with a 2 px inset). A rounded control inside a larger surface
-  must have enough inset to follow the outer curve. Use neutral hover and
-  selected surfaces and a visible blue keyboard focus ring.
+- Keep global and application navigation horizontal and align the header and work area on the same grid. Use a 32 px page title,
+  a 19 px section title, and 14 px body text. Use monospace for commands, logs,
+  release IDs, and other values people copy into tools.
+- Use one bright neutral action for the decision at hand. Keep color for status
+  and destructive actions. Use a thin top highlight and short shadows on
+  controls, work surfaces, and floating menus.
+  Keep written statuses alongside their colors. Give focus a visible outline.
+- Keep dense tables on desktop. On narrow screens, reorganize each row to
+  preserve its identity, state, timestamp, and action. Application navigation
+  keeps Overview, Deployments, and Logs visible, with the other sections in
+  the labeled picker. A focused service has its own navigation.
+- Separate release identity and release actions from log tools. Keep the
+  failure and its diagnostic action beside the evidence. Wrap logs on narrow
+  screens, distinguish recognized warnings and errors, and preserve raw copy.
+- Use the same edge for editors and their action bar. Give task and backup
+  definitions and schedules separate groups, and show one command stage at a
+  time beside the stage list. Application settings show one section at a time,
+  with a section picker on narrow screens and one review for the entire draft.
+- Lead recovery with the scope, time, and location of the latest copy. Keep
+  off-server setup, the key, and recovery instructions with that status.
+- Keep runtime health and route reachability separate. Route incidents open
+  the affected hostname. In logs, show the active view and preserve the way
+  back from a line's surrounding context to the issue list.
+- Show the actual target and effects in rollback, restore, and change reviews.
+  Keep environment values masked; review their names and scopes. Show scheduled
+  run times with their timezone.
 
 ## OpenCode Console reference
 

@@ -7,7 +7,7 @@ import type { Application } from "../types";
 import type { Observation } from "../components/Diagnostics";
 import { Button, Disclosure, ErrorNotice, Status } from "../components/Controls";
 import { SegmentedChoice } from "../components/Choices";
-import { bytes, createdDate, logDateTime } from "../data";
+import { bytes, createdDate, operationTime } from "../data";
 import Retention from "../components/Retention";
 import ChangeReview from "../components/ChangeReview";
 import type {ChangePlan,SystemInfo} from "../types";
@@ -53,12 +53,12 @@ export default function System() {
       <For each={sections}>{item => <a href={"/system#" + item.id} aria-current={section() === item.id ? "page" : undefined}>{item.label}</a>}</For>
     </nav>
     <Show when={error() || query.error}><ErrorNotice message={error() || query.error!.message} /></Show>
-    <Show when={section() === "overview"}>
-    <section class="settings-section"><h2>Health</h2><div class="table-tray"><table class="inventory-table"><thead><tr><th>Component</th><th>Status</th><th>Observed</th></tr></thead><tbody><For each={query.data?.items}>{fact => <tr><td>{fact.kind}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{logDateTime(fact.observedAt)}</td></tr>}</For></tbody></table></div>
+    <Show when={section() === "overview"}><div class="system-overview">
+    <section class="settings-section"><h2>Health</h2><div class="table-tray"><table class="inventory-table"><thead><tr><th>Component</th><th>Status</th><th>Last checked</th></tr></thead><tbody><For each={query.data?.items}>{fact => <tr><td>{fact.kind}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{fact.observedAt ? <time class="operator-time" datetime={new Date(fact.observedAt * 1000).toISOString()} title={operationTime(fact.observedAt, true)}>{operationTime(fact.observedAt)}</time> : "Not checked"}</td></tr>}</For></tbody></table></div>
       <For each={query.data?.items.filter(v => v.kind === "storage")}>{fact => <dl class="settings-group"><div class="setting-row"><dt>{fact.details.scope}</dt><dd>{bytes(fact.details.free ?? 0)} free / {bytes(fact.details.total ?? 0)}</dd></div></dl>}</For>
     </section>
     <section class="settings-section"><h2>Runtime</h2><dl class="settings-group"><div class="setting-row"><dt>Shipper</dt><dd>{system.data?.version||"Loading"}</dd></div><div class="setting-row"><dt>Docker Engine</dt><dd>{system.data?.docker.engine.version||"Unavailable"}</dd></div><div class="setting-row"><dt>Docker host</dt><dd>{system.data?.docker.engine.os||"Unavailable"}</dd></div><div class="setting-row"><dt>Shipper heap</dt><dd>{bytes(system.data?.runtime.heapBytes||0)}</dd></div><div class="setting-row"><dt>Recovery</dt><dd><A class="button neutral small" href="/settings#recovery">Open recovery</A></dd></div></dl></section>
-    </Show>
+    </div></Show>
     <Show when={repair()}>{plan=><ChangeReview plan={plan()} title="Repair proxy" confirm="Repair proxy" close={()=>setRepair(undefined)} apply={async()=>{await post("/system/repair",{revision:plan().revision},auth.session()?.csrfToken);setRepair(undefined);await query.refetch()}}/>}</Show>
     <Show when={section() === "maintenance"}>
     <section class="settings-section"><div class="section-toolbar"><h2>Proxy</h2><Button icon="refresh" disabled={busy()} onClick={()=>void action(async()=>setRepair(await post<ChangePlan>("/system/repair",{review:true},auth.session()?.csrfToken)))}>Repair proxy</Button></div></section>
@@ -73,22 +73,22 @@ export default function System() {
     <Retention/>
     </Show>
     <Show when={section() === "notifications"}>
-    <section class="settings-section"><h2>Notifications</h2><Show when={config()}>{c => <form onSubmit={saveNotifications}>
+    <section class="settings-section notifications-settings"><h2>Notifications</h2><Show when={config()}>{c => <form onSubmit={saveNotifications} class="notification-editor">
       <label class="checkbox-label"><input type="checkbox" checked={c().enabled} onChange={e => change({ enabled: e.currentTarget.checked })} />Enabled</label>
-      <Show when={c().enabled}><div class="form-fields">
+      <Show when={c().enabled}><div class="form-fields field-pairs notification-fields">
         <SegmentedChoice label="Delivery" value={c().kind} choices={[{value:"webhook",label:"Webhook"},{value:"email",label:"Email"}]} change={kind => change({kind})} />
         <Show when={c().kind === "webhook"} fallback={<>
-          <label for="smtp-host">SMTP host</label><input id="smtp-host" class="input" placeholder="smtp.example.com:587" value={c().smtp || ""} onInput={e => change({ smtp: e.currentTarget.value })} />
-          <label for="smtp-user">Username</label><input id="smtp-user" class="input" value={c().username || ""} onInput={e => change({ username: e.currentTarget.value })} />
-          <label for="smtp-password">Password</label><input id="smtp-password" class="input" type="password" autocomplete="new-password" value={c().password || ""} onInput={e => change({ password: e.currentTarget.value })} />
-          <label for="smtp-from">From</label><input id="smtp-from" class="input" type="email" value={c().from || ""} onInput={e => change({ from: e.currentTarget.value })} />
-          <label for="smtp-to">To</label><input id="smtp-to" class="input" type="email" value={c().to || ""} onInput={e => change({ to: e.currentTarget.value })} />
-        </>}><label for="notification-url">Webhook URL</label><input id="notification-url" class="input" type="url" placeholder={c().configured ? "Saved endpoint" : "https://"} value={c().webhook || ""} onInput={e => change({ webhook: e.currentTarget.value })} /></Show>
-      </div><details class="configuration"><summary>Events and network</summary><div class="capability-choices">
-        <For each={["deployment", "service", "backup", "storage", "certificate", "daemon", "proxy", "task", "update"]}>{kind => <label><input type="checkbox" checked={c().events.includes(kind)} onChange={e => change({ events: e.currentTarget.checked ? [...c().events, kind] : c().events.filter(v => v !== kind) })} />{kind}</label>}</For>
-        <label><input type="checkbox" checked={c().private} onChange={e => change({ private: e.currentTarget.checked })} />Allow private destinations</label>
+          <div class="field field-wide"><label for="smtp-host">SMTP host</label><input id="smtp-host" class="input" placeholder="smtp.example.com:587" value={c().smtp || ""} onInput={e => change({ smtp: e.currentTarget.value })} /></div>
+          <div class="field"><label for="smtp-user">Username</label><input id="smtp-user" class="input" value={c().username || ""} onInput={e => change({ username: e.currentTarget.value })} /></div>
+          <div class="field"><label for="smtp-password">Password</label><input id="smtp-password" class="input" type="password" autocomplete="new-password" value={c().password || ""} onInput={e => change({ password: e.currentTarget.value })} /></div>
+          <div class="field"><label for="smtp-from">From</label><input id="smtp-from" class="input" type="email" value={c().from || ""} onInput={e => change({ from: e.currentTarget.value })} /></div>
+          <div class="field"><label for="smtp-to">To</label><input id="smtp-to" class="input" type="email" value={c().to || ""} onInput={e => change({ to: e.currentTarget.value })} /></div>
+        </>}><div class="field field-wide"><label for="notification-url">Webhook URL</label><input id="notification-url" class="input" type="url" placeholder={c().configured ? "Saved endpoint" : "https://"} value={c().webhook || ""} onInput={e => change({ webhook: e.currentTarget.value })} /></div></Show>
+      </div><details class="configuration"><summary>Events</summary><div class="capability-choices event-choices">
+        <For each={["deployment", "service", "backup", "storage", "certificate", "daemon", "proxy", "task", "update"]}>{kind => <label><input type="checkbox" checked={c().events.includes(kind)} onChange={e => change({ events: e.currentTarget.checked ? [...c().events, kind] : c().events.filter(v => v !== kind) })} />{kind[0].toUpperCase() + kind.slice(1)}</label>}</For>
+      </div></details><details class="configuration"><summary>Network</summary><div class="capability-choices"><label><input type="checkbox" checked={c().private} onChange={e => change({ private: e.currentTarget.checked })} />Allow private destinations</label>
       </div></details></Show>
-      <div class="form-actions"><Show when={result()}><span role="status">{result()}</span></Show><Button variant="ghost" disabled={busy() || !c().enabled} onClick={() => void action(async () => { await post("/notifications/test", { config: config() }, auth.session()?.csrfToken); setResult("Delivered"); })}>Test delivery</Button><Button type="submit" disabled={busy()}>Save</Button></div>
+      <div class="form-actions"><Show when={result()}><span role="status">{result()}</span></Show><Button variant="ghost" disabled={busy() || !c().enabled} onClick={() => void action(async () => { await post("/notifications/test", { config: config() }, auth.session()?.csrfToken); setResult("Delivered"); })}>{c().kind === "email" ? c().to ? "Send test to " + c().to : "Test email" : c().webhook ? "Test webhook" : "Test saved webhook"}</Button><Button variant="primary" type="submit" disabled={busy()}>Save notifications</Button></div>
     </form>}</Show><Show when={query.data?.notifications.failed}><div class="deployment-error">{query.data!.notifications.failed} failed deliveries</div></Show></section>
     </Show>
     <Show when={section() === "tokens"}>

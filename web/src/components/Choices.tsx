@@ -14,9 +14,11 @@ export function ChoiceCards<T extends string>(props: {
   value: T;
   choices: readonly Choice<T>[];
   change: (value: T) => void;
+  visibleLegend?: boolean;
 }) {
   const name = createUniqueId();
   return <fieldset class="choice-grid" aria-label={props.label}>
+    <Show when={props.visibleLegend}><legend>{props.label}</legend></Show>
     <For each={props.choices}>{choice =>
       <label class="choice-card" classList={{ selected: props.value === choice.value }}>
         <input type="radio" name={name} value={choice.value} checked={props.value === choice.value}

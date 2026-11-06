@@ -80,10 +80,25 @@ export default function SchedulePicker(props: {
     const candidate = parseSchedule(props.value);
     return candidate.mode !== "manual" && candidate.mode !== "custom" && scheduleExpression(candidate) === props.value ? candidate : undefined;
   };
+  const cronField = () => (
+    <div class="field field-wide cron-field"><label for={id + "-cron"}>Cron</label>
+          <input
+            id={id + "-cron"}
+            class="input mono"
+            aria-label="Cron expression"
+            readOnly={choice().mode !== "custom"}
+            value={props.value}
+            onInput={(e) => {
+              last = e.currentTarget.value;
+              setChoice({ ...choice(), custom: last });
+              props.change(last, props.timezone);
+            }}
+          /></div>
+  );
   return (
     <div class="schedule-picker">
-      <div class="form-fields">
-        <label for={id + "-mode"}>Repeat</label>
+      <div class="form-fields field-pairs">
+        <div class="field"><label for={id + "-mode"}>Repeat</label>
         <select
           id={id + "-mode"}
           class="input"
@@ -100,9 +115,9 @@ export default function SchedulePicker(props: {
           <option value="weekly" disabled={manual()}>Every week</option>
           <option value="monthly" disabled={manual()}>Every month</option>
           <option value="custom">Custom cron</option>
-        </select>
+        </select></div>
         <Show when={choice().mode === "minutes" || choice().mode === "hours"}>
-          <label for={id + "-interval"}>
+          <div class="field"><label for={id + "-interval"}>
             {choice().mode === "minutes" ? "Minutes" : "Hours"}
           </label>
           <select
@@ -122,10 +137,10 @@ export default function SchedulePicker(props: {
             >
               {(n) => <option value={n}>{n}</option>}
             </For>
-          </select>
+          </select></div>
         </Show>
         <Show when={choice().mode === "hourly" || choice().mode === "hours"}>
-          <label for={id + "-minute"}>At minute</label>
+          <div class="field"><label for={id + "-minute"}>At minute</label>
           <input
             id={id + "-minute"}
             class="input"
@@ -134,10 +149,10 @@ export default function SchedulePicker(props: {
             max="59"
             value={choice().minute}
             onInput={(e) => update({ minute: Number(e.currentTarget.value) })}
-          />
+          /></div>
         </Show>
         <Show when={["daily", "weekly", "monthly"].includes(choice().mode)}>
-          <label for={id + "-time"}>At</label>
+          <div class="field"><label for={id + "-time"}>At</label>
           <input
             id={id + "-time"}
             type="time"
@@ -150,11 +165,11 @@ export default function SchedulePicker(props: {
                 .map(Number);
               update({ hour, minute });
             }}
-          />
+          /></div>
         </Show>
         <Show when={choice().mode === "weekly"}>
-          <label>On</label>
-          <div class="schedule-days" role="group" aria-label="Days of the week">
+          <div class="field field-wide"><span id={id + "-days"}>Days</span>
+          <div class="schedule-days" role="group" aria-labelledby={id + "-days"}>
             <For each={[1, 2, 3, 4, 5, 6, 0]}>
               {(day) => (
                 <button
@@ -174,10 +189,10 @@ export default function SchedulePicker(props: {
                 </button>
               )}
             </For>
-          </div>
+          </div></div>
         </Show>
         <Show when={choice().mode === "monthly"}>
-          <label for={id + "-day"}>Day</label>
+          <div class="field"><label for={id + "-day"}>Day</label>
           <input
             id={id + "-day"}
             class="input"
@@ -186,30 +201,18 @@ export default function SchedulePicker(props: {
             max="31"
             value={choice().day}
             onInput={(e) => update({ day: Number(e.currentTarget.value) })}
-          />
+          /></div>
         </Show>
         <Show when={props.value || choice().mode === "custom"}>
-          <label for={id + "-cron"}>Cron</label>
-          <input
-            id={id + "-cron"}
-            class="input mono"
-            aria-label="Cron expression"
-            readOnly={choice().mode !== "custom"}
-            value={props.value}
-            onInput={(e) => {
-              last = e.currentTarget.value;
-              setChoice({ ...choice(), custom: last });
-              props.change(last, props.timezone);
-            }}
-          />
-          <label for={id + "-zone"}>Timezone</label>
+          <div class="field"><label for={id + "-zone"}>Timezone</label>
           <input
             id={id + "-zone"}
             class="input"
             required
             value={props.timezone}
             onInput={(e) => props.change(props.value, e.currentTarget.value)}
-          />
+          /></div>
+          <Show when={manual()} fallback={<details class="configuration cron-details"><summary>Cron expression</summary>{cronField()}</details>}>{cronField()}</Show>
           <Show when={manual() && guided()}>{candidate =>
             <Button variant="ghost" class="use-guided" onClick={() => setChoice(candidate())}>Use guided controls</Button>
           }</Show>
@@ -219,20 +222,20 @@ export default function SchedulePicker(props: {
         <ErrorNotice message={error()} />
       </Show>
       <Show when={next().length}>
-        <ol class="schedule-next" aria-label="Next three runs">
+        <div class="schedule-upcoming"><strong>Next runs</strong><ol class="schedule-next" aria-label="Next three runs">
           <For each={next()}>
             {(n) => (
               <li>
                 <time datetime={new Date(n * 1000).toISOString()}>
                   {new Date(n * 1000).toLocaleString(undefined, {
                     timeZone: props.timezone,
-                    timeZoneName: "short",
+                    weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short",
                   })}
                 </time>
               </li>
             )}
           </For>
-        </ol>
+        </ol></div>
       </Show>
     </div>
   );

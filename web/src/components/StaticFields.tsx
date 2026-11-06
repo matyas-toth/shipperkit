@@ -6,15 +6,14 @@ import { BuildDetails, type ConfigFields } from "./DeployFields";
 import { AutomaticDeployFields } from "./DeploymentTriggers";
 import GitFields from "./GitFields";
 import LocalSource from "./LocalSource";
-import RuntimeFields from "./RuntimeFields";
 import { ImageFields, InlineFields } from "./SourceFields";
 import { ChoiceCards, type Choice } from "./Choices";
 
 type EditSource = "git" | "local" | "image" | "inline" | "paste";
 const editSources: readonly Choice<EditSource>[] = [
   { value: "git", label: "Git repository", icon: "git" },
-  { value: "local", label: "Local files", icon: "folder" },
   { value: "image", label: "Container image", icon: "box" },
+  { value: "local", label: "Local files", icon: "folder" },
   { value: "inline", label: "Inline Dockerfile", icon: "code" },
   { value: "paste", label: "Inline Docker Compose", icon: "layers" },
 ];
@@ -64,9 +63,8 @@ export default function StaticFields(props: ConfigFields & { applicationId: stri
     <Show when={source() === "image"}><ImageFields config={props.config} change={props.change} /></Show>
     <Show when={source() === "inline"}><InlineFields config={props.config} change={props.change} applicationId={props.applicationId} /></Show>
     <Show when={compose()} fallback={<>
-      <Show when={files()}><BuildMethod value={props.config.method} change={build} /></Show>
-      <BuildDetails config={props.config} change={props.change} method={props.config.method} open />
-      <RuntimeFields value={props.config.runtime} change={runtime => props.change("runtime", runtime)} />
+      <Show when={files()}><BuildMethod value={props.config.method} visibleLegend change={build} /></Show>
+      <BuildDetails config={props.config} change={props.change} method={props.config.method} splitRuntime />
     </>}>
       <ComposeFields config={props.config} change={props.change} applicationId={props.applicationId} expanded={props.expanded} hasSavedCompose={props.hasSavedCompose} />
     </Show>

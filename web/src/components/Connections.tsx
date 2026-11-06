@@ -136,7 +136,7 @@ export default function Connections() {
             <tr>
               <th>Name</th>
               <th>Provider</th>
-              <th aria-label="Remove" />
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -145,7 +145,7 @@ export default function Connections() {
                 <tr>
                   <td>{c.name}</td>
                   <td>{c.kind === "registry" ? c.host : "GitHub"}</td>
-                  <td>
+                  <td><div class="connection-actions">
                     <IconButton
                       icon="settings"
                       label={"Edit " + c.name}
@@ -165,7 +165,7 @@ export default function Connections() {
                       label={"Disconnect " + c.name}
                       onClick={() => setDisconnect(c)}
                     />
-                  </td>
+                  </div></td>
                 </tr>
               )}
             </For>

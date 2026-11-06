@@ -29,17 +29,18 @@ export function DomainFields(props: ConfigFields & { acme: boolean; autoHTTPS?: 
 }
 
 export function PortField(props: ConfigFields) {
-  return <>
+  return <div class="field">
     <label for="container-port">Container port</label>
     <input class="input" id="container-port" type="number" min="1" max="65535" placeholder="Automatic"
       value={props.config.port || ""} onInput={e => props.change("port", Number(e.currentTarget.value) || 0)} />
-  </>;
+  </div>;
 }
 
 export function BuildDetails(props: ConfigFields & {
   method: StaticConfig["method"];
   open?: boolean;
   essentials?: boolean;
+  splitRuntime?: boolean;
   hints?: { installCommand: string; buildCommand: string; startCommand: string };
 }) {
   const auth = useAuth(), [loading, setLoading] = createSignal(false), [error, setError] = createSignal("");
@@ -60,27 +61,25 @@ export function BuildDetails(props: ConfigFields & {
     } catch (e) { if (sourceKey() === key) setError((e as Error).message); }
     finally { setLoading(false); }
   }
-  return <details class="configuration" open={props.open}>
-    <summary>Configuration<Icon name="down" /></summary>
-    <div class="form-fields configuration-fields">
+  const fields = () => <div class="form-fields field-pairs build-details-fields configuration-fields">
       <Show when={fileBased()}>
-        <label for="root-directory">Application directory</label>
+        <div class="field"><label for="root-directory">Application directory</label>
         <input class="input" id="root-directory" value={props.config.rootDirectory}
-          onInput={e => props.change("rootDirectory", e.currentTarget.value)} />
+          onInput={e => props.change("rootDirectory", e.currentTarget.value)} /></div>
       </Show>
       <Show when={props.method === "dockerfile"}>
-        <label for="dockerfile">Dockerfile path</label>
+        <div class="field"><label for="dockerfile">Dockerfile path</label>
         <input class="input" id="dockerfile" value={props.config.dockerfile}
-          onInput={e => props.change("dockerfile", e.currentTarget.value)} />
+          onInput={e => props.change("dockerfile", e.currentTarget.value)} /></div>
       </Show>
       <Show when={props.method === "static"}>
-        <label for="publish-directory">Publish directory</label>
+        <div class="field"><label for="publish-directory">Publish directory</label>
         <input class="input" id="publish-directory" required value={props.config.publishDirectory}
-          onInput={e => props.change("publishDirectory", e.currentTarget.value)} />
-        <label for="routing">Routing</label>
+          onInput={e => props.change("publishDirectory", e.currentTarget.value)} /></div>
+        <div class="field"><label for="routing">Routing</label>
         <select class="input" id="routing" value={props.config.routing} onChange={e => props.change("routing", e.currentTarget.value)}>
           <option value="files">File based</option><option value="spa">SPA fallback</option><option value="strict">Strict</option>
-        </select>
+        </select></div>
         <label class="check-field"><input type="checkbox" checked={props.config.htaccess}
           onChange={e => props.change("htaccess", e.currentTarget.checked)} />.htaccess rewrites</label>
       </Show>
@@ -89,34 +88,50 @@ export function BuildDetails(props: ConfigFields & {
           disabled={loading() || !props.config.repository && !props.config.localSource}
           onClick={() => void detectCommands()}>{loading() ? "Detecting" : props.hints ? "Use detected commands" : "Detect commands"}</Button></div>
         <Show when={error()}><ErrorNotice message={error()} /></Show>
-        <label for="install-command">Install command</label>
+        <div class="field field-wide"><label for="install-command">Install command</label>
         <input class="input mono" id="install-command" placeholder={props.method === "static" ? "None" : "Automatic"}
-          value={props.config.installCommand} onInput={e => props.change("installCommand", e.currentTarget.value)} />
-        <label for="build-command">Build command</label>
+          value={props.config.installCommand} onInput={e => props.change("installCommand", e.currentTarget.value)} /></div>
+        <div class="field field-wide"><label for="build-command">Build command</label>
         <input class="input mono" id="build-command" placeholder={props.method === "static" ? "None" : "Automatic"}
-          value={props.config.buildCommand} onInput={e => props.change("buildCommand", e.currentTarget.value)} />
+          value={props.config.buildCommand} onInput={e => props.change("buildCommand", e.currentTarget.value)} /></div>
       </Show>
       <Show when={props.method !== "static"}>
-        <label for="start-command">Start command</label>
+        <div class="field field-wide"><label for="start-command">Start command</label>
         <input class="input mono" id="start-command" placeholder="Automatic"
-          value={props.config.startCommand} onInput={e => props.change("startCommand", e.currentTarget.value)} />
-        <Show when={!props.essentials}>
-          <Show when={props.config.startupPolicy !== "process"}><PortField config={props.config} change={props.change} /></Show>
-          <label for="startup-policy">Readiness</label>
-          <select id="startup-policy" class="input" value={props.config.startupPolicy || "http"}
-            onChange={e => props.change("startupPolicy", e.currentTarget.value)}>
-            <option value="http">HTTP</option><option value="process">Running process</option>
-          </select>
-        </Show>
+          value={props.config.startCommand} onInput={e => props.change("startCommand", e.currentTarget.value)} /></div>
       </Show>
-      <Show when={props.config.startupPolicy !== "process"}>
-        <label for="health-path">Health check path</label>
+      <Show when={!props.splitRuntime}><RuntimeConnectivity config={props.config} change={props.change} method={props.method} essentials={props.essentials} /></Show>
+    </div>;
+  return <Show when={props.splitRuntime} fallback={<details class="configuration" open={props.open}>
+    <summary>Configuration<Icon name="down" /></summary>{fields()}
+  </details>}><section class="source-build-fields"><h3>Build configuration</h3>{fields()}</section></Show>;
+}
+
+export function RuntimeConnectivity(props: ConfigFields & { method: StaticConfig["method"]; essentials?: boolean; withoutMemory?: boolean }) {
+  return <>
+    <Show when={props.method !== "static" && !props.essentials}>
+      <Show when={props.config.startupPolicy !== "process"}><PortField config={props.config} change={props.change} /></Show>
+      <div class="field"><label for="startup-policy">Readiness</label>
+        <select id="startup-policy" class="input" value={props.config.startupPolicy || "http"}
+          onChange={e => props.change("startupPolicy", e.currentTarget.value)}>
+          <option value="http">HTTP</option><option value="process">Running process</option>
+        </select>
+      </div>
+    </Show>
+    <Show when={props.config.startupPolicy !== "process"}>
+      <div class="field"><label for="health-path">Health check path</label>
         <input class="input" id="health-path" value={props.config.healthPath}
           onInput={e => props.change("healthPath", e.currentTarget.value)} />
-      </Show>
-      <label for="memory-limit">Memory limit (MiB)</label>
+      </div>
+    </Show>
+    <Show when={!props.withoutMemory}><MemoryLimitField config={props.config} change={props.change} /></Show>
+  </>;
+}
+
+
+export function MemoryLimitField(props: ConfigFields) {
+  return <div class="field"><label for="memory-limit">Memory limit (MiB)</label>
       <input class="input" id="memory-limit" type="number" min="64" max="8192" value={props.config.memoryMB}
         onInput={e => props.change("memoryMB", Number(e.currentTarget.value))} />
-    </div>
-  </details>;
+    </div>;
 }

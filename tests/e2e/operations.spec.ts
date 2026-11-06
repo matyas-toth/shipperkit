@@ -41,7 +41,7 @@ test("System tokens, notification choices and responsive diagnostics", async({pa
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-system.png"),fullPage:true});
   await page.setViewportSize({width:390,height:844});await expect(page.getByRole("heading",{name:"System",exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-system-mobile.png"),fullPage:true});
-  await page.request.post("http://127.0.0.1:9083/runtime-options",{data:{count:1}});await page.setViewportSize({width:1440,height:1000});await page.goto("/applications/application-web");await expect(page.getByRole("heading",{name:"Diagnostics",exact:true})).toBeVisible();await page.locator(".diagnostics-section").evaluate(el=>el.scrollIntoView({block:"start"}));await page.screenshot({path:join(tmpdir(),"shipper-phase9-diagnostics.png")});expect(errors).toEqual([]);
+  await page.request.post("http://127.0.0.1:9083/runtime-options",{data:{count:1}});await page.setViewportSize({width:1440,height:1000});await page.goto("/applications/application-web");await expect(page.getByRole("heading",{name:"Diagnostics",exact:true})).toBeVisible();await expect(page.getByRole("region", {name:"Application issue"})).toContainText("Routing unreachable");await page.locator(".page-scroll").evaluate(el=>el.scrollTop=0);await page.screenshot({path:join(tmpdir(),"shipper-phase9-diagnostics.png")});await page.getByRole("button", { name: "Inspect route", exact: true }).click();await expect(page.getByRole("region", { name: "Edit route" })).toBeVisible();expect(errors).toEqual([]);
 });
 
 test("Compose overview service logs survive inventory refreshes without replay",async({page})=>{
@@ -64,7 +64,7 @@ test("Compose overview service logs survive inventory refreshes without replay",
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-service-logs.png")});
   stopped=true;
   await page.request.post("/api/refresh",{headers:{"X-CSRF-Token":session.csrfToken},data:{}});
-  await expect(page.getByText("History",{exact:true})).toBeVisible();
+  await expect(page.getByText("Log history",{exact:true})).toBeVisible();
   await expect(page.getByRole("button",{name:"Pause runtime logs",exact:true})).toHaveCount(0);
   await expect(page.getByRole("log",{name:"Runtime logs"})).toContainText("Service is ready");
 });

@@ -1,5 +1,8 @@
 import type { Variable } from "./types";
 
+export const variableScopeLabel = (scope: Variable["scope"] | undefined) =>
+  scope === "build" ? "Build" : scope === "both" ? "Build and runtime" : "Runtime";
+
 export const emptyVariable = (): Variable => ({ name: "", value: "", secret: true, scope: "both" });
 export const variableHasContent = (variable: Variable) => !!(variable.name.trim() || variable.value || variable.keep);
 export const variablesForSave = (variables: Variable[]) => variables.filter(variableHasContent).map(variable => ({ ...variable, name: variable.name.trim(), value: variable.keep ? "" : variable.value }));
