@@ -259,7 +259,7 @@ test("routing options, runtime limits, recorded release review and certificate d
       },
     }),
   );
-  await page.goto("/settings#proxy");
+  await page.goto("/settings#dashboard");
   await page
     .getByRole("button", { name: "Verify dashboard", exact: true })
     .click();
