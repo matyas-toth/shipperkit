@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -76,6 +77,13 @@ func (r *DockerRuntime) ProtectedVolumes(ctx context.Context, app string) ([]Pro
 		}
 		out = append(out, p)
 	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := strings.ToLower(out[i].Logical), strings.ToLower(out[j].Logical)
+		if a != b {
+			return a < b
+		}
+		return out[i].Name < out[j].Name
+	})
 	return out, nil
 }
 func (r *DockerRuntime) RetainedVolumeApplication(ctx context.Context, name string) (string, error) {

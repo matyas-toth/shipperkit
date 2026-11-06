@@ -153,11 +153,13 @@ export default function Backups(props: {
       (p) => !props.service || p.config.service === props.service,
     ) ?? [];
   const volumes = () =>
-    query.data?.volumes.filter((v) =>
-      !props.application
-        ? !v.attached
-        : !props.service || v.services.includes(props.service) || v.restored,
-    ) ?? [];
+    (query.data?.volumes ?? [])
+      .filter((v) =>
+        !props.application
+          ? !v.attached
+          : !props.service || v.services.includes(props.service) || v.restored,
+      )
+      .sort((a, b) => a.logical.localeCompare(b.logical) || a.name.localeCompare(b.name));
   const runs = createMemo(() => {
     if (!props.service) return query.data?.runs ?? [];
     const ids = new Set(plans().map((p) => p.id));
@@ -320,16 +322,14 @@ export default function Backups(props: {
       setUpload(undefined);
     });
   }
-  const sourceVolumes = () =>
-    props.application?.method === "compose"
-      ? [
-          ...new Set(
-            (props.services ?? [])
-              .flatMap((s) => s.volumes.map((v) => v.name))
-              .filter((n) => n && !n.startsWith(".")),
-          ),
-        ]
+  const sourceVolumes = () => {
+    const names = props.application?.method === "compose"
+      ? (props.services ?? [])
+          .flatMap((s) => s.volumes.map((v) => v.name))
+          .filter((n) => n && !n.startsWith("."))
       : (props.application?.config.volumes.map((v) => v.name) ?? []);
+    return [...new Set(names)].sort((a, b) => a.localeCompare(b));
+  };
   const latestAttempt = createMemo(() => runs().find(run => run.operation === "backup"));
   const latestCopy = createMemo(() => runs().find(run => run.operation === "backup" && run.state === "succeeded"));
   const backupKinds: Record<string, string> = { instance: "Instance settings", database: "Database", volume: "Persistent volume" };

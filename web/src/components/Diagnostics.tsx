@@ -57,14 +57,20 @@ export default function Diagnostics(props: { applicationId: string; query: Retur
   const checks = createMemo(() => [...(query.data?.checks ?? [])].sort((a, b) => Number(attention.has(b.state)) - Number(attention.has(a.state))));
   const checksHealthy = createMemo(() => checks().length > 0 && checks().every(check => !attention.has(check.state) && check.state !== "unknown"));
   const [showChecks, setShowChecks] = createSignal(false);
+  const [checking, setChecking] = createSignal(false);
   const checksExpanded = () => showChecks() || !checksHealthy();
+  async function recheck() {
+    if (checking()) return;
+    setChecking(true);
+    try { await query.refetch(); } finally { setChecking(false); }
+  }
   const lastChecked = () => Math.max(0, ...checks().map(check => check.observedAt));
   let section!: HTMLElement;
   createEffect(on(() => !!props.focused && !!query.data, ready => {
     if (ready) queueMicrotask(() => section.scrollIntoView({ block: "start" }));
   }));
   return <section ref={section} class="diagnostics-section">
-    <div class="section-toolbar"><h2>Diagnostics</h2><Button small variant="ghost" icon="refresh" disabled={query.isFetching} onClick={() => void query.refetch()}>Recheck</Button></div>
+    <div class="section-toolbar"><h2>Diagnostics</h2><Button small variant="ghost" icon="refresh" disabled={checking()} aria-busy={checking()} onClick={() => void recheck()}>Recheck</Button></div>
     <Show when={query.error}><ErrorNotice message={query.error!.message} /></Show>
     <Show when={query.data}>{data => <>
       <div class="diagnostic-strip" classList={{ "has-issue": !checksHealthy() }}>
