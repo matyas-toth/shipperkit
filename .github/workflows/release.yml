@@ -1,18 +1,12 @@
 name: Release
 
 on:
-  workflow_call:
-    inputs:
-      tag:
-        description: Release tag to publish
-        required: true
-        type: string
   push:
     tags:
       - "v*"
 
 concurrency:
-  group: release-${{ inputs.tag || github.ref_name }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -20,7 +14,7 @@ permissions:
   packages: write
 
 env:
-  TAG: ${{ inputs.tag || github.ref_name }}
+  TAG: ${{ github.ref_name }}
   GH_TOKEN: ${{ github.token }}
 
 jobs:
@@ -31,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          ref: ${{ github.ref_name }}
 
       - name: Validate the release version
         run: |
