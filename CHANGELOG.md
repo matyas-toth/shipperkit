@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.10](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.9...v1.0.0-rc.10) (2026-11-07)
+
+
+### Bug Fixes
+
+* retry update checks while the host helper starts ([#19](https://github.com/matyas-toth/shipperkit/issues/19)) ([1771c8f](https://github.com/matyas-toth/shipperkit/commit/1771c8f9512edfa3224761c43fce45d86b540495))
+
 ## [1.0.0-rc.9](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.8...v1.0.0-rc.9) (2026-11-07)
 
 
