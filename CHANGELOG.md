@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.14](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.13...v1.0.0-rc.14) (2026-11-07)
+
+
+### Bug Fixes
+
+* report the latest checked release ([#27](https://github.com/matyas-toth/shipperkit/issues/27)) ([9db38e9](https://github.com/matyas-toth/shipperkit/commit/9db38e94b5ed83f4c147d75c68554113416f9349))
+
 ## [1.0.0-rc.13](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.12...v1.0.0-rc.13) (2026-11-07)
 
 
