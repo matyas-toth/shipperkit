@@ -531,6 +531,10 @@ func (s *Service) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-timer.C:
+			if !s.Enabled() {
+				timer.Reset(30 * time.Second)
+				continue
+			}
 			if _, err := s.Check(ctx); err != nil {
 				slog.Debug("Shipper update check failed", "error", err)
 			}
