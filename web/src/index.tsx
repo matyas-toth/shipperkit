@@ -47,7 +47,7 @@ function App() {
   }
   return <AuthContext.Provider value={{ session: () => session.data, logout, accept }}>
     <Show when={!session.isPending} fallback={<div class="boot-screen" role="status" aria-label="Loading Shipper"><span class="loading-line" /></div>}>
-      <Show when={!session.error} fallback={<div class="boot-screen"><ErrorNotice message={session.error?.message ?? "Shipper could not be reached"} retry={() => void session.refetch()} /></div>}>
+      <Show when={!session.error || session.data?.user} fallback={<div class="boot-screen"><ErrorNotice message={session.error?.message ?? "Shipper could not be reached"} retry={() => void session.refetch()} /></div>}>
         <Show when={session.data?.user} fallback={<AuthPage setup={session.data?.setupRequired ?? false} onAuthenticated={accept} refreshSession={() => session.refetch()} />}>
           <Show when={!session.data?.authStep && !session.data?.recoveryCodes?.length} fallback={<FactorGate />}>
             <Router root={Shell}><Route path="/" component={Applications} /><Route path="/settings" component={Settings} /><Route path="/system" component={System}/>

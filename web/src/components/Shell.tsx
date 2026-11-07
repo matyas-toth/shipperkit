@@ -85,7 +85,7 @@ export default function Shell(props: RouteSectionProps) {
   const closeMenu = () => { setMenu(false); accountButton?.focus(); };
   onMount(() => {
     stream = new EventSource("/api/events");
-    stream.onopen = () => { setLive(true); invalidate(); };
+    stream.onopen = () => { setLive(true); void client.invalidateQueries({ queryKey: ["session"] }); invalidate(); };
     stream.addEventListener("inventory", invalidate);
     stream.onerror = () => { setLive(false); void client.invalidateQueries({ queryKey: ["session"] }); };
     const onKey = (event: KeyboardEvent) => {
