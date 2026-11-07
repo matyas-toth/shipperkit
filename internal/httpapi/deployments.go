@@ -121,13 +121,15 @@ func (s *Server) application(w http.ResponseWriter, r *http.Request) {
 		ds[i] = publicDeployment(r, ds[i])
 	}
 	var active *store.Deployment
+	var database *deploy.DatabaseEndpoint
 	if a.ActiveDeploymentID != "" {
 		if d, e := s.db.Deployment(r.Context(), a.ActiveDeploymentID); e == nil {
+			database = deploy.DatabaseEndpointFor(d)
 			public := publicDeployment(r, d)
 			active = &public
 		}
 	}
-	s.json(w, 200, map[string]any{"application": publicApplication(r, a), "deployments": ds, "activeDeployment": active})
+	s.json(w, 200, map[string]any{"application": publicApplication(r, a), "deployments": ds, "activeDeployment": active, "database": database})
 }
 func (s *Server) resourceError(w http.ResponseWriter, e error) {
 	if errors.Is(e, sql.ErrNoRows) {

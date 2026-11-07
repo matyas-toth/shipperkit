@@ -1318,6 +1318,20 @@ input::placeholder {
 .application-tabs button:hover {
   color: var(--text);
 }
+.database-connection {
+  margin: 24px 0;
+  padding: 16px;
+  min-width: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.database-connection > label { display: block; margin-bottom: 10px; }
+.database-connection-controls { display: flex; align-items: center; gap: 8px; }
+.database-connection-controls .input { flex: 1; min-width: 0; width: 0; }
+.database-connection-controls .button { flex: none; }
+.database-connection .error-notice { margin-top: 12px; }
+
 .application-overview {
   display: grid;
   grid-template-columns: 1fr 1fr;

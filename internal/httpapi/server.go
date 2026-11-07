@@ -136,6 +136,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.With(s.csrf, s.limit).Post("/applications/{id}/domains", s.updateDomains)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/lifecycle", s.lifecycle)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/variables/reveal", s.revealVariable)
+			r.With(s.csrf, s.limit).Post("/applications/{id}/database/connection", s.databaseConnection)
 			r.Get("/applications/{id}/logs", s.runtimeLogs)
 
 			r.With(s.csrf, s.limit).Post("/applications", s.createApplication)

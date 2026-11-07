@@ -16,10 +16,54 @@ async function login(page: import("@playwright/test").Page) {
 }
 test.afterEach(async({page})=>{await page.unrouteAll({behavior:"wait"});for(const directory of folders.splice(0)){if(resolve(directory).startsWith(resolve(tmpdir())+sep))await rm(directory,{recursive:true,force:true});}});
 
+async function checkDatabaseConnection(page: import("@playwright/test").Page) {
+  const original = await (await page.request.get("/api/applications/application-web")).json();
+  const release = { ...original.activeDeployment, id: "database-release", resolvedMethod: "image", runtimePort: 5432, config: { ...original.application.config, method: "image", image: "postgres:17", startupPolicy: "process" } };
+  const database = { ...original.application, name: "PostgreSQL", state: "running", activeMethod: "image", method: "image", sourceKind: "image", sourceRef: "postgres:17", config: release.config, activeDeploymentId: release.id, latestDeployment: release, domains: [], containers: [{ ...original.application.containers[0], name: "shp-postgresql-review", state: "running", health: "healthy", image: "postgres:17", ports: [] }] };
+  const uri = "postgresql://app:review-password@site-database-release:5432/shop";
+  let copies = "", requests = 0, available = true;
+  await page.addInitScript(() => Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (text: string) => { (window as any).copiedDatabase = text; } } }));
+  await page.route("**/api/applications/application-web/diagnostics", route => route.fulfill({ json: { checks: [{ layer: "runtime", state: "healthy", summary: "Container is running", observedAt: Math.floor(Date.now() / 1000) }], servingRelease: release, latestOperation: release, durationSeconds: 15, observations: [], changesSinceServing: [], unknowns: [] } }));
+  await page.route("**/api/applications/application-web", route => route.fulfill({ json: { application: database, deployments: [release], activeDeployment: release, database: available ? { engine: "postgresql", host: "site-database-release", port: 5432 } : null } }));
+  await page.route("**/api/applications/application-web/database/connection", route => { requests++; return route.fulfill({ json: { uri, deploymentId: release.id } }); });
+  await page.goto("/applications/application-web");
+  await expect(page.getByLabel("Connection string", { exact: true })).toHaveAttribute("type", "password");
+  expect(requests).toBe(0);
+  await page.getByRole("button", { name: "Copy connection string", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Copy connection string", exact: true })).toHaveText("Copied");
+  copies = await page.evaluate(() => (window as any).copiedDatabase);
+  expect(copies).toBe(uri);
+  await expect(page.getByLabel("Connection string", { exact: true })).not.toHaveValue(uri);
+  await page.getByRole("button", { name: "Reveal connection string", exact: true }).click();
+  await expect(page.getByLabel("Connection string", { exact: true })).toHaveValue(uri);
+  await page.screenshot({ path: join(tmpdir(), "shipper-issue-9-connection.png") });
+  await page.getByRole("button", { name: "Hide connection string", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: join(tmpdir(), "shipper-issue-9-mobile.png") });
+  // HTTP installations without Clipboard API can use the copy-command fallback.
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+    document.execCommand = (command: string) => { (window as any).fallbackDatabase = (document.activeElement as HTMLTextAreaElement).value; return command === "copy"; };
+  });
+  await page.getByRole("button", { name: "Copy connection string", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).fallbackDatabase)).toBe(uri);
+  available = false;
+  await page.getByRole("link", { name: "Applications", exact: true }).first().click();
+  await page.goto("/applications/application-web");
+  await expect(page.getByRole("region", { name: "Database connection", exact: true })).toHaveCount(0);
+  await page.unroute("**/api/applications/application-web");
+  await page.unroute("**/api/applications/application-web/database/connection");
+  await page.unroute("**/api/applications/application-web/diagnostics");
+  await page.setViewportSize({ width: 1440, height: 1100 });
+}
+
 test("System tokens, notification choices and responsive diagnostics", async({page})=>{
   await page.setViewportSize({width:1440,height:1100});
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
-  await login(page);await page.getByRole("link",{name:"System",exact:true}).click();
+  await login(page);
+  await checkDatabaseConnection(page);
+  await page.getByRole("link",{name:"System",exact:true}).click();
   await expect(page).toHaveTitle("System | Shipper");await expect(page.getByRole("heading",{name:"Health",exact:true})).toBeVisible();
   await page.getByRole("link",{name:"Access tokens",exact:true}).click();await expect(page.getByRole("heading",{name:"Health",exact:true})).toHaveCount(0);
   await page.getByText("Create token",{exact:true}).first().click();
