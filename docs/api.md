@@ -331,3 +331,18 @@ session and CSRF header. The `/api/v1` equivalent requires the `secrets` capabil
 for that application. The URI comes from the active deployment, including while
 newer application settings are unapplied. No active release returns 409;
 unsupported or non-inferable credentials return 422.
+
+### Updates
+
+`GET /api/updates` returns the current version, selected channel, auto-update
+setting, last check time, the nullable available release, and the host update
+status. `GET /api/updates/status` returns only the host status and remains
+available while the control plane is updating.
+
+`POST /api/updates/check` forces a feed check. `POST /api/updates/settings`
+accepts `{channel:"main"|"nightly",auto:boolean}`; changing settings triggers a
+check and applies an available update when auto is on. `POST /api/updates/apply`
+accepts `{}` and returns 202 with the queued status. All POST routes require the
+owner session and CSRF header. No update, an active update, queued operations,
+or an unavailable host helper return 409 or 422 with a specific error code.
+Feed and status responses never include a shell command or credentials.

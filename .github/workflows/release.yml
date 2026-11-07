@@ -72,8 +72,10 @@ jobs:
       - name: Prepare install assets
         run: |
           set -euo pipefail
-          printf 'ghcr.io/%s@%s' "$GITHUB_REPOSITORY" "${{ steps.build.outputs.digest }}" > image.txt
-          sha256sum install.sh image.txt > SHA256SUMS
+          printf 'ghcr.io/%s@%s\n' "$GITHUB_REPOSITORY" "${{ steps.build.outputs.digest }}" > image.txt
+          printf '%s\n' "$VERSION" > version.txt
+          printf 'https://github.com/%s/releases/tag/%s\n' "$GITHUB_REPOSITORY" "$TAG" > release-url.txt
+          sha256sum install.sh image.txt version.txt release-url.txt > SHA256SUMS
           test -s image.txt
           cat image.txt
           cat SHA256SUMS
@@ -88,17 +90,17 @@ jobs:
             [[ "$VERSION" == *-* ]] && args+=(--prerelease)
             gh release create "$TAG" "${args[@]}"
           fi
-          gh release upload "$TAG" install.sh image.txt SHA256SUMS --clobber
+          gh release upload "$TAG" install.sh image.txt version.txt release-url.txt SHA256SUMS --clobber
 
       - name: Update the latest installer channel
         run: |
           set -euo pipefail
           tmp=$(mktemp -d)
-          cp install.sh image.txt SHA256SUMS "$tmp"/
+          cp install.sh image.txt version.txt release-url.txt SHA256SUMS "$tmp"/
           cd "$tmp"
           git init -q
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add install.sh image.txt SHA256SUMS
+          git add install.sh image.txt version.txt release-url.txt SHA256SUMS
           git commit -qm "release: $TAG"
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:latest

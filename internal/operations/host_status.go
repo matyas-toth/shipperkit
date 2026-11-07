@@ -14,6 +14,7 @@ type HostStatus struct {
 	RebootRequired         bool  `json:"rebootRequired"`
 	SecurityServiceEnabled bool  `json:"securityServiceEnabled"`
 	ClockSynchronized      bool  `json:"clockSynchronized"`
+	UpdateReady            bool  `json:"updateReady"`
 	Stale                  bool  `json:"stale"`
 }
 

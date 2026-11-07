@@ -67,6 +67,8 @@ if $uninstall; then
   begin
   systemctl disable --now "$unit"
   systemctl disable --now shipper-host-status.timer 2>/dev/null || true
+  systemctl disable --now shipper-update.path shipper-update.timer 2>/dev/null || true
+  systemctl stop shipper-update.service 2>/dev/null || true
   compose rm --force shipper
   stage 'uninstall: complete'
   exit 0
@@ -290,22 +292,141 @@ esac
 CONTROL
 chmod 0755 /usr/local/bin/shipperctl
 install -d -m 0755 /usr/local/libexec
-cat >/usr/local/libexec/shipper-host-status <<'HOST'
+cat >/usr/local/libexec/shipper-update <<'UPDATE'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+data=/var/lib/shipper
+state=/var/lib/shipper-installer
+request="$data/update-request.json"
+status="$data/update-status.json"
+log="$data/update.log"
+started_at=$(date +%s)
+finished_at=0
+phase=preparing
+message="Preparing the update"
+from_version= to_version= request_id=
+installer= work= copy=
+if [[ ${SHIPPER_UPDATE_COPY:-} != 1 ]]; then
+  copy=$(mktemp "$state/update-runner.XXXXXX")
+  cp "$0" "$copy"
+  chmod 0700 "$copy"
+  SHIPPER_UPDATE_COPY=1 SHIPPER_UPDATE_COPY_FILE="$copy" exec "$copy" "$@"
+fi
+copy=${SHIPPER_UPDATE_COPY_FILE:-}
+
+json_escape() {
+  local value=$1
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  printf '%s' "$value"
+}
+
+write_status() {
+  local next="$data/update-status.next" tail=""
+  if [[ -f $log ]]; then
+    tail=$(tail -n 20 "$log" 2>/dev/null | tr -d '\000-\010\013\014\016-\037' | tail -c 6000 || true)
+  fi
+  printf '{"state":"%s","message":"%s","fromVersion":"%s","toVersion":"%s","startedAt":%s,"finishedAt":%s,"requestId":"%s","log":"%s"}\n' \
+    "$phase" "$(json_escape "$message")" "$from_version" "$to_version" "$started_at" "$finished_at" "$request_id" "$(json_escape "$tail")" >"$next"
+  chmod 0644 "$next"
+  mv -f "$next" "$status"
+}
+
+fail() {
+  phase=failed
+  message=$1
+  finished_at=$(date +%s)
+  printf '%s %s\n' "$(date -u +%FT%TZ)" "$message" >>"$log" 2>/dev/null || true
+  write_status
+  exit 1
+}
+
+cleanup() { rm -f "$work" "$installer" "$copy"; }
+trap cleanup EXIT
+
+exec 9>"$state/update.lock"
+flock -n 9 || exit 0
+[[ -f $request && ! -L $request ]] || { rm -f "$request"; exit 0; }
+work=$(mktemp "$state/update-request.XXXXXX")
+mv -f "$request" "$work"
+chmod 0600 "$work"
+
+image=$(sed -n 's/.*"image":"\([^"]*\)".*/\1/p' "$work" | head -n1)
+to_version=$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' "$work" | head -n1)
+request_id=$(sed -n 's/.*"requestId":"\([^"]*\)".*/\1/p' "$work" | head -n1)
+image_re='^ghcr\.io/matyas-toth/shipperkit@sha256:[0-9a-f]{64}$'
+version_re='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
+[[ $image =~ $image_re ]] || fail 'The update image is invalid.'
+[[ $to_version =~ $version_re ]] || fail 'The update version is invalid.'
+[[ $request_id =~ ^[a-f0-9]{32}$ ]] || fail 'The update request is invalid.'
+
+: >"$log"
+from_version=$(docker run --rm --network none --pull never "$(sed -n 's/^SHIPPER_IMAGE=//p' /etc/shipper/instance.env)" version 2>/dev/null || true)
+phase=preparing
+message="Validating Shipper $to_version"
+write_status
+
+phase=pulling
+message="Downloading Shipper $to_version"
+write_status
+if ! docker pull --quiet "$image" >>"$log" 2>&1; then fail 'The update image could not be downloaded.'; fi
+reported=$(docker run --rm --network none --pull never "$image" version 2>/dev/null || true)
+[[ $reported == "$to_version" ]] || fail 'The update image version did not match the request.'
+
+installer=$(mktemp "$state/update-installer.XXXXXX")
+if ! docker run --rm --network none --pull never --entrypoint cat "$image" /usr/share/shipper/install.sh >"$installer" 2>>"$log"; then
+  fail 'The update installer could not be read.'
+fi
+bash -n "$installer" || fail 'The update installer is invalid.'
+chmod 0700 "$installer"
+
+phase=updating
+message="Installing Shipper $to_version"
+write_status
+set +e
+"$installer" --image "$image" 2>&1 | while IFS= read -r line; do
+  printf '%s\n' "$line" >>"$log"
+  case "$line" in
+    *"update: checking operations"*) phase=checkpoint; message="Taking a checkpoint";;
+    *"service: starting"*) phase=starting; message="Starting Shipper $to_version";;
+    *"service: Shipper"*"is ready"*) phase=verifying; message="Verifying Shipper $to_version";;
+    *) message=$line;;
+  esac
+  write_status
+done
+rc=${PIPESTATUS[0]}
+set -e
+if [[ $rc -ne 0 ]]; then fail 'The update failed. Shipper restored the previous version.'; fi
+
+phase=succeeded
+message="Shipper $to_version is ready"
+finished_at=$(date +%s)
+write_status
+rm -f "$work" "$installer"
+UPDATE
+chmod 0755 /usr/local/libexec/shipper-update
+cat >/usr/local/libexec/shipper-host-status.next <<'HOST'
 #!/usr/bin/env bash
 set -euo pipefail
 status=/var/lib/shipper-installer/status
-docker=false shipper=false reboot=false security=false clock=false
+docker=false shipper=false reboot=false security=false clock=false update=false
 if systemctl is-enabled --quiet docker.service && systemctl is-active --quiet docker.service; then docker=true; fi
 if systemctl is-enabled --quiet shipper.service && systemctl is-active --quiet shipper.service; then shipper=true; fi
 if systemctl is-enabled --quiet unattended-upgrades.service; then security=true; fi
 if [[ -e /var/run/reboot-required ]]; then reboot=true; fi
 if [[ $(timedatectl show -p NTPSynchronized --value 2>/dev/null || true) == yes ]]; then clock=true; fi
-printf '{"observedAt":%s,"dockerAtBoot":%s,"shipperAtBoot":%s,"rebootRequired":%s,"securityServiceEnabled":%s,"clockSynchronized":%s}\n' \
-  "$(date +%s)" "$docker" "$shipper" "$reboot" "$security" "$clock" >"$status/status.next"
+if [[ -x /usr/local/libexec/shipper-update ]] && systemctl is-enabled --quiet shipper-update.path; then update=true; fi
+printf '{"observedAt":%s,"dockerAtBoot":%s,"shipperAtBoot":%s,"rebootRequired":%s,"securityServiceEnabled":%s,"clockSynchronized":%s,"updateReady":%s}\n' \
+  "$(date +%s)" "$docker" "$shipper" "$reboot" "$security" "$clock" "$update" >"$status/status.next"
 chmod 0644 "$status/status.next"
 mv -f "$status/status.next" "$status/status.json"
 HOST
-chmod 0755 /usr/local/libexec/shipper-host-status
+chmod 0755 /usr/local/libexec/shipper-host-status.next
+mv -f /usr/local/libexec/shipper-host-status.next /usr/local/libexec/shipper-host-status
 cat >/etc/systemd/system/shipper-host-status.service <<'HOSTUNIT'
 [Unit]
 Description=Observe Shipper host boot and maintenance state
@@ -330,6 +451,46 @@ AccuracySec=5s
 WantedBy=timers.target
 TIMER
 chmod 0644 /etc/systemd/system/shipper-host-status.service /etc/systemd/system/shipper-host-status.timer
+cat >/etc/systemd/system/shipper-update.service <<'UPDATEUNIT'
+[Unit]
+Description=Apply a requested Shipper update
+Requires=docker.service
+After=network-online.target docker.service
+ConditionPathExists=/var/lib/shipper/update-request.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/shipper-update
+TimeoutStartSec=20min
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
+UPDATEUNIT
+cat >/etc/systemd/system/shipper-update.path <<'UPDATEPATH'
+[Unit]
+Description=Watch for a requested Shipper update
+
+[Path]
+PathExists=/var/lib/shipper/update-request.json
+Unit=shipper-update.service
+
+[Install]
+WantedBy=paths.target
+UPDATEPATH
+cat >/etc/systemd/system/shipper-update.timer <<'UPDATETIMER'
+[Unit]
+Description=Retry pending Shipper updates
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
+UPDATETIMER
+chmod 0644 /etc/systemd/system/shipper-update.service /etc/systemd/system/shipper-update.path /etc/systemd/system/shipper-update.timer
 printf 'SHIPPER_IMAGE=%s\nSHIPPER_DOCKER_GID=%s\n' "$image_id" "$gid" >"$cfg/instance.next"
 mv -f "$cfg/instance.next" "$cfg/instance.env"
 systemctl daemon-reload
@@ -347,6 +508,7 @@ if [[ -n $checkpoint ]]; then
 fi
 stage "service: Shipper $reported is ready"
 systemctl enable --now shipper-host-status.timer
+systemctl enable --now shipper-update.path shipper-update.timer
 systemctl start shipper-host-status.service
 printf 'Open Shipper: http://%s:8080\n' "$public_ip"
 printf '%s\n' 'For a fresh installation, run sudo shipperctl claim, then add the dashboard domain in Settings.'

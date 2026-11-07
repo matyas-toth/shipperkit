@@ -2,7 +2,7 @@ name: Staging
 
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [Nightly]
     types: [completed]
     branches: [master]
   workflow_dispatch:
@@ -13,64 +13,32 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   deploy:
     name: deploy
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 15
     environment: staging
     env:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.HEAD_SHA }}
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci
-      - name: Resolve the edge version
+      - name: Resolve the nightly image
         run: |
-          package_version=$(node -p "require('./package.json').version")
-          echo "VERSION=${package_version}-edge.${HEAD_SHA::12}" >> "$GITHUB_ENV"
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push the staging image
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64
-          push: true
-          tags: ghcr.io/${{ github.repository }}:edge-${{ env.HEAD_SHA }}
-          build-args: VERSION=${{ env.VERSION }}
-          labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ env.VERSION }}
-            org.opencontainers.image.revision=${{ env.HEAD_SHA }}
-          cache-from: type=gha,scope=edge
-          cache-to: type=gha,mode=max,scope=edge
-          provenance: true
-          sbom: true
+          set -euo pipefail
+          digest=$(gh api "repos/${GITHUB_REPOSITORY}/contents/image.txt?ref=nightly" --jq .content | base64 -d | tr -d '\n')
+          [[ "$digest" =~ ^ghcr\.io/matyas-toth/shipperkit@sha256:[0-9a-f]{64}$ ]] || { echo "Invalid nightly image: $digest"; exit 1; }
+          echo "DIGEST=$digest" >> "$GITHUB_ENV"
       - name: Install the staging candidate
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
           STAGING_USER: ${{ secrets.STAGING_USER }}
           STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
-          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           set -euo pipefail
           test -n "$STAGING_HOST" && test -n "$STAGING_USER" && test -n "$STAGING_SSH_KEY"
@@ -80,4 +48,4 @@ jobs:
           ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts
           scp -i ~/.ssh/id_ed25519 install.sh "$STAGING_USER@$STAGING_HOST:/root/shipper-install.sh"
           ssh -i ~/.ssh/id_ed25519 "$STAGING_USER@$STAGING_HOST" \
-            "bash /root/shipper-install.sh --image ghcr.io/${GITHUB_REPOSITORY}@${DIGEST}"
+            "bash /root/shipper-install.sh --image ${DIGEST}"

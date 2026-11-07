@@ -31,6 +31,7 @@ import (
 	"shipper/internal/operations"
 	"shipper/internal/store"
 	"shipper/internal/ui"
+	"shipper/internal/updates"
 )
 
 var version = "1.0.0-rc.8" // x-release-please-version
@@ -284,6 +285,25 @@ func run() error {
 	}}
 	worker := deploy.NewWorker(db, dockerRuntime, hub, dataDir)
 	worker.Refresh = monitor.Trigger
+	updateInterval := 5 * time.Minute
+	if raw := os.Getenv("SHIPPER_UPDATE_INTERVAL"); raw != "" {
+		if parsed, parseErr := time.ParseDuration(raw); parseErr == nil && parsed > 0 {
+			updateInterval = parsed
+		} else {
+			slog.Warn("Ignoring invalid SHIPPER_UPDATE_INTERVAL", "value", raw)
+		}
+	}
+	updatesEnabled := os.Getenv("SHIPPER_UPDATES") == "1" || (os.Getenv("SHIPPER_MANAGED_INSTALL") == "1" && os.Getenv("SHIPPER_UPDATES") != "0")
+	updateService := updates.New(updates.Config{
+		Store: db, DataDir: dataDir, CurrentVersion: version,
+		MainFeed:    env("SHIPPER_UPDATE_MAIN_FEED", updates.DefaultMainFeed),
+		NightlyFeed: env("SHIPPER_UPDATE_NIGHTLY_FEED", updates.DefaultNightlyFeed),
+		Interval:    updateInterval, Enabled: updatesEnabled,
+		Ready: func() bool {
+			host := operations.InstalledHostStatus()
+			return host != nil && !host.Stale && host.UpdateReady
+		},
+	})
 	operator := &operations.Service{DB: db, Docker: docker.Client(), Monitor: monitor, Instance: instance, DataDir: dataDir, DashboardURL: proxyConfig.DashboardURL, Publish: hub.Publish}
 	worker.Operations = operator.Run
 	worker.Maintenance = operator.ProcessMaintenance
@@ -294,6 +314,8 @@ func run() error {
 	defer cancel()
 	monitorDone := make(chan struct{})
 	go func() { defer close(monitorDone); monitor.Run(ctx) }()
+	updatesDone := make(chan struct{})
+	go func() { defer close(updatesDone); updateService.Run(ctx) }()
 	workerDone := make(chan struct{})
 	updateLock := filepath.Join(dataDir, "update.lock")
 	managed := os.Getenv("SHIPPER_MANAGED_INSTALL") == "1"
@@ -316,13 +338,13 @@ func run() error {
 		worker.Run(ctx)
 	}()
 	addr := env("SHIPPER_ADDR", "127.0.0.1:8080")
-	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator}
+	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator, Updates: updateService}
 	if !configured && os.Getenv("SHIPPER_SETUP_TOKEN") == "" {
 		apiConfig.SetupClaim = func() (string, error) { return auth.ReadSetupClaim(dataDir) }
 	}
 	handler := httpapi.New(db, monitor, hub, apiConfig)
 	server := &http.Server{Addr: addr, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/health" && updating() {
+		if r.URL.Path != "/api/health" && r.URL.Path != "/api/updates/status" && updating() {
 			w.Header().Set("Retry-After", "5")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -339,6 +361,7 @@ func run() error {
 		if !errors.Is(err, http.ErrServerClosed) {
 			cancel()
 			<-monitorDone
+			<-updatesDone
 			<-workerDone
 			return err
 		}
@@ -351,6 +374,7 @@ func run() error {
 	server.Close()
 	_ = server.Shutdown(shutdownCtx)
 	<-monitorDone
+	<-updatesDone
 	<-workerDone
 	return nil
 }
