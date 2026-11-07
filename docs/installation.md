@@ -27,6 +27,8 @@ version=1.0.0-rc.7
 origin="https://github.com/matyas-toth/shipperkit/releases/download/v$version"
 curl -fsSLO "$origin/install.sh"
 curl -fsSLO "$origin/image.txt"
+curl -fsSLO "$origin/version.txt"
+curl -fsSLO "$origin/release-url.txt"
 curl -fsSLO "$origin/SHA256SUMS"
 sha256sum -c SHA256SUMS
 sudo bash install.sh --version "$version" --check
@@ -69,14 +71,18 @@ and `shipper connect` for ongoing scoped CLI pairing.
 
 ## Updates and recovery
 
-Use the installer with a new pinned version, or rerun the latest one-liner.
-Review the checks with `--check` before applying. The managed update waits for
-queued work, stops the control plane, and verifies a SQLite checkpoint against
-its key and checksum. The candidate can report liveness before serving requests
-or running the worker. An unhealthy or interrupted candidate can restore the
-prior image and checkpoint; the candidate database is preserved for diagnosis.
-Keep an off-host encrypted instance backup independently of these local
-checkpoints.
+After claiming the instance, open **Settings > Updates**. New installations use
+the Main channel with automatic updates off. Shipper checks for a new release
+every five minutes and shows an Update badge on Settings. The update dialog runs
+the managed installer on the host, which waits for queued work, takes a SQLite
+checkpoint, restarts only the control plane, and verifies the new release.
+Application containers and volumes keep running. A failed candidate restores the
+previous image and checkpoint. See [updates](updates.md) for channels, status and
+security details.
+
+The installer remains the recovery path. Run it with a pinned version, or rerun
+the latest one-liner. Review the checks with `--check` before applying. Keep an
+off-host encrypted instance backup independently of these local checkpoints.
 
 The host's OS and Docker patch policy remains operator managed. System reports
 boot services, the distribution's security updates service, clock synchronization

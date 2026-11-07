@@ -200,8 +200,8 @@ one primary hostname, and optional aliases redirected to it. Root domains can ad
 `www` automatically. **Save domains** only updates routing. HTTPS requires an ACME
 email, public DNS, and reachable ports; local addresses use HTTP. See
 [database image connections](docs/database-connections.md),
-[application operations](docs/full-applications.md) and
-[static site operations](docs/static-sites.md).
+[updates](docs/updates.md), [application operations](docs/full-applications.md)
+and [static site operations](docs/static-sites.md).
 
 See [routing, VPS HTTPS and recorded release recovery](docs/routing-and-releases.md)
 for path routing, maintenance, certificate diagnostics, runtime limits and rollback.
@@ -279,12 +279,14 @@ Production data and generated builds are ignored by Git.
 ## Project
 
 See [architecture](docs/architecture.md), the [API contract](docs/api.md),
-[releases and staging](docs/releases.md), [contributing](CONTRIBUTING.md),
-[security](SECURITY.md), and [phase status](docs/roadmap.md). The interface is
-based on the measured [design reference](DESIGN.md), with the concise-copy rules
-in [AGENTS.md](AGENTS.md).
+[releases and staging](docs/releases.md), [updates](docs/updates.md),
+[contributing](CONTRIBUTING.md), [security](SECURITY.md), and
+[phase status](docs/roadmap.md). The interface is based on the measured
+[design reference](DESIGN.md), with the concise-copy rules in
+[AGENTS.md](AGENTS.md).
 
-The project is MIT licensed. There is no hosted service or selected distribution
-domain yet. Release assets, including the parameterless one-line installer, are
-not published yet.
+The project is MIT licensed. Release assets, including the parameterless
+one-line installer, are published on GitHub Releases. The public
+`shipperkit.dev/install.sh` redirect is the supported entry point once the
+domain is configured.
 

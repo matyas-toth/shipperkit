@@ -1,10 +1,11 @@
 # Releases, CI and staging
 
-Shipper uses three channels:
+Shipper uses four channels:
 
 - Pull request checks build and test a candidate without publishing.
-- `master` builds an immutable edge image and deploys it to staging.
-- A versioned release publishes the public image, installer assets and the latest installer channel.
+- `master` publishes an immutable nightly image and updates the nightly feed.
+- The nightly image is deployed to staging for continuous real-host acceptance.
+- A versioned release publishes the public image, installer assets and the latest installer feed.
 
 ## Branch and pull request flow
 
@@ -53,10 +54,24 @@ It:
 2. Builds `linux/amd64` with the version in the binary.
 3. Pushes `ghcr.io/matyas-toth/shipperkit:<version>`.
 4. Reads the manifest digest into `image.txt`.
-5. Creates or updates the GitHub release and uploads `install.sh`, `image.txt` and `SHA256SUMS`.
-6. Force-updates the `latest` branch with the same three installer assets.
+5. Writes `version.txt` and `release-url.txt` for the update checker.
+6. Creates or updates the GitHub release and uploads `install.sh`, `image.txt`, `version.txt`, `release-url.txt` and `SHA256SUMS`.
+7. Force-updates the `latest` branch with the same installer and update feed files.
 
-The `latest` branch is a generated installer channel, not development history. The public one-liner reads it through `shipperkit.dev`.
+The `latest` branch is a generated release feed, not development history. The public one-liner reads its installer through `shipperkit.dev`, and installed instances read its version and image metadata.
+
+## Nightly feed
+
+`.github/workflows/nightly.yml` runs after every successful `master` CI run. It builds and pushes a nightly image, tags it as `nightly`, and force-updates a generated `nightly` branch with:
+
+- `version.txt`, using `<package-version>.nightly.<run-number>`.
+- `image.txt`, the immutable image digest.
+- `release-url.txt`, the source commit.
+- `SHA256SUMS`.
+
+The nightly version sorts after the release it is based on and before the next release candidate. This lets an instance on `1.0.0-rc.9` update to `1.0.0-rc.9.nightly.42`, and then to `1.0.0-rc.10` when that release is published.
+
+See [updates](updates.md) for the in-app update flow and feed checks.
 
 ## Public installer
 
@@ -73,20 +88,20 @@ from the same `latest` branch and pulls the pinned digest.
 The pinned release form remains available:
 
 ```sh
-sudo bash install.sh --version 1.0.0-rc.7
+sudo bash install.sh --version 1.0.0-rc.8
 ```
 
 That path fetches the immutable release assets from GitHub.
 
 ## Staging
 
-`.github/workflows/staging.yml` runs after a successful CI run on `master`. It builds an edge image with a SemVer-compatible version, pushes it to GHCR, uploads the current installer to the staging host and runs:
+`.github/workflows/staging.yml` runs after a successful Nightly workflow on `master`. It reads the nightly digest from the generated `nightly` branch, uploads the current installer to the staging host and runs:
 
 ```sh
 bash /root/shipper-install.sh --image ghcr.io/matyas-toth/shipperkit@sha256:<digest>
 ```
 
-The installer takes a checkpoint, updates the control plane and preserves the dashboard domain and data. A failed candidate is restored from the previous checkpoint.
+The installer takes a checkpoint, updates the control plane and preserves the dashboard domain and data. A failed candidate is restored from the previous checkpoint. The staging workflow does not rebuild the image, so it always exercises the exact digest published to the nightly feed.
 
 Required repository secrets:
 
