@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.18](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.17...v1.0.0-rc.18) (2026-11-07)
+
+
+### Bug Fixes
+
+* keep update progress on the current request ([#36](https://github.com/matyas-toth/shipperkit/issues/36)) ([6a0419e](https://github.com/matyas-toth/shipperkit/commit/6a0419e269691f8f81d2d66f9a751e513781ac71))
+
 ## [1.0.0-rc.17](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.16...v1.0.0-rc.17) (2026-11-07)
 
 
