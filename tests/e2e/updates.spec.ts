@@ -70,6 +70,8 @@ test("update badge, channels, settings and progress dialog", async ({ page }) =>
   await login(page);
   await expect(page.locator(".nav-update-badge")).toHaveText("Update");
   await page.locator(".primary-navigation").getByRole("link", { name: /Settings/ }).click();
+  await expect(page.getByRole("heading", { name: "Account settings", exact: true }).locator("svg")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Server settings", exact: true }).locator("svg")).toHaveCount(0);
   await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Updates", exact: true }).click();
 
   await expect(page.getByText("Update available", { exact: true })).toBeVisible();
