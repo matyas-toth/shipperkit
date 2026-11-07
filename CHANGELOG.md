@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.11](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.10...v1.0.0-rc.11) (2026-11-07)
+
+
+### Bug Fixes
+
+* allow pausing automatic staging deployments ([#21](https://github.com/matyas-toth/shipperkit/issues/21)) ([4d63082](https://github.com/matyas-toth/shipperkit/commit/4d630827fd538625c36f4f6782950f673fea701f))
+
 ## [1.0.0-rc.10](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.9...v1.0.0-rc.10) (2026-11-07)
 
 
