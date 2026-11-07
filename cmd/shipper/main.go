@@ -34,7 +34,7 @@ import (
 	"shipper/internal/updates"
 )
 
-var version = "1.0.0-rc.8" // x-release-please-version
+var version = "1.0.0-rc.9" // x-release-please-version
 
 func main() {
 	if err := run(); err != nil {

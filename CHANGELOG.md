@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.9](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.8...v1.0.0-rc.9) (2026-11-07)
+
+
+### Features
+
+* distribute control-plane updates ([#17](https://github.com/matyas-toth/shipperkit/issues/17)) ([21216ad](https://github.com/matyas-toth/shipperkit/commit/21216ad35041b879f625598858b17130ee1b0d7b))
+
 ## [1.0.0-rc.8](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.7...v1.0.0-rc.8) (2026-11-07)
 
 
