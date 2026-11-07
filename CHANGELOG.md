@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.20](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.19...v1.0.0-rc.20) (2026-11-07)
+
+
+### Bug Fixes
+
+* remove settings group icons ([#40](https://github.com/matyas-toth/shipperkit/issues/40)) ([d3e3e6c](https://github.com/matyas-toth/shipperkit/commit/d3e3e6c009dfe976d1ab771f9110e855f09c5e95))
+
 ## [1.0.0-rc.19](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.18...v1.0.0-rc.19) (2026-11-07)
 
 
