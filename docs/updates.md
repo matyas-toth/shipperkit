@@ -70,9 +70,10 @@ routes and the proxy continue running. If the candidate is unhealthy, the
 installer restores the previous image and checkpoint.
 
 The dashboard keeps a progress dialog open across the control-plane restart and
-reloads when the new version is ready. If the dialog is closed, the update
-continues and the Settings page shows its state. A failed update keeps the
-previous version serving; the failure and log are available under Updates.
+reloads when the new version is ready. Closing the dialog does not cancel the
+update; the update continues and the Settings page shows its state. A failed
+update keeps the previous version serving; the failure and log are available
+under Updates.
 
 ## Security boundary
 
