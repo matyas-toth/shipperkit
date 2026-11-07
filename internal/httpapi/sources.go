@@ -265,6 +265,17 @@ func (s *Server) validateSource(ctx context.Context, c *store.Config) error {
 	return nil
 }
 func (s *Server) beginGitHub(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Organization string `json:"organization"`
+	}
+	if !s.decode(w, r, &input) {
+		return
+	}
+	organization := strings.TrimSpace(input.Organization)
+	if organization != "" && (strings.Contains(organization, "--") || !regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$`).MatchString(organization)) {
+		s.problem(w, 422, "invalid_organization", "Enter a GitHub organization name")
+		return
+	}
 	origin := s.publicURL()
 	if origin == "" {
 		origin = requestOrigin(r)
@@ -281,7 +292,11 @@ func (s *Server) beginGitHub(w http.ResponseWriter, r *http.Request) {
 	}
 	active := parsed.Scheme == "https"
 	manifest := map[string]any{"name": "Shipper " + id[:8], "url": origin, "public": false, "redirect_url": origin + "/connect/github/manifest", "setup_url": origin + "/connect/github/installed?state=" + state, "hook_attributes": map[string]any{"url": origin + "/hooks/github/" + id, "active": active}, "default_events": []string{"push"}, "default_permissions": map[string]string{"contents": "read", "metadata": "read"}}
-	s.json(w, 200, map[string]any{"action": "https://github.com/settings/apps/new?state=" + state, "manifest": manifest})
+	action := "https://github.com/settings/apps/new"
+	if organization != "" {
+		action = "https://github.com/organizations/" + url.PathEscape(organization) + "/settings/apps/new"
+	}
+	s.json(w, 200, map[string]any{"action": action + "?state=" + state, "manifest": manifest})
 }
 func (s *Server) githubManifest(w http.ResponseWriter, r *http.Request) {
 	state, code := r.URL.Query().Get("state"), r.URL.Query().Get("code")
