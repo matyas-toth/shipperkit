@@ -11,6 +11,7 @@ import Backups from "../components/Backups";
 import { Icon, type IconName } from "../components/Icon";
 import AccountSecurity from "../components/AccountSecurity";
 import DashboardSettings from "../components/DashboardSettings";
+import Updates from "../components/Updates";
 
 type SettingsGroup = {
   id: string;
@@ -27,6 +28,7 @@ const groups: SettingsGroup[] = [
     { id: "instance", label: "Instance", icon: "sliders" },
     { id: "dashboard", label: "Dashboard", icon: "globe" },
     { id: "sources", label: "Connections", icon: "git" },
+    { id: "updates", label: "Updates", icon: "refresh" },
     { id: "recovery", label: "Recovery", icon: "database" },
     { id: "security", label: "Access policy", icon: "shield" },
   ] },
@@ -66,6 +68,7 @@ export default function Settings() {
         <Show when={query.error}><ErrorNotice message={query.error!.message} retry={() => void query.refetch()} /></Show>
         <Show when={actionError()}><ErrorNotice message={actionError()} /></Show>
         <Show when={section() === "sources"}><Connections /></Show>
+        <Show when={section() === "updates"}><Updates /></Show>
         <Show when={section() === "recovery"}><section class="settings-section" id="recovery"><Backups /></section></Show>
         <Show when={section() === "account"}><section class="settings-section" id="account"><h2>Account</h2><dl class="settings-group">
           <div class="setting-row"><dt>Email</dt><dd>{auth.session()?.user?.email}</dd></div>

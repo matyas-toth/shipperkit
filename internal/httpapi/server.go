@@ -13,7 +13,9 @@ import (
 	"net/http"
 	"net/mail"
 	"net/url"
+	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +29,7 @@ import (
 	"shipper/internal/inventory"
 	"shipper/internal/operations"
 	"shipper/internal/store"
+	"shipper/internal/updates"
 )
 
 const cookieName = "shipper_session"
@@ -43,6 +46,7 @@ type Config struct {
 	EffectiveProxy func(context.Context) (deploy.ProxyConfig, error)
 	SetupClaim     func() (string, error)
 	Operations     *operations.Service
+	Updates        *updates.Service
 }
 type Server struct {
 	github          *gitprovider.GitHub
@@ -51,6 +55,7 @@ type Server struct {
 	hub             *events.Hub
 	cfg             Config
 	limiter         *limiter
+	limitMax        int
 	dummyHash       string
 	authSlots       chan struct{}
 	logSlots        chan struct{}
@@ -80,7 +85,13 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 	if dashboard != "" {
 		publicURL = "https://" + dashboard
 	}
-	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1), publicURLValue: publicURL, dashboardValue: dashboard}
+	limitMax := 10
+	if raw := os.Getenv("SHIPPER_RATE_LIMIT"); raw != "" {
+		if parsed, parseErr := strconv.Atoi(raw); parseErr == nil && parsed > 0 {
+			limitMax = parsed
+		}
+	}
+	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, limitMax: limitMax, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1), publicURLValue: publicURL, dashboardValue: dashboard}
 	s.authChanged = make(chan struct{})
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, s.headers)
@@ -144,6 +155,11 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.With(s.csrf, s.limit).Post("/applications/{id}/delete", s.deleteApplication)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/domain-check", s.checkDomain)
 			r.Get("/system", s.system)
+			r.Get("/updates", s.updateState)
+			r.Get("/updates/status", s.updateStatus)
+			r.With(s.csrf, s.limit).Post("/updates/check", s.checkUpdates)
+			r.With(s.csrf, s.limit).Post("/updates/settings", s.saveUpdateSettings)
+			r.With(s.csrf, s.limit).Post("/updates/apply", s.applyUpdate)
 			r.Get("/events", s.stream)
 			r.With(s.csrf, s.limit).Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
 				s.monitor.Trigger()
@@ -578,7 +594,7 @@ func (s *Server) limit(next http.Handler) http.Handler {
 		}
 		entry.count++
 		s.limiter.entries[key] = entry
-		allowed := entry.count <= 10
+		allowed := entry.count <= s.limitMax
 		s.limiter.mu.Unlock()
 		if !allowed {
 			w.Header().Set("Retry-After", "60")

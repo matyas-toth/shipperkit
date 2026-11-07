@@ -96,7 +96,7 @@ const build = spawnSync(goCommand(), ["build", "-o", binary, "./cmd/shipper"], {
 if (build.status !== 0) throw Error("Could not build Shipper");
 const child = spawn(binary, [], {
   stdio: "inherit",
-  env: { ...process.env, SHIPPER_ADDR: "127.0.0.1:9081", SHIPPER_DATA_DIR: directory, SHIPPER_SETUP_TOKEN: token,
+  env: { ...process.env, SHIPPER_ADDR: "127.0.0.1:9081", SHIPPER_DATA_DIR: directory, SHIPPER_SETUP_TOKEN: token, SHIPPER_RATE_LIMIT: "100",
     SHIPPER_PUBLIC_URL: "", DOCKER_HOST: process.platform === "win32" ? "npipe://" + socket.replaceAll("\\", "/") : "unix://" + socket,
     DOCKER_TLS_VERIFY: "", DOCKER_CERT_PATH: "" },
 });

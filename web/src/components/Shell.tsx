@@ -2,12 +2,13 @@ import Logo from "./Logo";
 import { EditorActionsContext } from "./EditorActions";
 import { A, useLocation, useNavigate, type RouteSectionProps } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { Show, createSignal, onCleanup, onMount } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { api, post } from "../api";
-import { InventoryContext, useAuth } from "../context";
-import type { Inventory } from "../types";
+import { InventoryContext, UpdatesContext, useAuth } from "../context";
+import type { Inventory, UpdateChannel, UpdateState, UpdateStatus } from "../types";
 import { IconButton } from "./Controls";
 import { Icon } from "./Icon";
+import UpdateDialog from "./UpdateDialog";
 
 export default function Shell(props: RouteSectionProps) {
   const auth = useAuth();
@@ -15,11 +16,63 @@ export default function Shell(props: RouteSectionProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const query = createQuery(() => ({ queryKey: ["inventory"], queryFn: () => api<Inventory>("/applications"), staleTime: 60_000, reconcile: "id" }));
+  const updates = createQuery(() => ({ queryKey: ["updates"], queryFn: () => api<UpdateState>("/updates"), staleTime: 15_000, refetchInterval: 30_000 }));
   const [editorActions, setEditorActions] = createSignal<HTMLDivElement>();
   const [live, setLive] = createSignal(false);
   const [menu, setMenu] = createSignal(false);
   const [refreshing, setRefreshing] = createSignal(false);
   const [actionError, setActionError] = createSignal("");
+  const [updateOpen, setUpdateOpen] = createSignal(false);
+  const [updateInitial, setUpdateInitial] = createSignal<UpdateStatus>();
+  const [dismissedUpdate, setDismissedUpdate] = createSignal("");
+  const updateInProgress = (status?: UpdateStatus) => !!status && ["queued", "preparing", "pulling", "checkpoint", "updating", "starting", "verifying", "restarting"].includes(status.state);
+  const updateBadge = () => !!updates.data?.enabled && !!updates.data?.available && !updateInProgress(updates.data?.status);
+  const updating = () => updateInProgress(updates.data?.status);
+  createEffect(() => {
+    const status = updates.data?.status;
+    if (!status || !updateInProgress(status) || status.requestId && status.requestId === dismissedUpdate()) return;
+    if (updateOpen()) return;
+    setUpdateInitial(status);
+    setUpdateOpen(true);
+  });
+  function closeUpdate() {
+    setDismissedUpdate(updates.data?.status?.requestId || "");
+    setUpdateOpen(false);
+  }
+  function openUpdate() {
+    setDismissedUpdate("");
+    setUpdateInitial(updates.data?.status);
+    setUpdateOpen(true);
+  }
+  async function checkUpdates() {
+    client.setQueryData<UpdateState | undefined>(["updates"], old => old ? { ...old, checking: true, error: "" } : old);
+    try {
+      const state = await post<UpdateState>("/updates/check", {}, auth.session()?.csrfToken);
+      client.setQueryData(["updates"], state);
+    } catch (error) {
+      await updates.refetch();
+      throw error;
+    }
+  }
+  async function saveUpdates(channel: UpdateChannel, auto: boolean) {
+    const previous = updates.data;
+    client.setQueryData<UpdateState | undefined>(["updates"], old => old ? { ...old, channel, auto, available: old.channel === channel ? old.available : null, error: "" } : old);
+    try {
+      const state = await post<UpdateState>("/updates/settings", { channel, auto }, auth.session()?.csrfToken);
+      client.setQueryData(["updates"], state);
+      return state;
+    } catch (error) {
+      if (previous) client.setQueryData(["updates"], previous);
+      throw error;
+    }
+  }
+  async function applyUpdate() {
+    const status = await post<UpdateStatus>("/updates/apply", {}, auth.session()?.csrfToken);
+    setDismissedUpdate("");
+    setUpdateInitial(status);
+    setUpdateOpen(true);
+    await updates.refetch();
+  }
   let accountButton!: HTMLButtonElement;
   let menuElement!: HTMLDivElement;
   let stream: EventSource | undefined;
@@ -64,7 +117,9 @@ export default function Shell(props: RouteSectionProps) {
     try { await auth.logout(); } catch (error) { setActionError((error as Error).message); }
   }
   const connected = () => query.data?.docker.connected && live();
-  return <InventoryContext.Provider value={{ data: () => query.data, pending: () => query.isPending, error: () => query.error,
+  return <UpdatesContext.Provider value={{ data: () => updates.data, pending: () => updates.isPending, error: () => updates.error,
+    check: checkUpdates, save: saveUpdates, apply: applyUpdate, open: openUpdate }}>
+  <InventoryContext.Provider value={{ data: () => query.data, pending: () => query.isPending, error: () => query.error,
     live, refresh, refreshing }}>
     <div class="app-frame">
       <header class="topbar">
@@ -72,7 +127,7 @@ export default function Shell(props: RouteSectionProps) {
         <nav class="primary-navigation" aria-label="Main navigation">
           <A href="/" end activeClass="" class="nav-link" classList={{ active: !["/settings", "/system"].includes(location.pathname) }} aria-current={!["/settings", "/system"].includes(location.pathname) ? "page" : undefined}><Icon name="layers" />Applications</A>
           <A href="/system" activeClass="active" class="nav-link"><Icon name="terminal" />System</A>
-          <A href="/settings" activeClass="active" class="nav-link"><Icon name="settings" />Settings</A>
+          <A href="/settings" activeClass="active" class="nav-link"><Icon name="settings" />Settings<Show when={updateBadge()}><span class="nav-update-badge">Update</span></Show><Show when={updating()}><span class="nav-update-badge is-updating">Updating</span></Show></A>
         </nav>
         <div class="topbar-actions">
           <span class={"connection " + (connected() ? "is-connected" : "")} title={query.data?.docker.error ?? "Docker connection"}>
@@ -106,6 +161,8 @@ export default function Shell(props: RouteSectionProps) {
         <div ref={setEditorActions} class="page-actions" />
       </EditorActionsContext.Provider>
     </div>
-  </InventoryContext.Provider>;
+    <UpdateDialog open={updateOpen()} close={closeUpdate} done={() => void updates.refetch()} initial={updateInitial()} />
+  </InventoryContext.Provider>
+  </UpdatesContext.Provider>;
 }
 
