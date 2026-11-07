@@ -25,6 +25,11 @@ export default function Shell(props: RouteSectionProps) {
   const [updateOpen, setUpdateOpen] = createSignal(false);
   const [updateInitial, setUpdateInitial] = createSignal<UpdateStatus>();
   const [dismissedUpdate, setDismissedUpdate] = createSignal("");
+  const [loadedVersion, setLoadedVersion] = createSignal("");
+  createEffect(() => {
+    const version = updates.data?.currentVersion;
+    if (version && !loadedVersion()) setLoadedVersion(version);
+  });
   const updateInProgress = (status?: UpdateStatus) => !!status && ["queued", "preparing", "pulling", "checkpoint", "updating", "starting", "verifying", "restarting"].includes(status.state);
   const updateBadge = () => !!updates.data?.enabled && !!updates.data?.available && !updateInProgress(updates.data?.status);
   const updating = () => updateInProgress(updates.data?.status);
@@ -118,7 +123,7 @@ export default function Shell(props: RouteSectionProps) {
   }
   const connected = () => query.data?.docker.connected && live();
   return <UpdatesContext.Provider value={{ data: () => updates.data, pending: () => updates.isPending, error: () => updates.error,
-    check: checkUpdates, save: saveUpdates, apply: applyUpdate, open: openUpdate }}>
+    loadedVersion, check: checkUpdates, save: saveUpdates, apply: applyUpdate, open: openUpdate }}>
   <InventoryContext.Provider value={{ data: () => query.data, pending: () => query.isPending, error: () => query.error,
     live, refresh, refreshing }}>
     <div class="app-frame">

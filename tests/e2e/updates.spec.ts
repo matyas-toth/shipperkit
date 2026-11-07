@@ -47,19 +47,24 @@ test("update badge, channels, settings and progress dialog", async ({ page }) =>
   await page.route("**/api/updates/status", async route => {
     statusReads++;
     if (statusReads === 1) {
-      await route.fulfill({ json: {
+      const stale = {
         state: "succeeded", message: "Shipper 1.0.0-rc.9 is ready",
         fromVersion: "1.0.0-rc.8", toVersion: "1.0.0-rc.9", startedAt: 1794000000, finishedAt: 1794000010,
         requestId: "previous-request", log: "",
-      } });
+      };
+      state.status = stale;
+      await route.fulfill({ json: stale });
       return;
     }
     const done = statusReads > 2;
-    await route.fulfill({ json: {
+    const status = {
       state: done ? "succeeded" : "updating", message: done ? "Shipper 1.0.0-rc.10 is ready" : "Taking a checkpoint",
       fromVersion: "1.0.0-rc.9", toVersion: "1.0.0-rc.10", startedAt: 1794000070, finishedAt: done ? 1794000090 : 0,
       requestId: "request-1", log: done ? "service: Shipper 1.0.0-rc.10 is ready" : "update: checking operations and taking a checkpoint",
-    } });
+    };
+    state.status = status;
+    if (done) { state.currentVersion = "1.0.0-rc.10"; state.available = null; }
+    await route.fulfill({ json: status });
   });
 
   await login(page);
@@ -98,11 +103,13 @@ test("update badge, channels, settings and progress dialog", async ({ page }) =>
   await page.screenshot({ path: join(tmpdir(), "shipper-update-success.png") });
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await expect(dialog).toHaveCount(0);
+  await expect(page.locator(".update-success-banner")).toContainText("Shipper 1.0.0-rc.10 is ready");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await page.locator(".primary-navigation").getByRole("link", { name: /Settings/ }).click();
   await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Updates", exact: true }).click();
+  await expect(page.locator(".update-success-banner")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: join(tmpdir(), "shipper-update-mobile.png"), fullPage: true });
   expect(errors).toEqual([]);

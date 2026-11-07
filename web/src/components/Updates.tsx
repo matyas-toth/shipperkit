@@ -12,8 +12,8 @@ export default function Updates() {
   const available = () => data()?.available;
   const status = () => data()?.status;
   const active = () => !!status() && ["queued", "preparing", "pulling", "checkpoint", "updating", "starting", "verifying", "restarting"].includes(status()!.state);
-  const succeeded = () => status()?.state === "succeeded" && status()?.toVersion !== data()?.currentVersion;
-  const failed = () => status()?.state === "failed";
+  const succeeded = () => status()?.state === "succeeded" && !!updates.loadedVersion() && status()?.toVersion === data()?.currentVersion && status()?.toVersion !== updates.loadedVersion();
+  const failed = () => status()?.state === "failed" && (!status()?.fromVersion || status()?.fromVersion === data()?.currentVersion);
   const locked = () => busy() || active() || !data()?.enabled;
 
   async function check() {
