@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.16](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.15...v1.0.0-rc.16) (2026-11-07)
+
+
+### Bug Fixes
+
+* describe the available update in the badge ([#31](https://github.com/matyas-toth/shipperkit/issues/31)) ([f250f73](https://github.com/matyas-toth/shipperkit/commit/f250f738e3c9bf273890fd2faa32f98631ca4e5e))
+
 ## [1.0.0-rc.15](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.14...v1.0.0-rc.15) (2026-11-07)
 
 
