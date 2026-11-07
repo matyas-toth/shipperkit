@@ -199,6 +199,7 @@ and builds the source again.
 one primary hostname, and optional aliases redirected to it. Root domains can add
 `www` automatically. **Save domains** only updates routing. HTTPS requires an ACME
 email, public DNS, and reachable ports; local addresses use HTTP. See
+[database image connections](docs/database-connections.md),
 [application operations](docs/full-applications.md) and
 [static site operations](docs/static-sites.md).
 

@@ -104,7 +104,7 @@ func (s *Server) automation(next http.Handler) http.Handler {
 					scope = "deploy"
 				case len(parts) == 5 && parts[2] == "tasks" && parts[4] == "run":
 					scope = "execute"
-				case len(parts) == 4 && parts[2] == "variables" && parts[3] == "reveal":
+				case len(parts) == 4 && ((parts[2] == "variables" && parts[3] == "reveal") || (parts[2] == "database" && parts[3] == "connection")):
 					scope = "secrets"
 				case len(parts) == 3 && parts[2] == "delete":
 					scope = "destructive"

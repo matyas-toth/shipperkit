@@ -412,7 +412,7 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 		restart = container.RestartPolicy{Name: "no"}
 	}
 	configuration.StopTimeout = ptr(StopSeconds(d.Config.Runtime))
-	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: cpus, PidsLimit: ptr(pids)}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
+	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, CapAdd: databaseCapabilities(d), SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: cpus, PidsLimit: ptr(pids)}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
 	if e != nil {
 		return "", e
 	}
