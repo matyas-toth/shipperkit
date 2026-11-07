@@ -27,6 +27,10 @@ The feeds are generated branches:
 The release workflow updates the `latest` branch. The nightly workflow updates
 the `nightly` branch after every successful `master` CI run.
 
+The checker resolves the current branch commit through the GitHub API, then
+reads the immutable files at that commit. This avoids stale raw-content caches.
+If the API is unavailable, it falls back to the generated branch path.
+
 ## Checks and notifications
 
 Shipper checks the selected feed every five minutes. A successful check with a

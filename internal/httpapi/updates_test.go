@@ -37,6 +37,7 @@ func TestUpdateAPI(t *testing.T) {
 	dataDir := t.TempDir()
 	service := updates.New(updates.Config{Store: db, DataDir: dataDir, CurrentVersion: "1.0.0-rc.8",
 		MainFeed: serverFeed.URL + "/main", NightlyFeed: serverFeed.URL + "/nightly",
+		APIBase: serverFeed.URL + "/api", RawBase: serverFeed.URL + "/raw",
 		Enabled: true, Ready: func() bool { return true }})
 	hub := events.New()
 	server := httptest.NewServer(New(db, inventory.New(testEngine{}, db, hub), hub, Config{Assets: http.NotFoundHandler(), Version: "1.0.0-rc.8", Updates: service}))
