@@ -33,7 +33,7 @@ export type UpdateChannel = "main" | "nightly";
 export interface UpdateAvailable { version: string; image: string; releaseUrl: string; channel: UpdateChannel; checkedAt: number }
 export interface UpdateStatus { state: string; message: string; fromVersion: string; toVersion: string; startedAt: number; finishedAt: number; requestId: string; log: string }
 export interface UpdateState {
-  enabled: boolean; currentVersion: string; channel: UpdateChannel; auto: boolean;
+  enabled: boolean; currentVersion: string; latestVersion?: string; channel: UpdateChannel; auto: boolean;
   available: UpdateAvailable | null; checkedAt: number; checking: boolean; error?: string; status: UpdateStatus;
 }
 

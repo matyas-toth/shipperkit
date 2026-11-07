@@ -79,6 +79,7 @@ func (s Status) Terminal() bool {
 type State struct {
 	Enabled        bool       `json:"enabled"`
 	CurrentVersion string     `json:"currentVersion"`
+	LatestVersion  string     `json:"latestVersion,omitempty"`
 	Channel        Channel    `json:"channel"`
 	Auto           bool       `json:"auto"`
 	Available      *Available `json:"available"`
@@ -91,6 +92,7 @@ type State struct {
 type persisted struct {
 	Channel         Channel    `json:"channel"`
 	Auto            bool       `json:"auto"`
+	LatestVersion   string     `json:"latestVersion,omitempty"`
 	Available       *Available `json:"available,omitempty"`
 	CheckedAt       int64      `json:"checkedAt,omitempty"`
 	Error           string     `json:"error,omitempty"`
@@ -203,6 +205,7 @@ func (s *Service) snapshotLocked() State {
 	state := State{
 		Enabled:        s.Enabled(),
 		CurrentVersion: s.currentVersion,
+		LatestVersion:  s.state.LatestVersion,
 		Channel:        s.state.Channel,
 		Auto:           s.state.Auto,
 		CheckedAt:      s.state.CheckedAt,
@@ -226,6 +229,7 @@ func (s *Service) SetSettings(ctx context.Context, channel Channel, auto bool) (
 	s.state.Channel = channel
 	s.state.Auto = auto
 	if changed {
+		s.state.LatestVersion = ""
 		s.state.Available = nil
 		s.state.CheckedAt = 0
 		s.state.Error = ""
@@ -271,6 +275,9 @@ func (s *Service) Check(ctx context.Context) (State, error) {
 		s.state.Error = err.Error()
 	} else {
 		s.state.Error = ""
+		if available != nil {
+			s.state.LatestVersion = available.Version
+		}
 		if available != nil && Newer(available.Version, current) {
 			available.CheckedAt = s.state.CheckedAt
 			s.state.Available = available
