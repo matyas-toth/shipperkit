@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.19](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.18...v1.0.0-rc.19) (2026-11-07)
+
+
+### Bug Fixes
+
+* hide stale update results ([#38](https://github.com/matyas-toth/shipperkit/issues/38)) ([97bc68b](https://github.com/matyas-toth/shipperkit/commit/97bc68bb270c80f3aaefefc5dc26fbce5f1de625))
+
 ## [1.0.0-rc.18](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.17...v1.0.0-rc.18) (2026-11-07)
 
 
