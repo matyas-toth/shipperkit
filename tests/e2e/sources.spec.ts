@@ -73,11 +73,43 @@ test("connections, private repository selection, immutable queue controls and im
   await expect(page.getByText("Northstar", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Connect GitHub", exact: true }).click();
   await expect(page.getByRole("radio", { name: "Personal account", exact: true })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Personal account", exact: true })).toBeFocused();
+  await page.getByRole("form", { name: "Connect GitHub" }).getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Connect GitHub", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Connect GitHub", exact: true }).click();
   await page.getByRole("radio", { name: "Organization", exact: true }).check();
+  await page.getByRole("button", { name: "Continue to GitHub", exact: true }).click();
+  expect(await page.getByLabel("Organization name").evaluate((input: HTMLInputElement) => input.validity.valueMissing)).toBe(true);
+  await page.getByLabel("Organization name").fill("invalid/organization");
+  expect(await page.getByLabel("Organization name").evaluate((input: HTMLInputElement) => input.validity.patternMismatch)).toBe(true);
   await page.getByLabel("Organization name", { exact: true }).fill("northstar");
+  const spacing = async () => {
+    const button = await page.getByRole("button", { name: "Continue to GitHub", exact: true }).boundingBox();
+    const table = await page.locator(".connection-table").boundingBox();
+    expect(table!.y - button!.y - button!.height).toBeGreaterThanOrEqual(32);
+    const choice = await page.getByRole("group", { name: "GitHub account" }).boundingBox();
+    const field = await page.locator(".github-connect-form .field").boundingBox();
+    expect(field!.y - choice!.y - choice!.height).toBeGreaterThanOrEqual(24);
+  };
+  await spacing();
   await page.screenshot({ path: join(tmpdir(), "shipper-issue-10-organization.png") });
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (const width of [320, 390, 767]) {
+    await page.setViewportSize({ width, height: 844 });
+    await spacing();
+    for (const name of await page.locator(".connection-name").all()) {
+      const box = await name.boundingBox();
+      expect(box!.height).toBeLessThan(24);
+    }
+    for (const action of await page.locator(".connection-actions .button").all()) {
+      const box = await action.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(40);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+    }
+    expect(await page.locator(".connection-table tbody td").evaluateAll(cells => cells.every(cell => getComputedStyle(cell).borderBottomWidth === "0px"))).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 1080 });
+  await page.locator(".page-scroll").evaluate(el => { el.scrollTop = 0; });
   await page.screenshot({ path: join(tmpdir(), "shipper-issue-10-mobile.png") });
   await page.setViewportSize({ width: 1440, height: 1000 });
   // Capture the real manifest POST without registering an app on GitHub.
@@ -87,6 +119,13 @@ test("connections, private repository selection, immutable queue controls and im
   const manifest = JSON.parse(new URLSearchParams((await registration).postData()!).get("manifest")!);
   expect(manifest.public).toBe(false);
   expect(manifest.default_permissions).toEqual({ contents: "read", metadata: "read" });
+  await page.waitForURL("https://github.com/**");
+  await page.goto("/settings#sources");
+  await page.getByRole("button", { name: "Connect GitHub", exact: true }).click();
+  await expect(page.getByLabel("Organization name")).toHaveCount(0);
+  const personalRegistration = page.waitForRequest(request => request.url().startsWith("https://github.com/settings/apps/new?state="));
+  await page.getByRole("button", { name: "Continue to GitHub", exact: true }).click();
+  expect(new URLSearchParams((await personalRegistration).postData()!).has("manifest")).toBe(true);
   await page.waitForURL("https://github.com/**");
   await page.goto("/settings#sources");
   await page.unroute("https://github.com/**");

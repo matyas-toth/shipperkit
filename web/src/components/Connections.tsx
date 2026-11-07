@@ -29,6 +29,12 @@ export default function Connections() {
     [installation, setInstallation] = createSignal(""),
     [key, setKey] = createSignal(""),
     [allowPrivate, setAllowPrivate] = createSignal(false);
+  let connectButton: HTMLButtonElement | undefined;
+  function closeConnect() {
+    setConnecting(false);
+    setError("");
+    queueMicrotask(() => connectButton?.focus());
+  }
   async function connect(event: SubmitEvent) {
     event.preventDefault();
     setBusy(true);
@@ -55,6 +61,7 @@ export default function Connections() {
     }
   }
   function edit(c: Connection) {
+    setConnecting(false);
     setEditingId(c.id);
     setName(c.name);
     setKind(c.kind);
@@ -125,30 +132,35 @@ export default function Connections() {
   }
   return (
     <section class="settings-section" id="sources">
-      <div class="section-toolbar">
+      <div class="section-toolbar connections-toolbar">
         <h2>Connections</h2>
-        <Button icon="git" variant="primary" disabled={busy()} onClick={() => setConnecting(true)}>
+        <Show when={!connecting()}><Button ref={connectButton} icon="git" variant="primary" disabled={busy()} onClick={() => {
+          setEditing(false); setWebhook(undefined); setError(""); setConnecting(true);
+        }}>
           Connect GitHub
-        </Button>
+        </Button></Show>
       </div>
       <Show when={error() || query.error}>
         <ErrorNotice message={error() || query.error!.message} />
       </Show>
       <Show when={connecting()}>
-        <form class="connection-form" aria-label="Connect GitHub" onSubmit={connect}>
+        <form class="connection-form github-connect-form" aria-label="Connect GitHub" onSubmit={connect}
+          ref={form => queueMicrotask(() => form.querySelector<HTMLInputElement>('input[type="radio"]:checked')?.focus())}>
           <div class="form-fields">
             <ChoiceCards label="GitHub account" value={account()} change={setAccount} choices={[
               { value: "personal", label: "Personal account", icon: "user" },
               { value: "organization", label: "Organization", icon: "layers" },
             ]} />
             <Show when={account() === "organization"}>
+              <div class="field">
               <label for="github-organization">Organization name</label>
               <input id="github-organization" class="input" required maxlength="39" pattern={"(?!.*--)[A-Za-z0-9]([A-Za-z0-9\\-]{0,37}[A-Za-z0-9])?"} autocomplete="off"
                 value={organization()} onInput={event => setOrganization(event.currentTarget.value)} />
+              </div>
             </Show>
           </div>
           <div class="form-actions">
-            <Button variant="ghost" disabled={busy()} onClick={() => setConnecting(false)}>Cancel</Button>
+            <Button variant="ghost" disabled={busy()} onClick={closeConnect}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={busy()}>{busy() ? "Connecting to GitHub" : "Continue to GitHub"}</Button>
           </div>
         </form>
@@ -166,9 +178,9 @@ export default function Connections() {
             <For each={query.data?.items}>
               {(c) => (
                 <tr>
-                  <td>{c.name}</td>
-                  <td>{c.kind === "registry" ? c.host : "GitHub"}</td>
-                  <td><div class="connection-actions">
+                  <td class="connection-name">{c.name}</td>
+                  <td class="connection-provider">{c.kind === "registry" ? c.host : "GitHub"}</td>
+                  <td class="connection-actions-cell"><div class="connection-actions">
                     <Button
                       small variant="ghost"
                       aria-label={"Edit " + c.name}
@@ -232,6 +244,7 @@ export default function Connections() {
           <Button
             icon="plus"
             onClick={() => {
+              setConnecting(false);
               setEditingId("");
               setKind("github_token");
  setUsername("");setAllowPrivate(false);
