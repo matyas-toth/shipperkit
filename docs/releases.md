@@ -103,6 +103,8 @@ bash /root/shipper-install.sh --image ghcr.io/matyas-toth/shipperkit@sha256:<dig
 
 The installer takes a checkpoint, updates the control plane and preserves the dashboard domain and data. A failed candidate is restored from the previous checkpoint. The staging workflow does not rebuild the image, so it always exercises the exact digest published to the nightly feed.
 
+Set the repository variable `STAGING_AUTO_DEPLOY` to `false` to pause automatic deployments while keeping nightly publishing active. Manual `workflow_dispatch` runs still deploy.
+
 Required repository secrets:
 
 | Secret | Purpose |
