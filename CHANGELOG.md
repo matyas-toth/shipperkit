@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.12](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.11...v1.0.0-rc.12) (2026-11-07)
+
+
+### Bug Fixes
+
+* bypass stale release feed caches ([#23](https://github.com/matyas-toth/shipperkit/issues/23)) ([0a61ca6](https://github.com/matyas-toth/shipperkit/commit/0a61ca6b17cf4c303357d9684f451922a90cc528))
+
 ## [1.0.0-rc.11](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.10...v1.0.0-rc.11) (2026-11-07)
 
 
