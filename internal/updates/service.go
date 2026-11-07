@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -311,6 +312,11 @@ func (s *Service) fetch(ctx context.Context, channel Channel, base string) (*Ava
 }
 
 func (s *Service) text(ctx context.Context, url string) (string, error) {
+	separator := "?"
+	if strings.Contains(url, "?") {
+		separator = "&"
+	}
+	url += separator + "t=" + strconv.FormatInt(time.Now().UnixNano(), 10)
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
