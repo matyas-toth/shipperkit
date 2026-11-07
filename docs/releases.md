@@ -46,7 +46,7 @@ the default once the stable line begins.
 
 ## Release workflow
 
-`.github/workflows/release.yml` runs for a pushed `v*` tag and is also called directly by the release-please workflow after a release PR merges.
+`.github/workflows/release.yml` runs for a pushed `v*` tag. The tag created when a release-please version PR merges starts it once, so a release is built once and the feed and release assets share one digest.
 
 It:
 
