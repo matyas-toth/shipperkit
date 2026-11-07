@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.0-rc.8](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.7...v1.0.0-rc.8) (2026-11-07)
+
+
+### Features
+
+* connect GitHub organization repositories ([#14](https://github.com/matyas-toth/shipperkit/issues/14)) ([adda47a](https://github.com/matyas-toth/shipperkit/commit/adda47a51e469bfeff06e0770f50fe62b6d96ff6))
+* provide internal database connection strings ([#15](https://github.com/matyas-toth/shipperkit/issues/15)) ([ed96425](https://github.com/matyas-toth/shipperkit/commit/ed96425ad04151463225ca022370b5cc06894d52))
+
+
+### Bug Fixes
+
+* handle GitHub repository loading and account switches ([#13](https://github.com/matyas-toth/shipperkit/issues/13)) ([fa3de98](https://github.com/matyas-toth/shipperkit/commit/fa3de98ab8da0ad49c8211c7a54e0b5edc39a404))
+* send Discord-compatible webhook notifications ([#12](https://github.com/matyas-toth/shipperkit/issues/12)) ([8708de6](https://github.com/matyas-toth/shipperkit/commit/8708de6ea013d58df9ce83e39138ee510eb03037))
+
 ## [1.0.0-rc.7](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.6...v1.0.0-rc.7) (2026-11-07)
 
 
