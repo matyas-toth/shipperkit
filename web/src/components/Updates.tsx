@@ -108,6 +108,7 @@ export default function Updates() {
 
       <dl class="settings-group update-details">
         <div class="setting-row"><dt>Current version</dt><dd class="mono">{data()?.currentVersion || "Loading"}</dd></div>
+        <div class="setting-row"><dt>Latest release</dt><dd class="mono">{data()?.latestVersion || "Not checked"}</dd></div>
         <div class="setting-row"><dt>Channel</dt><dd>{data()?.channel === "nightly" ? "Nightly" : "Main"}</dd></div>
         <div class="setting-row"><dt>Check interval</dt><dd>Every 5 minutes</dd></div>
       </dl>

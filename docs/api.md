@@ -334,9 +334,9 @@ unsupported or non-inferable credentials return 422.
 
 ### Updates
 
-`GET /api/updates` returns the current version, selected channel, auto-update
-setting, last check time, the nullable available release, and the host update
-status. `GET /api/updates/status` returns only the host status and remains
+`GET /api/updates` returns the current version, the latest version seen on the
+selected feed, the selected channel, auto-update setting, last check time, the
+nullable available release, and the host update status. `GET /api/updates/status` returns only the host status and remains
 available while the control plane is updating.
 
 `POST /api/updates/check` forces a feed check. `POST /api/updates/settings`
