@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.17](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.16...v1.0.0-rc.17) (2026-11-07)
+
+
+### Bug Fixes
+
+* keep the interface mounted through an update ([#34](https://github.com/matyas-toth/shipperkit/issues/34)) ([d4e3645](https://github.com/matyas-toth/shipperkit/commit/d4e3645858972d1cdd8ad52ee4f4319c400a762b))
+
 ## [1.0.0-rc.16](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.15...v1.0.0-rc.16) (2026-11-07)
 
 
