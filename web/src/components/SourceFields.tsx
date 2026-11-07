@@ -1,5 +1,5 @@
 import { createQuery } from "@tanstack/solid-query";
-import { For, Show, createEffect, createSignal, createMemo } from "solid-js";
+import { For, Show, createEffect, createSignal } from "solid-js";
 import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Connection, StaticConfig } from "../types";
@@ -15,8 +15,34 @@ export function GitConnectionFields(props: {
   config: StaticConfig;
   change: (key: keyof StaticConfig, value: unknown) => void;
 }) {
-  const connections = useConnections(),
-    [page, setPage] = createSignal(1),
+  const connections = useConnections();
+  return (
+    <>
+      <Show when={connections.data?.items.some(c => c.kind !== "registry")}
+        fallback={<a class="button neutral small source-connect" href="/settings#sources"><Icon name="git" />Connect GitHub</a>}>
+        <div class="field git-field"><label for="source-connection">Connection</label>
+          <select id="source-connection" class="input" value={props.config.sourceId ?? ""} onChange={e => {
+            props.change("repository", "");
+            props.change("repositoryId", 0);
+            props.change("branch", "");
+            props.change("sourceId", e.currentTarget.value);
+          }}>
+            <option value="">Public Git repository</option>
+            <For each={connections.data?.items.filter(c => c.kind !== "registry")}>{c => <option value={c.id}>{c.name}</option>}</For>
+          </select>
+        </div>
+      </Show>
+      <Show when={props.config.sourceId} keyed>{sourceId => <RepositoryPicker sourceId={sourceId} config={props.config} change={props.change} />}</Show>
+    </>
+  );
+}
+
+function RepositoryPicker(props: {
+  sourceId: string;
+  config: StaticConfig;
+  change: (key: keyof StaticConfig, value: unknown) => void;
+}) {
+  const [page, setPage] = createSignal(1),
     [rows, setRows] = createSignal<
       {
         id: number;
@@ -26,18 +52,11 @@ export function GitConnectionFields(props: {
       }[]
     >([]),
     [search, setSearch] = createSignal("");
-  const sourceID = createMemo(() => props.config.sourceId);
-  createEffect(() => {
-    sourceID();
-    setPage(1);
-    setRows([]);
-  });
   const repos = createQuery(() => ({
-    queryKey: ["source-repos", props.config.sourceId, page()],
-    enabled: !!props.config.sourceId,
+    queryKey: ["source-repos", props.sourceId, page()],
     queryFn: () =>
       api<{ items: ReturnType<typeof rows>; nextPage: number }>(
-        `/connections/${props.config.sourceId}/repositories?page=${page()}`,
+        `/connections/${props.sourceId}/repositories?page=${page()}`,
       ),
   }));
   createEffect(() => {
@@ -47,37 +66,9 @@ export function GitConnectionFields(props: {
         ...new Map([...old, ...result.items].map((r) => [r.id, r])).values(),
       ]);
   });
+  const firstLoad = () => repos.isPending && rows().length === 0;
   return (
-    <>
-      <Show
-        when={connections.data?.items.some((c) => c.kind !== "registry")}
-        fallback={
-          <a class="button neutral small source-connect" href="/settings#sources">
-            <Icon name="git" />Connect GitHub
-          </a>
-        }
-      >
-        <div class="field git-field"><label for="source-connection">Connection</label>
-        <select
-          id="source-connection"
-          class="input"
-          value={props.config.sourceId ?? ""}
-          onChange={(e) => {
-            props.change("sourceId", e.currentTarget.value);
-            props.change("repository", "");
-            props.change("repositoryId", 0);
-            props.change("branch", "");
-          }}
-        >
-          <option value="">Public Git repository</option>
-          <For
-            each={connections.data?.items.filter((c) => c.kind !== "registry")}
-          >
-            {(c) => <option value={c.id}>{c.name}</option>}
-          </For>
-        </select></div>
-      </Show>
-      <Show when={props.config.sourceId}>
+      <div class="repository-picker field git-field" aria-busy={firstLoad()}>
         <Show when={rows().length > 20}>
           <input
             class="input"
@@ -92,6 +83,8 @@ export function GitConnectionFields(props: {
           id="private-repository"
           class="input"
           required
+          disabled={rows().length === 0}
+          aria-busy={firstLoad()}
           value={props.config.repository}
           onChange={(e) => {
             const repo = rows().find(
@@ -105,7 +98,7 @@ export function GitConnectionFields(props: {
           }}
         >
           <option value="">
-            {repos.isFetching ? "Loading repositories" : "Choose repository"}
+            {firstLoad() ? "Loading repositories" : repos.isError && !rows().length ? "Repositories unavailable" : !rows().length ? "No repositories available" : "Choose repository"}
           </option>
           <Show
             when={
@@ -137,10 +130,9 @@ export function GitConnectionFields(props: {
           </Button>
         </Show>
         <Show when={repos.error}>
-          <ErrorNotice message={repos.error!.message} />
+          <ErrorNotice message={repos.error!.message} retry={() => void repos.refetch()} />
         </Show>
-      </Show>
-    </>
+      </div>
   );
 }
 export function ImageFields(props: {
