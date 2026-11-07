@@ -77,6 +77,10 @@ func TestAuthenticationCSRFAndReadOnlyAPI(t *testing.T) {
 		json.NewDecoder(resp.Body).Decode(&out)
 		return resp, out
 	}
+	health, healthBody := request("GET", "/api/health", nil, "", "")
+	if health.StatusCode != 200 || healthBody["status"] != "ok" || healthBody["version"] != "test" {
+		t.Fatalf("unexpected health response: %d %v", health.StatusCode, healthBody)
+	}
 	for _, path := range []string{"/api/containers", "/api/applications", "/api/system", "/api/events"} {
 		resp, _ := request("GET", path, nil, "", "")
 		if resp.StatusCode != 401 {

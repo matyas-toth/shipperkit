@@ -90,7 +90,9 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 	r.Post("/api/v1/applications/{id}/deploy", s.tokenDeploy)
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.origin)
-		r.Get("/health", func(w http.ResponseWriter, r *http.Request) { s.json(w, 200, map[string]string{"status": "ok"}) })
+		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+			s.json(w, 200, map[string]string{"status": "ok", "version": s.cfg.Version})
+		})
 		r.Get("/auth/session", s.currentSession)
 		r.With(s.limit, s.hashCapacity).Post("/auth/setup", s.setup)
 		r.With(s.limit, s.hashCapacity).Post("/auth/login", s.login)
