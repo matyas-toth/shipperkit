@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.15](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.14...v1.0.0-rc.15) (2026-11-07)
+
+
+### Bug Fixes
+
+* resolve the release feed commit before reading it ([#29](https://github.com/matyas-toth/shipperkit/issues/29)) ([cc10f33](https://github.com/matyas-toth/shipperkit/commit/cc10f331d18852497cb6865020503b80f0edc166))
+
 ## [1.0.0-rc.14](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.13...v1.0.0-rc.14) (2026-11-07)
 
 
