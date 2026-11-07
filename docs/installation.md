@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/matyas-toth/shipperkit/latest/insta
 To pin a version or inspect the script first:
 
 ```bash
-version=1.0.0
+version=1.0.0-rc.7
 origin="https://github.com/matyas-toth/shipperkit/releases/download/v$version"
 curl -fsSLO "$origin/install.sh"
 curl -fsSLO "$origin/image.txt"

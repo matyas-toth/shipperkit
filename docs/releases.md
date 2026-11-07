@@ -73,7 +73,7 @@ from the same `latest` branch and pulls the pinned digest.
 The pinned release form remains available:
 
 ```sh
-sudo bash install.sh --version 1.0.0
+sudo bash install.sh --version 1.0.0-rc.7
 ```
 
 That path fetches the immutable release assets from GitHub.
