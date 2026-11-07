@@ -30,6 +30,8 @@ const (
 
 	DefaultMainFeed    = "https://raw.githubusercontent.com/matyas-toth/shipperkit/latest"
 	DefaultNightlyFeed = "https://raw.githubusercontent.com/matyas-toth/shipperkit/nightly"
+	DefaultAPIBase     = "https://api.github.com/repos/matyas-toth/shipperkit"
+	DefaultRawBase     = "https://raw.githubusercontent.com/matyas-toth/shipperkit"
 
 	settingsKey = "update_settings"
 )
@@ -38,6 +40,7 @@ var (
 	versionPattern    = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$`)
 	imagePattern      = regexp.MustCompile(`^ghcr\.io/matyas-toth/shipperkit@sha256:[0-9a-f]{64}$`)
 	releaseURLPattern = regexp.MustCompile(`^https://github\.com/matyas-toth/shipperkit/(releases/tag|commit)/[A-Za-z0-9._/-]+$`)
+	shaPattern        = regexp.MustCompile(`^[0-9a-f]{40}$`)
 
 	ErrUnavailable = errors.New("Updates are unavailable in this installation")
 	ErrNoUpdate    = errors.New("No update is available")
@@ -105,6 +108,8 @@ type Config struct {
 	CurrentVersion string
 	MainFeed       string
 	NightlyFeed    string
+	APIBase        string
+	RawBase        string
 	Interval       time.Duration
 	Enabled        bool
 	Ready          func() bool
@@ -118,6 +123,8 @@ type Service struct {
 	dataDir        string
 	currentVersion string
 	feeds          map[Channel]string
+	apiBase        string
+	rawBase        string
 	interval       time.Duration
 	enabled        bool
 	ready          func() bool
@@ -140,6 +147,12 @@ func New(cfg Config) *Service {
 	if cfg.NightlyFeed == "" {
 		cfg.NightlyFeed = DefaultNightlyFeed
 	}
+	if cfg.APIBase == "" {
+		cfg.APIBase = DefaultAPIBase
+	}
+	if cfg.RawBase == "" {
+		cfg.RawBase = DefaultRawBase
+	}
 	if cfg.Interval == 0 {
 		cfg.Interval = 5 * time.Minute
 	}
@@ -148,6 +161,8 @@ func New(cfg Config) *Service {
 		dataDir:        cfg.DataDir,
 		currentVersion: strings.TrimSpace(cfg.CurrentVersion),
 		feeds:          map[Channel]string{Main: cfg.MainFeed, Nightly: cfg.NightlyFeed},
+		apiBase:        strings.TrimRight(cfg.APIBase, "/"),
+		rawBase:        strings.TrimRight(cfg.RawBase, "/"),
 		interval:       cfg.Interval,
 		enabled:        cfg.Enabled,
 		ready:          cfg.Ready,
@@ -294,6 +309,13 @@ func (s *Service) Check(ctx context.Context) (State, error) {
 }
 
 func (s *Service) fetch(ctx context.Context, channel Channel, base string) (*Available, error) {
+	branch := "latest"
+	if channel == Nightly {
+		branch = "nightly"
+	}
+	if sha, err := s.branchSHA(ctx, branch); err == nil && sha != "" {
+		base = s.rawBase + "/" + sha
+	}
 	version, err := s.text(ctx, base+"/version.txt")
 	if err != nil {
 		return nil, fmt.Errorf("release version is unavailable: %w", err)
@@ -316,6 +338,38 @@ func (s *Service) fetch(ctx context.Context, channel Channel, base string) (*Ava
 		return nil, errors.New("release notes link is invalid")
 	}
 	return &Available{Version: version, Image: image, ReleaseURL: releaseURL, Channel: channel}, nil
+}
+
+func (s *Service) branchSHA(ctx context.Context, branch string) (string, error) {
+	if s.apiBase == "" {
+		return "", errors.New("GitHub API is unavailable")
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, s.apiBase+"/git/ref/heads/"+branch, nil)
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("User-Agent", "shipper-updater/1")
+	request.Header.Set("Accept", "application/vnd.github+json")
+	response, err := s.client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP %d", response.StatusCode)
+	}
+	var payload struct {
+		Object struct {
+			SHA string `json:"sha"`
+		} `json:"object"`
+	}
+	if err = json.NewDecoder(io.LimitReader(response.Body, 8<<10)).Decode(&payload); err != nil {
+		return "", err
+	}
+	if !shaPattern.MatchString(payload.Object.SHA) {
+		return "", errors.New("release branch is invalid")
+	}
+	return payload.Object.SHA, nil
 }
 
 func (s *Service) text(ctx context.Context, url string) (string, error) {

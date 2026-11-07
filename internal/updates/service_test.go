@@ -71,6 +71,7 @@ func newService(t *testing.T, main, nightly *feedFixture, current string, enable
 	service := New(Config{
 		Store: db, DataDir: t.TempDir(), CurrentVersion: current,
 		MainFeed: server.URL + "/main", NightlyFeed: server.URL + "/nightly",
+		APIBase: server.URL + "/api", RawBase: server.URL + "/raw",
 		Enabled: enabled, Ready: func() bool { return true },
 		Now: func() time.Time { return time.Unix(1_800_000_000, 0) },
 	})
@@ -188,6 +189,43 @@ func TestChannelsAndAutomaticApply(t *testing.T) {
 	}
 	if _, err = os.Stat(filepath.Join(service.dataDir, "update-request.json")); err != nil {
 		t.Fatal("automatic update did not retry a newer version", err)
+	}
+}
+
+func TestCheckUsesReleaseCommit(t *testing.T) {
+	db, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	sha := strings.Repeat("a", 40)
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/git/ref/heads/latest" {
+			http.NotFound(w, r)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"object": map[string]string{"sha": sha}})
+	}))
+	defer api.Close()
+	raw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/" + sha + "/version.txt":
+			_, _ = w.Write([]byte("1.0.0-rc.9"))
+		case "/" + sha + "/image.txt":
+			_, _ = w.Write([]byte(digest))
+		case "/" + sha + "/release-url.txt":
+			_, _ = w.Write([]byte("https://github.com/matyas-toth/shipperkit/releases/tag/v1.0.0-rc.9"))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer raw.Close()
+	service := New(Config{Store: db, DataDir: t.TempDir(), CurrentVersion: "1.0.0-rc.8",
+		MainFeed: "http://127.0.0.1:1/main", NightlyFeed: "http://127.0.0.1:1/nightly",
+		APIBase: api.URL, RawBase: raw.URL, Enabled: true, Ready: func() bool { return true }})
+	state, err := service.Check(context.Background())
+	if err != nil || state.Available == nil || state.Available.Version != "1.0.0-rc.9" {
+		t.Fatal(err, state)
 	}
 }
 
