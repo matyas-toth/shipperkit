@@ -16,15 +16,14 @@ import Updates from "../components/Updates";
 type SettingsGroup = {
   id: string;
   label: string;
-  icon: IconName;
   sections: { id: string; label: string; icon: IconName }[];
 };
 
 const groups: SettingsGroup[] = [
-  { id: "account", label: "Account settings", icon: "user", sections: [
+  { id: "account", label: "Account settings", sections: [
     { id: "account", label: "Account", icon: "user" },
   ] },
-  { id: "server", label: "Server settings", icon: "server", sections: [
+  { id: "server", label: "Server settings", sections: [
     { id: "instance", label: "Instance", icon: "sliders" },
     { id: "dashboard", label: "Dashboard", icon: "globe" },
     { id: "sources", label: "Connections", icon: "git" },
@@ -59,7 +58,7 @@ export default function Settings() {
     <div class="settings-layout">
       <nav class="settings-navigation" aria-label="Settings sections">
         <For each={groups}>{group => <section class="settings-nav-group">
-          <h2 class="settings-nav-heading"><Icon name={group.icon} />{group.label}</h2>
+          <h2 class="settings-nav-heading">{group.label}</h2>
           <For each={group.sections}>{item => <a href={"/settings#" + item.id} class="settings-link"
             aria-current={section() === item.id ? "page" : undefined}><Icon name={item.icon} />{item.label}</a>}</For>
         </section>}</For>
