@@ -80,3 +80,19 @@ Isolated Docker tests pull a pinned image, build an inline image, check readines
 and restart both. Browser tests exercise repository selection and queue controls.
 Live GitHub App installation/private clone and public webhook delivery require a
 real account and reachable endpoint; they are not claimed as locally verified.
+
+## GitHub organizations
+
+In **Settings > Connections > Connect GitHub**, choose **Organization** and enter
+its GitHub organization name. Continue to GitHub to register the private app under
+that organization, then install it for all repositories or only selected ones.
+Both public and private repositories granted to the installation are available in
+New application. Create a separate connection for each organization or personal
+account. The default Personal account path remains available.
+
+GitHub requires permission to register and install apps in the organization; its
+owners may need to complete or approve setup. Shipper requests only Contents and
+Metadata read access and push events, not organization administration permissions.
+Existing GitHub App and token connections remain supported. For fine-grained
+tokens, select the organization as resource owner and grant repository Contents
+read access; organization policy and SSO authorization still apply.

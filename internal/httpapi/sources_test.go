@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"shipper/internal/auth"
 	"shipper/internal/deploy"
 	"shipper/internal/events"
@@ -19,6 +20,66 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestGitHubManifestAccountTarget(t *testing.T) {
+	db, err := store.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	s := &Server{db: db, publicURLValue: "https://shipper.example.test"}
+	for _, tc := range []struct {
+		organization, path string
+		status             int
+	}{
+		{"", "/settings/apps/new", 200},
+		{" Northstar-Team ", "/organizations/Northstar-Team/settings/apps/new", 200},
+		{"https://github.com/northstar", "", 422},
+		{"../settings", "", 422},
+		{"-northstar", "", 422},
+		{"north--star", "", 422},
+		{strings.Repeat("a", 40), "", 422},
+	} {
+		t.Run(tc.organization, func(t *testing.T) {
+			body, _ := json.Marshal(map[string]string{"organization": tc.organization})
+			req := httptest.NewRequest("POST", "/api/connections/github", bytes.NewReader(body))
+			res := httptest.NewRecorder()
+			s.beginGitHub(res, req)
+			if res.Code != tc.status {
+				t.Fatalf("%d: %s", res.Code, res.Body)
+			}
+			if tc.status != 200 {
+				return
+			}
+			var result struct {
+				Action   string
+				Manifest struct {
+					Public      bool
+					RedirectURL string            `json:"redirect_url"`
+					SetupURL    string            `json:"setup_url"`
+					Permissions map[string]string `json:"default_permissions"`
+				}
+			}
+			if err := json.Unmarshal(res.Body.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			u, err := url.Parse(result.Action)
+			if err != nil || u.Host != "github.com" || u.Path != tc.path {
+				t.Fatal(result.Action, err)
+			}
+			state := u.Query().Get("state")
+			if len(state) != 64 || result.Manifest.Public || result.Manifest.Permissions["contents"] != "read" || result.Manifest.Permissions["metadata"] != "read" || len(result.Manifest.Permissions) != 2 || result.Manifest.RedirectURL != "https://shipper.example.test/connect/github/manifest" || result.Manifest.SetupURL != "https://shipper.example.test/connect/github/installed?state="+state {
+				t.Fatalf("Unsafe manifest: %+v", result)
+			}
+			if _, err := db.AdvanceProviderFlow(context.Background(), auth.Hash(state), "manifest", "exchanging"); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.AdvanceProviderFlow(context.Background(), auth.Hash(state), "manifest", "exchanging"); err == nil {
+				t.Fatal("Setup state reused")
+			}
+		})
+	}
+}
 
 func TestPrivateSourcesPushFiltersTokensAndIsolation(t *testing.T) {
 	ctx := context.Background()

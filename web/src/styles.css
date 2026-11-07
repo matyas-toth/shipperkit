@@ -2166,6 +2166,23 @@ input::placeholder {
   max-width: 600px;
   margin-top: 24px;
 }
+.connections-toolbar {
+  min-height: 40px;
+}
+.github-connect-form {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.github-connect-form > .form-fields {
+  gap: 24px;
+}
+.github-connect-form > .form-actions {
+  margin-top: 0;
+}
+.github-connect-form .field > .input {
+  margin-bottom: 0;
+}
 .connection-table th:nth-child(n) {
   min-width: 0;
 }
@@ -8528,6 +8545,68 @@ h3 {
 .connection-actions .icon-button {
   width: 32px;
   height: 32px;
+}
+
+@media (width < 48rem) {
+  .connection-table,
+  .connection-table tbody {
+    display: block;
+    width: 100%;
+  }
+  .connection-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .connection-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.65fr);
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-muted);
+  }
+  .connection-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .connection-table tbody td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+  .connection-table tbody > tr:not(:last-child):not(.virtual-spacer) > td {
+    border-bottom: 0;
+  }
+  .connection-table .connection-name {
+    font-weight: 530;
+  }
+  .connection-table .connection-provider {
+    text-align: end;
+    color: var(--secondary);
+  }
+  .connection-table .connection-actions-cell {
+    grid-column: 1 / -1;
+  }
+  .connection-actions {
+    gap: 8px;
+  }
+  .connection-table tbody .connection-actions .button {
+    min-height: 40px;
+    height: 40px;
+  }
+  .connection-table tbody .connection-actions .icon-button {
+    width: 40px;
+    height: 40px;
+  }
+  .connection-table .empty-row td {
+    grid-column: 1 / -1;
+  }
 }
 
 /* The health summary replaces the repetitive healthy table. */
