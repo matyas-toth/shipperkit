@@ -341,6 +341,7 @@ fail() {
   message=$1
   finished_at=$(date +%s)
   printf '%s %s\n' "$(date -u +%FT%TZ)" "$message" >>"$log" 2>/dev/null || true
+  rm -f "$request"
   write_status
   exit 1
 }
@@ -352,7 +353,7 @@ exec 9>"$state/update.lock"
 flock -n 9 || exit 0
 [[ -f $request && ! -L $request ]] || { rm -f "$request"; exit 0; }
 work=$(mktemp "$state/update-request.XXXXXX")
-mv -f "$request" "$work"
+cp "$request" "$work"
 chmod 0600 "$work"
 
 image=$(sed -n 's/.*"image":"\([^"]*\)".*/\1/p' "$work" | head -n1)
@@ -369,6 +370,7 @@ from_version=$(docker run --rm --network none --pull never "$(sed -n 's/^SHIPPER
 phase=preparing
 message="Validating Shipper $to_version"
 write_status
+rm -f "$request"
 
 phase=pulling
 message="Downloading Shipper $to_version"

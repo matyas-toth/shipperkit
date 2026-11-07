@@ -1,5 +1,4 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
-import { Portal } from "solid-js/web";
 import type { UpdateStatus } from "../types";
 import { Button, IconButton } from "./Controls";
 import { Icon } from "./Icon";
@@ -15,6 +14,7 @@ function DialogPanel(props: { close: () => void; done: () => void; initial: Upda
   const [status, setStatus] = createSignal(props.initial);
   let panel!: HTMLDivElement, timer: ReturnType<typeof setInterval> | undefined;
   const previous = document.activeElement as HTMLElement | null;
+  const expectedRequest = props.initial.requestId;
   let stopped = false;
 
   const busy = createMemo(() => !["succeeded", "failed"].includes(status().state));
@@ -40,6 +40,7 @@ function DialogPanel(props: { close: () => void; done: () => void; initial: Upda
       if (!response.ok) { setStatus({ ...status(), state: "restarting", message: "" }); return; }
       const next = await response.json() as UpdateStatus;
       if (stopped) return;
+      if (next.requestId && expectedRequest && next.requestId !== expectedRequest) return;
       setStatus(next);
       if (next.state === "succeeded" || next.state === "failed") { stop(); props.done(); }
     } catch {
