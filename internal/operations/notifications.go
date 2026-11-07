@@ -13,6 +13,7 @@ import (
 	"net/netip"
 	"net/smtp"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -101,6 +102,42 @@ func SafeDial(ctx context.Context, network, address string, private bool) (net.C
 	}
 	return nil, last
 }
+
+var discordWebhookPath = regexp.MustCompile(`^/api(?:/v[0-9]+)?/webhooks/[0-9]+/[^/]+/?$`)
+
+func webhookPayload(destination string, event store.OperationEvent) []byte {
+	var payload any = map[string]any{"version": "1", "event": event}
+	u, err := url.Parse(destination)
+	if err == nil && u.Scheme == "https" && (u.Port() == "" || u.Port() == "443") &&
+		(strings.EqualFold(u.Hostname(), "discord.com") || strings.EqualFold(u.Hostname(), "discordapp.com") ||
+			strings.EqualFold(u.Hostname(), "canary.discord.com") || strings.EqualFold(u.Hostname(), "ptb.discord.com")) &&
+		discordWebhookPath.MatchString(u.Path) {
+		content := "Shipper " + event.Kind + " " + event.State + "\n" + event.Summary
+		if event.ApplicationID != "" {
+			content += "\nApplication: " + event.ApplicationID
+		}
+		if event.Reference != "" {
+			content += "\nReference: " + event.Reference
+		}
+		// Bound UTF-16 units too, so supplementary Unicode cannot exceed Discord's limit.
+		units := 0
+		for index, char := range content {
+			size := 1
+			if char > 0xffff {
+				size = 2
+			}
+			if units+size > 1999 {
+				content = content[:index] + "…"
+				break
+			}
+			units += size
+		}
+		payload = map[string]any{"content": content, "allowed_mentions": map[string]any{"parse": []string{}}}
+	}
+	raw, _ := json.Marshal(payload)
+	return raw
+}
+
 func Send(ctx context.Context, c NotificationConfig, event store.OperationEvent) error {
 	if e := c.Validate(); e != nil {
 		return e
@@ -109,7 +146,7 @@ func Send(ctx context.Context, c NotificationConfig, event store.OperationEvent)
 		return nil
 	}
 	if c.Kind == "webhook" {
-		data, _ := json.Marshal(map[string]any{"version": "1", "event": event})
+		data := webhookPayload(c.Webhook, event)
 		req, e := http.NewRequestWithContext(ctx, "POST", c.Webhook, bytes.NewReader(data))
 		if e != nil {
 			return e

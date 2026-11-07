@@ -154,3 +154,15 @@ tokens and disables notification delivery/automatic cleanup until reviewed.
 
 See [API contracts](api.md), [diagnostic playbook](agent-diagnostics.md),
 [recovery](backups.md) and [release acceptance](vps-test-plan.md).
+
+### Discord webhooks
+
+Paste a Discord channel webhook URL into **System > Notifications > Webhook**.
+Shipper recognizes official Discord webhook URLs automatically, including versioned
+API paths and thread query parameters. Test and queued notifications send a readable
+message with the event state, summary, application and reference. Messages respect
+Discord's 2,000-character limit and disable all automatic mentions.
+
+Other webhook destinations retain the versioned `{ "version": "1", "event": ... }`
+JSON contract. Private destination opt-in, redirect rejection, retries and encrypted
+endpoint storage apply to both formats. Slack and Teams payloads are not inferred.
