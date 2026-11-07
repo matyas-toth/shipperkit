@@ -71,6 +71,25 @@ test("connections, private repository selection, immutable queue controls and im
     page.getByRole("heading", { name: "Connections", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Northstar", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Connect GitHub", exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Personal account", exact: true })).toBeChecked();
+  await page.getByRole("radio", { name: "Organization", exact: true }).check();
+  await page.getByLabel("Organization name", { exact: true }).fill("northstar");
+  await page.screenshot({ path: join(tmpdir(), "shipper-issue-10-organization.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: join(tmpdir(), "shipper-issue-10-mobile.png") });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  // Capture the real manifest POST without registering an app on GitHub.
+  await page.route("https://github.com/**", route => route.fulfill({ contentType: "text/html", body: "<title>GitHub fixture</title>" }));
+  const registration = page.waitForRequest(request => request.url().startsWith("https://github.com/organizations/northstar/settings/apps/new?state="));
+  await page.getByRole("button", { name: "Continue to GitHub", exact: true }).click();
+  const manifest = JSON.parse(new URLSearchParams((await registration).postData()!).get("manifest")!);
+  expect(manifest.public).toBe(false);
+  expect(manifest.default_permissions).toEqual({ contents: "read", metadata: "read" });
+  await page.waitForURL("https://github.com/**");
+  await page.goto("/settings#sources");
+  await page.unroute("https://github.com/**");
   await page.screenshot({
     path: join(tmpdir(), "shipper-phase6-connections.png"),
   });
