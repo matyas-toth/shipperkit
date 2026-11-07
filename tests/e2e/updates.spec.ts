@@ -46,7 +46,15 @@ test("update badge, channels, settings and progress dialog", async ({ page }) =>
   });
   await page.route("**/api/updates/status", async route => {
     statusReads++;
-    const done = statusReads > 1;
+    if (statusReads === 1) {
+      await route.fulfill({ json: {
+        state: "succeeded", message: "Shipper 1.0.0-rc.9 is ready",
+        fromVersion: "1.0.0-rc.8", toVersion: "1.0.0-rc.9", startedAt: 1794000000, finishedAt: 1794000010,
+        requestId: "previous-request", log: "",
+      } });
+      return;
+    }
+    const done = statusReads > 2;
     await route.fulfill({ json: {
       state: done ? "succeeded" : "updating", message: done ? "Shipper 1.0.0-rc.10 is ready" : "Taking a checkpoint",
       fromVersion: "1.0.0-rc.9", toVersion: "1.0.0-rc.10", startedAt: 1794000070, finishedAt: done ? 1794000090 : 0,
