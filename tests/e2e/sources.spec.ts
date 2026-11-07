@@ -41,6 +41,7 @@ async function checkRepositoryLoading(page: import("@playwright/test").Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: join(tmpdir(), "shipper-issue-11-mobile.png") });
   expect(errors).toEqual([]);
+  await page.getByLabel("Connection", { exact: true }).selectOption("");
   await page.unroute("**/api/connections");
   await page.unroute("**/api/connections/*/repositories?**");
   await page.setViewportSize({ width: 1440, height: 1000 });
