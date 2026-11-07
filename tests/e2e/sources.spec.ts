@@ -1,6 +1,52 @@
 import { test, expect } from "@playwright/test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+
+async function checkRepositoryLoading(page: import("@playwright/test").Page) {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.route("**/api/connections", route => route.fulfill({ json: { items: [
+    { id: "first-account", name: "Northstar", kind: "github_app" },
+    { id: "second-account", name: "Acme", kind: "github_app" },
+  ] } }));
+  const pending: import("@playwright/test").Route[] = [];
+  await page.route("**/api/connections/*/repositories?**", route => { pending.push(route); });
+  const repo = (id: number, owner: string) => ({ id, full_name: owner + "/app", clone_url: "https://github.com/" + owner + "/app.git", default_branch: "main" });
+  await page.goto("/new");
+  await page.getByLabel("Connection", { exact: true }).selectOption("first-account");
+  const picker = page.getByLabel("Repository", { exact: true });
+  await expect(picker).toBeDisabled();
+  await expect(picker).toContainText("Loading repositories");
+  await expect.poll(() => pending.length).toBe(1);
+  await page.screenshot({ path: join(tmpdir(), "shipper-issue-11-loading.png") });
+  await pending[0].fulfill({ json: { items: [repo(1, "northstar")], nextPage: 2 } });
+  await expect(picker).toBeEnabled();
+  await picker.selectOption(repo(1, "northstar").clone_url);
+  await page.getByRole("button", { name: "Load more repositories" }).click();
+  await expect.poll(() => pending.length).toBe(2);
+  await expect(picker).toBeEnabled();
+  await page.getByLabel("Connection", { exact: true }).selectOption("second-account");
+  await expect(picker).toBeDisabled();
+  await expect(picker.locator("option")).not.toContainText(["northstar/app"]);
+  await expect(page.getByLabel("Branch or commit")).toHaveValue("");
+  await expect.poll(() => pending.length).toBe(3);
+  await pending[1].fulfill({ json: { items: [repo(2, "old-account")], nextPage: 0 } });
+  await pending[2].fulfill({ json: { items: [repo(3, "acme")], nextPage: 0 } });
+  await expect(picker).toBeEnabled();
+  await expect(picker).not.toContainText("old-account");
+  await picker.selectOption(repo(3, "acme").clone_url);
+  await expect(page.getByLabel("Branch or commit")).toHaveValue("main");
+  await page.screenshot({ path: join(tmpdir(), "shipper-issue-11-loaded.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: join(tmpdir(), "shipper-issue-11-mobile.png") });
+  expect(errors).toEqual([]);
+  await page.getByLabel("Connection", { exact: true }).selectOption("");
+  await page.unroute("**/api/connections");
+  await page.unroute("**/api/connections/*/repositories?**");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+}
+
 test("connections, private repository selection, immutable queue controls and image source", async ({
   page,
 }) => {
@@ -19,6 +65,7 @@ test("connections, private repository selection, immutable queue controls and im
   await expect(
     page.getByRole("heading", { name: "Applications", exact: true }),
   ).toBeVisible();
+  await checkRepositoryLoading(page);
   const connections = [
     {
       id: "github-fixture",

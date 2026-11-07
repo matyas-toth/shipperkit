@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+.repository-picker {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--raised);
+  min-width: 0;
+}
+.repository-picker .input {
+  width: 100%;
+  min-width: 0;
+}
+.repository-picker .input:disabled {
+  color: var(--muted);
+  cursor: wait;
+}
+.repository-picker:not([aria-busy="true"]) .input:disabled {
+  cursor: default;
+}
+
 .diagnostics-section {
   margin-top: 32px;
   min-width: 0;
