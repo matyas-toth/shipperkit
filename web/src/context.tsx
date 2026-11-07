@@ -8,7 +8,7 @@ export const InventoryContext = createContext<{
 }>();
 export const UpdatesContext = createContext<{
   data: Accessor<UpdateState | undefined>; pending: Accessor<boolean>; error: Accessor<Error | null>;
-  check: () => Promise<void>; save: (channel: UpdateChannel, auto: boolean) => Promise<UpdateState>;
+  loadedVersion: Accessor<string>; check: () => Promise<void>; save: (channel: UpdateChannel, auto: boolean) => Promise<UpdateState>;
   apply: () => Promise<void>; open: () => void;
 }>();
 export function useAuth() { const value = useContext(AuthContext); if (!value) throw Error("Auth context is unavailable"); return value; }
