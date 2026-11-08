@@ -2,7 +2,6 @@
 import type { PageCombo } from "@/data/variants";
 import { Nav } from "@/components/nav/Nav";
 import { Hero } from "@/components/sections/Hero";
-import { Proof } from "@/components/sections/Proof";
 import { Product } from "@/components/sections/Product";
 import { Deploy } from "@/components/sections/Deploy";
 import { Agents } from "@/components/sections/Agents";
@@ -22,7 +21,6 @@ const { page } = Astro.props;
 <Nav variant={page.nav} />
 <Hero variant={page.hero} />
 <Product variant={page.product} />
-<Proof variant={page.proof} />
 <Deploy variant={page.deploy} />
 <Agents variant={page.agents} />
 <System variant={page.system} />

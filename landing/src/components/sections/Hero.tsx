@@ -11,6 +11,7 @@ import {
   AsciiField,
   CommandBar,
   Container,
+  CopyButton,
   Screenshot,
   Sparkline,
   Status,
@@ -229,8 +230,8 @@ function Hero3() {
           </h1>
           <div className="w-full max-w-[420px] lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <p className="text-[18px] leading-[1.7] text-[#b3b4ad]">
-              Shipper runs on the VPS you already pay for. Ship any app and get a
-              live URL, real logs, and a clean way back.
+              Shipper runs on the VPS you already pay for. Push a repo, get a live
+              URL, logs, and a rollback. No YAML, no SSH, no dashboard account.
             </p>
             <a href="#how-it-works" className="mt-4 inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white">
               See how it works
@@ -248,7 +249,7 @@ function Hero3() {
           </div>
           <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <ActionPrimary href="#get-shipper" className="w-full shrink-0 justify-center lg:w-auto" />
+              <CopyButton variant="primary" label="Copy install command" className="w-full shrink-0 lg:w-auto" />
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 lg:hidden">
                 <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
                   <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
@@ -259,7 +260,7 @@ function Hero3() {
                 <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
               </div>
             </div>
-            <CommandBar className="mt-4" />
+            <CommandBar showCopy={false} className="mt-4" />
           </div>
         </div>
         <div className="relative mt-10">

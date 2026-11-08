@@ -162,9 +162,10 @@ function Product3() {
             alt="A failed deployment with logs and the previous release still serving"
             frameClassName="max-sm:hidden"
             fade
+            className="h-[500px] object-cover object-top"
           />
         </div>
-        <div className="mx-auto mt-4 grid max-w-[1080px] gap-3 md:grid-cols-3">
+        <div className="mx-auto mt-4 grid max-w-[1080px] gap-3 sm:-mt-8 sm:relative sm:z-10 md:grid-cols-3">
           <div className="surface rounded-xl p-5">
             <div className="text-[14px] text-[#a2a39d]">Failed stage</div>
             <div className="mt-2 text-[17px] font-[500] text-[#f0a3a6]">Build</div>

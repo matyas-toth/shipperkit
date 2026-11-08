@@ -124,23 +124,15 @@ function Faq3() {
           body="The answers that change whether Shipper fits your server and your workflow."
           size="sm"
         />
-        <div className="mt-10 md:hidden">
+        <div className="mt-10 max-w-[900px]">
           {faqs.slice(0, 6).map((item) => (
             <details key={item.q} className="group border-b border-white/[0.1]">
-              <summary className="flex cursor-pointer list-none items-center gap-4 py-5 text-[16px] text-[#ecece7] [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center gap-4 py-5 text-[16px] text-[#ecece7] [&::-webkit-details-marker]:hidden md:py-6 md:text-[18px]">
                 <span className="flex-1">{item.q}</span>
                 <HugeiconsIcon icon={ArrowDown01Icon} size={17} strokeWidth={1.6} className="shrink-0 text-[#8d8e88] transition-transform duration-300 group-open:rotate-180" />
               </summary>
-              <p className="pb-5 text-[15px] leading-[1.7] text-[#a2a39d]">{item.a}</p>
+              <p className="max-w-[72ch] pb-5 text-[15px] leading-[1.7] text-[#a2a39d] md:text-[16px]">{item.a}</p>
             </details>
-          ))}
-        </div>
-        <div className="mt-12 hidden gap-x-12 md:grid md:grid-cols-2">
-          {faqs.slice(0, 6).map((item) => (
-            <div key={item.q} className="border-t border-white/[0.1] py-7">
-              <h3 className="text-[20px] font-[520] leading-snug tracking-[-0.025em] text-[#ecece7]">{item.q}</h3>
-              <p className="mt-3 max-w-[52ch] text-[16px] leading-[1.7] text-[#a2a39d]">{item.a}</p>
-            </div>
           ))}
         </div>
       </Container>

@@ -123,8 +123,11 @@ function Cta3() {
               The deploy console, the release history, and the recovery plan live on
               your server. Keep the keys.
             </p>
-            <div className="mt-9 w-full max-w-[640px]">
-              <CommandBar />
+            <div className="mt-9 flex flex-col items-center gap-4">
+              <CopyButton variant="primary" label="Copy install command" />
+              <div className="w-full max-w-[640px]">
+                <CommandBar showCopy={false} />
+              </div>
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-7">
               <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">

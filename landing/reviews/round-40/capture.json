@@ -1,0 +1,62 @@
+[
+  {
+    "key": "ours",
+    "url": "http://localhost:4330/",
+    "width": 1440,
+    "status": 200,
+    "title": "Shipper · Deploy your apps to your own server",
+    "height": 7397,
+    "overflow": 0,
+    "error": null
+  },
+  {
+    "key": "coolify",
+    "url": "https://coolify.io/",
+    "width": 1440,
+    "status": 200,
+    "title": "Coolify - Self-hosting with superpowers",
+    "height": 6176,
+    "overflow": 0,
+    "error": null
+  },
+  {
+    "key": "vercel",
+    "url": "https://vercel.com/",
+    "width": 1440,
+    "status": 200,
+    "title": "Agentic Infrastructure - Vercel",
+    "height": 6030,
+    "overflow": 0,
+    "error": null
+  },
+  {
+    "key": "t3code",
+    "url": "https://t3.codes/",
+    "width": 1440,
+    "status": 200,
+    "title": "T3 Code | The open-source control plane for coding agents",
+    "height": 4345,
+    "overflow": 0,
+    "error": null
+  },
+  {
+    "key": "ours-1024",
+    "url": "http://localhost:4330/",
+    "width": 1024,
+    "status": 200,
+    "title": "Shipper · Deploy your apps to your own server",
+    "height": 7144,
+    "overflow": 0,
+    "error": null
+  },
+  {
+    "key": "ours-390",
+    "url": "http://localhost:4330/",
+    "width": 390,
+    "status": 200,
+    "title": "Shipper · Deploy your apps to your own server",
+    "height": 8133,
+    "overflow": 0,
+    "error": null
+  }
+]
