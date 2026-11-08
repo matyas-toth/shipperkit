@@ -99,6 +99,9 @@ func (w *Worker) backupRunDestination(ctx context.Context, c store.BackupSpec) (
 	return protection.S3{Endpoint: d.Endpoint, Region: d.Region, Bucket: d.Bucket, Prefix: d.Prefix, AccessKey: d.AccessKey, SecretKey: d.SecretKey, Private: d.Private}, nil
 }
 func (w *Worker) ScheduleBackups(ctx context.Context) {
+	if e := w.EnsureDatabaseBackupPlans(ctx); e != nil {
+		slog.Warn("Database backup setup will be retried", "error", e)
+	}
 	now := time.Now()
 	plans, e := w.DB.DueBackupPlans(ctx, now.Unix())
 	if e != nil {
@@ -322,7 +325,24 @@ func (w *Worker) protect(ctx context.Context, v *store.BackupRun) error {
 	case "volume":
 		m.Consistency = "Cold archive; all mounted containers stopped"
 		p := filepath.Join(work, "volume.tar")
-		if e = runtime.DumpVolume(ctx, v.ApplicationID, v.ID, v.Config.Volume, p); e != nil {
+		if v.Config.Engine == "redis" {
+			a, err := w.DB.Application(ctx, v.ApplicationID)
+			if err != nil {
+				return err
+			}
+			d, err := w.DB.Deployment(ctx, a.ActiveDeploymentID)
+			if err != nil {
+				return err
+			}
+			if d.Config.Database == nil || d.Config.Database.Engine != "redis" {
+				return errors.New("Choose the original managed Redis resource")
+			}
+			m.Consistency = "Native Redis RDB snapshot"
+			e = runtime.DumpRedisVolume(ctx, d, p)
+		} else {
+			e = runtime.DumpVolume(ctx, v.ApplicationID, v.ID, v.Config.Volume, p)
+		}
+		if e != nil {
 			return e
 		}
 		files["volume.tar"] = p
@@ -606,7 +626,7 @@ func (w *Worker) ImportBackup(ctx context.Context, app, identity string, src io.
 	if m.Application != app || (m.Kind != "database" && m.Kind != "volume") {
 		return v, errors.New("Choose a database or volume archive from this application")
 	}
-	spec := store.BackupSpec{Kind: m.Kind, Service: m.Service, Engine: m.Engine, Database: m.Database, Volume: m.Volume, Host: "127.0.0.1", TLS: "prefer", Keep: 7, Identity: identity} // Preserve credentials from the matching local plan, never from untrusted archive metadata.
+	spec := store.BackupSpec{NativeImport: m.Consistency == "Native dump import", Kind: m.Kind, Service: m.Service, Engine: m.Engine, Database: m.Database, Volume: m.Volume, Host: "127.0.0.1", TLS: "prefer", Keep: 7, Identity: identity} // Preserve credentials from the matching local plan, never from untrusted archive metadata.
 	plans, e := w.DB.BackupPlans(ctx, app)
 	if e != nil {
 		return v, e

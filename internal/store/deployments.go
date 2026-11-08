@@ -64,6 +64,11 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 			return d, e
 		}
 	}
+	if d.Operation != "delete" && d.Operation != "task" {
+		if err := s.checkNetworkClaims(ctx, tx, a.ID, a.Config.Networking); err != nil {
+			return d, err
+		}
+	}
 	now := time.Now().Unix()
 	if a.Config.LocalSource != "" {
 		result, e := tx.ExecContext(ctx, "UPDATE source_snapshots SET application_id=? WHERE id=? AND deleting=0 AND (application_id='' OR application_id=?)", a.ID, a.Config.LocalSource, a.ID)
@@ -113,6 +118,19 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 			return sourceKind(a.Config)
 		}(), sourceRef(a.Config), method, now, now, cfg, string(domains))
 	} else {
+		if d.Operation != "delete" {
+			var oldRaw string
+			if err = tx.QueryRowContext(ctx, "SELECT config_json FROM applications WHERE id=? AND deleted_at=0", a.ID).Scan(&oldRaw); err != nil {
+				return d, err
+			}
+			var oldConfig Config
+			if err = s.unmarshalConfig(oldRaw, &oldConfig); err != nil {
+				return d, err
+			}
+			if err = ValidateDatabaseTransition(oldConfig, a.Config); err != nil {
+				return d, err
+			}
+		}
 		var busy int
 		err = tx.QueryRowContext(ctx, "SELECT (SELECT COUNT(*) FROM deployments WHERE application_id=? AND state NOT IN ('succeeded','failed','interrupted','cancelled'))+(SELECT count(*) FROM backup_runs WHERE application_id=? AND state IN ('queued','running'))", a.ID, a.ID).Scan(&busy)
 		if err != nil {

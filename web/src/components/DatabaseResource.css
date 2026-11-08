@@ -1,0 +1,6 @@
+.database-resource-form { display: grid; gap: 1.25rem; width: 100%; }
+.database-resource-form .form-fields { display: grid; gap: .75rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+.database-resource-form .form-fields label:not(:first-child) { margin-top: .5rem; }
+.database-resource-form .form-actions, .database-resource-actions { display: flex; gap: .75rem; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.database-operations { display: grid; gap: 1rem; }
+.database-resource-actions { justify-content: flex-start; }

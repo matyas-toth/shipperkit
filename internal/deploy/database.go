@@ -27,6 +27,9 @@ func DatabaseEndpointFor(d store.Deployment) *DatabaseEndpoint {
 		return nil
 	}
 	endpoint := &DatabaseEndpoint{Engine: engine, Host: "site-" + d.ID, Port: port}
+	if d.Config.Database != nil {
+		endpoint.Host = "db-" + d.ApplicationID
+	}
 	if d.RuntimePort > 0 {
 		endpoint.Port = d.RuntimePort
 	}
@@ -134,7 +137,10 @@ func DatabaseURI(d store.Deployment) (string, error) {
 	case "redis":
 		// Official Redis/Valkey images do not consume REDIS_PASSWORD or VALKEY_PASSWORD.
 		// Auth configured through commands or mounted config must not be guessed.
-		if env["REDIS_PASSWORD"] != "" || env["VALKEY_PASSWORD"] != "" {
+		if d.Config.Database != nil && d.Config.Database.Engine == "redis" && ValidateDatabaseResource(d.Config) == nil {
+			password = env["REDIS_PASSWORD"]
+			u.User = url.UserPassword("default", password)
+		} else if env["REDIS_PASSWORD"] != "" || env["VALKEY_PASSWORD"] != "" {
 			return "", errors.New("Redis and Valkey authentication requires a manually configured connection string")
 		}
 		for _, volume := range d.Config.Volumes {
@@ -149,6 +155,14 @@ func DatabaseURI(d store.Deployment) (string, error) {
 			u.User = url.UserPassword(user, password)
 		} else {
 			u.User = url.User(user)
+		}
+	}
+	if d.Config.Database != nil {
+		if endpoint.Engine == "postgresql" {
+			u.RawQuery = "sslmode=require"
+		}
+		if endpoint.Engine == "redis" {
+			u.Scheme = "rediss"
 		}
 	}
 	u.Path = "/" + database

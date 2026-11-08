@@ -92,7 +92,7 @@ func (s *Server) automation(next http.Handler) http.Handler {
 			if path == "/system/recheck" || path == "/system/retention" || path == "/system/repair" {
 				scope = "host-admin"
 			}
-			if path == "/applications" || path == "/sources" || path == "/plan" {
+			if path == "/applications" || path == "/sources" || path == "/plan" || path == "/database-resources/prepare" {
 				scope = "deploy"
 			}
 			if len(parts) >= 3 && parts[0] == "applications" {
@@ -104,7 +104,7 @@ func (s *Server) automation(next http.Handler) http.Handler {
 					scope = "deploy"
 				case len(parts) == 5 && parts[2] == "tasks" && parts[4] == "run":
 					scope = "execute"
-				case len(parts) == 4 && ((parts[2] == "variables" && parts[3] == "reveal") || (parts[2] == "database" && parts[3] == "connection")):
+				case len(parts) == 4 && ((parts[2] == "variables" && parts[3] == "reveal") || (parts[2] == "database" && (parts[3] == "connection" || parts[3] == "ca" || parts[3] == "import"))):
 					scope = "secrets"
 				case len(parts) == 3 && parts[2] == "delete":
 					scope = "destructive"

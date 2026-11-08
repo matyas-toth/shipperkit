@@ -194,11 +194,17 @@ export default function Backups(props: {
     const config = freshSpec();
     config.service = props.service ?? "";
     if (!props.application) config.kind = "instance";
+    const database = props.application?.config.database;
+    if (database) {
+      config.engine = database.engine === "postgresql" ? "postgres" : database.engine;
+      config.database = "app";
+      if (database.engine === "redis") { config.kind = "volume"; config.engine = "redis"; config.database = ""; const volume = query.data?.volumes.find(row => row.logical === "data" && !row.restored); config.volume = volume?.name ?? ""; }
+    }
     if (props.application?.method !== "compose") config.service = "";
     setEditing({
       id: "",
       applicationId: props.application?.id ?? "",
-      name: props.application ? "Application data" : "Instance recovery",
+      name: props.application?.config.database ? "Database backup" : props.application ? "Application data" : "Instance recovery",
       config,
       enabled: true,
       schedule: "",

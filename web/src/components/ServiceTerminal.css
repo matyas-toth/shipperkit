@@ -1,0 +1,10 @@
+.service-terminal { min-width: 0; }
+.service-terminal-controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.service-terminal-controls > select:first-child { flex: 1; min-width: 180px; }
+.service-terminal-controls .terminal-timeout { width: auto; }
+.service-terminal-controls .button { white-space: nowrap; }
+.service-terminal-viewport { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; height: min(560px, 65vh); min-height: 280px; overflow: hidden; }
+.service-terminal-viewport.terminal-active { display: block; }
+.service-terminal-viewport .xterm { height: 100%; }
+.service-terminal-viewport .xterm-viewport { border-radius: 4px; }
+@media (max-width: 600px) { .service-terminal-controls { gap: 8px; } .service-terminal-viewport { padding: 10px; } }

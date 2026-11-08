@@ -637,6 +637,9 @@ func (r *DockerRuntime) RestoreDatabase(ctx context.Context, d store.Deployment,
 	if m.Engine != c.Engine || m.EngineVersion != version {
 		return errors.New("Restore requires the same database tool version and engine as the backup")
 	}
+	if c.NativeImport {
+		return r.restoreNativeDatabase(ctx, id, c, file)
+	}
 	a, env := dbArgs(c)
 	run := func(args []string, in io.Reader) error { return r.protectionExec(ctx, id, args, env, in, io.Discard) }
 	f, e := os.Open(file)

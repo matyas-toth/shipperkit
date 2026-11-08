@@ -23,6 +23,7 @@ import RuntimeFields from "../components/RuntimeFields";
 import ServiceSummary from "../components/ServiceSummary";
 import { ImageFields, InlineFields, RepositoryPicker, useConnections } from "../components/SourceFields";
 import { emptyConfig } from "../components/StaticFields";
+import DatabaseResource from "../components/DatabaseResource";
 import Variables from "../components/Variables";
 import Volumes from "../components/Volumes";
 
@@ -81,6 +82,7 @@ export default function NewApplication() {
   const [config, setConfig] = createStore<StaticConfig>({ ...emptyConfig(), ...draft?.config });
   const [source, setSource] = createSignal<Source>(draftSource(draft));
   const [name, setName] = createSignal(draft?.name ?? "");
+  const [databaseOpen, setDatabaseOpen] = createSignal(false);
   const [manual, setManual] = createSignal(false);
   const [sourcePanel, setSourcePanel] = createSignal(false);
   const connections = useConnections();
@@ -140,6 +142,11 @@ export default function NewApplication() {
     onCleanup(() => { document.removeEventListener("click", outside); if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
   });
 
+  async function prepareDatabase(value: StaticConfig, databaseName: string) {
+    batch(() => { chooseSource("image"); setConfig(reconcile(value)); setName(databaseName); });
+    await plan();
+    if (review()) setDatabaseOpen(false);
+  }
   function enterManual() { setManual(true); go("source"); }
   function selectAccount(id: string) {
     batch(() => {
@@ -321,7 +328,8 @@ export default function NewApplication() {
       </li>}</For>
     </ol></Show>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
-    <Show when={!manual() && step() === "source"}>
+    <Show when={databaseOpen()}><DatabaseResource prepare={prepareDatabase} close={() => setDatabaseOpen(false)} /></Show>
+    <Show when={!manual() && !databaseOpen() && step() === "source"}>
       <form class="source-entry" onSubmit={e => { e.preventDefault(); setSourcePanel(false); void plan(); }}>
         <h1 ref={heading} tabindex="-1">Deploy an application</h1>
         <fieldset disabled={pending()}>
@@ -341,6 +349,7 @@ export default function NewApplication() {
                 </Show>
               </Show>
               <Show when={!git() || config.sourceId}><Button small variant="ghost" icon="git" onClick={() => { chooseSource("git"); change("sourceId", ""); change("repositoryId", 0); setSourcePanel(false); }}>Repository URL</Button></Show>
+              <Button small variant="ghost" icon="database" onClick={() => setDatabaseOpen(true)}>Database</Button>
               <Button small variant="ghost" icon="folder" onClick={() => { chooseSource("local"); setSourcePanel(true); }}>Local files</Button>
               <Button small variant="ghost" icon="box" onClick={() => { chooseSource("image"); setSourcePanel(true); }}>Container image</Button>
               <details class="source-extra"><summary aria-label="More sources"><Icon name="more" /></summary><div><For each={sources.slice(3)}>{s => <Button small variant="ghost" icon={s.icon} onClick={() => { chooseSource(s.value); setSourcePanel(true); }}>{s.label}</Button>}</For></div></details>
@@ -496,8 +505,9 @@ export default function NewApplication() {
         <dl>
           <ReviewFact label="Application">{approved().plan.name}</ReviewFact>
           <ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact>
-          <ReviewFact label="Build">{methodLabel(method())}</ReviewFact>
-          <Show when={!compose()}><ReviewFact label="Domain">{worker() ? "Worker" : approved().plan.config.domain || "No public domain"}</ReviewFact></Show>
+          <ReviewFact label={config.database ? "Engine" : "Build"}>{config.database ? ({postgresql:"PostgreSQL",mysql:"MySQL",mariadb:"MariaDB",redis:"Redis"}[config.database.engine]) + " " + config.database.version : methodLabel(method())}</ReviewFact>
+          <Show when={config.database}><ReviewFact label="Storage">Persistent data volume</ReviewFact><ReviewFact label="Backups">Daily at 03:00 UTC</ReviewFact></Show>
+          <Show when={!compose() && !config.database}><ReviewFact label="Domain">{worker() ? "Worker" : approved().plan.config.domain || "No public domain"}</ReviewFact></Show>
           <Show when={compose()}><ReviewFact label="Services"><For each={stack()?.services}>{s => <span>{s.name}</span>}</For></ReviewFact></Show>
           <Show when={compose()}><ReviewFact label="Domain"><Show when={approved().plan.config.domains?.length} fallback={<><span>No public domain</span><Button small variant="ghost" onClick={enterManual}>Add domain</Button></>}><For each={approved().plan.config.domains}>{d => <span>{d.hostname}</span>}</For></Show></ReviewFact></Show>
         </dl>

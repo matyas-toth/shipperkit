@@ -1,0 +1,15 @@
+.networking-settings { display: grid; gap: 32px; }
+.networking-settings section { min-width: 0; }
+.networking-connection { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(120px, 1fr) auto; align-items: center; gap: 12px; margin-top: 12px; }
+.networking-host { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.networking-port { display: flex; align-items: end; gap: 12px; margin-top: 16px; }
+.networking-port .field { flex: 1; min-width: 0; }
+.networking-port .field:has([id*="-bind-"]) { flex: 1.4; }
+.networking-port .icon-button { flex-shrink: 0; }
+@media (max-width: 720px) {
+  .networking-port { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .networking-port .icon-button { justify-self: end; }
+  .networking-connection { grid-template-columns: minmax(0, 1fr) auto; }
+  .networking-host { grid-row: 2; }
+  .networking-connection .icon-button { grid-column: 2; grid-row: 1 / 3; }
+}

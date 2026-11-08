@@ -178,8 +178,10 @@ func LoadCompose(ctx context.Context, c store.Config, root, project string, boun
 	if len(p.Jobs) != 0 || len(p.Models) != 0 {
 		return nil, errors.New("Compose jobs and models are not supported yet")
 	}
-	if _, ok := p.Networks["shipper_edge"]; ok {
-		return nil, errors.New("Network name shipper_edge is reserved")
+	for name := range p.Networks {
+		if strings.HasPrefix(name, "shipper_") {
+			return nil, errors.New("Network names beginning with shipper_ are reserved")
+		}
 	}
 	if _, ok := p.Volumes["shipper_files"]; ok {
 		return nil, errors.New("Volume name shipper_files is reserved")
@@ -359,6 +361,14 @@ func (r *DockerRuntime) composeCommand(ctx context.Context, d store.Deployment, 
 	if e := json.Unmarshal([]byte(d.ComposePlan), &plan); e != nil {
 		return errors.New("Compose release configuration is unavailable")
 	}
+	if len(arguments) > 0 && arguments[0] == "up" {
+		if e := r.ValidatePublishedPorts(ctx, d.ApplicationID, d.Config.Networking.Ports); e != nil {
+			return e
+		}
+		if e := r.reuseComposeNetworking(ctx, d, &plan); e != nil {
+			return e
+		}
+	}
 	dir, e := os.MkdirTemp(filepath.Join(r.DataDir, "work"), "deployment-compose-")
 	if e != nil {
 		return e
@@ -461,9 +471,22 @@ func (r *DockerRuntime) checkComposeOwnership(ctx context.Context, d store.Deplo
 }
 
 func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment, root, repository string, log func(string)) error {
+	if e := r.ValidatePublishedPorts(ctx, d.ApplicationID, d.Config.Networking.Ports); e != nil {
+		return e
+	}
 	p, e := LoadCompose(ctx, d.Config, root, r.composeProject(d.ApplicationID), repository)
 	if e != nil {
 		return e
+	}
+	for _, port := range d.Config.Networking.Ports {
+		if _, ok := p.Services[port.Service]; !ok {
+			return errors.New("Choose a Compose service for each public port")
+		}
+	}
+	for _, app := range append([]string{d.ApplicationID}, d.Config.Networking.Applications...) {
+		if e := r.ensureApplicationNetwork(ctx, app); e != nil {
+			return e
+		}
 	}
 	d.ResolvedMethod = "compose"
 	d.Services = ComposeServices(p, d.Config)
@@ -516,7 +539,10 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 		}
 		p.Networks[key] = n
 	}
-	p.Networks["shipper_edge"] = ct.NetworkConfig{Name: r.network(), External: true}
+	p.Networks["shipper_edge"] = ct.NetworkConfig{Name: r.applicationNetwork(d.ApplicationID), External: true}
+	for _, app := range d.Config.Networking.Applications {
+		p.Networks["shipper_link_"+app] = ct.NetworkConfig{Name: r.applicationNetwork(app), External: true}
+	}
 	files := map[string][]byte{}
 	fileMount := func(source, target string, readonly bool) (ct.ServiceVolumeConfig, error) {
 		abs, e := checkedFile(repository, source)
@@ -612,9 +638,14 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 				mask = append(mask, *v)
 			}
 		}
-		// Published host ports become internal ports; domains are the sole public
-		// ingress. Databases never become public just because a dev file says so.
+		// Repository port mappings never authorize host exposure. Only reviewed
+		// application networking settings can publish a port.
 		svc.Ports = nil
+		for _, port := range d.Config.Networking.Ports {
+			if port.Service == name {
+				svc.Ports = append(svc.Ports, ct.ServicePortConfig{Target: uint32(port.ContainerPort), Published: strconv.Itoa(port.HostPort), Protocol: port.Protocol, HostIP: port.BindIP})
+			}
+		}
 		for i := range svc.Volumes {
 			v := &svc.Volumes[i]
 			if v.Type == "bind" {
@@ -704,12 +735,19 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 		}
 		svc.Configs = nil
 		svc.Secrets = nil
+		if svc.Networks == nil {
+			svc.Networks = map[string]*ct.ServiceNetworkConfig{}
+		}
+		svc.Networks["shipper_edge"] = &ct.ServiceNetworkConfig{Aliases: composeServiceAliases(*d, name)}
+		for _, app := range d.Config.Networking.Applications {
+			svc.Networks["shipper_link_"+app] = &ct.ServiceNetworkConfig{}
+		}
 		for _, summary := range d.Services {
 			if summary.Name == name && summary.Port > 0 {
 				if svc.Networks == nil {
 					svc.Networks = map[string]*ct.ServiceNetworkConfig{}
 				}
-				svc.Networks["shipper_edge"] = &ct.ServiceNetworkConfig{Aliases: []string{composeAlias(d.ApplicationID, name)}}
+				svc.Networks["shipper_edge"] = &ct.ServiceNetworkConfig{Aliases: composeServiceAliases(*d, name)}
 			}
 		}
 		if svc.Build != nil {
@@ -944,6 +982,9 @@ func (r *DockerRuntime) BuildCompose(ctx context.Context, d *store.Deployment, l
 	return r.composeStartup(ctx, d)
 }
 func (r *DockerRuntime) UpCompose(ctx context.Context, d store.Deployment, log func(string)) error {
+	if e := r.ValidatePublishedPorts(ctx, d.ApplicationID, d.Config.Networking.Ports); e != nil {
+		return e
+	}
 	wait := max(90, StartupSeconds(d.Config.Runtime))
 	for _, svc := range d.Config.Services {
 		wait = max(wait, StartupSeconds(svc.Runtime))

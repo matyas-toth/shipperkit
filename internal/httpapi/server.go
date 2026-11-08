@@ -49,6 +49,8 @@ type Config struct {
 	Updates        *updates.Service
 }
 type Server struct {
+	terminalMu sync.Mutex
+	terminals map[string]*terminalSession
 	github          *gitprovider.GitHub
 	db              *store.Store
 	monitor         *inventory.Monitor
@@ -111,6 +113,9 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireSession)
 			s.operationsRoutes(r)
+			s.databaseResourceRoutes(r)
+			s.networkingRoutes(r)
+			s.terminalRoutes(r)
 			s.protectionRoutes(r)
 			r.Get("/containers", s.containers)
 			r.Get("/applications", s.applications)
@@ -239,7 +244,7 @@ func (s *Server) origin(next http.Handler) http.Handler {
 		}
 		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
 			kind, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if kind != "application/json" && !(kind == "application/x-tar" && r.URL.Path == "/api/sources") && !(kind == "multipart/form-data" && strings.HasSuffix(r.URL.Path, "/protection/import")) {
+			if kind != "application/json" && !(kind == "application/x-tar" && r.URL.Path == "/api/sources") && !(kind == "multipart/form-data" && (strings.HasSuffix(r.URL.Path, "/protection/import") || strings.HasSuffix(r.URL.Path, "/database/import"))) {
 				s.problem(w, 415, "json_required", "Send the request as JSON")
 				return
 			}
