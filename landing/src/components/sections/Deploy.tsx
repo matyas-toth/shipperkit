@@ -20,6 +20,7 @@ import {
   Status,
   TerminalInstall,
 } from "@/components/primitives";
+import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 function Deploy1() {
@@ -142,6 +143,12 @@ function Deploy3() {
               </div>
             </div>
           ))}
+        </div>
+        <div className="mt-8">
+          <a href="#get-shipper" className="inline-flex items-center gap-1.5 text-[15px] text-[#a2a39d] transition-colors hover:text-white">
+            Install Shipper
+            <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.8} />
+          </a>
         </div>
       </Container>
     </Section>

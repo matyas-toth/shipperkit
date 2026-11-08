@@ -1,9 +1,9 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+  Activity01Icon,
   ArrowUpRight01Icon,
   CheckmarkCircle02Icon,
   Clock01Icon,
-  CloudServerIcon,
   DatabaseBackupIcon,
   GlobeIcon,
 } from "@hugeicons/core-free-icons";
@@ -114,6 +114,7 @@ function System2() {
 function System3() {
   return (
     <Section id="system" className="section-rule">
+      <div className="grid-lines absolute inset-0 -z-10 opacity-30" />
       <Container>
         <SectionIntro
           title={<>The unglamorous parts, handled.</>}
@@ -123,7 +124,7 @@ function System3() {
           {([
             ["HTTPS", "Domains and certificates renew without a side project.", GlobeIcon],
             ["Backups", "A verified copy of your data, on storage you choose.", DatabaseBackupIcon],
-            ["Health", "See the app and the machine while they are running.", CloudServerIcon],
+            ["Health", "See the app and the machine while they are running.", Activity01Icon],
           ] as const).map(([title, body, Icon]) => (
             <div key={title} className="surface rounded-2xl p-7">
               <span className="flex size-11 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05]">
@@ -138,12 +139,14 @@ function System3() {
           <Screenshot
             src="/shots/diagnostics.png"
             alt="Shipper diagnostics checks with service health"
-            className="h-[280px] object-cover object-top max-sm:w-[170%] max-sm:max-w-none"
+            plain
+            className="h-[280px] object-cover object-top"
           />
           <Screenshot
             src="/shots/backups.png"
             alt="Shipper backup plans and verified backup history"
-            className="h-[280px] object-cover object-top max-sm:w-[170%] max-sm:max-w-none"
+            plain
+            className="h-[280px] object-cover object-top"
           />
         </div>
         <div className="mt-10 flex justify-center">

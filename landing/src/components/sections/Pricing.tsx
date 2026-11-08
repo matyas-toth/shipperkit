@@ -138,30 +138,29 @@ function Pricing3() {
           body="A managed platform charges for convenience. Running it yourself should not mean rebuilding the convenience from scratch."
           align="center"
         />
-        <div className="mx-auto mt-10 max-w-[920px] space-y-3 sm:hidden">
-          {rows.map(([label, shipper, paas, ssh]) => (
-            <div key={label} className="surface rounded-xl px-5 py-4">
-              <div className="text-[15px] text-[#ecece7]">{label}</div>
-              <div className="mt-3 space-y-2">
-                {([
-                  ["Shipper", shipper, true],
-                  ["Managed PaaS", paas, false],
-                  ["Hand-rolled", ssh, false],
-                ] as const).map(([name, value, primary]) => (
-                  <div key={name} className="flex items-center justify-between gap-4">
-                    <span className={cn("text-[14px]", primary ? "text-[#79e3a6]" : "text-[#8d8e88]")}>{name}</span>
-                    <span className="flex items-center text-[14px] text-[#dcdcd6]">
-                      {value === "Yes" ? (
-                        <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} strokeWidth={1.6} className="text-[#79e3a6]" />
-                      ) : (
-                        value
-                      )}
-                    </span>
-                  </div>
-                ))}
-              </div>
+        <div className="mt-10 overflow-x-auto pb-1 sm:hidden">
+          <div className="min-w-[440px] overflow-hidden rounded-xl border border-white/[0.13] bg-[#101111]">
+            <div className="grid grid-cols-[1.25fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035]">
+              <div className="sticky left-0 z-10 bg-[#141515] px-4 py-4 text-[14px] text-[#8d8e88]">What you care about</div>
+              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-3 py-4 text-center text-[14px] font-[520] text-[#f4f4f0]">Shipper</div>
+              <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#969791]">Managed PaaS</div>
+              <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#969791]">Hand-rolled</div>
             </div>
-          ))}
+            {rows.map(([label, shipper, paas, ssh], index) => (
+              <div key={label} className={cn("grid grid-cols-[1.25fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
+                <div className="sticky left-0 z-10 bg-[#101111] px-4 py-4 text-[14px] text-[#dcdcd6]">{label}</div>
+                <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-3 py-4 text-center text-[14px]">
+                  {shipper === "Yes" ? (
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={17} strokeWidth={1.6} className="mx-auto text-[#79e3a6]" />
+                  ) : (
+                    <span className="text-[#dcdcd6]">{shipper}</span>
+                  )}
+                </div>
+                <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#8d8e88]">{paas}</div>
+                <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#8d8e88]">{ssh}</div>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="surface mx-auto mt-12 hidden max-w-[920px] overflow-hidden rounded-2xl sm:block">
           <div className="grid grid-cols-[1.25fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035] sm:grid-cols-[1.5fr_repeat(3,1fr)]">

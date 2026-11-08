@@ -1,7 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  ArrowDown01Icon,
   GithubIcon,
+  Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -51,9 +51,8 @@ function Install({ className, always = false }: { className?: string; always?: b
 function MobileMenu() {
   return (
     <details className="group relative md:hidden">
-      <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-white/[0.12] px-3.5 text-[14px] text-[#c3c4be] [&::-webkit-details-marker]:hidden">
-        Menu
-        <HugeiconsIcon icon={ArrowDown01Icon} size={15} strokeWidth={1.8} className="transition-transform group-open:rotate-180" />
+      <summary aria-label="Open menu" className="flex size-10 cursor-pointer list-none items-center justify-center rounded-lg border border-white/[0.12] text-[#c3c4be] [&::-webkit-details-marker]:hidden">
+        <HugeiconsIcon icon={Menu01Icon} size={18} strokeWidth={1.8} />
       </summary>
       <div className="absolute right-0 top-12 z-50 w-60 rounded-xl border border-white/[0.12] bg-[#0a0b0b] p-3 shadow-2xl">
         <a

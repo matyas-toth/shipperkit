@@ -223,32 +223,35 @@ function Hero3() {
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_66%_50%_at_50%_0%,rgba(255,255,255,0.12),transparent_64%)]" />
       <AsciiField className="left-1/2 top-24 -z-10 hidden -translate-x-1/2 md:block" cols={96} rows={26} seed={19} opacity={0.08} />
       <Container>
-        <div className="flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
-          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.5rem,6.4vw,6.8rem)] text-[#ecece7]">
+        <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-start">
+          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.35rem,6.4vw,6.8rem)] text-[#ecece7]">
             From localhost to your own cloud in one deploy.
           </h1>
-          <div className="w-full max-w-[420px] pb-1">
+          <div className="w-full max-w-[420px]">
             <p className="text-[18px] leading-[1.7] text-[#b3b4ad]">
               Shipper runs on the VPS you already pay for. Ship any app and get a
               live URL, real logs, and a clean way back.
             </p>
-            <div id="install" className="mt-6 scroll-mt-28">
-              <CommandBar compact />
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2.5">
+            <a href="#how-it-works" className="mt-4 inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
+              See how it works
+              <HugeiconsIcon icon={ArrowUpRight01Icon} size={13} strokeWidth={1.8} />
+            </a>
+          </div>
+        </div>
+        <div id="install" className="mt-9 flex scroll-mt-28 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <ActionPrimary href="#get-shipper" />
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
                 <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
                 GitHub
               </a>
               <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
-              <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
-                See how it works
-                <HugeiconsIcon icon={ArrowUpRight01Icon} size={13} strokeWidth={1.8} />
-              </a>
             </div>
           </div>
+          <CommandBar className="w-full [&_code]:text-[13px] lg:max-w-[520px]" />
         </div>
-        <div className="relative mt-12">
+        <div className="relative mt-10">
           <div className="pointer-events-none absolute -inset-x-24 -top-10 bottom-0 -z-10 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1),transparent_64%)] blur-3xl" />
           <div className="sm:hidden">
             <MobileConsole />
