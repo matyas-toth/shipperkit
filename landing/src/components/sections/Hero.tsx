@@ -257,6 +257,8 @@ function Hero3() {
                   <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
                   GitHub
                 </a>
+                <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
+                <span className="text-[14px] text-[#8d8e88]">5-minute install</span>
                 <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
               </div>
             </div>
@@ -286,7 +288,7 @@ function Hero3() {
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/[0.08] pt-4 text-[13px] text-[#8d8e88]">
           <span className="text-[#797a75]">Runs on</span>
-          {["Ubuntu 24.04", "Docker", "Compose", "Git"].map((item) => (
+          {["Docker", "Compose", "Git", "Any Git source"].map((item) => (
             <span key={item}>{item}</span>
           ))}
         </div>

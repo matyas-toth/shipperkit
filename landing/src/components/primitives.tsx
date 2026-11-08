@@ -304,7 +304,7 @@ export function Screenshot({
   return (
     <figure
       className={cn(
-        "relative m-0 min-w-0 max-w-full rounded-[22px] border border-white/[0.14] bg-white/[0.045] p-2 shadow-[0_50px_120px_-50px_rgba(0,0,0,1)]",
+        "relative m-0 min-w-0 max-w-full rounded-[22px] border border-white/[0.16] bg-white/[0.055] p-2 shadow-[0_60px_140px_-50px_rgba(0,0,0,1)]",
         frameClassName,
       )}
     >
