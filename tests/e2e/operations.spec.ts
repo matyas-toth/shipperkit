@@ -85,7 +85,7 @@ test("System tokens, notification choices and responsive diagnostics", async({pa
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-system.png"),fullPage:true});
   await page.setViewportSize({width:390,height:844});await expect(page.getByRole("heading",{name:"System",exact:true})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:join(tmpdir(),"shipper-phase9-system-mobile.png"),fullPage:true});
-  await page.request.post("http://127.0.0.1:9083/runtime-options",{data:{count:1}});await page.setViewportSize({width:1440,height:1000});await page.goto("/applications/application-web");await expect(page.getByRole("heading",{name:"Diagnostics",exact:true})).toBeVisible();await expect(page.getByRole("region", {name:"Application issue"})).toContainText("Routing unreachable");await page.locator(".page-scroll").evaluate(el=>el.scrollTop=0);await page.screenshot({path:join(tmpdir(),"shipper-phase9-diagnostics.png")});await page.getByRole("button", { name: "Inspect route", exact: true }).click();await expect(page.getByRole("region", { name: "Edit route" })).toBeVisible();expect(errors).toEqual([]);
+  await page.request.post("http://127.0.0.1:9083/runtime-options",{data:{count:1}});await page.setViewportSize({width:1440,height:1000});await page.goto("/applications/application-web");await page.getByText("Health details",{exact:true}).click();await expect(page.getByRole("heading",{name:"Current checks",exact:true})).toBeVisible();await page.locator(".page-scroll").evaluate(el=>el.scrollTop=0);await page.screenshot({path:join(tmpdir(),"shipper-phase9-diagnostics.png")});await page.getByRole("button",{name:"Domains",exact:true}).click();await page.getByRole("button",{name:"Edit website.localhost",exact:true}).click();await expect(page.getByRole("region", { name: "Edit route" })).toBeVisible();expect(errors).toEqual([]);
 });
 
 test("Compose overview service logs survive inventory refreshes without replay",async({page})=>{
@@ -98,7 +98,7 @@ test("Compose overview service logs survive inventory refreshes without replay",
   await page.route("**/api/applications/compose-browser/diagnostics",route=>route.fulfill({json:{checks:[],observations:[],changesSinceServing:[],unknowns:[],durationSeconds:1,servingRelease:release,latestOperation:release}}));
   await page.route("**/api/applications/compose-browser/incidents",route=>route.fulfill({json:{items:[]}}));
   await page.route("**/api/applications/compose-browser/logs?**",route=>{connections++;return route.fulfill({contentType:"text/event-stream",body:'event: reset\ndata: {}\n\nevent: log\ndata: {"line":"Service is ready"}\n\nevent: end\ndata: {}\n\n'})});
-  await page.goto("/applications/compose-browser");await page.getByRole("button",{name:"Open service api",exact:true}).click();await expect(page.getByRole("log",{name:"Runtime logs"})).toContainText("Service is ready");
+  await page.goto("/applications/compose-browser");await page.getByText("Services",{exact:true}).click();await page.getByRole("button",{name:"Open service api",exact:true}).click();await expect(page.getByRole("log",{name:"Runtime logs"})).toContainText("Service is ready");
   const before=connections;const session=await (await page.request.get("/api/auth/session")).json();
   for(let index=0;index<3;index++)await page.request.post("/api/refresh",{headers:{"X-CSRF-Token":session.csrfToken},data:{}});
   await expect.poll(()=>revision).toBeGreaterThan(1);await expect.poll(()=>connections).toBe(before);
@@ -114,19 +114,17 @@ test("Compose overview service logs survive inventory refreshes without replay",
 });
 
 test("Local folder source can be reviewed without connecting Git",async({page})=>{
- await login(page);await page.goto("/new");await page.getByRole("radio",{name:"Local files",exact:true}).check();
+ await login(page);await page.goto("/new");await page.getByRole("button",{name:"Local files",exact:true}).click();
  const directory=await mkdtemp(join(tmpdir(),"shipper-folder-test-"));folders.push(directory);await writeFile(join(directory,"index.html"),"local folder fixture");await writeFile(join(directory,"compose.yaml"),"services:\n  web:\n    image: nginx:alpine\n    expose: ['80']\n");await writeFile(join(directory,".env"),"SECRET=must-not-upload");await writeFile(join(directory,".vpsenv"),"DUMMY=must-not-upload");await page.getByLabel("Project folder").setInputFiles(directory);
- await expect(page.locator(".source-file-list")).toContainText("index.html");await expect(page.locator(".source-file-list")).not.toContainText(".env");await expect(page.locator(".source-file-list")).not.toContainText(".vpsenv");await page.getByRole("button",{name:"Use these files",exact:true}).click();await expect(page.locator(".local-source-input>.mono")).toHaveText(/^[a-f0-9]{12}$/);await expect(page.getByRole("textbox",{name:"Repository URL",exact:true})).toHaveCount(0);await page.getByRole("button",{name:"Review with defaults",exact:true}).click();await expect(page.locator(".creation-review")).toContainText("Static site (automatic)");await expect(page.locator(".creation-review")).toContainText("Snapshot");await page.screenshot({path:join(tmpdir(),"shipper-phase95-local-review.png")});
+ await expect(page.locator(".source-file-list")).toContainText("index.html");await expect(page.locator(".source-file-list")).not.toContainText(".env");await expect(page.locator(".source-file-list")).not.toContainText(".vpsenv");await page.getByRole("button",{name:"Use these files",exact:true}).click();await expect(page.locator(".local-source-input>.mono")).toHaveText(/^[a-f0-9]{12}$/);await expect(page.getByRole("textbox",{name:"Repository URL",exact:true})).toHaveCount(0);await page.getByRole("button",{name:"Continue",exact:true}).click();await page.getByText("Deployment details",{exact:true}).click();await expect(page.locator(".creation-review")).toContainText("Docker Compose");await expect(page.locator(".creation-review")).toContainText("Snapshot");await page.screenshot({path:join(tmpdir(),"shipper-phase95-local-review.png")});
  await page.getByRole("button",{name:"Edit configuration",exact:true}).click();
- await page.getByLabel("Build method",{exact:true}).selectOption("compose");
- await page.getByRole("button",{name:"Preview services",exact:true}).click();
  await expect(page.locator(".creation-services")).toContainText("nginx:alpine");
  await expect(page.getByLabel("Compose file",{exact:true})).toHaveValue("compose.yaml");
- await page.getByRole("button",{name:"Review deployment",exact:true}).click();
+ await page.getByRole("button",{name:"Review deployment",exact:true}).click();await page.getByText("Deployment details",{exact:true}).click();
  await expect(page.locator(".creation-review")).toContainText("Docker Compose");
  await expect(page.locator(".creation-review")).toContainText("Snapshot");
  await page.getByRole("button",{name:"Edit source",exact:true}).click();
- await page.getByRole("radio",{name:"Git repository",exact:true}).check();
+ await page.getByRole("button",{name:"Repository URL",exact:true}).click();
  const repository="https://github.com/example/compose-demo.git", commit="9".repeat(40);
  await page.route("**/api/repositories/inspect",route=>route.fulfill({json:{method:"dockerfile",commit:"8".repeat(40),variables:[]}}));
  await page.route("**/api/compose/preview",route=>{
@@ -134,11 +132,12 @@ test("Local folder source can be reviewed without connecting Git",async({page})=
    return route.fulfill({json:{commit,composeFile:"deploy/compose.yaml",files:["deploy/compose.yaml"],services:[{name:"web",image:"nginx:alpine",port:80,volumes:[]}]}});
  });
  await page.getByLabel("Repository URL",{exact:true}).fill(repository);
+ await page.getByRole("button",{name:"Configure manually",exact:true}).click();
+ await page.getByText("Source options",{exact:true}).click();
  await page.getByLabel("Branch or commit",{exact:true}).fill("develop");
- await page.getByRole("button",{name:"Continue",exact:true}).click();
  await page.getByLabel("Build method",{exact:true}).selectOption("compose");
  await page.getByLabel("Compose file",{exact:true}).fill("deploy/compose.yaml");
- await page.getByRole("button",{name:"Review deployment",exact:true}).click();
+ await page.getByRole("button",{name:"Review deployment",exact:true}).click();await page.getByText("Deployment details",{exact:true}).click();
  await expect(page.locator(".creation-review").getByRole("link", {name:"example/compose-demo",exact:true})).toHaveAttribute("href",repository);
  await expect(page.locator(".creation-review")).toContainText(commit.slice(0,12));
  await expect(page.locator(".creation-review")).toContainText("deploy/compose.yaml");

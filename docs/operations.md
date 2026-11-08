@@ -6,10 +6,13 @@ No model, MCP server, separate collector or additional database is required.
 
 ## Diagnostics
 
-Application Overview includes the serving release, latest operation, failed stage,
-duration, checks, pending changes and bounded incident history. Serving state is
-independent of the latest deployment result. Open failed stage leads to that
-operation's existing log viewer. Runtime and deployment logs support pause/resume,
+Application Overview prioritizes availability, the public address and an action
+when attention is needed. Source, runtime and health details expand on request.
+Current health checks are separate from recorded deployment results and show
+their own timestamps. Serving state is independent of the latest deployment
+result, so a failed attempt can coexist with a live previous release. Failed
+deployments offer a structured diagnostic context export for external agents.
+Runtime and deployment logs support pause/resume,
 search, filtered copy and text download; retained client windows remain bounded.
 Opening a Compose service from Overview keeps its log connection across unrelated
 inventory refreshes, just like selecting that service in the Logs tab.

@@ -232,7 +232,11 @@ func (s *Server) diagnostics(w http.ResponseWriter, r *http.Request) {
 	facts = current
 	checks := []map[string]any{}
 	add := func(layer, state, summary string, at int64) {
-		checks = append(checks, map[string]any{"layer": layer, "state": state, "summary": summary, "observedAt": at})
+		scope := "current"
+		if layer == "build" || layer == "readiness" || layer == "task" {
+			scope = "deployment"
+		}
+		checks = append(checks, map[string]any{"layer": layer, "state": state, "summary": summary, "observedAt": at, "scope": scope, "stale": scope == "current" && (at == 0 || time.Now().Unix()-at > 120)})
 	}
 	health := s.monitor.Health()
 	daemon := "failed"

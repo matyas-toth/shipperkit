@@ -15,6 +15,7 @@ or legacy application deploy tokens. Unsupported v1 routes are denied by default
 | `GET /capabilities` | API version, feature and limit discovery | read |
 | `GET /applications`, `/applications/{id}` | Masked owned applications/release history | read, filtered to application scope |
 | `GET /applications/{id}/diagnostics` | Bounded facts, serving/latest state, checks and references | read; `?include=logs` additionally needs logs |
+| `GET /applications/{id}/deployments/{deployment}/context` | Portable JSON with selected deployment identity, UTC timestamps, source, errors and all retained redacted logs | logs |
 | `GET /applications/{id}/observations` | Current timestamped samples and stale flags | read |
 | `GET /applications/{id}/incidents` | Latest 100 ascending events; `after` retrieves the next cursor page | read |
 | `POST /operation-tokens`, `GET /operation-tokens`, `POST /operation-tokens/{token}/revoke` | Create/list/revoke scoped expiring credentials | Session only |

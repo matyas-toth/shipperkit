@@ -13,6 +13,8 @@ async function checkRepositoryLoading(page: import("@playwright/test").Page) {
   await page.route("**/api/connections/*/repositories?**", route => { pending.push(route); });
   const repo = (id: number, owner: string) => ({ id, full_name: owner + "/app", clone_url: "https://github.com/" + owner + "/app.git", default_branch: "main" });
   await page.goto("/new");
+  await page.getByRole("button", {name:"Configure manually",exact:true}).click();
+  await page.getByText("Source options", {exact:true}).click();
   await page.getByLabel("Connection", { exact: true }).selectOption("first-account");
   const picker = page.getByLabel("Repository", { exact: true });
   await expect(picker).toBeDisabled();
@@ -180,7 +182,9 @@ test("connections, private repository selection, immutable queue controls and im
     path: join(tmpdir(), "shipper-phase6-connections.png"),
   });
   await page.goto("/new");
+  await page.getByRole("button", {name:"Configure manually",exact:true}).click();
   await page.getByLabel("Name", { exact: true }).fill("Fieldnotes");
+  await page.getByText("Source options", {exact:true}).click();
   await page
     .getByLabel("Connection", { exact: true })
     .selectOption("github-fixture");
@@ -303,11 +307,10 @@ test("connections, private repository selection, immutable queue controls and im
     const input = r.request().postDataJSON();
     return r.fulfill({json:{name:input.name,config:input.config,applicationId:"d".repeat(24),revision:"fixture",commit:input.commit}});
   });
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByText("Automatic deployments", { exact: true }).click();
   await page.getByLabel("Deploy on push", { exact: true }).check();
   await page.getByLabel("Watch paths", { exact: true }).fill("apps/web/**");
-  await page.getByRole("button", { name: "Review deployment", exact: true }).click();
+  await page.getByRole("button", { name: "Review deployment", exact: true }).click();await page.getByText("Deployment details",{exact:true}).click();
   await expect(page.locator(".creation-review")).toContainText("Dockerfile (automatic)");
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
   await expect(
@@ -325,23 +328,23 @@ test("connections, private repository selection, immutable queue controls and im
   await expect(page.getByRole("region", { name: "Selected release" })).toContainText("Queued");
   await page.goto("/new");
   await page
-    .getByRole("radio", {name:"Container image",exact:true})
-    .check();
+    .getByRole("button", {name:"Container image",exact:true})
+    .click();
   await expect(page.getByRole("textbox", { name: "Repository URL", exact: true })).toHaveCount(
     0,
   );
-  await page.getByLabel("Name", { exact: true }).fill("Image worker");
   await page
     .getByLabel("Image", { exact: true })
     .fill("ghcr.io/northstar/worker:latest");
   await page
     .getByLabel("Registry", { exact: true })
     .selectOption("registry-fixture");
-  await page.getByRole("button",{name:"Continue",exact:true}).click();
+  await page.getByRole("button",{name:"Configure manually",exact:true}).click();
+  await page.getByLabel("Name", { exact: true }).fill("Image worker");
   await page.getByRole("radio",{name:"Worker",exact:true}).check();
   await expect(page.getByLabel("Domain",{exact:true})).toHaveCount(0);
   await expect(page.getByLabel("Container port",{exact:true})).toHaveCount(0);
-  await page.getByRole("button",{name:"Review deployment",exact:true}).click();
+  await page.getByRole("button",{name:"Review deployment",exact:true}).click();await page.getByText("Deployment details",{exact:true}).click();
   await expect(page.locator(".creation-review")).toContainText("Worker");
   await expect(page.locator(".creation-review")).not.toContainText("Domain");
   await page.screenshot({ path: join(tmpdir(), "shipper-phase6-image.png") });

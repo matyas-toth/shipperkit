@@ -31,6 +31,9 @@ describe("deployment history", () => {
   it("shows serving static releases without inventing availability for absent containers", () => {
     const app = { method:"auto",activeMethod:"static",sourceKind:"git",activeDeploymentId:"release",state:"running" } as Application;
     expect(applicationState(app)).toBe("serving");expect(applicationState({...app,state:"missing"})).toBe("unavailable");
-    expect(applicationState({...app,latestDeployment:{state:"building"} as Deployment})).toBe("building");
+    expect(applicationState({...app,latestDeployment:{state:"building"} as Deployment})).toBe("serving");
+    expect(applicationState({...app,latestDeployment:{state:"failed"} as Deployment})).toBe("serving");
+    expect(applicationState({...app,activeDeploymentId:"",latestDeployment:{state:"building"} as Deployment})).toBe("building");
+    expect(applicationState({...app,desiredState:"stopped"})).toBe("stopped");
   });
 });

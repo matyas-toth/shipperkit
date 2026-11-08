@@ -81,7 +81,7 @@ func (s *Server) automation(next http.Handler) http.Handler {
 				switch {
 				case len(parts) == 2, len(parts) == 3 && (parts[2] == "diagnostics" || parts[2] == "observations" || parts[2] == "incidents"), len(parts) == 4 && parts[2] == "deployments":
 					scope = "read"
-				case len(parts) == 3 && parts[2] == "logs", len(parts) == 5 && parts[2] == "deployments" && parts[4] == "logs":
+				case len(parts) == 3 && parts[2] == "logs", len(parts) == 5 && parts[2] == "deployments" && (parts[4] == "logs" || parts[4] == "context"):
 					scope = "logs"
 				case len(parts) == 3 && parts[2] == "tasks":
 					scope = "execute"

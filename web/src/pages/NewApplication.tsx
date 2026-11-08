@@ -20,7 +20,7 @@ import LocalSource from "../components/LocalSource";
 import { ReviewFact, ReviewPanel } from "../components/ReviewPanel";
 import RuntimeFields from "../components/RuntimeFields";
 import ServiceSummary from "../components/ServiceSummary";
-import { ImageFields, InlineFields } from "../components/SourceFields";
+import { ImageFields, InlineFields, RepositoryPicker, useConnections } from "../components/SourceFields";
 import { emptyConfig } from "../components/StaticFields";
 import Variables from "../components/Variables";
 import Volumes from "../components/Volumes";
@@ -28,7 +28,8 @@ import Volumes from "../components/Volumes";
 type Source = "git" | "image" | "local" | "inline" | "compose";
 type Step = "source" | "configure" | "review";
 type Inspection = {
-  method: "dockerfile" | "railpack" | "static";
+  method: "dockerfile" | "railpack" | "static" | "compose";
+  composeFile?: string;
   commit?: string;
   variables: string[];
   installCommand: string;
@@ -45,7 +46,6 @@ const sources: readonly Choice<Source>[] = [
   { value: "inline", label: "Inline Dockerfile", icon: "code" },
   { value: "compose", label: "Inline Docker Compose", icon: "layers" },
 ];
-const steps = [{ value: "source", label: "Source" }, { value: "configure", label: "Configure" }, { value: "review", label: "Review" }] as const;
 
 function draftSource(draft?: Draft): Source {
   const config = draft?.config;
@@ -90,9 +90,11 @@ export default function NewApplication() {
   const [review, setReview] = createSignal<{ plan: CreatePlan; inputs: StaticConfig; commit?: string; requestKey: string }>();
   const [envKey, setEnvKey] = createSignal(1);
   const [envOpen, setEnvOpen] = createSignal(false);
+  const [sourcePanel, setSourcePanel] = createSignal(false);
+  const connections = useConnections();
   const proxy = createQuery(() => ({ queryKey: ["proxy"], queryFn: () => api<ProxyConfig>("/proxy") }));
   const acme = () => !!proxy.data?.acmeEmail;
-  const compose = () => config.method === "compose";
+  const compose = () => config.method === "compose" || config.method === "auto" && detected()?.method === "compose";
   const inlineCompose = () => source() === "compose";
   const git = () => source() === "git";
   const local = () => source() === "local";
@@ -124,10 +126,19 @@ export default function NewApplication() {
     saveDraft(key, { ...current, config: persistedConfig(config) });
   });
   createEffect(() => { sourceKey(); setInspectionError(""); });
+  createEffect(() => {
+    if (!sourcePanel()) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    queueMicrotask(() => document.querySelector<HTMLElement>(".source-input-panel input, .source-input-panel select, .source-input-panel textarea")?.focus());
+    const outside = (event: PointerEvent) => { if (event.target instanceof Element && !event.target.closest(".source-entry")) setSourcePanel(false); };
+    document.addEventListener("click", outside);
+    onCleanup(() => { document.removeEventListener("click", outside); if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
+  });
 
   function change(k: keyof StaticConfig, value: unknown) { setConfig(k, value as never); }
   function go(next: Step) {
     setError("");
+    setSourcePanel(false);
     setStep(next);
     queueMicrotask(() => {
       if (disposed) return;
@@ -184,6 +195,7 @@ export default function NewApplication() {
       values.domain = ""; values.https = false;
     }
     if (compose()) {
+      values.method = "compose";
       values.composeSource = inlineCompose() ? "paste" : "git";
       values.port = 0; values.startCommand = ""; values.volumes = []; values.runtime = undefined;
     } else {
@@ -203,9 +215,14 @@ export default function NewApplication() {
     setInspecting(true); setInspectionError("");
     const promise = post<Inspection>("/repositories/inspect", { config: snapshot() }, auth.session()?.csrfToken)
       .then(result => {
-        if (!disposed && current === sourceKey()) setInspection({ key: current, result });
+        if (disposed || current !== sourceKey()) throw Error("The source changed; inspect it again");
+        setInspection({ key: current, result });
+        if (config.method === "auto" && result.method === "compose") {
+          setConfig("composeFile", result.composeFile || "compose.yaml");
+        }
       }).catch(e => {
         if (!disposed && current === sourceKey()) setInspectionError((e as Error).message);
+        throw e;
       }).finally(() => {
         if (inspectionRequest?.key === current) {
           inspectionRequest = undefined;
@@ -234,7 +251,7 @@ export default function NewApplication() {
     if (pending() || previewing()) return;
     setPending(true); setError("");
     try {
-      if (fileBuild() && !compose() && !inspectionError()) await inspect();
+      if (fileBuild() && config.method === "auto") await inspect();
       const services = compose() ? await inspectStack() : undefined;
       if (compose() && staleDomains().length) throw Error("Remove domains for services without an HTTP port");
       const inputs = snapshot();
@@ -280,64 +297,52 @@ export default function NewApplication() {
 
   return <div class="content creation-page">
     <A href="/" class="back-link"><Icon name="back" />Applications</A>
-    <header class="page-heading"><h1>New application</h1></header>
-    <ol class="creation-steps" aria-label="Creation steps">
-      <For each={steps}>{(entry, index) => <li>
-        <button type="button" aria-current={step() === entry.value ? "step" : undefined}
-          disabled={pending() || previewing() || steps.findIndex(s => s.value === step()) <= index()}
-          onClick={() => go(entry.value)}>
-          <span class="step-number">{index() + 1}</span>{entry.label}
-        </button>
-      </li>}</For>
-    </ol>
+    <Show when={step() !== "source"}><header class="page-heading"><h1>New application</h1></header></Show>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
     <Show when={step() === "source"}>
-      <form onSubmit={e => { e.preventDefault(); go("configure"); if (!compose()) void inspect(); }}>
-        <h2 ref={heading} class="sr-only" tabindex="-1">Source</h2>
-        <fieldset class="creation-fields" disabled={pending()}>
-          <ChoiceCards<Source> label="Source type" value={source()} choices={sources.slice(0, 3)} change={chooseSource} />
-          <details class="configuration source-more" open={source() === "inline" || source() === "compose"}>
-            <summary>Inline sources<Icon name="down" /></summary>
-            <ChoiceCards<Source> label="Inline source type" value={source()} choices={sources.slice(3)} change={chooseSource} />
-          </details>
-          <div class="form-fields creation-inputs">
-            <Show when={git()}><GitFields config={config} change={change} /></Show>
-            <Show when={local()}>
-              <LocalSource value={config.localSource} change={id => setConfig("localSource", id)} />
-            </Show>
-            <Show when={inlineCompose()}>
-              <label for="compose-yaml">Compose YAML</label>
-              <textarea id="compose-yaml" class="input compose-editor mono" rows={8} spellcheck={false} required
-                value={config.composeYAML} onInput={e => setConfig("composeYAML", e.currentTarget.value)} />
-            </Show>
-            <Show when={source() === "image"}><ImageFields config={config} change={change} /></Show>
-            <Show when={source() === "inline"}><InlineFields config={config} change={change} /></Show>
-            <label for="name">Name</label>
-            <input class="input" id="name" maxlength={80} placeholder={suggestedName() || "Application name"}
-              value={name()} onInput={e => setName(e.currentTarget.value)} />
-          </div>
-        </fieldset>
-        <div class="form-actions creation-actions">
-          <A href="/" class="button ghost">Cancel</A>
-          <Show when={!compose()}>
-            <Button variant="ghost" disabled={pending() || !sourceReady()} onClick={e => {
-              if (e.currentTarget.form?.reportValidity()) void plan();
-            }}>Review with defaults</Button>
+      <form class="source-entry" onSubmit={e => { e.preventDefault(); setSourcePanel(false); void plan(); }}>
+        <h1 ref={heading} tabindex="-1">Deploy an application</h1>
+        <fieldset disabled={pending()}>
+          <Show when={git() && !config.sourceId} fallback={<button type="button" class="input source-selected" onClick={() => setSourcePanel(true)}><Icon name={sources.find(s => s.value === source())?.icon || "git"} /><span>{git() ? repositoryLabel(config.repository) || connections.data?.items.find(c => c.id === config.sourceId)?.name || "Choose repository" : source() === "image" ? config.image || "Choose container image" : local() ? config.localSource ? "Local files selected" : "Choose local files" : inlineCompose() ? "Inline Docker Compose" : "Inline Dockerfile"}</span><Icon name="down" /></button>}>
+            <input class="input source-url" type="url" required aria-label="Repository URL" placeholder="https://github.com/you/your-project" autocomplete="off" value={config.repository} onInput={e => setConfig("repository", e.currentTarget.value)} />
           </Show>
-          <Button variant="primary" type="submit" disabled={pending() || !sourceReady()}>Continue<Icon name="chevron" /></Button>
-        </div>
+          <div class="source-entry-actions">
+            <div class="source-alternatives">
+              <Show when={!git() || config.sourceId}><Button small variant="ghost" icon="git" onClick={() => { chooseSource("git"); change("sourceId", ""); change("repositoryId", 0); setSourcePanel(false); }}>Repository URL</Button></Show>
+              <Button small variant="ghost" icon="folder" onClick={() => { chooseSource("local"); setSourcePanel(true); }}>Local files</Button>
+              <Button small variant="ghost" icon="box" onClick={() => { chooseSource("image"); setSourcePanel(true); }}>Container image</Button>
+              <For each={connections.data?.items.filter(c => c.kind !== "registry")}>{c => <Button small variant="ghost" icon="git" onClick={() => { chooseSource("git"); if (config.sourceId !== c.id) { change("repository", ""); change("repositoryId", 0); change("branch", ""); } change("sourceId", c.id); setSourcePanel(true); }}>{c.name}</Button>}</For>
+              <details class="source-extra"><summary aria-label="More sources"><Icon name="more" /></summary><div><For each={sources.slice(3)}>{s => <Button small variant="ghost" icon={s.icon} onClick={() => { chooseSource(s.value); setSourcePanel(true); }}>{s.label}</Button>}</For></div></details>
+            </div>
+            <Button variant="primary" type="submit" disabled={pending() || !sourceReady()}>{inspecting() || previewing() ? "Inspecting source" : pending() ? "Preparing deployment" : "Continue"}<Icon name="chevron" /></Button>
+          </div>
+          <Show when={sourcePanel()}><div class="source-input-panel" role="dialog" aria-label="Choose application source" onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); setSourcePanel(false); } }}>
+            <div class="section-toolbar"><h3>{git() ? connections.data?.items.find(c => c.id === config.sourceId)?.name : sources.find(s => s.value === source())?.label}</h3><Button small variant="ghost" aria-label="Close source options" onClick={() => setSourcePanel(false)}><Icon name="close" /></Button></div>
+            <div class="form-fields">
+              <Show when={git() && config.sourceId} keyed>{id => <RepositoryPicker sourceId={id} config={config} change={change} />}</Show>
+              <Show when={local()}><LocalSource value={config.localSource} change={id => setConfig("localSource", id)} /></Show>
+              <Show when={source() === "image"}><ImageFields config={config} change={change} /></Show>
+              <Show when={source() === "inline"}><InlineFields config={config} change={change} /></Show>
+              <Show when={inlineCompose()}><label for="compose-yaml">Compose YAML</label><textarea id="compose-yaml" class="input compose-editor mono" rows={8} spellcheck={false} required value={config.composeYAML} onInput={e => setConfig("composeYAML", e.currentTarget.value)} /></Show>
+            </div>
+            <div class="form-actions"><Button small disabled={!sourceReady()} onClick={() => setSourcePanel(false)}>Done</Button></div>
+          </div></Show>
+        </fieldset>
       </form>
+      <div class="source-manual"><Button variant="ghost" disabled={pending()} onClick={() => { go("configure"); if (fileBuild() && sourceReady()) void inspect().catch(() => {}); }}>Configure manually<Icon name="chevron" /></Button></div>
     </Show>
     <Show when={step() === "configure"}>
       <form noValidate onSubmit={e => { e.preventDefault(); if (validateForm(e.currentTarget)) void plan(); }}>
-        <h2 ref={heading} class="sr-only" tabindex="-1">Configure</h2>
+        <h2 ref={heading} tabindex="-1">Configure application</h2>
         <fieldset class="creation-fields creation-config" disabled={pending()}>
+          <div class="form-fields"><label for="name">Name</label><input class="input" id="name" maxlength={80} placeholder={suggestedName() || "Application name"} value={name()} onInput={e => setName(e.currentTarget.value)} /></div>
+          <details class="configuration"><summary>Source options<Icon name="down" /></summary><div class="form-fields"><Show when={git()}><GitFields config={config} change={change} /></Show><label for="source-directory">Project directory</label><input id="source-directory" class="input" value={config.rootDirectory} onInput={e => setConfig("rootDirectory", e.currentTarget.value)} /></div><Button variant="ghost" onClick={() => go("source")}>Change source</Button></details>
           <Show when={fileBuild()}>
             <section>
               <h2>Build method</h2>
               <BuildMethod value={config.method} detected={detected()?.method} allowCompose change={build} />
               <Show when={!compose() && inspecting()}><div class="inspection-status" role="status">Inspecting source</div></Show>
-              <Show when={config.method === "auto" && inspectionError()}><ErrorNotice message={inspectionError()} retry={() => void inspect()} /></Show>
+              <Show when={config.method === "auto" && inspectionError()}><ErrorNotice message={inspectionError()} retry={() => void inspect().catch(() => {})} /></Show>
             </section>
           </Show>
           <Show when={compose()} fallback={<>
@@ -421,8 +426,20 @@ export default function NewApplication() {
       </form>
     </Show>
     <Show when={step() === "review" && review()}>{approved => <>
-      <h2 ref={heading} tabindex="-1">Review deployment</h2>
-      <div class="creation-review">
+      <h2 ref={heading} tabindex="-1">Ready to deploy</h2>
+      <section class="deployment-proposal" aria-label="Proposed deployment">
+        <dl>
+          <ReviewFact label="Application">{approved().plan.name}</ReviewFact>
+          <ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact>
+          <ReviewFact label="Build">{methodLabel(method())}</ReviewFact>
+          <Show when={!compose()}><ReviewFact label="Domain">{worker() ? "Worker" : approved().plan.config.domain || "No public domain"}</ReviewFact></Show>
+          <Show when={compose()}><ReviewFact label="Services"><For each={stack()?.services}>{s => <span>{s.name}</span>}</For></ReviewFact></Show>
+          <Show when={compose()}><ReviewFact label="Domain"><Show when={approved().plan.config.domains?.length} fallback={<><span>No public domain</span><Button small variant="ghost" onClick={() => go("configure")}>Add domain</Button></>}><For each={approved().plan.config.domains}>{d => <span>{d.hostname}</span>}</For></Show></ReviewFact></Show>
+        </dl>
+        <Show when={missing().length}><div class="proposal-variables"><span>{missing().length} detected {missing().length === 1 ? "variable" : "variables"} to review</span><Button small onClick={() => { addVariables(); go("configure"); }}>Review variables</Button></div></Show>
+        <Button variant="ghost" onClick={() => go("configure")}>Configure manually<Icon name="chevron" /></Button>
+      </section>
+      <details class="configuration deployment-plan-details"><summary>Deployment details<Icon name="down" /></summary><div class="creation-review">
         <ReviewPanel title="Source" edit={pending() ? undefined : () => go("source")}>
           <dl>
             <ReviewFact label="Application">{approved().plan.name}</ReviewFact>
@@ -477,8 +494,8 @@ export default function NewApplication() {
         </ReviewPanel>
         <Show when={stack()}>{result => <section class="creation-services"><h2>Services</h2><ServiceSummary services={result().services} /></section>}</Show>
       </div>
-      <div class="form-actions creation-actions">
-        <Button variant="ghost" icon="back" disabled={pending()} onClick={() => go("configure")}>Back</Button>
+      </details><div class="form-actions creation-actions">
+        <Button variant="ghost" icon="back" disabled={pending()} onClick={() => go("source")}>Back</Button>
         <Button variant="primary" icon="deploy" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
       </div>
     </>}</Show>

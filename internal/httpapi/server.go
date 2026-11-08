@@ -117,6 +117,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.Get("/applications/{id}", s.application)
 			r.Get("/applications/{id}/deployments/{deployment}", s.deployment)
 			r.Get("/applications/{id}/deployments/{deployment}/logs", s.deploymentLogs)
+			r.Get("/applications/{id}/deployments/{deployment}/context", s.deploymentContext)
 			r.Get("/applications/{id}/tasks", s.tasks)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/tasks", s.saveTask)
 			r.With(s.csrf, s.limit).Post("/applications/{id}/tasks/{task}/run", s.runTask)

@@ -10,6 +10,7 @@ import (
 
 type SourceInspection struct {
 	Method         string   `json:"method"`
+	ComposeFile    string   `json:"composeFile,omitempty"`
 	Commit         string   `json:"commit,omitempty"`
 	InstallCommand string   `json:"installCommand"`
 	BuildCommand   string   `json:"buildCommand"`
@@ -19,6 +20,13 @@ type SourceInspection struct {
 
 func InspectSource(root string) SourceInspection {
 	out := SourceInspection{Method: DetectMethod(root), Variables: []string{}}
+	for _, name := range []string{"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"} {
+		if _, e := readInspectionFile(root, name); e == nil {
+			out.Method = "compose"
+			out.ComposeFile = name
+			break
+		}
+	}
 	if raw, e := readInspectionFile(root, "package.json"); e == nil {
 		var pkg struct {
 			Scripts map[string]string `json:"scripts"`
