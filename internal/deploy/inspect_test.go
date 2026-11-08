@@ -17,3 +17,17 @@ func TestSourceSuggestionsDoNotImportValues(t *testing.T) {
 		t.Fatal(out)
 	}
 }
+
+func TestInspectionReportsComposeWithoutChangingBuildDetection(t *testing.T) {
+	for _, name := range []string{"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			os.WriteFile(filepath.Join(root, "Dockerfile"), []byte("FROM nginx"), 0600)
+			os.WriteFile(filepath.Join(root, name), []byte("services:\n  web:\n    build: .\n"), 0600)
+			out := InspectSource(root)
+			if out.Method != "dockerfile" || out.ComposeFile != name {
+				t.Fatal(out)
+			}
+		})
+	}
+}

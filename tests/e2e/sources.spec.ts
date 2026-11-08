@@ -12,7 +12,7 @@ async function checkRepositoryLoading(page: import("@playwright/test").Page) {
   const pending: import("@playwright/test").Route[] = [];
   await page.route("**/api/connections/*/repositories?**", route => { pending.push(route); });
   const repo = (id: number, owner: string) => ({ id, full_name: owner + "/app", clone_url: "https://github.com/" + owner + "/app.git", default_branch: "main" });
-  await page.goto("/new");
+  await page.goto("/new");await page.getByRole("button",{name:"Configure manually",exact:true}).click();
   await page.getByLabel("Connection", { exact: true }).selectOption("first-account");
   const picker = page.getByLabel("Repository", { exact: true });
   await expect(picker).toBeDisabled();
@@ -179,7 +179,7 @@ test("connections, private repository selection, immutable queue controls and im
   await page.screenshot({
     path: join(tmpdir(), "shipper-phase6-connections.png"),
   });
-  await page.goto("/new");
+  await page.goto("/new");await page.getByRole("button",{name:"Configure manually",exact:true}).click();
   await page.getByLabel("Name", { exact: true }).fill("Fieldnotes");
   await page
     .getByLabel("Connection", { exact: true })
@@ -323,7 +323,7 @@ test("connections, private repository selection, immutable queue controls and im
   await page.getByRole("button", { name: "Retry release", exact: true }).click();
   await expect(page).toHaveURL(/deployment=retry-build/);
   await expect(page.getByRole("region", { name: "Selected release" })).toContainText("Queued");
-  await page.goto("/new");
+  await page.goto("/new");await page.getByRole("button",{name:"Configure manually",exact:true}).click();
   await page
     .getByRole("radio", {name:"Container image",exact:true})
     .check();
