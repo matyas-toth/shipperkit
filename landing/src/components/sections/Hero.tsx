@@ -219,12 +219,12 @@ function MobileConsole() {
 
 function Hero3() {
   return (
-    <section className="relative overflow-hidden pt-32 md:pt-36">
+    <section className="relative overflow-hidden pt-24 md:pt-36">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_66%_50%_at_50%_0%,rgba(255,255,255,0.12),transparent_64%)]" />
       <AsciiField className="left-1/2 top-24 -z-10 hidden -translate-x-1/2 md:block" cols={96} rows={26} seed={19} opacity={0.08} />
       <Container>
         <div className="grid gap-8 lg:grid-cols-[1fr_400px] lg:grid-rows-[auto_auto] lg:gap-x-10">
-          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.35rem,6.4vw,6.8rem)] text-[#ecece7] lg:col-start-1 lg:row-start-1">
+          <h1 className="display max-w-[15ch] animate-rise text-[clamp(2.35rem,6.4vw,6.8rem)] text-[#ecece7] lg:col-start-1 lg:row-start-1">
             From localhost to your own cloud in one deploy.
           </h1>
           <div className="w-full max-w-[420px] lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -251,14 +251,14 @@ function Hero3() {
           </div>
           <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <ActionPrimary href="#get-shipper" className="w-full justify-center lg:w-auto" />
+              <ActionPrimary href="#get-shipper" className="w-full shrink-0 justify-center lg:w-auto" />
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
                   <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
                   GitHub
                 </a>
                 <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
-                <span className="text-[14px] text-[#8d8e88]">5-minute install</span>
+                <span className="text-[14px] text-[#8d8e88] max-sm:hidden">5-minute install</span>
                 <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
               </div>
             </div>
