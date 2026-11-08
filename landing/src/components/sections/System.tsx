@@ -122,11 +122,11 @@ function System3() {
         />
         <div className="mt-11 grid gap-8 border-t border-white/[0.1] pt-8 md:grid-cols-3 md:gap-0">
           {([
-            ["HTTPS", "Domains and certificates renew without a side project.", GlobeIcon],
-            ["Backups", "A verified copy of your data, on storage you choose.", DatabaseBackupIcon],
-            ["Health", "See the app and the machine while they are running.", Activity01Icon],
-          ] as const).map(([title, body, Icon]) => (
-            <div key={title} className="flex gap-4 md:block md:border-l md:border-white/[0.08] md:pl-8 md:pr-8 md:first:border-l-0 md:first:pl-0">
+            ["HTTPS", "Domains and certificates renew without a side project.", GlobeIcon, [["store.example.com", "Valid", true], ["Certificate", "Renews in 54 days", false], ["Proxy", "HTTPS active", false]]],
+            ["Backups", "A verified copy of your data, on storage you choose.", DatabaseBackupIcon, [["Nightly database", "Backed up", true], ["Latest copy", "Nov 7, 02:00", false], ["Storage", "Local and off-server", false]]],
+            ["Health", "See the app and the machine while they are running.", Activity01Icon, [["Docker", "Healthy", true], ["Runtime", "Healthy", true], ["Routing", "Healthy", true]]],
+          ] as const).map(([title, body, Icon, rows]) => (
+            <div key={title} className="flex flex-col md:block md:border-l md:border-white/[0.08] md:pl-8 md:pr-8 md:first:border-l-0 md:first:pl-0">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05] md:size-11">
                 <HugeiconsIcon icon={Icon} size={21} strokeWidth={1.6} className="text-[#dcdcd6]" />
               </span>
@@ -134,30 +134,16 @@ function System3() {
                 <h3 className="text-[18px] font-[520] tracking-[-0.035em] text-[#ecece7] md:mt-6 md:text-[24px]">{title}</h3>
                 <p className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d] md:mt-2.5 md:text-[15px] md:leading-[1.7]">{body}</p>
               </div>
+              <div className="surface mt-5 rounded-xl p-4 md:mt-auto">
+                {rows.map(([label, value, tone]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 border-b border-white/[0.06] py-2 text-[13px] last:border-0 last:pb-0 first:pt-0">
+                    <span className="text-[#8d8e88]">{label}</span>
+                    <span className={tone ? "text-[#79e3a6]" : "text-[#dcdcd6]"}>{value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
-        </div>
-        <div className="mt-8 grid gap-4 max-sm:hidden xl:grid-cols-2">
-          <div>
-            <Screenshot
-              src="/shots/diagnostics.png"
-              alt="Shipper diagnostics checks with service health"
-              plain
-              fade
-              className="h-[280px] object-cover object-top xl:w-[155%] xl:max-w-none"
-            />
-            <div className="mt-2 text-[13px] text-[#8d8e88]">Health checks</div>
-          </div>
-          <div>
-            <Screenshot
-              src="/shots/backups.png"
-              alt="Shipper backup plans and verified backup history"
-              plain
-              fade
-              className="h-[280px] object-cover object-top xl:w-[155%] xl:max-w-none"
-            />
-            <div className="mt-2 text-[13px] text-[#8d8e88]">Backup history</div>
-          </div>
         </div>
         <div className="mt-10 flex justify-center">
           <ActionPrimary href="#get-shipper" />

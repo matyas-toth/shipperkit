@@ -113,16 +113,20 @@ function Cta3() {
         <div className="surface elevated relative overflow-hidden rounded-[28px] px-7 py-16 md:px-14 md:py-24">
           <div className="absolute inset-0 -z-0 bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,rgba(255,255,255,0.085),transparent_62%)]" />
           <div className="relative z-10 mx-auto flex max-w-[780px] flex-col items-center text-center">
-            <h2 className="display max-w-[13ch] text-[clamp(2.9rem,6.4vw,6.4rem)] text-[#ecece7]">
-              Everything you need,{" "}
-              <span className="text-[#c3c4be]">nothing you rent.</span>
+            <h2 className="display max-w-[15ch] text-[clamp(2.375rem,6.4vw,6.4rem)] text-[#ecece7] [text-wrap:wrap]">
+              Everything you
+              <br className="sm:hidden" /> need,{" "}
+              <span className="text-[#d8d8d3]">nothing<br className="sm:hidden" /> you rent.</span>
             </h2>
             <p className="mt-7 max-w-[52ch] text-[17px] leading-[1.7] text-[#a5a6a0]">
               The deploy console, the release history, and the recovery plan live on
               your server. Keep the keys.
             </p>
-            <div className="mt-9 w-full max-w-[640px]">
-              <CommandBar emphasis />
+            <div className="mt-9 flex flex-col items-center gap-4">
+              <CopyButton label="Install Shipper" className="border-white bg-white text-[#070808] hover:border-white hover:bg-white/90" />
+              <div className="w-full max-w-[640px]">
+                <CommandBar showCopy={false} />
+              </div>
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-7">
               <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">

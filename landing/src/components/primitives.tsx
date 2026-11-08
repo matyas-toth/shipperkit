@@ -174,11 +174,11 @@ export function CopyButton({
 export function CommandBar({
   command = INSTALL_COMMAND,
   className,
-  emphasis = false,
+  showCopy = true,
 }: {
   command?: string;
   className?: string;
-  emphasis?: boolean;
+  showCopy?: boolean;
 }) {
   return (
     <div
@@ -206,14 +206,11 @@ export function CommandBar({
             <span className="hidden whitespace-nowrap xl:inline">{command}</span>
           </code>
         </div>
-        <div className="flex justify-end">
-          <CopyButton
-            className={cn(
-              "w-auto",
-              emphasis && "border-white bg-white text-[#070808] hover:border-white hover:bg-white/90",
-            )}
-          />
-        </div>
+        {showCopy && (
+          <div className="flex justify-end">
+            <CopyButton className="w-auto" />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -134,11 +134,11 @@ function Faq3() {
             </details>
           ))}
         </div>
-        <div className="elevated mt-12 hidden gap-px overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.09] md:grid md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 hidden gap-x-12 md:grid md:grid-cols-2">
           {faqs.slice(0, 6).map((item) => (
-            <div key={item.q} className="bg-[#0a0b0b] p-8">
-              <h3 className="text-[19px] font-[520] leading-snug tracking-[-0.025em] text-[#ecece7]">{item.q}</h3>
-              <p className="mt-3 text-[16px] leading-[1.7] text-[#a2a39d]">{item.a}</p>
+            <div key={item.q} className="border-t border-white/[0.1] py-7">
+              <h3 className="text-[20px] font-[520] leading-snug tracking-[-0.025em] text-[#ecece7]">{item.q}</h3>
+              <p className="mt-3 max-w-[52ch] text-[16px] leading-[1.7] text-[#a2a39d]">{item.a}</p>
             </div>
           ))}
         </div>

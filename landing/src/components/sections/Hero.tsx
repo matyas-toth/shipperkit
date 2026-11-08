@@ -232,7 +232,7 @@ function Hero3() {
               Shipper runs on the VPS you already pay for. Ship any app and get a
               live URL, real logs, and a clean way back.
             </p>
-            <a href="#how-it-works" className="mt-4 inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
+            <a href="#how-it-works" className="mt-4 inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white">
               See how it works
               <HugeiconsIcon icon={ArrowDown01Icon} size={13} strokeWidth={1.8} />
             </a>
