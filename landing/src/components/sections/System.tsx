@@ -135,7 +135,7 @@ function System3() {
                 <h3 className="text-[18px] font-[520] tracking-[-0.035em] text-[#ecece7] md:mt-6 md:text-[24px]">{title}</h3>
                 <p className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d] md:mt-2.5 md:text-[15px] md:leading-[1.7]">{body}</p>
               </div>
-              <div className="surface mt-5 rounded-xl p-4 md:mt-auto">
+              <div className="surface mt-8 rounded-xl p-4">
                 {rows.map(([label, value, tone]) => (
                   <div key={label} className="flex items-center justify-between gap-3 border-b border-white/[0.06] py-2 text-[13px] last:border-0 last:pb-0 first:pt-0">
                     <span className="text-[#8d8e88]">{label}</span>

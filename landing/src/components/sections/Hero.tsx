@@ -271,6 +271,7 @@ function Hero3() {
               priority
             />
           </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-44 bg-gradient-to-t from-[#050606] via-[#050606]/80 to-transparent sm:block" />
         </div>
       </Container>
     </section>
