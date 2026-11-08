@@ -1,6 +1,8 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+  ArrowUpRight01Icon,
   CheckmarkCircle02Icon,
+  GithubIcon,
   TerminalIcon,
 } from "@hugeicons/core-free-icons";
 import {
@@ -163,46 +165,55 @@ function Hero2() {
 
 function Hero3() {
   return (
-    <section className="relative overflow-hidden pt-40 md:pt-44">
+    <section className="relative overflow-hidden pt-32 md:pt-36">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_66%_50%_at_50%_0%,rgba(255,255,255,0.12),transparent_64%)]" />
       <AsciiField className="left-1/2 top-24 -z-10 hidden -translate-x-1/2 md:block" cols={96} rows={26} seed={19} opacity={0.08} />
       <Container>
         <div className="flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
-          <h1 className="display max-w-[13ch] animate-rise text-[clamp(3.4rem,7vw,7.2rem)] text-[#f4f4f0]">
+          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.9rem,6.4vw,6.8rem)] text-[#ecece7]">
             From localhost to your own cloud in one deploy.
           </h1>
-          <div className="max-w-[420px] pb-2">
-            <p className="text-[18px] leading-[1.7] text-[#a9aaa4]">
+          <div className="w-full max-w-[420px] pb-1">
+            <p className="text-[18px] leading-[1.7] text-[#b3b4ad]">
               Shipper runs on the VPS you already pay for. Ship any app and get a
               live URL, real logs, and a clean way back.
             </p>
-            <div id="install" className="mt-7 scroll-mt-28">
-              <Actions />
+            <div id="install" className="mt-6 scroll-mt-28">
+              <CommandBar compact />
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2.5">
+              <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
+                <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
+                GitHub
+              </a>
+              <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
+              <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
+                See how it works
+                <HugeiconsIcon icon={ArrowUpRight01Icon} size={13} strokeWidth={1.8} />
+              </a>
             </div>
           </div>
         </div>
-        <div className="relative mt-16">
+        <div className="relative mt-12">
           <div className="pointer-events-none absolute -inset-x-24 -top-10 bottom-0 -z-10 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1),transparent_64%)] blur-3xl" />
           <Screenshot
             src="/shots/applications.png"
             alt="Shipper applications dashboard showing live apps and deployment status"
             priority
-            frameClassName="rounded-b-none border-b-0"
-            className="max-h-[690px] object-cover object-top"
+            className="max-sm:w-[180%] max-sm:max-w-none"
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-[#050606] via-[#050606]/70 to-transparent" />
-          <div className="absolute bottom-10 left-1/2 hidden w-[min(720px,88%)] -translate-x-1/2 grid-cols-3 overflow-hidden rounded-xl border border-white/[0.13] bg-[#080909]/94 shadow-2xl backdrop-blur-xl md:grid">
-            {[
-              ["One command", "Installs Shipper and the proxy"],
-              ["One deploy", "Builds, verifies, and routes your app"],
-              ["One screen", "Releases, logs, and rollbacks"],
-            ].map(([title, body]) => (
-              <div key={title} className="border-r border-white/[0.08] p-5 last:border-r-0">
-                <div className="text-[16px] font-[500] text-[#e7e7e2]">{title}</div>
-                <div className="mt-1.5 text-[14px] leading-[1.6] text-[#8d8e88]">{body}</div>
-              </div>
-            ))}
-          </div>
+        </div>
+        <div className="surface mt-3 grid divide-y divide-white/[0.08] overflow-hidden rounded-xl md:grid-cols-3 md:divide-x md:divide-y-0">
+          {[
+            ["One command", "Installs Shipper and the proxy"],
+            ["One deploy", "Builds, verifies, and routes your app"],
+            ["One screen", "Releases, logs, and rollbacks"],
+          ].map(([title, body]) => (
+            <div key={title} className="px-5 py-4">
+              <div className="text-[15px] font-[500] text-[#ecece7]">{title}</div>
+              <div className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d]">{body}</div>
+            </div>
+          ))}
         </div>
       </Container>
     </section>

@@ -123,11 +123,22 @@ function Faq3() {
           title={<>Start with the practical parts.</>}
           body="The answers that change whether Shipper fits your server and your workflow."
         />
-        <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-white/[0.1] bg-white/[0.08] sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 md:hidden">
           {faqs.slice(0, 6).map((item) => (
-            <div key={item.q} className="bg-[#080909] p-8">
-              <h3 className="text-[19px] font-[520] leading-snug tracking-[-0.025em] text-[#e7e7e2]">{item.q}</h3>
-              <p className="mt-3 text-[15px] leading-[1.75] text-[#8d8e88]">{item.a}</p>
+            <details key={item.q} className="group border-b border-white/[0.1]">
+              <summary className="flex cursor-pointer list-none items-center gap-4 py-5 text-[16px] text-[#ecece7] [&::-webkit-details-marker]:hidden">
+                <span className="flex-1">{item.q}</span>
+                <HugeiconsIcon icon={ArrowDown01Icon} size={17} strokeWidth={1.6} className="shrink-0 text-[#8d8e88] transition-transform duration-300 group-open:rotate-180" />
+              </summary>
+              <p className="pb-5 text-[15px] leading-[1.7] text-[#a2a39d]">{item.a}</p>
+            </details>
+          ))}
+        </div>
+        <div className="elevated mt-12 hidden gap-px overflow-hidden rounded-2xl border border-white/[0.12] bg-white/[0.09] md:grid md:grid-cols-2 lg:grid-cols-3">
+          {faqs.slice(0, 6).map((item) => (
+            <div key={item.q} className="bg-[#0a0b0b] p-8">
+              <h3 className="text-[19px] font-[520] leading-snug tracking-[-0.025em] text-[#ecece7]">{item.q}</h3>
+              <p className="mt-3 text-[15px] leading-[1.75] text-[#a2a39d]">{item.a}</p>
             </div>
           ))}
         </div>

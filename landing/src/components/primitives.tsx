@@ -85,16 +85,16 @@ export function SectionIntro({
     >
       <h2
         className={cn(
-          "text-gradient max-w-[17ch] text-[clamp(2.5rem,5vw,4.25rem)]",
-          size === "sm" && "text-[clamp(2rem,3.6vw,3rem)]",
-          size === "lg" && "text-[clamp(3rem,6vw,5rem)]",
+          "max-w-[17ch] text-[#ecece7] text-[clamp(2.25rem,4.2vw,3.55rem)]",
+          size === "sm" && "text-[clamp(1.9rem,3.3vw,2.7rem)]",
+          size === "lg" && "text-[clamp(2.7rem,5vw,4.25rem)]",
           align === "center" && "mx-auto max-w-[20ch]",
         )}
       >
         {title}
       </h2>
       {body && (
-        <p className="max-w-[62ch] text-[17px] leading-[1.7] text-[#a5a6a0] md:text-[18px]">
+        <p className="max-w-[62ch] text-[17px] leading-[1.7] text-[#b3b4ad] md:text-[18px]">
           {body}
         </p>
       )}
@@ -172,9 +172,11 @@ export function CopyButton({
 export function CommandBar({
   command = INSTALL_COMMAND,
   className,
+  compact = false,
 }: {
   command?: string;
   className?: string;
+  compact?: boolean;
 }) {
   return (
     <div
@@ -183,30 +185,49 @@ export function CommandBar({
         className,
       )}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className={cn("flex flex-col gap-2", !compact && "sm:flex-row sm:items-center")}>
         <div className="flex min-w-0 flex-1 items-start gap-3 px-3 py-2 sm:px-2 sm:py-0">
           <span className="mono shrink-0 pt-0.5 text-[14px] text-[#85867f]">$</span>
-          <code className="mono min-w-0 flex-1 text-left text-[14px] leading-[1.7] text-[#e1e1db]">
+          <code className={cn("mono min-w-0 flex-1 whitespace-nowrap text-left leading-[1.7] text-[#e1e1db] max-[359px]:text-[11px] sm:text-[14px]", compact ? "text-[12px] sm:text-[13px]" : "text-[12px]")}>
             {command === INSTALL_COMMAND ? (
-              <>
-                <span className="block sm:hidden">
-                  curl -fsSL
-                  <br />
-                  https://shipperkit.dev/install.sh
-                  <br />| sudo bash
-                </span>
-                <span className="hidden whitespace-nowrap sm:block">
-                  curl -fsSL https://shipperkit.dev/install.sh
-                  <br />| sudo bash
-                </span>
-              </>
+              compact ? (
+                <>
+                  <span className="block sm:hidden">
+                    curl -fsSL
+                    <br />
+                    https://shipperkit.dev/install.sh
+                    <br />| sudo bash
+                  </span>
+                  <span className="hidden sm:block">
+                    curl -fsSL https://shipperkit.dev/install.sh
+                    <br />| sudo bash
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="block sm:hidden">
+                    curl -fsSL
+                    <br />
+                    https://shipperkit.dev/install.sh
+                    <br />| sudo bash
+                  </span>
+                  <span className="hidden sm:block">
+                    curl -fsSL https://shipperkit.dev/install.sh
+                    <br />| sudo bash
+                  </span>
+                </>
+              )
             ) : (
               command
             )}
           </code>
         </div>
         <div className="flex justify-end">
-          <CopyButton value={command} className="w-full sm:w-auto" />
+          <CopyButton
+            value={command}
+            iconOnly={compact}
+            className={compact ? "" : "w-full sm:w-auto"}
+          />
         </div>
       </div>
     </div>

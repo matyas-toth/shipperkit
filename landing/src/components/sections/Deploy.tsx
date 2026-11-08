@@ -130,17 +130,18 @@ function Deploy3() {
           title={<>Bring your repo, folder, or image.</>}
           body="Shipper fits the source you already have. There is no special project layout and no new config language."
         />
-        <div className="mt-16 grid gap-px overflow-hidden rounded-2xl border border-white/[0.1] bg-white/[0.08] md:grid-cols-2 lg:grid-cols-3">
+        <div className="surface mt-11 grid overflow-hidden rounded-2xl md:grid-cols-2 lg:grid-cols-3">
           {sources.map(([title, body, Icon]) => (
-            <div key={title} className="group bg-[#080909] p-8 transition-colors duration-300 hover:bg-[#0c0d0d]">
-              <HugeiconsIcon icon={Icon} size={24} strokeWidth={1.5} className="text-[#8d8e88]" />
-              <h3 className="mt-8 text-[21px] font-[520] tracking-[-0.03em] text-[#e7e7e2]">{title}</h3>
-              <p className="mt-2.5 text-[15px] leading-[1.7] text-[#8d8e88]">{body}</p>
+            <div key={title} className="group flex gap-4 border-b border-white/[0.07] p-5 transition-colors duration-300 last:border-b-0 hover:bg-white/[0.015] sm:p-7 md:block md:border-r md:[&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0 md:[&:nth-last-child(-n+2)]:border-b-0">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05] md:size-11">
+                <HugeiconsIcon icon={Icon} size={20} strokeWidth={1.6} className="text-[#dcdcd6] md:size-[21px]" />
+              </span>
+              <div className="min-w-0 md:mt-7">
+                <h3 className="text-[17px] font-[520] tracking-[-0.03em] text-[#ecece7] md:text-[21px]">{title}</h3>
+                <p className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d] md:mt-2.5 md:text-[15px] md:leading-[1.7]">{body}</p>
+              </div>
             </div>
           ))}
-        </div>
-        <div className="mt-12 flex justify-end">
-          <ActionPrimary href="#get-shipper" />
         </div>
       </Container>
     </Section>

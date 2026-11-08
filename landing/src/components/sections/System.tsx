@@ -119,22 +119,35 @@ function System3() {
           title={<>The unglamorous parts, handled.</>}
           body="HTTPS, backups, logs, and health checks are part of the deploy, not a second project you have to finish later."
         />
-        <div className="mt-16 grid gap-4 md:grid-cols-3">
+        <div className="mt-11 grid gap-4 md:grid-cols-3">
           {([
             ["HTTPS", "Domains and certificates renew without a side project.", GlobeIcon],
             ["Backups", "A verified copy of your data, on storage you choose.", DatabaseBackupIcon],
             ["Health", "See the app and the machine while they are running.", CloudServerIcon],
           ] as const).map(([title, body, Icon]) => (
-            <div key={title} className="rounded-2xl border border-white/[0.1] bg-[#080909] p-8">
-              <HugeiconsIcon icon={Icon} size={26} strokeWidth={1.4} className="text-[#a8a9a3]" />
-              <h3 className="mt-10 text-[26px] font-[520] tracking-[-0.035em] text-[#ecece7]">{title}</h3>
-              <p className="mt-3 text-[16px] leading-[1.7] text-[#969791]">{body}</p>
+            <div key={title} className="surface rounded-2xl p-7">
+              <span className="flex size-11 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05]">
+                <HugeiconsIcon icon={Icon} size={22} strokeWidth={1.6} className="text-[#dcdcd6]" />
+              </span>
+              <h3 className="mt-7 text-[24px] font-[520] tracking-[-0.035em] text-[#ecece7]">{title}</h3>
+              <p className="mt-2.5 text-[15px] leading-[1.7] text-[#a2a39d]">{body}</p>
             </div>
           ))}
         </div>
-        <div className="mt-12 grid gap-4 lg:grid-cols-2">
-          <Screenshot src="/shots/diagnostics.png" alt="Shipper diagnostics checks with service health" />
-          <Screenshot src="/shots/backups.png" alt="Shipper backup plans and verified backup history" />
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+          <Screenshot
+            src="/shots/diagnostics.png"
+            alt="Shipper diagnostics checks with service health"
+            className="h-[280px] object-cover object-top max-sm:w-[170%] max-sm:max-w-none"
+          />
+          <Screenshot
+            src="/shots/backups.png"
+            alt="Shipper backup plans and verified backup history"
+            className="h-[280px] object-cover object-top max-sm:w-[170%] max-sm:max-w-none"
+          />
+        </div>
+        <div className="mt-10 flex justify-center">
+          <ActionPrimary href="#get-shipper" />
         </div>
       </Container>
     </Section>

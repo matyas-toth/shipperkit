@@ -38,7 +38,7 @@ const groups = [
 
 function NavColumns() {
   return (
-    <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 md:gap-14">
+    <div className="grid grid-cols-3 gap-6 sm:gap-10 md:gap-14">
       {groups.map((group) => (
         <div key={group.title}>
           <div className="text-[14px] font-[500] text-[#797a75]">{group.title}</div>
@@ -113,30 +113,26 @@ function Footer2() {
 
 function Footer3() {
   return (
-    <footer className="overflow-hidden border-t border-white/[0.08] bg-[#060707]">
+    <footer className="border-t border-white/[0.08] bg-[#060707]">
       <Container>
-        <div className="grid gap-14 py-16 md:grid-cols-[1fr_auto]">
-          <div className="max-w-[460px]">
+        <div className="grid gap-10 py-14 md:grid-cols-[1fr_auto]">
+          <div className="max-w-[440px]">
             <Logo />
-            <p className="mt-6 text-[17px] leading-[1.7] text-[#8d8e88]">
+            <p className="mt-5 text-[16px] leading-[1.7] text-[#8d8e88]">
               Deploy apps, keep the release history, and recover the data. All on
               infrastructure you already control.
             </p>
-            <div className="mt-7 flex flex-wrap gap-2.5">
-              {["Open source", "Self-hosted", "MIT"].map((item) => (
-                <span key={item} className="rounded-lg border border-white/[0.1] px-3.5 py-2 text-[14px] text-[#a2a39d]">
-                  {item}
-                </span>
-              ))}
-            </div>
           </div>
           <NavColumns />
         </div>
-        <div className="border-t border-white/[0.08] pt-10">
-          <img src="/wordmark.svg" alt="Shipper" className="h-[52px] w-auto opacity-20 md:h-[76px]" />
-          <div className="flex flex-col gap-3 py-7 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-[14px] text-[#797a75]">Shipper contributors · MIT</span>
-            <a href="/variants" className="text-[14px] text-[#85867f] hover:text-white">Landing lab</a>
+        <div className="flex flex-col gap-3 border-t border-white/[0.08] py-6 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-[14px] text-[#8d8e88]">Shipper contributors · MIT</span>
+          <div className="flex items-center gap-6">
+            <a href={repo} className="flex items-center gap-2 text-[14px] text-[#8d8e88] transition-colors hover:text-white">
+              <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.6} />
+              Source
+            </a>
+            <a href={docs} className="text-[14px] text-[#8d8e88] transition-colors hover:text-white">Docs</a>
           </div>
         </div>
       </Container>

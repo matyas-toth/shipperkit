@@ -14,7 +14,6 @@ import {
   AsciiField,
   Check,
   Container,
-  Screenshot,
   Section,
   SectionIntro,
   Status,
@@ -80,25 +79,21 @@ function Proof3() {
     <Section className="section-rule overflow-hidden">
       <AsciiField className="right-0 top-0 -z-10 hidden lg:block" cols={58} rows={24} seed={9} opacity={0.08} />
       <Container>
-        <div className="grid items-center gap-16 lg:grid-cols-[1.02fr_0.98fr]">
-          <div>
-            <SectionIntro
-              title={<>You don't have to become a DevOps person.</>}
-              body="If you can push code, you can ship with Shipper. The console tells you what happened in plain language, and the next useful action is always one click away."
-            />
-            <div className="mt-9 space-y-4">
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.9fr] lg:items-center lg:gap-16">
+          <SectionIntro
+            title={<>You don't have to become a DevOps person.</>}
+            body="If you can push code, you can ship with Shipper. The console tells you what happened in plain language, and the next useful action is always one click away."
+          />
+          <div className="lg:pt-1">
+            <div className="space-y-4">
               <Check>No YAML required to get your first app live.</Check>
               <Check>No SSH session needed for the everyday work.</Check>
               <Check>No dashboard account between you and your server.</Check>
             </div>
-            <div className="mt-9">
+            <div className="mt-8">
               <ActionPrimary href="#get-shipper" />
             </div>
           </div>
-          <Screenshot
-            src="/shots/overview.png"
-            alt="Shipper application overview with a clear deployment status and next actions"
-          />
         </div>
       </Container>
     </Section>

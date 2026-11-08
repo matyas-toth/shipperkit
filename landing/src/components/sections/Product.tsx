@@ -138,25 +138,42 @@ function Product3() {
           body="Shipper builds and verifies a new release before traffic moves. If anything fails, the app you already had keeps serving."
           align="center"
         />
-        <div className="relative mx-auto mt-16 max-w-[1080px]">
+        <div className="mx-auto mt-12 max-w-[1080px]">
           <Screenshot
             src="/shots/failed.png"
             alt="A failed deployment with logs and the previous release still serving"
-            frameClassName="[transform:perspective(2200px)_rotateX(1.5deg)]"
+            className="max-sm:w-[180%] max-sm:max-w-none"
           />
-          <div className="absolute -left-4 top-[44%] hidden w-[240px] rounded-xl border border-white/[0.14] bg-[#0b0c0c]/94 p-5 shadow-2xl backdrop-blur-xl md:block lg:-left-12">
-            <div className="text-[14px] text-[#8d8e88]">Failed stage</div>
-            <div className="mt-2 text-[16px] font-[500] text-[#f0a3a6]">Build</div>
-            <p className="mt-2 text-[14px] leading-[1.6] text-[#969791]">
+        </div>
+        <div className="mx-auto mt-4 grid max-w-[1080px] gap-3 md:grid-cols-3">
+          <div className="surface rounded-xl p-5">
+            <div className="text-[14px] text-[#a2a39d]">Failed stage</div>
+            <div className="mt-2 text-[17px] font-[500] text-[#f0a3a6]">Build</div>
+            <p className="mt-2 text-[14px] leading-[1.6] text-[#a2a39d]">
               The error line is preserved with the failed release.
             </p>
           </div>
-          <div className="absolute -right-4 top-[34%] hidden w-[240px] rounded-xl border border-white/[0.14] bg-[#0b0c0c]/94 p-5 shadow-2xl backdrop-blur-xl md:block lg:-right-12">
-            <div className="text-[14px] text-[#8d8e88]">Still serving</div>
+          <div className="surface rounded-xl p-5">
+            <div className="text-[14px] text-[#a2a39d]">Still serving</div>
             <div className="mono mt-2 text-[18px] text-[#ecece7]">4f8ac21d</div>
             <div className="mt-2 flex items-center gap-2 text-[14px] text-[#79e3a6]">
               <span className="size-2 rounded-full bg-[#79e3a6]" />
               store.example.com
+            </div>
+          </div>
+          <div className="surface rounded-xl p-5">
+            <div className="text-[14px] text-[#a2a39d]">Operation</div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[17px] font-[500] text-[#ecece7]">28s</span>
+              <span className="text-[14px] text-[#a2a39d]">4 checks</span>
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-1.5">
+              {["daemon", "runtime", "build", "route"].map((label, index) => (
+                <div key={label} className="rounded border border-white/[0.08] bg-white/[0.025] p-1.5">
+                  <div className="text-[14px] text-[#a2a39d]">{label}</div>
+                  <span className={cn("mt-1 block size-1.5 rounded-full", index === 2 ? "bg-[#f08c90]" : "bg-[#79e3a6]")} />
+                </div>
+              ))}
             </div>
           </div>
         </div>

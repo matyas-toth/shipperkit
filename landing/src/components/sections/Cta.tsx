@@ -109,16 +109,10 @@ function Cta3() {
   return (
     <Section id="get-shipper" className="border-t border-white/[0.08]">
       <Container>
-        <div className="relative overflow-hidden rounded-[28px] border border-white/[0.11] bg-[#080909] px-7 py-16 md:px-14 md:py-24">
-          <img
-            src="/wordmark.svg"
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-8 -right-2 w-[520px] opacity-[0.055] md:w-[760px]"
-          />
+        <div className="surface elevated relative overflow-hidden rounded-[28px] px-7 py-16 md:px-14 md:py-24">
           <div className="absolute inset-0 -z-0 bg-[radial-gradient(ellipse_70%_100%_at_85%_0%,rgba(255,255,255,0.08),transparent_60%)]" />
           <div className="relative z-10">
-            <h2 className="display max-w-[13ch] text-[clamp(2.9rem,6.4vw,6.4rem)] text-[#f4f4f0]">
+            <h2 className="display max-w-[13ch] text-[clamp(2.9rem,6.4vw,6.4rem)] text-[#ecece7]">
               Everything you need,{" "}
               <span className="text-[#8d8e88]">nothing you rent.</span>
             </h2>

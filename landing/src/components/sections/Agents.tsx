@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArtificialIntelligence01Icon,
+  CheckmarkCircle02Icon,
   ComputerTerminal01Icon,
   Key01Icon,
   LockKeyIcon,
@@ -121,45 +122,46 @@ function Agents3() {
   return (
     <Section id="agents" className="section-rule">
       <Container>
-        <div className="grid items-center gap-16 lg:grid-cols-[1.02fr_0.98fr]">
-          <div>
-            <SectionIntro
-              title={<>The same guardrails for you and your agent.</>}
-              body="A token does not get a shortcut through the checks. The dashboard, the CLI, and your agent all use the same release path."
-            />
-            <div className="mt-10 rounded-2xl border border-white/[0.1] bg-[#080909] p-7">
-              <div className="space-y-4">
-                {([
-                  ["Human", "Dashboard", UserIcon],
-                  ["Developer", "CLI", ComputerTerminal01Icon],
-                  ["Agent", "API token", ArtificialIntelligence01Icon],
-                ] as const).map(([kind, tool, Icon]) => (
-                  <div key={kind} className="flex items-center gap-4 border-b border-white/[0.07] pb-4 last:border-0 last:pb-0">
-                    <span className="flex size-11 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.03]">
-                      <HugeiconsIcon icon={Icon} size={20} strokeWidth={1.5} className="text-[#a8a9a3]" />
-                    </span>
-                    <div>
-                      <div className="text-[16px] font-[500] text-[#e7e7e2]">{kind}</div>
-                      <div className="mt-0.5 text-[14px] text-[#8d8e88]">{tool}</div>
-                    </div>
-                    <span className="ml-auto text-[14px] text-[#79e3a6]">same checks</span>
+        <SectionIntro
+          title={<>The same guardrails for you and your agent.</>}
+          body="A token does not get a shortcut through the checks. The dashboard, the CLI, and your agent all use the same release path."
+        />
+        <div className="mt-11 grid gap-4 lg:grid-cols-2">
+          <div className="surface flex flex-col rounded-2xl p-7">
+            <div className="text-[14px] font-[500] uppercase tracking-[0.14em] text-[#8d8e88]">Same release path</div>
+            <div className="mt-6 space-y-4">
+              {([
+                ["Human", "Dashboard", UserIcon],
+                ["Developer", "CLI", ComputerTerminal01Icon],
+                ["Agent", "API token", ArtificialIntelligence01Icon],
+              ] as const).map(([kind, tool, Icon]) => (
+                <div key={kind} className="flex items-center gap-4 border-b border-white/[0.08] pb-4 last:border-0 last:pb-0">
+                  <span className="flex size-11 items-center justify-center rounded-lg border border-white/[0.13] bg-white/[0.05]">
+                    <HugeiconsIcon icon={Icon} size={21} strokeWidth={1.6} className="text-[#dcdcd6]" />
+                  </span>
+                  <div>
+                    <div className="text-[16px] font-[500] text-[#e7e7e2]">{kind}</div>
+                    <div className="mt-0.5 text-[14px] text-[#8d8e88]">{tool}</div>
                   </div>
-                ))}
-              </div>
+                  <span className="ml-auto flex items-center gap-1.5 text-[14px] text-[#79e3a6]">
+                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={15} strokeWidth={1.8} />
+                    same checks
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-white/[0.1] bg-[#080909] p-8">
+          <div className="surface flex flex-col rounded-2xl p-7">
             <div className="flex items-center justify-between">
-              <span className="text-[18px] font-[520] text-[#e7e7e2]">Agent access</span>
-              <Status label="Scoped" />
+              <span className="text-[14px] font-[500] uppercase tracking-[0.14em] text-[#797a75]">Agent access</span>
+              <Status label="90 days" />
             </div>
-            <div className="mt-7 space-y-4">
+            <div className="mt-6 space-y-4">
               {[
                 ["Can deploy", "Yes"],
                 ["Can read logs", "Yes"],
                 ["Can reveal secrets", "No"],
                 ["Can run host commands", "No"],
-                ["Expires", "90 days"],
               ].map(([permission, value]) => (
                 <div key={permission} className="flex items-center justify-between border-b border-white/[0.07] pb-4 text-[16px] last:border-0 last:pb-0">
                   <span className="text-[#c3c4be]">{permission}</span>
@@ -167,7 +169,7 @@ function Agents3() {
                 </div>
               ))}
             </div>
-            <div className="mt-8 flex items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.025] px-5 py-4">
+            <div className="mt-auto flex items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.025] px-5 py-4">
               <HugeiconsIcon icon={LockKeyIcon} size={18} strokeWidth={1.6} className="text-[#a8a9a3]" />
               <span className="text-[14px] leading-[1.6] text-[#8d8e88]">
                 Revoke a token without touching the app.

@@ -1,7 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowDown01Icon,
-  ArrowUpRight01Icon,
   GithubIcon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
@@ -34,17 +33,17 @@ function Links({ className }: { className?: string }) {
   );
 }
 
-function Install({ className }: { className?: string }) {
+function Install({ className, always = false }: { className?: string; always?: boolean }) {
   return (
     <Button
       className={cn(
-        "hidden h-10 rounded-lg border-white bg-white px-4 text-[14px] font-[540] text-[#070808] hover:bg-white/90 sm:inline-flex",
+        always ? "inline-flex" : "hidden sm:inline-flex",
+        "h-10 shrink-0 rounded-lg border-white bg-white px-4 text-[14px] font-[540] text-[#070808] hover:bg-white/90",
         className,
       )}
       render={<a href="#get-shipper" />}
     >
       Install Shipper
-      <HugeiconsIcon icon={ArrowUpRight01Icon} size={15} strokeWidth={1.8} />
     </Button>
   );
 }
@@ -106,16 +105,16 @@ export function Nav({ variant = 1, contained = false }: { variant?: number; cont
 
   if (variant === 3) {
     return (
-      <header className="absolute inset-x-0 top-0 z-40 border-b border-white/[0.08]">
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-white/[0.08] bg-[#050606]/78 backdrop-blur-xl">
         <div className="shell flex h-[72px] items-center justify-between">
           <Logo />
-          <div className="flex items-center gap-7">
+          <div className="flex items-center gap-2 sm:gap-7">
             <Links className="hidden lg:flex" />
             <div className="hidden h-5 w-px bg-white/[0.12] sm:block" />
             <a href={docs} className="hidden text-[14px] text-[#9a9b95] transition-colors hover:text-white sm:block">
               Docs
             </a>
-            <Install />
+            <Install always className="px-3 text-[13px] max-[359px]:hidden sm:px-4 sm:text-[14px]" />
             <MobileMenu />
           </div>
         </div>
