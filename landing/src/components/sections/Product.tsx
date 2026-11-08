@@ -171,7 +171,7 @@ function Product3() {
               The error line is preserved with the failed release.
             </p>
           </div>
-          <div className="surface rounded-xl border-[#79e3a6]/20 bg-[#79e3a6]/[0.03] p-5 max-sm:hidden">
+          <div className="surface rounded-xl border-[#79e3a6]/20 bg-[#79e3a6]/[0.03] p-5">
             <div className="text-[14px] text-[#79e3a6]">Still serving</div>
             <div className="mono mt-2 text-[18px] text-[#ecece7]">4f8ac21d</div>
             <div className="mt-2 flex items-center gap-2 text-[14px] text-[#79e3a6]">

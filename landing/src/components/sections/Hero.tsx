@@ -261,6 +261,11 @@ function Hero3() {
               </div>
             </div>
             <CommandBar className="mt-4" />
+            <div className="mt-4 grid grid-cols-3 divide-x divide-white/[0.08] border-y border-white/[0.08] py-3 text-[12px] text-[#8d8e88] lg:hidden">
+              {["One command", "One deploy", "One screen"].map((item) => (
+                <span key={item} className="px-2 text-center">{item}</span>
+              ))}
+            </div>
           </div>
         </div>
         <div className="relative mt-10">
@@ -275,6 +280,11 @@ function Hero3() {
               priority
             />
           </div>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/[0.08] pt-4 text-[13px] text-[#8d8e88]">
+          {["Ubuntu 24.04", "Docker", "Compose", "Git", "MIT"].map((item) => (
+            <span key={item}>{item}</span>
+          ))}
         </div>
       </Container>
     </section>

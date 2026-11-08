@@ -145,9 +145,6 @@ function System3() {
             </div>
           ))}
         </div>
-        <div className="mt-10 flex justify-center">
-          <ActionPrimary href="#get-shipper" />
-        </div>
       </Container>
     </Section>
   );
