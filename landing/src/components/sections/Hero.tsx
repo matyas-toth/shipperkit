@@ -223,7 +223,7 @@ function Hero3() {
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_66%_50%_at_50%_0%,rgba(255,255,255,0.12),transparent_64%)]" />
       <AsciiField className="left-1/2 top-24 -z-10 hidden -translate-x-1/2 md:block" cols={96} rows={26} seed={19} opacity={0.08} />
       <Container>
-        <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:grid-rows-[auto_auto] lg:gap-x-10">
+        <div className="grid gap-8 lg:grid-cols-[1fr_400px] lg:grid-rows-[auto_auto] lg:gap-x-10">
           <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.35rem,6.4vw,6.8rem)] text-[#ecece7] lg:col-start-1 lg:row-start-1">
             From localhost to your own cloud in one deploy.
           </h1>

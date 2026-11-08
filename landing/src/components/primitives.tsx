@@ -187,22 +187,28 @@ export function CommandBar({
         className,
       )}
     >
-      <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <div className="flex items-center gap-2.5 overflow-x-auto px-2 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-2 px-2 py-1">
+          <div className="flex min-w-0 items-center gap-2.5">
             <span className="mono shrink-0 text-[14px] text-[#85867f]">$</span>
-            <code className="mono whitespace-nowrap text-[12px] leading-[1.7] text-[#e1e1db] sm:text-[13px]">
-              {command}
+            <code className="mono min-w-0 overflow-x-auto whitespace-nowrap text-[12px] leading-[1.7] text-[#e1e1db] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:text-[13px]">
+              <span className="sm:hidden">curl -fsSL \</span>
+              <span className="hidden sm:inline">{command}</span>
             </code>
           </div>
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#0a0b0b] to-transparent sm:hidden" />
+          {showCopy && (
+            <>
+              <CopyButton iconOnly className="shrink-0 xl:hidden" />
+              <CopyButton className="hidden shrink-0 xl:inline-flex" />
+            </>
+          )}
         </div>
-        {showCopy && (
-          <>
-            <CopyButton iconOnly className="shrink-0 xl:hidden" />
-            <CopyButton className="hidden shrink-0 xl:inline-flex" />
-          </>
-        )}
+        <div className="px-2 pb-1 pl-[30px] sm:hidden">
+          <code className="mono block whitespace-pre text-[12px] leading-[1.7] text-[#e1e1db]">
+            https://shipperkit.dev/install.sh \
+            <br />| sudo bash
+          </code>
+        </div>
       </div>
     </div>
   );
