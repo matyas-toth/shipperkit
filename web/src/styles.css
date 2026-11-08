@@ -10385,7 +10385,8 @@ body:has(.confirm-dialog) .page-actions {
     line-height: 0;
   }
 }
-/* Source inspection and exception-driven application overview. */
+
+/* Simple application creation. */
 .source-entry {
   position: relative;
   max-width: 860px;
@@ -10423,26 +10424,6 @@ body:has(.confirm-dialog) .page-actions {
 .deployment-proposal dt { color: var(--muted); }
 .deployment-proposal dd { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; overflow-wrap: anywhere; }
 .proposal-variables { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-.deployment-plan-details { margin-top: 24px; }
-.deployment-plan-details .creation-review { margin-top: 20px; }
-.application-access { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 30px 0; border-bottom: 1px solid var(--border); }
-.application-access-link { display: inline-flex; align-items: center; gap: 12px; min-width: 0; font-size: 21px; font-weight: 500; letter-spacing: -.35px; }
-.application-access-link span { overflow-wrap: anywhere; }
-.application-access-link .icon { flex-shrink: 0; }
-.application-access-link > .icon:last-child { color: var(--muted); }
-.application-access-empty { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; color: var(--muted); }
-.overview-deployment { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.application-detail > .application-source-details, .application-detail > .application-runtime-details, .application-detail > .health-disclosure { margin-top: 0; border-bottom: 1px solid var(--border); border-radius: 0; }
-.application-source-details > summary, .application-runtime-details > summary, .health-disclosure > summary { padding-block: 20px; }
-.application-source-details .application-overview { border: 0; padding-top: 0; margin-top: 4px; }
-.application-runtime-details .containers-section { margin-top: 0; padding-bottom: 20px; }
-.application-runtime-details .containers-section > h2 { display: none; }
-.health-details { padding: 4px 0 24px; }
-.health-details .section-toolbar { margin-bottom: 14px; }
-.deployment-checks { margin-top: 24px; }
-.health-details .diagnostic-table { min-width: 550px; }
-.health-disclosure .table-tray { overflow-x: auto; }
-.health-disclosure .diagnostic-table td { font-size: 13px; }
 @media (width < 48rem) {
   .source-entry { padding: 22px 18px; margin-top: 24px; }
   .source-entry h1 { font-size: 20px; }
@@ -10451,20 +10432,4 @@ body:has(.confirm-dialog) .page-actions {
   .source-extra > div { left: 0; right: auto; }
   .deployment-proposal { padding: 20px 16px; }
   .deployment-proposal .review-fact { grid-template-columns: 90px minmax(0,1fr); gap: 12px; }
-  .application-access { align-items: flex-start; flex-direction: column; gap: 16px; padding-block: 24px; }
-  .application-access-link { font-size: 18px; }
-}
-.application-detail > :is(.application-source-details, .application-runtime-details, .health-disclosure) > summary {
-  min-height: 50px;
-  padding: 14px 2px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--secondary);
-  font-weight: 450;
-}
-.application-detail > :is(.application-source-details, .application-runtime-details, .health-disclosure) > summary:hover,
-.application-detail > :is(.application-source-details, .application-runtime-details, .health-disclosure)[open] > summary {
-  color: var(--text);
 }

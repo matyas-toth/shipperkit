@@ -12,9 +12,10 @@ Paste a repository URL when creating an application, or choose an account,
 container image or local files beneath the source field. Continue inspects the
 source and proposes a deployment before showing manual controls. Compose files,
 Dockerfiles and supported build systems are detected from the selected directory.
-Configure manually exposes the application name, branch, build, runtime, storage
-and environment options. Branches are suggested; a full commit SHA can be entered
-directly.
+Configure manually opens the original Source, Configure and Review steps, with
+the current source carried into the form. Connect GitHub is the first source
+option and opens Settings > Connections. Branches are suggested; a full commit
+SHA can be entered directly.
 Credentials are encrypted in SQLite and omitted from ordinary API responses.
 Installation tokens are short-lived and restricted to the selected repository
 for cloning. HTTPS Git credentials use process-local configuration, never URL

@@ -20,7 +20,6 @@ export default function LogViewer(props: {
   const [lines, setLines] = createSignal<LogLine[]>([]), [cursor, setCursor] = createSignal(0);
   const [search, setSearch] = createSignal(""), [copied, setCopied] = createSignal(false), [copyError, setCopyError] = createSignal("");
   const [paused, setPaused] = createSignal(false);
-  const [contextBusy, setContextBusy] = createSignal(false), [contextCopied, setContextCopied] = createSignal(false);
   const presentation = logPresentation();
   let viewport!: HTMLDivElement, follow = true;
   const query = createQuery(() => ({
@@ -68,24 +67,6 @@ export default function LogViewer(props: {
   function details(line: LogLine) {
     return <><time class="log-timestamp" datetime={new Date(line.createdAt * 1000).toISOString()} title={new Date(line.createdAt * 1000).toString()}>{logDateTime(line.createdAt)}</time><span class="log-step">{line.step}</span></>;
   }
-  async function copyContext() {
-    if (contextBusy()) return;
-    setContextBusy(true); setCopyError(""); setContextCopied(false);
-    try {
-      const context = await api<unknown>(`/applications/${props.deployment.applicationId}/deployments/${props.deployment.id}/context`);
-      const text = JSON.stringify(context, null, 2);
-      if (navigator.clipboard) await navigator.clipboard.writeText(text);
-      else {
-        const field = document.createElement("textarea"), focused = document.activeElement as HTMLElement | null;
-        field.value = text; field.style.cssText = "position:fixed;opacity:0;pointer-events:none";
-        document.body.append(field); field.select();
-        try { if (!document.execCommand("copy")) throw Error("Diagnostic context could not be copied"); }
-        finally { field.remove(); focused?.focus({ preventScroll: true }); }
-      }
-      setContextCopied(true);
-    } catch (e) { setCopyError((e as Error).message || "Diagnostic context could not be copied"); }
-    finally { setContextBusy(false); }
-  }
 
   return <div class="deployment-detail">
     <section class="release-summary" aria-label="Selected release">
@@ -109,7 +90,7 @@ export default function LogViewer(props: {
         </div>
       </Show>
     </section>
-    <Show when={message() || state() === "failed"}>
+    <Show when={message()}>
       <section class="deployment-error deployment-result" role="alert">
         <div class="deployment-result-body">
           <div class="deployment-result-title"><Icon name="warning" /><strong>{state() === "failed" ? "Deployment failed" : deploymentLabel({ ...props.deployment, state: state() })}</strong></div>
@@ -122,9 +103,8 @@ export default function LogViewer(props: {
           </Show>
         </div>
         <div class="deployment-result-actions">
-          <Button small variant="primary" icon={contextCopied() ? "check" : "copy"} disabled={contextBusy()} onClick={() => void copyContext()}>{contextBusy() ? "Preparing context" : contextCopied() ? "Context copied" : "Copy diagnostic context"}</Button>
           <Show when={failedStep()}><Button small variant="ghost" onClick={() => filter(failedStep()!)}>Show failed step</Button></Show>
-          <Show when={props.diagnostics && state() === "failed"}><Button small variant="ghost" icon="terminal" onClick={props.diagnostics}>Health details</Button></Show>
+          <Show when={props.diagnostics && state() === "failed"}><Button small variant="neutral" icon="terminal" onClick={props.diagnostics}>Diagnostics</Button></Show>
         </div>
       </section>
     </Show>

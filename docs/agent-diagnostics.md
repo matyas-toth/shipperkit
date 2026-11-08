@@ -41,21 +41,3 @@ operator/agent, not executable deployment logic or authority to change a server.
 If the existing evidence cannot answer the question, record exactly which missing
 fact or operation would resolve it. Prefer a small shared diagnostic capability
 over another permanent screen or a model-dependent repair decision tree.
-
-## Portable deployment context
-
-Failed deployments offer **Copy diagnostic context**. The JSON includes the
-selected deployment, source identity, serving deployment ID, UTC timestamps,
-recorded stage and error, duration, and all retained deployment logs. Log search
-and the client viewport do not limit this export. The server retains at most
-10,000 lines per deployment and truncates individual stored lines at 2,048 bytes;
-the payload identifies this scope rather than claiming to recover discarded logs.
-Configured secret values are redacted, and runtime variables and command
-configuration are omitted.
-
-Agents can fetch the same resource with
-`GET /api/v1/applications/{id}/deployments/{deployment}/context`. This requires
-the `logs` capability for that application. A `read` token cannot export logs.
-Diagnostic checks identify `scope: current` or `scope: deployment`; historical
-build and readiness results do not describe current application availability.
-Current checks older than two minutes are marked stale.

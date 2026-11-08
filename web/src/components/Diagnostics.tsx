@@ -3,7 +3,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
 import { Button, ErrorNotice, Status } from "./Controls";
 import { Icon } from "./Icon";
-import { statusLabel, createdDate, deploymentRef, operationTime, bytes, logDateTime } from "../data";
+import { statusLabel, createdDate, deploymentRef, deploymentLabel, operationTime, formatDuration, bytes, logDateTime } from "../data";
 import type { Deployment } from "../types";
 
 export interface Observation {
@@ -12,7 +12,7 @@ export interface Observation {
 }
 export interface Diagnostic {
   servingRelease?: Deployment; latestOperation?: Deployment; failedStage: string; durationSeconds: number;
-  checks: { layer: string; state: string; summary: string; observedAt: number; scope?: string; stale?: boolean }[];
+  checks: { layer: string; state: string; summary: string; observedAt: number }[];
   observations: Observation[]; changesSinceServing: string[]; unknowns: string[];
 }
 const checkNames: Record<string, string> = {
@@ -20,15 +20,12 @@ const checkNames: Record<string, string> = {
   build: "Build", readiness: "Readiness", task: "Task", "dependency-network": "Dependency network",
 };
 const attention = new Set(["failed", "unreachable", "degraded", "warning", "unhealthy"]);
-type Check = Diagnostic["checks"][number];
-export const deploymentCheck = (check: Check) => check.scope === "deployment" || ["build", "readiness", "task"].includes(check.layer);
-export const staleCheck = (check: Check) => !deploymentCheck(check) && (check.stale || !check.observedAt || Date.now() / 1000 - check.observedAt > 120);
 export function applicationDiagnostics(id: () => string, enabled: () => boolean) {
   return createQuery(() => ({ queryKey: ["applications", id(), "diagnostics"], queryFn: () => api<Diagnostic>(`/applications/${id()}/diagnostics`), enabled: enabled(), staleTime: 15000, refetchInterval: 15000 }));
 }
 
 export function diagnosticIssue(data?: Diagnostic) {
-  const checks = data?.checks.filter(check => !deploymentCheck(check) && !staleCheck(check) && attention.has(check.state)) ?? [];
+  const checks = data?.checks.filter(check => attention.has(check.state)) ?? [];
   return checks.find(check => check.layer === "daemon")
     ?? checks.find(check => check.layer === "route" || check.layer === "certificate")
     ?? checks[0];
@@ -44,11 +41,11 @@ export function ApplicationIssue(props: { diagnostic?: Diagnostic; domains: (hos
     <section class="diagnostic-alert application-issue" aria-label="Application issue">
       <Icon name="warning" />
       <div class="application-issue-body">
-        <strong>{issue() ? issueTitle() : ["deploy", "apply", "rollback"].includes(failed()?.operation ?? "") ? "Latest deployment failed" : "Latest action failed"}</strong>
-        <span>{route() ? `Traffic to ${issue()!.summary} needs attention.` : issue()?.layer === "daemon" ? "Shipper cannot verify the application while Docker is unreachable." : issue()?.layer === "runtime" ? "A container is stopped or unhealthy." : issue()?.summary || failed()?.error || props.diagnostic?.failedStage}</span>
+        <strong>{issue() ? issueTitle() : "Deployment failed"}</strong>
+        <span>{issue()?.summary || failed()?.error || props.diagnostic?.failedStage}</span>
       </div>
       <Button small onClick={() => route() ? props.domains(issue()!.summary) : !issue() && failed() ? props.view(failed()!.id) : props.details()}>
-        {route() ? "Inspect route" : !issue() && failed() ? "View deployment" : "Inspect health"}
+        {route() ? "Inspect route" : !issue() && failed() ? "View deployment" : "View diagnostics"}
       </Button>
     </section>
   </Show>;
@@ -56,45 +53,65 @@ export function ApplicationIssue(props: { diagnostic?: Diagnostic; domains: (hos
 
 export default function Diagnostics(props: { applicationId: string; query: ReturnType<typeof applicationDiagnostics>; focused?: boolean; view: (id: string) => void }) {
   const query = props.query;
-  const [expanded, setExpanded] = createSignal(false);
-  const incidents = createQuery(() => ({ queryKey: ["applications", props.applicationId, "incidents"], queryFn: () => api<{ items: { sequence: number; state: string; summary: string; createdAt: number }[] }>(`/applications/${props.applicationId}/incidents`), enabled: expanded(), refetchInterval: expanded() ? 15000 : false }));
+  const incidents = createQuery(() => ({ queryKey: ["applications", props.applicationId, "incidents"], queryFn: () => api<{ items: { sequence: number; state: string; summary: string; createdAt: number }[] }>(`/applications/${props.applicationId}/incidents`), refetchInterval: 15000 }));
   const checks = createMemo(() => [...(query.data?.checks ?? [])].sort((a, b) => Number(attention.has(b.state)) - Number(attention.has(a.state))));
+  const checksHealthy = createMemo(() => checks().length > 0 && checks().every(check => !attention.has(check.state) && check.state !== "unknown"));
+  const [showChecks, setShowChecks] = createSignal(false);
   const [checking, setChecking] = createSignal(false);
+  const checksExpanded = () => showChecks() || !checksHealthy();
   async function recheck() {
     if (checking()) return;
     setChecking(true);
     try { await query.refetch(); } finally { setChecking(false); }
   }
-  let section!: HTMLDetailsElement;
+  const lastChecked = () => Math.max(0, ...checks().map(check => check.observedAt));
+  let section!: HTMLElement;
   createEffect(on(() => !!props.focused && !!query.data, ready => {
-    if (ready) { setExpanded(true); queueMicrotask(() => section.scrollIntoView({ block: "start" })); }
+    if (ready) queueMicrotask(() => section.scrollIntoView({ block: "start" }));
   }));
-  return <details ref={section} class="configuration diagnostics-section health-disclosure" open={expanded()} onToggle={e => setExpanded(e.currentTarget.open)}>
-    <summary>Health details<Icon name="down" /></summary>
-    <Show when={expanded()}><div class="health-details">
-    <div class="section-toolbar"><h2>Current checks</h2><Button small variant="ghost" icon="refresh" disabled={checking()} aria-busy={checking()} onClick={() => void recheck()}>Recheck</Button></div>
+  return <section ref={section} class="diagnostics-section">
+    <div class="section-toolbar"><h2>Diagnostics</h2><Button small variant="ghost" icon="refresh" disabled={checking()} aria-busy={checking()} onClick={() => void recheck()}>Recheck</Button></div>
     <Show when={query.error}><ErrorNotice message={query.error!.message} /></Show>
     <Show when={query.data}>{data => <>
-      <Show when={checks().length}><div class="table-tray diagnostic-checks-tray"><table class="inventory-table diagnostic-table">
+      <div class="diagnostic-strip" classList={{ "has-issue": !checksHealthy() }}>
+        <Show when={!diagnosticIssue(data())}><div class="diagnostic-health">
+          <span class="diagnostic-health-icon"><Icon name={checksHealthy() ? "check" : "warning"} /></span>
+          <div class="diagnostic-health-copy">
+            <strong>{checksHealthy() ? "No issues detected" : "Checks need attention"}</strong>
+          </div>
+        </div></Show>
+        <dl class="diagnostic-facts">
+          <div><dt>Release</dt><dd><Show when={data().servingRelease} fallback="None">{release =>
+            <button class="inline-link diagnostic-operation mono" title={release().commit || release().id} onClick={() => props.view(release().id)}>{deploymentRef(release())}</button>
+          }</Show></dd></div>
+          <div><dt>Operation</dt><dd><Show when={data().latestOperation} fallback="None">{d =>
+            <button class="inline-link diagnostic-operation" onClick={() => props.view(d().id)}>
+              <span>{deploymentLabel(d())}</span><span class="mono">{formatDuration(data().durationSeconds)}</span>
+            </button>
+          }</Show></dd></div>
+          <div><dt>Checks</dt><dd>{checksHealthy() ? checks().length + " healthy" : checks().filter(check => attention.has(check.state)).length + " need attention"}</dd></div>
+          <Show when={lastChecked()}><div><dt>Updated</dt><dd>{operationTime(lastChecked())}</dd></div></Show>
+        </dl>
+        <Show when={checks().length}><Button small variant="ghost" onClick={() => setShowChecks(value => !value)}>{checksExpanded() ? "Hide checks" : "Show checks"}</Button></Show>
+      </div>
+      <Show when={checks().length && checksExpanded()}><div class="table-tray diagnostic-checks-tray"><table class="inventory-table diagnostic-table">
         <thead><tr><th>Check</th><th>Status</th><th>Last checked</th></tr></thead>
-        <tbody><For each={checks().filter(check => !deploymentCheck(check))}>{check =>
+        <tbody><For each={checks()}>{check =>
           <tr classList={{ "check-attention": attention.has(check.state) }}>
             <td><span class="diagnostic-layer">{checkNames[check.layer] ?? check.layer}</span>
               <Show when={["route", "certificate", "dependency-network", "task"].includes(check.layer)}><span class="mono diagnostic-reference">{check.summary}</span></Show>
             </td>
-            <td><Status value={staleCheck(check) ? "stale" : check.state} label={staleCheck(check) ? "Out of date" : check.state === "unknown" ? "Not checked" : undefined} /></td>
+            <td><Status value={check.state} label={check.state === "unknown" ? "Not checked" : undefined} /></td>
             <td><Show when={check.observedAt} fallback="Not checked">{observed =>
-              <time class="operator-time" datetime={new Date(observed() * 1000).toISOString()}>{operationTime(observed(), true)}</time>
+              <time class="operator-time" datetime={new Date(observed() * 1000).toISOString()} title={operationTime(observed(), true)}>{operationTime(observed())}</time>
             }</Show></td>
           </tr>
         }</For></tbody>
       </table></div></Show>
-      <Show when={checks().some(deploymentCheck)}><section class="deployment-checks"><div class="section-toolbar"><h2>Latest deployment checks</h2><Show when={data().latestOperation}>{d => <button class="inline-link mono" onClick={() => props.view(d().id)}>{deploymentRef(d())}<Icon name="chevron" /></button>}</Show></div><div class="table-tray"><table class="inventory-table diagnostic-table"><thead><tr><th>Check</th><th>Result</th><th>Recorded at</th></tr></thead><tbody><For each={checks().filter(deploymentCheck)}>{check => <tr><td>{checkNames[check.layer] ?? check.layer}</td><td><Status value={check.state} label={check.state === "healthy" ? "Passed at deployment" : check.state === "unknown" ? "Not checked" : undefined} /></td><td>{check.observedAt ? operationTime(check.observedAt, true) : "Not checked"}</td></tr>}</For></tbody></table></div></section></Show>
-      <Show when={data().observations.some(v=>v.kind==="service")}><details class="configuration"><summary>Resource usage<Icon name="down" /></summary><div class="table-tray"><table class="inventory-table"><thead><tr><th>Service</th><th>CPU</th><th>Memory</th><th>Restarts</th><th>Exit</th></tr></thead><tbody><For each={data().observations.filter(v=>v.kind==="service")}>{v=><tr><td>{v.details.service||"Application"}</td><td>{v.details.cpuPercent==null?"Unobserved":v.details.cpuPercent.toFixed(1)+"%"}</td><td>{v.details.memoryBytes==null?"Unobserved":bytes(v.details.memoryBytes)}</td><td>{v.details.restarts??"Unobserved"}</td><td>{v.details.oomKilled?"OOM":v.details.exitCode??"None"}</td></tr>}</For></tbody></table></div></details></Show>
+      <Show when={data().observations.some(v=>v.kind==="service")}><div class="table-tray resource-table" classList={{ "resources-expanded": checksExpanded() }}><table class="inventory-table"><thead><tr><th>Service</th><th>CPU</th><th>Memory</th><th>Restarts</th><th>Exit</th></tr></thead><tbody><For each={data().observations.filter(v=>v.kind==="service")}>{v=><tr><td>{v.details.service||"Application"}</td><td>{v.details.cpuPercent==null?"Unobserved":v.details.cpuPercent.toFixed(1)+"%"}</td><td>{v.details.memoryBytes==null?"Unobserved":bytes(v.details.memoryBytes)}</td><td>{v.details.restarts??"Unobserved"}</td><td>{v.details.oomKilled?"OOM":v.details.exitCode??"None"}</td></tr>}</For></tbody></table></div></Show>
       <Show when={data().changesSinceServing.length}><details class="configuration"><summary>Pending changes</summary><ul><For each={data().changesSinceServing}>{change => <li>{change}</li>}</For></ul></details></Show>
-      <details class="configuration"><summary>Recorded observations<Icon name="down" /></summary><div class="table-tray"><table class="inventory-table evidence-table"><thead><tr><th>Observation</th><th>Status</th><th>Time</th></tr></thead><tbody><For each={data().observations}>{fact => <tr><td>{fact.summary}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{logDateTime(fact.observedAt)}</td></tr>}</For><For each={data().unknowns}>{unknown => <tr class="evidence-unknown"><td>{unknown}</td><td><Status value="unknown" label="Not measured" /></td><td>—</td></tr>}</For></tbody></table></div></details>
+      <details class="configuration"><summary>Evidence</summary><div class="table-tray"><table class="inventory-table evidence-table"><thead><tr><th>Observation</th><th>Status</th><th>Time</th></tr></thead><tbody><For each={data().observations}>{fact => <tr><td>{fact.summary}</td><td><Status value={fact.stale?"stale":fact.state} /></td><td>{logDateTime(fact.observedAt)}</td></tr>}</For><For each={data().unknowns}>{unknown => <tr class="evidence-unknown"><td>{unknown}</td><td><Status value="unknown" label="Not measured" /></td><td>—</td></tr>}</For></tbody></table></div></details>
     </>}</Show>
     <Show when={incidents.data?.items.length}><details class="configuration"><summary>Activity</summary><div class="incident-list"><For each={[...(incidents.data?.items ?? [])].reverse()}>{event => <div class="incident-row"><Status value={event.state} /><span>{event.summary}</span><time>{createdDate(event.createdAt)}</time></div>}</For></div></details></Show>
-    </div></Show>
-  </details>;
+  </section>;
 }

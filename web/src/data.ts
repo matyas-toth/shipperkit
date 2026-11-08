@@ -15,7 +15,7 @@ export function statusOf(container: Container): string {
 export function statusLabel(value: string): string {
   const labels: Record<string, string> = {
     healthy:"Healthy",warning:"Warning",unknown:"Unobserved",stale:"Stale",stopped:"Stopped",unreachable:"Unreachable",disabled:"Disabled",not_applicable:"Not applicable",
-    before_deploy: "Before deploy", prepared: "Preparing", uncertain: "Uncertain", cancelled:"Cancelled",pulling:"Pulling image",completed: "Completed", serving: "Live", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
+    before_deploy: "Before deploy", prepared: "Preparing", uncertain: "Uncertain", cancelled:"Cancelled",pulling:"Pulling image",completed: "Completed", serving: "Running", unavailable: "Unavailable", running: "Running", exited: "Stopped", created: "Created", paused: "Paused",
     restarting: "Restarting", dead: "Failed", removing: "Removing",
     unhealthy: "Unhealthy", starting: "Starting", missing: "Missing", failed: "Failed", degraded: "Degraded",
     queued: "Queued", cloning: "Cloning", packaging: "Packaging", checking: "Checking", promoting: "Promoting",
@@ -27,12 +27,11 @@ export function statusLabel(value: string): string {
 
 export const operationPending = (state?: string) => !!state && !["succeeded", "failed", "interrupted","cancelled"].includes(state);
 export function applicationState(app: import("./types").Application) {
-  if (!app.activeDeploymentId && operationPending(app.latestDeployment?.state)) return app.latestDeployment!.state;
-  if (app.desiredState === "stopped") return "stopped";
+  if (operationPending(app.latestDeployment?.state)) return app.latestDeployment!.state;
   if(!app.activeDeploymentId&&app.latestDeployment?.state==="cancelled")return "created";
   if (!app.activeDeploymentId && app.latestDeployment?.state === "failed") return "failed";
   if (app.state === "missing" && app.activeDeploymentId && (app.sourceKind === "git" || app.sourceKind === "compose")) return "unavailable";
-  if (app.state === "running" && app.activeDeploymentId) return "serving";
+  if (app.state === "running" && isStaticApplication(app)) return "serving";
   return app.state;
 }
 export function methodLabel(app: import("./types").Application) {
