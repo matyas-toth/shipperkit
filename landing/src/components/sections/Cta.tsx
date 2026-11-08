@@ -126,7 +126,7 @@ function Cta3() {
             <div className="mt-9 flex flex-col items-center gap-4">
               <CopyButton label="Install Shipper" className="border-white bg-white text-[#070808] hover:border-white hover:bg-white/90" />
               <div className="w-full max-w-[640px]">
-                <CommandBar />
+                <CommandBar showCopy={false} />
               </div>
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-7">
