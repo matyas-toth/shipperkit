@@ -1,12 +1,11 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArtificialIntelligence01Icon,
-  ArrowUpRight01Icon,
-  CheckmarkCircle02Icon,
   ComputerTerminal01Icon,
   Key01Icon,
   LockKeyIcon,
   ShieldCheckIcon,
+  Tick02Icon,
   UserIcon,
 } from "@hugeicons/core-free-icons";
 import {
@@ -145,7 +144,7 @@ function Agents3() {
                     <div className="mt-0.5 text-[14px] text-[#8d8e88]">{tool}</div>
                   </div>
                   <span className="ml-auto flex items-center gap-1.5 text-[14px] text-[#79e3a6]">
-                    <HugeiconsIcon icon={CheckmarkCircle02Icon} size={15} strokeWidth={1.8} />
+                    <HugeiconsIcon icon={Tick02Icon} size={15} strokeWidth={1.9} />
                     same checks
                   </span>
                 </div>
@@ -155,7 +154,7 @@ function Agents3() {
           <div className="surface flex flex-col rounded-2xl p-7">
             <div className="flex items-center justify-between">
               <span className="text-[16px] font-[520] text-[#c3c4be]">Agent access</span>
-              <Status label="90 days" />
+              <Status label="90-day tokens" />
             </div>
             <div className="mt-6 space-y-4">
               {[
@@ -175,12 +174,6 @@ function Agents3() {
               Revoke a token without touching the app.
             </div>
           </div>
-        </div>
-        <div className="mt-8">
-          <a href="#get-shipper" className="inline-flex items-center gap-1.5 text-[15px] text-[#a2a39d] transition-colors hover:text-white">
-            Install Shipper
-            <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.8} />
-          </a>
         </div>
       </Container>
     </Section>

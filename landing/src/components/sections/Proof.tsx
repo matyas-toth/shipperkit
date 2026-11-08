@@ -81,7 +81,7 @@ function Proof3() {
       <Container>
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.9fr] lg:items-center lg:gap-16">
           <SectionIntro
-            title={<>You don't have to become a DevOps person.</>}
+            title={<>You don’t have to become a DevOps person.</>}
             body="If you can push code, you can ship with Shipper. The console tells you what happened in plain language, and the next useful action is always one click away."
           />
           <div className="lg:pt-1">

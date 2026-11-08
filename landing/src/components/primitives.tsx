@@ -85,9 +85,9 @@ export function SectionIntro({
     >
       <h2
         className={cn(
-          "max-w-[17ch] text-[#ecece7] text-[clamp(2.25rem,4.2vw,3.55rem)]",
-          size === "sm" && "text-[clamp(1.9rem,3.3vw,2.7rem)]",
-          size === "lg" && "text-[clamp(2.7rem,5vw,4.25rem)]",
+          "max-w-[19ch] text-[#ecece7] text-[clamp(2rem,4vw,3rem)]",
+          size === "sm" && "text-[clamp(1.7rem,3.2vw,2.3rem)]",
+          size === "lg" && "max-w-[17ch] text-[clamp(2.6rem,4.8vw,3.55rem)]",
           align === "center" && "mx-auto max-w-[20ch]",
         )}
       >
@@ -173,10 +173,12 @@ export function CommandBar({
   command = INSTALL_COMMAND,
   className,
   compact = false,
+  emphasis = false,
 }: {
   command?: string;
   className?: string;
   compact?: boolean;
+  emphasis?: boolean;
 }) {
   return (
     <div
@@ -225,7 +227,10 @@ export function CommandBar({
         <div className="flex justify-end">
           <CopyButton
             value={command}
-            className={compact ? "w-full border-white bg-white text-[#070808] hover:border-white hover:bg-white/90" : "w-full sm:w-auto"}
+            className={cn(
+              "w-auto",
+              emphasis && "border-white bg-white text-[#070808] hover:border-white hover:bg-white/90",
+            )}
           />
         </div>
       </div>

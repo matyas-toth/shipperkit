@@ -20,7 +20,6 @@ import {
   Status,
   TerminalInstall,
 } from "@/components/primitives";
-import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 function Deploy1() {
@@ -133,22 +132,16 @@ function Deploy3() {
         />
         <div className="surface mt-11 grid overflow-hidden rounded-2xl md:grid-cols-2 lg:grid-cols-3">
           {sources.map(([title, body, Icon]) => (
-            <div key={title} className="group flex gap-4 border-b border-white/[0.07] p-5 transition-colors duration-300 last:border-b-0 hover:bg-white/[0.015] sm:p-7 md:block md:border-r md:[&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0 md:[&:nth-last-child(-n+2)]:border-b-0">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05] md:size-11">
-                <HugeiconsIcon icon={Icon} size={20} strokeWidth={1.6} className="text-[#dcdcd6] md:size-[21px]" />
+            <div key={title} className="group flex gap-4 border-b border-white/[0.07] p-5 transition-colors duration-300 last:border-b-0 hover:bg-white/[0.015] sm:p-6 md:block md:border-r md:[&:nth-child(2n)]:border-r-0 lg:[&:nth-child(2n)]:border-r lg:[&:nth-child(3n)]:border-r-0 lg:[&:nth-last-child(-n+3)]:border-b-0 md:[&:nth-last-child(-n+2)]:border-b-0">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05]">
+                <HugeiconsIcon icon={Icon} size={20} strokeWidth={1.6} className="text-[#dcdcd6]" />
               </span>
-              <div className="min-w-0 md:mt-7">
-                <h3 className="text-[17px] font-[520] tracking-[-0.03em] text-[#ecece7] md:text-[21px]">{title}</h3>
-                <p className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d] md:mt-2.5 md:text-[15px] md:leading-[1.7]">{body}</p>
+              <div className="min-w-0 md:mt-5">
+                <h3 className="text-[17px] font-[520] tracking-[-0.03em] text-[#ecece7] md:text-[20px]">{title}</h3>
+                <p className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d] md:mt-2 md:text-[15px] md:leading-[1.7]">{body}</p>
               </div>
             </div>
           ))}
-        </div>
-        <div className="mt-8">
-          <a href="#get-shipper" className="inline-flex items-center gap-1.5 text-[15px] text-[#a2a39d] transition-colors hover:text-white">
-            Install Shipper
-            <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} strokeWidth={1.8} />
-          </a>
         </div>
       </Container>
     </Section>

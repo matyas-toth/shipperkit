@@ -137,6 +137,7 @@ function Product3() {
           title={<>A failed deploy is not an outage.</>}
           body="Shipper builds and verifies a new release before traffic moves. If anything fails, the app you already had keeps serving."
           align="center"
+          size="lg"
         />
         <div className="mx-auto mt-12 max-w-[1080px]">
           <Screenshot

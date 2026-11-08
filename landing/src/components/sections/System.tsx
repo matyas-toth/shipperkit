@@ -140,13 +140,13 @@ function System3() {
             src="/shots/diagnostics.png"
             alt="Shipper diagnostics checks with service health"
             plain
-            className="h-[280px] object-cover object-top"
+            className="h-[280px] w-[155%] max-w-none object-cover object-left-top"
           />
           <Screenshot
             src="/shots/backups.png"
             alt="Shipper backup plans and verified backup history"
             plain
-            className="h-[280px] object-cover object-top"
+            className="h-[280px] w-[155%] max-w-none object-cover object-left-top"
           />
         </div>
         <div className="mt-10 flex justify-center">
