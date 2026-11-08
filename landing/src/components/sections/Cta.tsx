@@ -1,5 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+  ArrowUpRight01Icon,
   CheckmarkCircle02Icon,
 } from "@hugeicons/core-free-icons";
 import {
@@ -114,19 +115,20 @@ function Cta3() {
           <div className="relative z-10 mx-auto flex max-w-[780px] flex-col items-center text-center">
             <h2 className="display max-w-[13ch] text-[clamp(2.9rem,6.4vw,6.4rem)] text-[#ecece7]">
               Everything you need,{" "}
-              <span className="text-[#8d8e88]">nothing you rent.</span>
+              <span className="text-[#c3c4be]">nothing you rent.</span>
             </h2>
             <p className="mt-7 max-w-[52ch] text-[17px] leading-[1.7] text-[#a5a6a0]">
               The deploy console, the release history, and the recovery plan live on
               your server. Keep the keys.
             </p>
             <div className="mt-9 w-full max-w-[640px]">
-              <CommandBar />
+              <CommandBar emphasis />
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-7">
-              <ActionSecondary href="https://github.com/matyas-toth/shipperkit" external>
+              <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
                 GitHub
-              </ActionSecondary>
+                <HugeiconsIcon icon={ArrowUpRight01Icon} size={13} strokeWidth={1.8} />
+              </a>
               <span className="text-[14px] text-[#8d8e88]">MIT licensed</span>
             </div>
           </div>

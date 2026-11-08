@@ -174,9 +174,11 @@ export function CopyButton({
 export function CommandBar({
   command = INSTALL_COMMAND,
   className,
+  emphasis = false,
 }: {
   command?: string;
   className?: string;
+  emphasis?: boolean;
 }) {
   return (
     <div
@@ -195,11 +197,22 @@ export function CommandBar({
               https://shipperkit.dev/install.sh
               <br />| sudo bash
             </span>
-            <span className="hidden whitespace-nowrap sm:inline">{command}</span>
+            <span className="hidden sm:block xl:hidden">
+              curl -fsSL
+              <br />
+              https://shipperkit.dev/install.sh
+              <br />| sudo bash
+            </span>
+            <span className="hidden whitespace-nowrap xl:inline">{command}</span>
           </code>
         </div>
         <div className="flex justify-end">
-          <CopyButton className="w-auto" />
+          <CopyButton
+            className={cn(
+              "w-auto",
+              emphasis && "border-white bg-white text-[#070808] hover:border-white hover:bg-white/90",
+            )}
+          />
         </div>
       </div>
     </div>

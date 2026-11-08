@@ -141,23 +141,23 @@ function Pricing3() {
         />
         <div className="mt-10 overflow-hidden rounded-xl border border-white/[0.13] bg-[#101111] sm:hidden">
           <div className="grid grid-cols-[1.05fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035]">
-            <div className="px-2 py-3 text-[11px] leading-tight text-[#8d8e88]">What you care about</div>
-            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[11px] font-[520] leading-tight text-[#f4f4f0]">Shipper</div>
-            <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[11px] leading-tight text-[#969791]">Managed PaaS</div>
-            <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[11px] leading-tight text-[#969791]">Hand-rolled</div>
+            <div className="px-2 py-3 text-[12px] leading-tight text-[#8d8e88]">What you care about</div>
+            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[12px] font-[520] leading-tight text-[#f4f4f0]">Shipper</div>
+            <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#969791]">Managed PaaS</div>
+            <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#969791]">Hand-rolled</div>
           </div>
           {rows.map(([label, shipper, paas, ssh], index) => (
             <div key={label} className={cn("grid grid-cols-[1.05fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
-              <div className="px-2 py-3 text-[12px] leading-tight text-[#dcdcd6]">{label}</div>
-              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[12px]">
+              <div className="px-2 py-3 text-[13px] leading-tight text-[#dcdcd6]">{label}</div>
+              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[13px]">
                 {shipper === "Yes" ? (
                   <HugeiconsIcon icon={Tick02Icon} size={16} strokeWidth={1.9} className="mx-auto text-[#79e3a6]" />
                 ) : (
                   <span className="text-[#dcdcd6]">{shipper}</span>
                 )}
               </div>
-              <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#8d8e88]">{paas}</div>
-              <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#8d8e88]">{ssh}</div>
+              <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[13px] leading-tight text-[#8d8e88]">{paas}</div>
+              <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[13px] leading-tight text-[#8d8e88]">{ssh}</div>
             </div>
           ))}
         </div>

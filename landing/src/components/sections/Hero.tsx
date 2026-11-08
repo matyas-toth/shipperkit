@@ -223,11 +223,11 @@ function Hero3() {
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_66%_50%_at_50%_0%,rgba(255,255,255,0.12),transparent_64%)]" />
       <AsciiField className="left-1/2 top-24 -z-10 hidden -translate-x-1/2 md:block" cols={96} rows={26} seed={19} opacity={0.08} />
       <Container>
-        <div className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-start">
-          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.35rem,6.4vw,6.8rem)] text-[#ecece7]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_420px] lg:grid-rows-[auto_auto] lg:gap-x-10">
+          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.35rem,6.4vw,6.8rem)] text-[#ecece7] lg:col-start-1 lg:row-start-1">
             From localhost to your own cloud in one deploy.
           </h1>
-          <div className="w-full max-w-[420px]">
+          <div className="w-full max-w-[420px] lg:col-start-2 lg:row-span-2 lg:row-start-1">
             <p className="text-[18px] leading-[1.7] text-[#b3b4ad]">
               Shipper runs on the VPS you already pay for. Ship any app and get a
               live URL, real logs, and a clean way back.
@@ -249,19 +249,19 @@ function Hero3() {
               ))}
             </div>
           </div>
-        </div>
-        <div id="install" className="mt-9 scroll-mt-28">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <ActionPrimary href="#get-shipper" className="w-full justify-center sm:w-auto" />
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
-                <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
-                GitHub
-              </a>
-              <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
+          <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <ActionPrimary href="#get-shipper" className="w-full justify-center lg:w-auto" />
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
+                  <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
+                  GitHub
+                </a>
+                <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
+              </div>
             </div>
+            <CommandBar className="mt-4" />
           </div>
-          <CommandBar className="mt-4" />
         </div>
         <div className="relative mt-10">
           <div className="pointer-events-none absolute -inset-x-24 -top-10 bottom-0 -z-10 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1),transparent_64%)] blur-3xl" />

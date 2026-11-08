@@ -139,7 +139,23 @@ function Product3() {
           align="center"
           size="lg"
         />
-        <div className="mx-auto mt-12 max-w-[1080px]">
+        <div className="mx-auto mt-10 max-w-[1080px] sm:hidden">
+          <div className="surface rounded-xl p-5">
+            <div className="flex items-center gap-2 text-[13px] text-[#f0a3a6]">
+              <span className="size-1.5 rounded-full bg-[#f08c90]" />
+              Deployment failed
+            </div>
+            <div className="mt-2 text-[16px] text-[#ecece7]">Build exited with status 1</div>
+            <div className="mt-3 border-t border-white/[0.08] pt-3 text-[13px] text-[#a2a39d]">
+              Sass compilation failed
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[13px]">
+              <span className="text-[#8d8e88]">Serving release</span>
+              <span className="mono text-[#ecece7]">4f8ac21d</span>
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto mt-12 max-w-[1080px] max-sm:hidden">
           <Screenshot
             src="/shots/failed.png"
             alt="A failed deployment with logs and the previous release still serving"
