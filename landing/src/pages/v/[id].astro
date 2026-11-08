@@ -1,0 +1,21 @@
+---
+import Base from "@/layouts/Base.astro";
+import PageBody from "@/components/PageBody.astro";
+import { landingPages } from "@/data/variants";
+
+export function getStaticPaths() {
+  return landingPages.map((page) => ({
+    params: { id: page.id },
+    props: { page },
+  }));
+}
+
+const { page } = Astro.props;
+---
+
+<Base
+  title={`Shipper · ${page.name}`}
+  description="Deploy your apps to your own server. Shipper is a self-hosted deployment console with HTTPS, logs, rollbacks, backups, and agent access."
+>
+  <PageBody page={page} />
+</Base>

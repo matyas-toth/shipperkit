@@ -1,0 +1,99 @@
+---
+import Base from "@/layouts/Base.astro";
+import GalleryHeader from "@/components/GalleryHeader.astro";
+import { landingPages, sectionLabels, sectionOrder, variantNames } from "@/data/variants";
+---
+
+<Base
+  title="Shipper landing lab"
+  description="Ten landing page combinations and every section variant in one place."
+>
+  <GalleryHeader />
+  <div class="shell py-16 md:py-24">
+    <div class="max-w-[760px]">
+      <h1 class="display text-[clamp(2.6rem,5.6vw,4.8rem)] text-[#f4f4f0]">
+        Ten pages, sixty-six variants.
+      </h1>
+      <p class="mt-6 max-w-[64ch] text-[17px] leading-[1.7] text-[#a5a6a0]">
+        Every page below combines a different navigation, hero, proof, console,
+        deploy, agents, reliability, pricing, FAQ, closing, and footer. Open any page
+        at full size, or inspect the six isolated variants for each section.
+      </p>
+    </div>
+
+    <div class="mt-16 flex items-center justify-between border-b border-white/[0.1] pb-4">
+      <h2 class="text-[20px] font-[520] text-[#e7e7e2]">Landing pages</h2>
+      <span class="text-[14px] text-[#797a75]">10 combinations</span>
+    </div>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      {landingPages.map((page) => (
+        <a
+          href={`/v/${page.id}`}
+          class="group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[#080909] p-6 transition-colors hover:border-white/[0.22]"
+        >
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-4">
+              <span class="mono flex size-10 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.03] text-[15px] text-[#a2a39d]">
+                {page.id}
+              </span>
+              <div>
+                <div class="text-[19px] font-[520] text-[#ecece7]">{page.name}</div>
+                <div class="mt-0.5 text-[14px] text-[#797a75]">/v/{page.id}</div>
+              </div>
+            </div>
+            <span class="text-[14px] text-[#85867f] transition-colors group-hover:text-white">Open ↗</span>
+          </div>
+          <p class="mt-5 max-w-[56ch] text-[15px] leading-[1.65] text-[#8d8e88]">{page.note}</p>
+
+          <div class="mt-6 grid grid-cols-6 gap-1.5">
+            {(["hero", "proof", "product", "deploy", "agents", "system", "pricing", "faq", "cta", "footer", "nav"] as const).map((key, index) => (
+              <div
+                class:list={[
+                  "h-8 rounded border border-white/[0.07]",
+                  index === 0 || index === 1 ? "bg-white/[0.14]" : index === 10 ? "bg-[#79e3a6]/15" : "bg-white/[0.04]",
+                ]}
+                title={`${sectionLabels[key]}: ${variantNames[key][page[key] - 1]}`}
+              />
+            ))}
+          </div>
+
+          <div class="mt-6 flex flex-wrap gap-2 border-t border-white/[0.08] pt-5">
+            {(["hero", "product", "agents", "pricing"] as const).map((key) => (
+              <span class="rounded border border-white/[0.08] px-2.5 py-1 text-[14px] text-[#85867f]">
+                {sectionLabels[key]} {page[key]}
+              </span>
+            ))}
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <div class="mt-20 flex items-center justify-between border-b border-white/[0.1] pb-4">
+      <h2 class="text-[20px] font-[520] text-[#e7e7e2]">Section variants</h2>
+      <span class="text-[14px] text-[#797a75]">6 per section</span>
+    </div>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {sectionOrder.map((section) => (
+        <div class="rounded-2xl border border-white/[0.1] bg-[#080909] p-5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-[18px] font-[520] text-[#e7e7e2]">{sectionLabels[section]}</h3>
+            <span class="text-[14px] text-[#797a75]">06</span>
+          </div>
+          <div class="mt-4 space-y-1">
+            {variantNames[section].map((name, index) => (
+              <a
+                href={`/variants/${section}#variant-${index + 1}`}
+                class="flex items-center justify-between rounded-lg px-3 py-2 text-[15px] text-[#a2a39d] transition-colors hover:bg-white/[0.05] hover:text-white"
+              >
+                <span>{String(index + 1).padStart(2, "0")} {name}</span>
+                <span class="text-[14px] text-[#797a75]">↗</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</Base>

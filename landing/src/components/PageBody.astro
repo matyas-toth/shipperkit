@@ -1,0 +1,30 @@
+---
+import type { PageCombo } from "@/data/variants";
+import { Nav } from "@/components/nav/Nav";
+import { Hero } from "@/components/sections/Hero";
+import { Product } from "@/components/sections/Product";
+import { Deploy } from "@/components/sections/Deploy";
+import { Agents } from "@/components/sections/Agents";
+import { System } from "@/components/sections/System";
+import { Pricing } from "@/components/sections/Pricing";
+import { Faq } from "@/components/sections/Faq";
+import { Cta } from "@/components/sections/Cta";
+import { Footer } from "@/components/sections/Footer";
+
+interface Props {
+  page: PageCombo;
+}
+
+const { page } = Astro.props;
+---
+
+<Nav variant={page.nav} />
+<Hero variant={page.hero} />
+<Product variant={page.product} />
+<Deploy variant={page.deploy} />
+<Agents variant={page.agents} />
+<System variant={page.system} />
+<Pricing variant={page.pricing} />
+<Faq variant={page.faq} />
+<Cta variant={page.cta} />
+<Footer variant={page.footer} />
