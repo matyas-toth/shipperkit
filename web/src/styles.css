@@ -10387,6 +10387,40 @@ body:has(.confirm-dialog) .page-actions {
 }
 
 /* Simple application creation. */
+.github-account-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(300px, calc(100vw - 24px));
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--floating);
+}
+.github-account-popover > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.github-account-popover > button:hover, .github-account-popover > button:focus-visible { background: var(--layer-02); }
+.github-account-popover > button > span { flex: 1; overflow-wrap: anywhere; }
+.connected-source-fields { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(160px, 1fr); gap: 16px; align-items: start; padding-top: 18px; }
+.connected-source-fields .repository-picker { display: flex; flex-direction: column; gap: 8px; background: transparent; padding: 0; border: 0; box-shadow: none; }
+.connected-branch-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.connected-source-fields .input { width: 100%; min-width: 0; }
+.connected-source-fields label { font-size: 13px; color: var(--secondary); }
 .source-entry {
   position: relative;
   max-width: 860px;
@@ -10425,6 +10459,7 @@ body:has(.confirm-dialog) .page-actions {
 .deployment-proposal dd { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; overflow-wrap: anywhere; }
 .proposal-variables { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 @media (width < 48rem) {
+  .connected-source-fields { grid-template-columns: minmax(0, 1fr); }
   .source-entry { padding: 22px 18px; margin-top: 24px; }
   .source-entry h1 { font-size: 20px; }
   .source-entry-actions { flex-direction: column; gap: 16px; }

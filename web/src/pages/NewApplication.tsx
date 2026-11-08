@@ -16,6 +16,7 @@ import { BuildDetails, DomainFields, PortField } from "../components/DeployField
 import { LifecycleCommands } from "../components/Commands";
 import { AutomaticDeployFields } from "../components/DeploymentTriggers";
 import GitFields from "../components/GitFields";
+import { GitHubAccountPicker, RepositoryBranchPicker } from "../components/GitHubSourcePicker";
 import LocalSource from "../components/LocalSource";
 import { ReviewFact, ReviewPanel } from "../components/ReviewPanel";
 import RuntimeFields from "../components/RuntimeFields";
@@ -83,6 +84,7 @@ export default function NewApplication() {
   const [manual, setManual] = createSignal(false);
   const [sourcePanel, setSourcePanel] = createSignal(false);
   const connections = useConnections();
+  const githubAccounts = createMemo(() => connections.data?.items.filter(c => c.kind === "github_app" || c.kind === "github_token") ?? []);
   const [step, setStep] = createSignal<Step>("source");
   const [pending, setPending] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -139,6 +141,13 @@ export default function NewApplication() {
   });
 
   function enterManual() { setManual(true); go("source"); }
+  function selectAccount(id: string) {
+    batch(() => {
+      chooseSource("git");
+      if (config.sourceId !== id) { setConfig("repository", ""); setConfig("repositoryId", 0); setConfig("branch", ""); }
+      setConfig("sourceId", id); setSourcePanel(false);
+    });
+  }
   function change(k: keyof StaticConfig, value: unknown) { setConfig(k, value as never); }
   function go(next: Step) {
     setError("");
@@ -316,16 +325,24 @@ export default function NewApplication() {
       <form class="source-entry" onSubmit={e => { e.preventDefault(); setSourcePanel(false); void plan(); }}>
         <h1 ref={heading} tabindex="-1">Deploy an application</h1>
         <fieldset disabled={pending()}>
-          <Show when={git() && !config.sourceId} fallback={<button type="button" class="input source-selected" onClick={() => setSourcePanel(true)}><Icon name={sources.find(s => s.value === source())?.icon || "git"} /><span>{git() ? repositoryLabel(config.repository) || connections.data?.items.find(c => c.id === config.sourceId)?.name || "Choose repository" : source() === "image" ? config.image || "Choose container image" : local() ? config.localSource ? "Local files selected" : "Choose local files" : inlineCompose() ? "Inline Docker Compose" : "Inline Dockerfile"}</span><Icon name="down" /></button>}>
-            <input class="input source-url" type="url" required aria-label="Repository URL" placeholder="https://github.com/you/your-project" autocomplete="off" value={config.repository} onInput={e => setConfig("repository", e.currentTarget.value)} />
+          <Show when={git()} fallback={<button type="button" class="input source-selected" onClick={() => setSourcePanel(true)}><Icon name={sources.find(s => s.value === source())?.icon || "git"} /><span>{source() === "image" ? config.image || "Choose container image" : local() ? config.localSource ? "Local files selected" : "Choose local files" : inlineCompose() ? "Inline Docker Compose" : "Inline Dockerfile"}</span><Icon name="down" /></button>}>
+            <input class="input source-url" type="url" required readonly={!!config.sourceId} aria-label="Repository URL" placeholder={config.sourceId ? "Choose a repository below" : "https://github.com/you/your-project"} autocomplete="off" value={config.repository} onInput={e => setConfig("repository", e.currentTarget.value)} />
           </Show>
+          <Show when={git() && config.sourceId} keyed>{id => <div class="connected-source-fields" tabindex="-1" aria-label="Repository and branch">
+            <RepositoryPicker sourceId={id} config={config} change={change} />
+            <Show when={config.repository} keyed>{_repository => <RepositoryBranchPicker config={config} change={change} />}</Show>
+          </div>}</Show>
+          <Show when={connections.error}><ErrorNotice message={connections.error!.message} retry={() => void connections.refetch()} /></Show>
           <div class="source-entry-actions">
             <div class="source-alternatives">
-              <A class="button ghost small" href="/settings#sources"><Icon name="git" />Connect GitHub</A>
+              <Show when={connections.data} fallback={<Button small variant="ghost" icon="git" disabled aria-busy={connections.isPending}>GitHub</Button>}>
+                <Show when={githubAccounts().length} fallback={<A class="button ghost small" href="/settings#sources"><Icon name="git" />Connect GitHub</A>}>
+                  <GitHubAccountPicker accounts={githubAccounts()} selected={git() ? config.sourceId : undefined} select={selectAccount} />
+                </Show>
+              </Show>
               <Show when={!git() || config.sourceId}><Button small variant="ghost" icon="git" onClick={() => { chooseSource("git"); change("sourceId", ""); change("repositoryId", 0); setSourcePanel(false); }}>Repository URL</Button></Show>
               <Button small variant="ghost" icon="folder" onClick={() => { chooseSource("local"); setSourcePanel(true); }}>Local files</Button>
               <Button small variant="ghost" icon="box" onClick={() => { chooseSource("image"); setSourcePanel(true); }}>Container image</Button>
-              <For each={connections.data?.items.filter(c => c.kind !== "registry")}>{c => <Button small variant="ghost" icon="git" onClick={() => { chooseSource("git"); if (config.sourceId !== c.id) { change("repository", ""); change("repositoryId", 0); change("branch", ""); } change("sourceId", c.id); setSourcePanel(true); }}>{c.name}</Button>}</For>
               <details class="source-extra"><summary aria-label="More sources"><Icon name="more" /></summary><div><For each={sources.slice(3)}>{s => <Button small variant="ghost" icon={s.icon} onClick={() => { chooseSource(s.value); setSourcePanel(true); }}>{s.label}</Button>}</For></div></details>
             </div>
             <Button variant="primary" type="submit" disabled={pending() || !sourceReady()}>{inspecting() || previewing() ? "Inspecting source" : pending() ? "Preparing deployment" : "Continue"}<Icon name="chevron" /></Button>
@@ -333,7 +350,6 @@ export default function NewApplication() {
           <Show when={sourcePanel()}><div class="source-input-panel" role="dialog" aria-label="Choose application source" onKeyDown={e => { if (e.key === "Escape") { e.preventDefault(); setSourcePanel(false); } }}>
             <div class="section-toolbar"><h3>{git() ? connections.data?.items.find(c => c.id === config.sourceId)?.name : sources.find(s => s.value === source())?.label}</h3><Button small variant="ghost" aria-label="Close source options" onClick={() => setSourcePanel(false)}><Icon name="close" /></Button></div>
             <div class="form-fields">
-              <Show when={git() && config.sourceId} keyed>{id => <RepositoryPicker sourceId={id} config={config} change={change} />}</Show>
               <Show when={local()}><LocalSource value={config.localSource} change={id => setConfig("localSource", id)} /></Show>
               <Show when={source() === "image"}><ImageFields config={config} change={change} /></Show>
               <Show when={source() === "inline"}><InlineFields config={config} change={change} /></Show>

@@ -65,3 +65,77 @@ test("source inspection proposes Compose and inspection failure keeps the source
   await page.screenshot({ path: join(tmpdir(), "shipper-manual-source-mobile.png") });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test("connected GitHub accounts load repositories and branches in the simple entry", async ({ page }) => {
+  await login(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.route("**/api/connections", r => r.fulfill({ json: { items: [
+    { id: "personal-first", name: "Personal", kind: "github_app" },
+    { id: "work-second", name: "Work organization", kind: "github_token" },
+    { id: "registry", name: "Registry", kind: "registry" },
+  ] } }));
+  const pending: import("@playwright/test").Route[] = [];
+  const branches: import("@playwright/test").Route[] = [];
+  await page.route("**/api/connections/*/repositories?**", r => { pending.push(r); });
+  await page.route("**/api/repositories/branches", r => { branches.push(r); });
+  const repo = (id: number, owner: string) => ({ id, full_name: owner + "/site", clone_url: "https://github.com/" + owner + "/site.git", default_branch: "main" });
+  await page.goto("/new");
+  await expect(page.getByRole("link", { name: "Connect GitHub", exact: true })).toHaveCount(0);
+  const accountButton = page.getByRole("button", { name: "Personal GitHub Account", exact: true });
+  await expect(accountButton).toBeVisible();
+  await expect(page.getByLabel("Repository", { exact: true })).toHaveCount(0);
+  await accountButton.click();
+  const accounts = page.getByRole("dialog", { name: "GitHub accounts", exact: true });
+  await expect(accounts).toBeVisible();
+  await expect(accounts.getByRole("button")).toHaveCount(2);
+  await page.screenshot({ path: join(tmpdir(), "shipper-github-accounts.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => { const box = await accounts.boundingBox(); return box ? box.x + box.width : 9999; }).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await accounts.getByRole("button", { name: "Personal", exact: true }).click();
+  const repository = page.getByLabel("Repository", { exact: true });
+  await expect(accounts).toBeHidden();
+  await expect(repository).toBeDisabled();
+  await expect(repository).toContainText("Loading repositories");
+  await expect.poll(() => pending.length).toBe(1);
+  await accountButton.click();
+  await accounts.getByRole("button", { name: "Work organization", exact: true }).click();
+  await expect.poll(() => pending.length).toBe(2);
+  await pending[0].fulfill({ json: { items: [repo(1, "old-personal")], nextPage: 0 } });
+  await expect(repository).toBeDisabled();
+  await pending[1].fulfill({ json: { items: [repo(2, "work")], nextPage: 0 } });
+  await expect(repository).toBeEnabled();
+  await expect(repository).not.toContainText("old-personal");
+  await repository.selectOption(repo(2, "work").clone_url);
+  const branch = page.getByLabel("Branch", { exact: true });
+  await expect(branch).toBeDisabled();
+  await expect(branch).toContainText("Loading branches");
+  await expect.poll(() => branches.length).toBe(1);
+  expect(branches[0].request().postDataJSON()).toMatchObject({ repository: repo(2, "work").clone_url, sourceId: "work-second" });
+  await branches[0].fulfill({ json: { items: ["main", "develop"], default: "main" } });
+  await expect(branch).toHaveValue("main");
+  await branch.selectOption("develop");
+  await page.screenshot({ path: join(tmpdir(), "shipper-github-repository.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await accountButton.click();
+  await expect(accounts).toBeVisible();
+  const bounds = await accounts.boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
+  await expect(accounts).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: join(tmpdir(), "shipper-github-repository-mobile.png") });
+  let submitted: any;
+  await page.route("**/api/repositories/inspect", r => r.fulfill({ json: { method: "static", commit: "c".repeat(40), variables: [] } }));
+  await page.route("**/api/plan", r => { submitted = r.request().postDataJSON(); return r.fulfill({ json: { ...submitted, applicationId: "new-site", revision: "review" } }); });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Ready to deploy", exact: true })).toBeVisible();
+  expect(submitted.config).toMatchObject({ sourceId: "work-second", repositoryId: 2, repository: repo(2, "work").clone_url, branch: "develop" });
+  await page.getByRole("button", { name: "Configure manually", exact: true }).click();
+  await expect(page.getByLabel("Connection", { exact: true })).toHaveValue("work-second");
+  await expect(page.getByLabel("Branch or commit", { exact: true })).toHaveValue("develop");
+  expect(errors).toEqual([]);
+});
