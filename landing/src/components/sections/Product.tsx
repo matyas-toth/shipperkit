@@ -130,7 +130,7 @@ function Product2() {
 
 function Product3() {
   return (
-    <Section id="product" className="section-rule overflow-hidden">
+    <Section id="product" className="section-rule overflow-hidden bg-[#070808]">
       <div className="absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(ellipse_52%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_72%)]" />
       <Container>
         <SectionIntro

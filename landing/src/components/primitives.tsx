@@ -85,7 +85,7 @@ export function SectionIntro({
     >
       <h2
         className={cn(
-          "max-w-[19ch] text-[#ecece7] text-[clamp(2rem,4vw,3rem)]",
+          "max-w-[21ch] text-[#ecece7] text-[clamp(2rem,4vw,3rem)]",
           size === "sm" && "text-[clamp(1.7rem,3.2vw,2.3rem)]",
           size === "lg" && "max-w-[17ch] text-[clamp(2.6rem,4.8vw,3.55rem)]",
           align === "center" && "mx-auto max-w-[20ch]",
