@@ -1,6 +1,6 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-  ArrowUpRight01Icon,
+  ArrowDown01Icon,
   CheckmarkCircle02Icon,
   GithubIcon,
   TerminalIcon,
@@ -234,13 +234,25 @@ function Hero3() {
             </p>
             <a href="#how-it-works" className="mt-4 inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
               See how it works
-              <HugeiconsIcon icon={ArrowUpRight01Icon} size={13} strokeWidth={1.8} />
+              <HugeiconsIcon icon={ArrowDown01Icon} size={13} strokeWidth={1.8} />
             </a>
+            <div className="mt-6 hidden divide-y divide-white/[0.08] border-t border-white/[0.08] lg:block">
+              {[
+                ["One command", "Installs Shipper and the proxy"],
+                ["One deploy", "Builds, verifies, and routes your app"],
+                ["One screen", "Releases, logs, and rollbacks"],
+              ].map(([title, body]) => (
+                <div key={title} className="py-3">
+                  <div className="text-[14px] font-[500] text-[#ecece7]">{title}</div>
+                  <div className="mt-0.5 text-[13px] leading-[1.5] text-[#8d8e88]">{body}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
         <div id="install" className="mt-9 scroll-mt-28">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <ActionPrimary href="#get-shipper" />
+            <ActionPrimary href="#get-shipper" className="w-full justify-center sm:w-auto" />
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
                 <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
@@ -263,18 +275,6 @@ function Hero3() {
               priority
             />
           </div>
-        </div>
-        <div className="surface mt-3 grid divide-y divide-white/[0.08] overflow-hidden rounded-xl md:grid-cols-3 md:divide-x md:divide-y-0">
-          {[
-            ["One command", "Installs Shipper and the proxy"],
-            ["One deploy", "Builds, verifies, and routes your app"],
-            ["One screen", "Releases, logs, and rollbacks"],
-          ].map(([title, body]) => (
-            <div key={title} className="px-5 py-4">
-              <div className="text-[15px] font-[500] text-[#ecece7]">{title}</div>
-              <div className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d]">{body}</div>
-            </div>
-          ))}
         </div>
       </Container>
     </section>

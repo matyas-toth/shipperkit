@@ -185,14 +185,22 @@ export function CommandBar({
         className,
       )}
     >
-      <div className="flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto px-2 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <span className="mono shrink-0 text-[14px] text-[#85867f]">$</span>
-          <code className="mono whitespace-nowrap text-[12px] leading-[1.7] text-[#e1e1db] sm:text-[13px]">
-            {command}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-1 items-start gap-2.5 px-2 py-1">
+          <span className="mono shrink-0 pt-0.5 text-[14px] text-[#85867f]">$</span>
+          <code className="mono min-w-0 flex-1 text-left text-[12px] leading-[1.7] text-[#e1e1db] sm:text-[13px]">
+            <span className="block sm:hidden">
+              curl -fsSL
+              <br />
+              https://shipperkit.dev/install.sh
+              <br />| sudo bash
+            </span>
+            <span className="hidden whitespace-nowrap sm:inline">{command}</span>
           </code>
         </div>
-        <CopyButton compactIcon className="w-11 justify-center px-0 sm:w-auto sm:px-4" />
+        <div className="flex justify-end">
+          <CopyButton className="w-auto" />
+        </div>
       </div>
     </div>
   );

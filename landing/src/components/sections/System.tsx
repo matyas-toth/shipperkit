@@ -143,14 +143,14 @@ function System3() {
             alt="Shipper diagnostics checks with service health"
             plain
             fade
-            className="h-[280px] w-[155%] max-w-none object-cover object-left-top"
+            className="h-[280px] object-cover object-top xl:w-[155%] xl:max-w-none"
           />
           <Screenshot
             src="/shots/backups.png"
             alt="Shipper backup plans and verified backup history"
             plain
-            frameClassName="max-xl:hidden"
-            className="h-[280px] w-[155%] max-w-none object-cover object-left-top"
+            fade
+            className="h-[280px] object-cover object-top xl:w-[155%] xl:max-w-none"
           />
         </div>
         <div className="mt-10 flex justify-center">
