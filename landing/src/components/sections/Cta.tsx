@@ -110,8 +110,8 @@ function Cta3() {
     <Section id="get-shipper" className="border-t border-white/[0.08]">
       <Container>
         <div className="surface elevated relative overflow-hidden rounded-[28px] px-7 py-16 md:px-14 md:py-24">
-          <div className="absolute inset-0 -z-0 bg-[radial-gradient(ellipse_70%_100%_at_85%_0%,rgba(255,255,255,0.08),transparent_60%)]" />
-          <div className="relative z-10">
+          <div className="absolute inset-0 -z-0 bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,rgba(255,255,255,0.085),transparent_62%)]" />
+          <div className="relative z-10 mx-auto flex max-w-[780px] flex-col items-center text-center">
             <h2 className="display max-w-[13ch] text-[clamp(2.9rem,6.4vw,6.4rem)] text-[#ecece7]">
               Everything you need,{" "}
               <span className="text-[#8d8e88]">nothing you rent.</span>
@@ -120,14 +120,14 @@ function Cta3() {
               The deploy console, the release history, and the recovery plan live on
               your server. Keep the keys.
             </p>
-            <div className="mt-9 flex w-full max-w-[680px]">
+            <div className="mt-9 w-full max-w-[640px]">
               <CommandBar />
             </div>
-            <div className="mt-8 flex flex-wrap items-center gap-7">
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-7">
               <ActionSecondary href="https://github.com/matyas-toth/shipperkit" external>
                 GitHub
               </ActionSecondary>
-              <span className="text-[14px] text-[#797a75]">MIT licensed</span>
+              <span className="text-[14px] text-[#8d8e88]">MIT licensed</span>
             </div>
           </div>
         </div>

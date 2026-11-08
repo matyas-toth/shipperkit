@@ -169,11 +169,9 @@ function Agents3() {
                 </div>
               ))}
             </div>
-            <div className="mt-auto flex items-center gap-3 rounded-xl border border-white/[0.09] bg-white/[0.025] px-5 py-4">
-              <HugeiconsIcon icon={LockKeyIcon} size={18} strokeWidth={1.6} className="text-[#a8a9a3]" />
-              <span className="text-[14px] leading-[1.6] text-[#8d8e88]">
-                Revoke a token without touching the app.
-              </span>
+            <div className="mt-auto flex items-center gap-3 border-t border-white/[0.08] pt-5 text-[14px] leading-[1.6] text-[#8d8e88]">
+              <HugeiconsIcon icon={LockKeyIcon} size={18} strokeWidth={1.6} className="shrink-0 text-[#797a75]" />
+              Revoke a token without touching the app.
             </div>
           </div>
         </div>

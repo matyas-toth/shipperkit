@@ -163,6 +163,60 @@ function Hero2() {
   );
 }
 
+function MobileConsole() {
+  const rows = [
+    ["Website", "website.local", "Running", "success"],
+    ["Atlas API", "atlas.local", "Running", "success"],
+    ["API", "api.local", "Degraded", "warning"],
+    ["Checkout", "checkout.local", "Failed", "danger"],
+  ] as const;
+  return (
+    <div className="overflow-hidden rounded-[18px] border border-white/[0.14] bg-[#0a0b0b] shadow-[0_34px_70px_-34px_rgba(0,0,0,1)]">
+      <div className="flex items-center justify-between border-b border-white/[0.08] bg-gradient-to-b from-[#141515] to-[#0a0b0b] px-4 py-3">
+        <span className="text-[13px] font-[560] tracking-[-0.02em] text-[#f4f4f0]">Shipper</span>
+        <span className="flex items-center gap-1.5 text-[12px] text-[#8d8e88]">
+          <span className="size-1.5 rounded-full bg-[#79e3a6]" />
+          Connected
+        </span>
+      </div>
+      <div className="px-4 pb-2 pt-4">
+        <div className="text-[19px] font-[560] tracking-[-0.03em] text-[#f4f4f0]">Applications</div>
+        <div className="mt-3 flex h-9 items-center rounded-lg border border-white/[0.08] bg-black/25 px-3 text-[13px] text-[#797a75]">
+          Search applications
+        </div>
+        <div className="mt-2 divide-y divide-white/[0.07]">
+          {rows.map(([name, domain, status, tone]) => (
+            <div key={name} className="flex items-center justify-between gap-3 py-3">
+              <div className="min-w-0">
+                <div className="text-[14px] text-[#dcdcd6]">{name}</div>
+                <div className="mono mt-0.5 truncate text-[12px] text-[#797a75]">{domain}</div>
+              </div>
+              <span
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 text-[12px]",
+                  tone === "success" && "text-[#79e3a6]",
+                  tone === "warning" && "text-[#e8c07d]",
+                  tone === "danger" && "text-[#f0a3a6]",
+                )}
+              >
+                <span
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    tone === "success" && "bg-[#79e3a6]",
+                    tone === "warning" && "bg-[#e8c07d]",
+                    tone === "danger" && "bg-[#f08c90]",
+                  )}
+                />
+                {status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Hero3() {
   return (
     <section className="relative overflow-hidden pt-32 md:pt-36">
@@ -170,7 +224,7 @@ function Hero3() {
       <AsciiField className="left-1/2 top-24 -z-10 hidden -translate-x-1/2 md:block" cols={96} rows={26} seed={19} opacity={0.08} />
       <Container>
         <div className="flex flex-col items-start justify-between gap-10 lg:flex-row lg:items-end">
-          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.9rem,6.4vw,6.8rem)] text-[#ecece7]">
+          <h1 className="display max-w-[13ch] animate-rise text-[clamp(2.5rem,6.4vw,6.8rem)] text-[#ecece7]">
             From localhost to your own cloud in one deploy.
           </h1>
           <div className="w-full max-w-[420px] pb-1">
@@ -196,12 +250,16 @@ function Hero3() {
         </div>
         <div className="relative mt-12">
           <div className="pointer-events-none absolute -inset-x-24 -top-10 bottom-0 -z-10 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1),transparent_64%)] blur-3xl" />
-          <Screenshot
-            src="/shots/applications.png"
-            alt="Shipper applications dashboard showing live apps and deployment status"
-            priority
-            className="max-sm:w-[180%] max-sm:max-w-none"
-          />
+          <div className="sm:hidden">
+            <MobileConsole />
+          </div>
+          <div className="hidden sm:block">
+            <Screenshot
+              src="/shots/applications.png"
+              alt="Shipper applications dashboard showing live apps and deployment status"
+              priority
+            />
+          </div>
         </div>
         <div className="surface mt-3 grid divide-y divide-white/[0.08] overflow-hidden rounded-xl md:grid-cols-3 md:divide-x md:divide-y-0">
           {[

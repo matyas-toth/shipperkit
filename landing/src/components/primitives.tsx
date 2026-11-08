@@ -225,8 +225,7 @@ export function CommandBar({
         <div className="flex justify-end">
           <CopyButton
             value={command}
-            iconOnly={compact}
-            className={compact ? "" : "w-full sm:w-auto"}
+            className={compact ? "w-full border-white bg-white text-[#070808] hover:border-white hover:bg-white/90" : "w-full sm:w-auto"}
           />
         </div>
       </div>
@@ -322,7 +321,7 @@ export function Screenshot({
   return (
     <figure
       className={cn(
-        "relative m-0 min-w-0 max-w-full rounded-[22px] border border-white/[0.12] bg-white/[0.035] p-2 shadow-[0_50px_120px_-50px_rgba(0,0,0,1)]",
+        "relative m-0 min-w-0 max-w-full rounded-[22px] border border-white/[0.14] bg-white/[0.045] p-2 shadow-[0_50px_120px_-50px_rgba(0,0,0,1)]",
         frameClassName,
       )}
     >
@@ -347,7 +346,7 @@ export function Screenshot({
           height={900}
           loading={priority ? "eager" : "lazy"}
           decoding="async"
-          className={cn("h-auto w-full", className)}
+          className={cn("shot h-auto w-full", className)}
         />
       </div>
     </figure>

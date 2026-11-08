@@ -134,7 +134,7 @@ function System3() {
             </div>
           ))}
         </div>
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <div className="mt-4 grid gap-4 max-sm:hidden xl:grid-cols-2">
           <Screenshot
             src="/shots/diagnostics.png"
             alt="Shipper diagnostics checks with service health"

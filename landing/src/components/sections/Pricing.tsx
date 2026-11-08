@@ -149,7 +149,7 @@ function Pricing3() {
                   ["Hand-rolled", ssh, false],
                 ] as const).map(([name, value, primary]) => (
                   <div key={name} className="flex items-center justify-between gap-4">
-                    <span className={cn("text-[13px]", primary ? "text-[#79e3a6]" : "text-[#8d8e88]")}>{name}</span>
+                    <span className={cn("text-[14px]", primary ? "text-[#79e3a6]" : "text-[#8d8e88]")}>{name}</span>
                     <span className="flex items-center text-[14px] text-[#dcdcd6]">
                       {value === "Yes" ? (
                         <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} strokeWidth={1.6} className="text-[#79e3a6]" />

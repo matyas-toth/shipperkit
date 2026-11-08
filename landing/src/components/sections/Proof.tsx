@@ -85,13 +85,21 @@ function Proof3() {
             body="If you can push code, you can ship with Shipper. The console tells you what happened in plain language, and the next useful action is always one click away."
           />
           <div className="lg:pt-1">
-            <div className="space-y-4">
-              <Check>No YAML required to get your first app live.</Check>
-              <Check>No SSH session needed for the everyday work.</Check>
-              <Check>No dashboard account between you and your server.</Check>
-            </div>
-            <div className="mt-8">
-              <ActionPrimary href="#get-shipper" />
+            <div className="surface rounded-2xl p-7">
+              <div className="divide-y divide-white/[0.08]">
+                <div className="pb-4">
+                  <Check>No YAML required to get your first app live.</Check>
+                </div>
+                <div className="py-4">
+                  <Check>No SSH session needed for the everyday work.</Check>
+                </div>
+                <div className="pt-4">
+                  <Check>No dashboard account between you and your server.</Check>
+                </div>
+              </div>
+              <div className="mt-6 border-t border-white/[0.08] pt-5">
+                <ActionPrimary href="#get-shipper" />
+              </div>
             </div>
           </div>
         </div>

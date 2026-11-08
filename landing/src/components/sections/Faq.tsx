@@ -138,7 +138,7 @@ function Faq3() {
           {faqs.slice(0, 6).map((item) => (
             <div key={item.q} className="bg-[#0a0b0b] p-8">
               <h3 className="text-[19px] font-[520] leading-snug tracking-[-0.025em] text-[#ecece7]">{item.q}</h3>
-              <p className="mt-3 text-[15px] leading-[1.75] text-[#a2a39d]">{item.a}</p>
+              <p className="mt-3 text-[16px] leading-[1.7] text-[#a2a39d]">{item.a}</p>
             </div>
           ))}
         </div>
