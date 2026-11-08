@@ -197,7 +197,7 @@ export function CommandBar({
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="mono shrink-0 text-[14px] text-[#85867f]">$</span>
             <code className="mono min-w-0 overflow-x-auto whitespace-nowrap text-[12px] leading-[1.7] text-[#e1e1db] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:text-[13px]">
-              <span className="sm:hidden">curl -fsSL \</span>
+              <span className="sm:hidden">curl -fsSL</span>
               <span className="hidden sm:inline">{command}</span>
             </code>
           </div>
@@ -210,7 +210,7 @@ export function CommandBar({
         </div>
         <div className="px-2 pb-1 pl-[30px] sm:hidden">
           <code className="mono block whitespace-pre text-[12px] leading-[1.7] text-[#e1e1db]">
-            https://shipperkit.dev/install.sh \
+            https://shipperkit.dev/install.sh
             <br />| sudo bash
           </code>
         </div>
