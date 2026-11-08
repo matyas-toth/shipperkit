@@ -83,7 +83,7 @@ test("connected GitHub accounts load repositories and branches in the simple ent
   const repo = (id: number, owner: string) => ({ id, full_name: owner + "/site", clone_url: "https://github.com/" + owner + "/site.git", default_branch: "main" });
   await page.goto("/new");
   await expect(page.getByRole("link", { name: "Connect GitHub", exact: true })).toHaveCount(0);
-  const accountButton = page.getByRole("button", { name: "Personal GitHub Account", exact: true });
+  const accountButton = page.getByRole("button", { name: "GitHub Repository", exact: true });
   await expect(accountButton).toBeVisible();
   await expect(page.getByLabel("Repository", { exact: true })).toHaveCount(0);
   await accountButton.click();

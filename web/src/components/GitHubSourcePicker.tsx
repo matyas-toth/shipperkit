@@ -29,7 +29,7 @@ export function GitHubAccountPicker(props: { accounts: Connection[]; selected?: 
       top: (below >= Math.min(320, above) ? rect.bottom + 8 : Math.max(12, rect.top - height - 8)) + "px", "max-height": height + "px" });
   }
   return <>
-    <Button ref={trigger} small variant="ghost" icon="git" popovertarget={id} aria-haspopup="dialog" aria-expanded={open()} onClick={e => place(e.currentTarget)}>Personal GitHub Account<Icon name="down" /></Button>
+    <Button ref={trigger} small variant="ghost" icon="git" popovertarget={id} aria-haspopup="dialog" aria-expanded={open()} onClick={e => place(e.currentTarget)}>GitHub Repository<Icon name="down" /></Button>
     <div ref={popover} id={id} popover="auto" role="dialog" aria-label="GitHub accounts" class="github-account-popover" style={position()}
       onToggle={e => setOpen((e as ToggleEvent).newState === "open")}>
       <For each={props.accounts}>{(account, index) => <button type="button" autofocus={account.id === props.selected || !props.selected && index() === 0}

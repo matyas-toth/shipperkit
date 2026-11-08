@@ -15,7 +15,7 @@ Dockerfiles and supported build systems are detected from the selected directory
 Configure manually opens the original Source, Configure and Review steps, with
 the current source carried into the form. Without a GitHub connection, the first
 source option is Connect GitHub and opens Settings > Connections. With a connected
-account, Personal GitHub Account opens an account picker. Repository loading,
+account, GitHub Repository opens an account picker. Repository loading,
 repository selection and branch selection appear beneath the source input.
 The manual flow also accepts a full commit SHA.
 Credentials are encrypted in SQLite and omitted from ordinary API responses.
