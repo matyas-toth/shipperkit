@@ -1,0 +1,77 @@
+---
+import "@/styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "Shipper · Deploy your apps to your own server",
+  description = "Install Shipper on the server you already own. Deploy from a repo, folder, image, or Compose file, with HTTPS, logs, rollbacks, backups, and agent access included.",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#050606" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/shipper.svg" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-[14px] focus:text-black"
+    >
+      Skip to content
+    </a>
+    <div class="page-grain" aria-hidden="true"></div>
+    <main id="main">
+      <slot />
+    </main>
+    <script>
+      const labels = new WeakMap();
+
+      function fallbackCopy(value: string) {
+        const area = document.createElement("textarea");
+        area.value = value;
+        area.setAttribute("readonly", "true");
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        const copy = (document as Document & { execCommand?: (command: string) => boolean }).execCommand;
+        copy?.call(document, "copy");
+        area.remove();
+      }
+
+      document.addEventListener("click", async (event) => {
+        const trigger = (event.target as HTMLElement | null)?.closest("[data-copy]") as HTMLElement | null;
+        if (!trigger) return;
+        const value = trigger.getAttribute("data-copy") ?? "";
+        const label = trigger.querySelector("[data-copy-label]") as HTMLElement | null;
+        if (label && !labels.has(trigger)) labels.set(trigger, label.textContent ?? "Copy");
+        try {
+          await navigator.clipboard.writeText(value);
+        } catch {
+          fallbackCopy(value);
+        }
+        trigger.setAttribute("data-copied", "true");
+        if (label) label.textContent = "Copied";
+        window.setTimeout(() => {
+          trigger.removeAttribute("data-copied");
+          if (label) label.textContent = labels.get(trigger) ?? "Copy";
+        }, 1600);
+      });
+    </script>
+  </body>
+</html>

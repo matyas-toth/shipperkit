@@ -22,7 +22,10 @@
     "test:tasks": "node scripts/test-tasks.mjs",
     "test:sources": "node scripts/test-sources.mjs",
     "test:backups": "node scripts/test-backups.mjs",
-    "test:database": "node scripts/test-database.mjs"
+    "test:database": "node scripts/test-database.mjs",
+    "landing:dev": "npm run dev --prefix landing",
+    "landing:build": "npm run build --prefix landing",
+    "landing:check": "npm run check --prefix landing"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0"

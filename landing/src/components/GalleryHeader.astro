@@ -1,0 +1,18 @@
+---
+import { Logo } from "@/components/primitives";
+---
+
+<header class="sticky top-0 z-50 border-b border-white/[0.08] bg-[#050606]/90 backdrop-blur-xl">
+  <div class="shell flex h-16 items-center justify-between gap-4">
+    <div class="flex items-center gap-5">
+      <Logo />
+      <span class="hidden h-5 w-px bg-white/[0.12] sm:block"></span>
+      <span class="hidden text-[14px] text-[#797a75] sm:inline">Landing lab</span>
+    </div>
+    <nav class="flex items-center gap-6" aria-label="Gallery">
+      <a href="/variants" class="text-[14px] text-[#a2a39d] transition-colors hover:text-white">Pages</a>
+      <a href="/variants/hero" class="text-[14px] text-[#a2a39d] transition-colors hover:text-white">Sections</a>
+      <a href="/" class="hidden text-[14px] text-[#85867f] transition-colors hover:text-white sm:inline">Open final ↗</a>
+    </nav>
+  </div>
+</header>

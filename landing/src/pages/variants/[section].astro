@@ -1,0 +1,123 @@
+---
+import Base from "@/layouts/Base.astro";
+import GalleryHeader from "@/components/GalleryHeader.astro";
+import { Nav } from "@/components/nav/Nav";
+import { Hero } from "@/components/sections/Hero";
+import { Proof } from "@/components/sections/Proof";
+import { Product } from "@/components/sections/Product";
+import { Deploy } from "@/components/sections/Deploy";
+import { Agents } from "@/components/sections/Agents";
+import { System } from "@/components/sections/System";
+import { Pricing } from "@/components/sections/Pricing";
+import { Faq } from "@/components/sections/Faq";
+import { Cta } from "@/components/sections/Cta";
+import { Footer } from "@/components/sections/Footer";
+import {
+  sectionBlurbs,
+  sectionLabels,
+  sectionOrder,
+  variantNames,
+  pagesForSectionVariant,
+  type SectionKey,
+} from "@/data/variants";
+
+export function getStaticPaths() {
+  return sectionOrder.map((section) => ({
+    params: { section },
+    props: { section },
+  }));
+}
+
+const { section } = Astro.props as { section: SectionKey };
+const names = variantNames[section];
+const blurbs = sectionBlurbs[section];
+const sectionIndex = sectionOrder.indexOf(section);
+const previous = sectionOrder[(sectionIndex - 1 + sectionOrder.length) % sectionOrder.length];
+const next = sectionOrder[(sectionIndex + 1) % sectionOrder.length];
+---
+
+<Base
+  title={`${sectionLabels[section]} variants · Shipper`}
+  description={`Six ${sectionLabels[section].toLowerCase()} variants for the Shipper landing page.`}
+>
+  <GalleryHeader />
+  <div class="border-b border-white/[0.08]">
+    <div class="shell flex flex-col gap-5 py-12 md:flex-row md:items-end md:justify-between">
+      <div>
+        <div class="flex items-center gap-3 text-[15px] text-[#797a75]">
+          <a href="/variants" class="hover:text-white">Landing lab</a>
+          <span>/</span>
+          <span class="text-[#c3c4be]">{sectionLabels[section].toLowerCase()}</span>
+        </div>
+        <h1 class="mt-4 display text-[clamp(2.4rem,4.4vw,3.8rem)] text-[#f4f4f0]">
+          {sectionLabels[section]}
+        </h1>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <a href={`/variants/${previous}`} class="rounded-lg border border-white/[0.1] px-4 py-2.5 text-[14px] text-[#a2a39d] hover:text-white">
+          ← {sectionLabels[previous]}
+        </a>
+        <a href={`/variants/${next}`} class="rounded-lg border border-white/[0.1] px-4 py-2.5 text-[14px] text-[#a2a39d] hover:text-white">
+          {sectionLabels[next]} →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+    {names.map((name, index) => {
+      const variant = index + 1;
+      const usedIn = pagesForSectionVariant(section, variant);
+      return (
+        <section id={`variant-${variant}`} class="scroll-mt-24 border-b border-white/[0.08] py-12 md:py-16">
+          <div class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div class="flex items-center gap-4">
+              <span class="mono flex size-10 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.03] text-[15px] text-[#a2a39d]">
+                {String(variant).padStart(2, "0")}
+              </span>
+              <div>
+                <h2 class="text-[20px] font-[500] text-[#e7e7e2]">{name}</h2>
+                <p class="mt-1 max-w-[74ch] text-[15px] leading-snug text-[#85867f]">{blurbs[index]}</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              {usedIn.map((page) => (
+                <a href={`/v/${page}`} class="rounded border border-white/[0.08] px-2.5 py-1 text-[14px] text-[#85867f] hover:border-white/[0.2] hover:text-white">
+                  page {page}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div class="overflow-hidden rounded-xl border border-white/[0.1] bg-[#050606]">
+            {section === "nav" && (
+              <div class="relative h-[350px] overflow-hidden bg-[#050606]">
+                <div class="absolute inset-0 bg-[radial-gradient(ellipse_60%_70%_at_50%_0%,rgba(255,255,255,0.08),transparent_62%)]" />
+                <div class="grid-lines absolute inset-0 opacity-50" />
+                <Nav variant={variant} contained />
+                <div class="shell relative flex h-full flex-col items-center justify-center pt-20 text-center">
+                  <div class="max-w-[14ch] text-[40px] font-[530] leading-[1.02] tracking-[-0.05em] text-[#ecece7]">
+                    Deploy your apps to your own server.
+                  </div>
+                  <div class="mono mt-6 rounded-lg border border-white/[0.1] bg-[#0a0b0b] px-4 py-2.5 text-[15px] text-[#a2a39d]">
+                    curl -fsSL shipperkit.dev/install.sh | sudo bash
+                  </div>
+                </div>
+              </div>
+            )}
+            {section === "hero" && <Hero variant={variant} />}
+            {section === "proof" && <Proof variant={variant} />}
+            {section === "product" && <Product variant={variant} />}
+            {section === "deploy" && <Deploy variant={variant} />}
+            {section === "agents" && <Agents variant={variant} />}
+            {section === "system" && <System variant={variant} />}
+            {section === "pricing" && <Pricing variant={variant} />}
+            {section === "faq" && <Faq variant={variant} />}
+            {section === "cta" && <Cta variant={variant} />}
+            {section === "footer" && <Footer variant={variant} />}
+          </div>
+        </section>
+      );
+    })}
+  </div>
+</Base>
