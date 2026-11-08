@@ -161,6 +161,7 @@ function Product3() {
             src="/shots/failed.png"
             alt="A failed deployment with logs and the previous release still serving"
             frameClassName="max-sm:hidden"
+            fade
           />
         </div>
         <div className="mx-auto mt-4 grid max-w-[1080px] gap-3 md:grid-cols-3">

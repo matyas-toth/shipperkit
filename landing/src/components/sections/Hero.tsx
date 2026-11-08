@@ -236,17 +236,26 @@ function Hero3() {
               See how it works
               <HugeiconsIcon icon={ArrowDown01Icon} size={13} strokeWidth={1.8} />
             </a>
+            <div className="mt-6 hidden grid-cols-2 gap-x-6 gap-y-3 border-t border-white/[0.08] pt-4 text-[13px] text-[#8d8e88] lg:grid">
+              <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[#a2a39d] transition-colors hover:text-white">
+                <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
+                GitHub
+              </a>
+              <span>Ubuntu 24.04</span>
+              <span>5-minute install</span>
+              <span>Open source · MIT</span>
+            </div>
           </div>
           <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <ActionPrimary href="#get-shipper" className="w-full shrink-0 justify-center lg:w-auto" />
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 lg:hidden">
                 <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
                   <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
                   GitHub
                 </a>
                 <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
-                <span className="text-[14px] text-[#8d8e88] max-xl:hidden">5-minute install</span>
+                <span className="text-[14px] text-[#8d8e88]">5-minute install</span>
                 <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
               </div>
             </div>
