@@ -5,7 +5,6 @@ import {
   GlobeIcon,
   ServerStack01Icon,
   ShieldCheckIcon,
-  Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import {
   ActionPrimary,
@@ -150,11 +149,7 @@ function Pricing3() {
             <div key={label} className={cn("grid grid-cols-[1.05fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
               <div className="px-2 py-3 text-[13px] leading-tight text-[#dcdcd6]">{label}</div>
               <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[13px]">
-                {shipper === "Yes" ? (
-                  <HugeiconsIcon icon={Tick02Icon} size={16} strokeWidth={1.9} className="mx-auto text-[#79e3a6]" />
-                ) : (
-                  <span className="text-[#dcdcd6]">{shipper}</span>
-                )}
+                <span className="text-[#dcdcd6]">{shipper}</span>
               </div>
               <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[13px] leading-tight text-[#8d8e88]">{paas}</div>
               <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[13px] leading-tight text-[#8d8e88]">{ssh}</div>
@@ -163,23 +158,19 @@ function Pricing3() {
         </div>
         <div className="surface mx-auto mt-12 hidden max-w-[920px] overflow-hidden rounded-2xl sm:block">
           <div className="grid grid-cols-[1.25fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035] sm:grid-cols-[1.5fr_repeat(3,1fr)]">
-            <div className="px-4 py-4 text-[14px] text-[#8d8e88] sm:px-6 sm:py-5 sm:text-[15px]">What you care about</div>
-            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-2 py-4 text-center text-[14px] font-[520] text-[#f4f4f0] sm:px-4 sm:py-5 sm:text-[15px]">Shipper</div>
-            <div className="border-l border-white/[0.09] px-2 py-4 text-center text-[14px] text-[#969791] sm:px-4 sm:py-5 sm:text-[15px]">Managed PaaS</div>
-            <div className="border-l border-white/[0.09] px-2 py-4 text-center text-[14px] text-[#969791] sm:px-4 sm:py-5 sm:text-[15px]">Hand-rolled</div>
+            <div className="px-4 py-5 text-[16px] text-[#8d8e88] sm:px-6">What you care about</div>
+            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-2 py-5 text-center text-[16px] font-[520] text-[#f4f4f0] sm:px-4">Shipper</div>
+            <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#969791] sm:px-4">Managed PaaS</div>
+            <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#969791] sm:px-4">Hand-rolled</div>
           </div>
           {rows.map(([label, shipper, paas, ssh], index) => (
             <div key={label} className={cn("grid grid-cols-[1.25fr_repeat(3,1fr)] sm:grid-cols-[1.5fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
-              <div className="px-4 py-4 text-[14px] text-[#c3c4be] sm:px-6 sm:text-[15px]">{label}</div>
-              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-2 py-4 text-center text-[14px] sm:px-4 sm:text-[15px]">
-                {shipper === "Yes" ? (
-                  <HugeiconsIcon icon={Tick02Icon} size={18} strokeWidth={1.9} className="mx-auto text-[#79e3a6]" />
-                ) : (
-                  <span className="text-[#dcdcd6]">{shipper}</span>
-                )}
+              <div className="px-4 py-5 text-[16px] text-[#c3c4be] sm:px-6">{label}</div>
+              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-2 py-5 text-center text-[16px] sm:px-4">
+                <span className="text-[#dcdcd6]">{shipper}</span>
               </div>
-              <div className="border-l border-white/[0.09] px-2 py-4 text-center text-[14px] text-[#8d8e88] sm:px-4 sm:text-[15px]">{paas}</div>
-              <div className="border-l border-white/[0.09] px-2 py-4 text-center text-[14px] text-[#8d8e88] sm:px-4 sm:text-[15px]">{ssh}</div>
+              <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#8d8e88] sm:px-4">{paas}</div>
+              <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#8d8e88] sm:px-4">{ssh}</div>
             </div>
           ))}
         </div>

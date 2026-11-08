@@ -130,7 +130,7 @@ function Product2() {
 
 function Product3() {
   return (
-    <Section id="product" className="section-rule overflow-hidden bg-[#070808]">
+    <Section id="product" className="section-rule overflow-hidden bg-[#090a0a]">
       <div className="absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(ellipse_52%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_72%)]" />
       <Container>
         <SectionIntro
@@ -170,8 +170,8 @@ function Product3() {
               The error line is preserved with the failed release.
             </p>
           </div>
-          <div className="surface rounded-xl p-5">
-            <div className="text-[14px] text-[#a2a39d]">Still serving</div>
+          <div className="surface rounded-xl border-[#79e3a6]/20 bg-[#79e3a6]/[0.03] p-5 max-sm:hidden">
+            <div className="text-[14px] text-[#79e3a6]">Still serving</div>
             <div className="mono mt-2 text-[18px] text-[#ecece7]">4f8ac21d</div>
             <div className="mt-2 flex items-center gap-2 text-[14px] text-[#79e3a6]">
               <span className="size-2 rounded-full bg-[#79e3a6]" />

@@ -187,30 +187,32 @@ export function CommandBar({
         className,
       )}
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="flex min-w-0 flex-1 items-start gap-2.5 px-2 py-1">
-          <span className="mono shrink-0 pt-0.5 text-[14px] text-[#85867f]">$</span>
-          <code className="mono min-w-0 flex-1 text-left text-[12px] leading-[1.7] text-[#e1e1db] sm:text-[13px]">
-            <span className="block sm:hidden">
-              curl -fsSL
-              <br />
-              https://shipperkit.dev/install.sh
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start justify-between gap-2 px-2 py-1">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span className="mono shrink-0 pt-0.5 text-[14px] text-[#85867f]">$</span>
+            <code className="mono min-w-0 whitespace-pre text-left text-[12px] leading-[1.7] text-[#e1e1db] sm:text-[13px]">
+              <span className="sm:hidden">curl -fsSL \</span>
+              <span className="hidden sm:inline xl:hidden">curl -fsSL https://shipperkit.dev/install.sh \</span>
+              <span className="hidden whitespace-nowrap xl:inline">{command}</span>
+            </code>
+          </div>
+          {showCopy && (
+            <div className="flex shrink-0">
+              <CopyButton iconOnly className="xl:hidden" />
+              <CopyButton className="hidden xl:inline-flex" />
+            </div>
+          )}
+        </div>
+        <div className="px-2 pl-[30px] xl:hidden">
+          <code className="mono block whitespace-pre text-left text-[12px] leading-[1.7] text-[#e1e1db] sm:text-[13px]">
+            <span className="sm:hidden">
+              https://shipperkit.dev/install.sh \
               <br />| sudo bash
             </span>
-            <span className="hidden sm:block xl:hidden">
-              curl -fsSL
-              <br />
-              https://shipperkit.dev/install.sh
-              <br />| sudo bash
-            </span>
-            <span className="hidden whitespace-nowrap xl:inline">{command}</span>
+            <span className="hidden sm:block">| sudo bash</span>
           </code>
         </div>
-        {showCopy && (
-          <div className="flex justify-end">
-            <CopyButton className="w-auto" />
-          </div>
-        )}
       </div>
     </div>
   );
