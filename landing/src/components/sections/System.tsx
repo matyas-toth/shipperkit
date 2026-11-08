@@ -126,12 +126,14 @@ function System3() {
             ["Backups", "A verified copy of your data, on storage you choose.", DatabaseBackupIcon],
             ["Health", "See the app and the machine while they are running.", Activity01Icon],
           ] as const).map(([title, body, Icon]) => (
-            <div key={title} className="surface rounded-2xl p-7">
-              <span className="flex size-11 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05]">
-                <HugeiconsIcon icon={Icon} size={22} strokeWidth={1.6} className="text-[#dcdcd6]" />
+            <div key={title} className="surface flex gap-4 rounded-2xl p-5 md:block md:p-7">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.13] bg-white/[0.05] md:size-11">
+                <HugeiconsIcon icon={Icon} size={21} strokeWidth={1.6} className="text-[#dcdcd6]" />
               </span>
-              <h3 className="mt-7 text-[24px] font-[520] tracking-[-0.035em] text-[#ecece7]">{title}</h3>
-              <p className="mt-2.5 text-[15px] leading-[1.7] text-[#a2a39d]">{body}</p>
+              <div className="min-w-0">
+                <h3 className="text-[18px] font-[520] tracking-[-0.035em] text-[#ecece7] md:mt-7 md:text-[24px]">{title}</h3>
+                <p className="mt-1 text-[14px] leading-[1.6] text-[#a2a39d] md:mt-2.5 md:text-[15px] md:leading-[1.7]">{body}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -140,12 +142,14 @@ function System3() {
             src="/shots/diagnostics.png"
             alt="Shipper diagnostics checks with service health"
             plain
+            fade
             className="h-[280px] w-[155%] max-w-none object-cover object-left-top"
           />
           <Screenshot
             src="/shots/backups.png"
             alt="Shipper backup plans and verified backup history"
             plain
+            frameClassName="max-xl:hidden"
             className="h-[280px] w-[155%] max-w-none object-cover object-left-top"
           />
         </div>

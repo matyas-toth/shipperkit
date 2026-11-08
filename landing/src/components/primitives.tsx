@@ -144,11 +144,13 @@ export function CopyButton({
   label = "Copy",
   className,
   iconOnly = false,
+  compactIcon = false,
 }: {
   value?: string;
   label?: string;
   className?: string;
   iconOnly?: boolean;
+  compactIcon?: boolean;
 }) {
   return (
     <button
@@ -164,7 +166,7 @@ export function CopyButton({
       <span data-copy-icon className="inline-flex">
         <HugeiconsIcon icon={Copy01Icon} size={16} strokeWidth={1.6} />
       </span>
-      <span data-copy-label className={cn(iconOnly && "sr-only")}>{label}</span>
+      <span data-copy-label className={cn(iconOnly && "sr-only", compactIcon && "sr-only sm:not-sr-only")}>{label}</span>
     </button>
   );
 }
@@ -172,67 +174,25 @@ export function CopyButton({
 export function CommandBar({
   command = INSTALL_COMMAND,
   className,
-  compact = false,
-  emphasis = false,
 }: {
   command?: string;
   className?: string;
-  compact?: boolean;
-  emphasis?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "w-full rounded-xl border border-white/[0.12] bg-[#0a0b0b] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-2.5",
+        "w-full rounded-xl border border-white/[0.12] bg-[#0a0b0b] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
         className,
       )}
     >
-      <div className={cn("flex flex-col gap-2", !compact && "sm:flex-row sm:items-center")}>
-        <div className="flex min-w-0 flex-1 items-start gap-3 px-3 py-2 sm:px-2 sm:py-0">
-          <span className="mono shrink-0 pt-0.5 text-[14px] text-[#85867f]">$</span>
-          <code className={cn("mono min-w-0 flex-1 whitespace-nowrap text-left leading-[1.7] text-[#e1e1db] max-[359px]:text-[11px] sm:text-[14px]", compact ? "text-[12px] sm:text-[13px]" : "text-[12px]")}>
-            {command === INSTALL_COMMAND ? (
-              compact ? (
-                <>
-                  <span className="block sm:hidden">
-                    curl -fsSL
-                    <br />
-                    https://shipperkit.dev/install.sh
-                    <br />| sudo bash
-                  </span>
-                  <span className="hidden sm:block">
-                    curl -fsSL https://shipperkit.dev/install.sh
-                    <br />| sudo bash
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="block sm:hidden">
-                    curl -fsSL
-                    <br />
-                    https://shipperkit.dev/install.sh
-                    <br />| sudo bash
-                  </span>
-                  <span className="hidden sm:block">
-                    curl -fsSL https://shipperkit.dev/install.sh
-                    <br />| sudo bash
-                  </span>
-                </>
-              )
-            ) : (
-              command
-            )}
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 overflow-x-auto px-2 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <span className="mono shrink-0 text-[14px] text-[#85867f]">$</span>
+          <code className="mono whitespace-nowrap text-[12px] leading-[1.7] text-[#e1e1db] sm:text-[13px]">
+            {command}
           </code>
         </div>
-        <div className="flex justify-end">
-          <CopyButton
-            value={command}
-            className={cn(
-              "w-auto",
-              emphasis && "border-white bg-white text-[#070808] hover:border-white hover:bg-white/90",
-            )}
-          />
-        </div>
+        <CopyButton compactIcon className="w-11 justify-center px-0 sm:w-auto sm:px-4" />
       </div>
     </div>
   );
@@ -315,6 +275,7 @@ export function Screenshot({
   frameClassName,
   priority = false,
   plain = false,
+  fade = false,
 }: {
   src: string;
   alt: string;
@@ -322,6 +283,7 @@ export function Screenshot({
   frameClassName?: string;
   priority?: boolean;
   plain?: boolean;
+  fade?: boolean;
 }) {
   return (
     <figure
@@ -330,7 +292,7 @@ export function Screenshot({
         frameClassName,
       )}
     >
-      <div className="overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0a0b0b]">
+      <div className="relative overflow-hidden rounded-[14px] border border-white/[0.09] bg-[#0a0b0b]">
         {!plain && (
           <div className="screen-bar">
             <div className="flex items-center gap-2">
@@ -353,6 +315,9 @@ export function Screenshot({
           decoding="async"
           className={cn("shot h-auto w-full", className)}
         />
+        {fade && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#0a0b0b] to-transparent" />
+        )}
       </div>
     </figure>
   );

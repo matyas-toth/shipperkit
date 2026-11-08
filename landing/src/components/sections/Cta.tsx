@@ -121,7 +121,7 @@ function Cta3() {
               your server. Keep the keys.
             </p>
             <div className="mt-9 w-full max-w-[640px]">
-              <CommandBar emphasis />
+              <CommandBar />
             </div>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-7">
               <ActionSecondary href="https://github.com/matyas-toth/shipperkit" external>

@@ -51,7 +51,7 @@ function Install({ className, always = false }: { className?: string; always?: b
 function MobileMenu() {
   return (
     <details className="group relative md:hidden">
-      <summary aria-label="Open menu" className="flex size-10 cursor-pointer list-none items-center justify-center rounded-lg border border-white/[0.12] text-[#c3c4be] [&::-webkit-details-marker]:hidden">
+      <summary aria-label="Open menu" className="flex size-11 cursor-pointer list-none items-center justify-center rounded-lg border border-white/[0.12] text-[#c3c4be] [&::-webkit-details-marker]:hidden">
         <HugeiconsIcon icon={Menu01Icon} size={18} strokeWidth={1.8} />
       </summary>
       <div className="absolute right-0 top-12 z-50 w-60 rounded-xl border border-white/[0.12] bg-[#0a0b0b] p-3 shadow-2xl">
@@ -113,7 +113,7 @@ export function Nav({ variant = 1, contained = false }: { variant?: number; cont
             <a href={docs} className="hidden text-[14px] text-[#9a9b95] transition-colors hover:text-white sm:block">
               Docs
             </a>
-            <Install always className="px-3 text-[13px] max-[359px]:hidden sm:px-4 sm:text-[14px]" />
+            <Install always className="h-11 px-3 text-[13px] max-[359px]:hidden sm:h-10 sm:px-4 sm:text-[14px]" />
             <MobileMenu />
           </div>
         </div>

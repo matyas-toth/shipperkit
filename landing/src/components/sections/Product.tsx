@@ -171,8 +171,13 @@ function Product3() {
             <div className="mt-3 grid grid-cols-4 gap-1.5">
               {["daemon", "runtime", "build", "route"].map((label, index) => (
                 <div key={label} className="rounded border border-white/[0.08] bg-white/[0.025] p-1.5">
-                  <div className="text-[14px] text-[#a2a39d]">{label}</div>
-                  <span className={cn("mt-1 block size-1.5 rounded-full", index === 2 ? "bg-[#f08c90]" : "bg-[#79e3a6]")} />
+                  <div className="text-[11px] text-[#a2a39d]">{label}</div>
+                  <div className="mt-1 flex items-center gap-1">
+                    <span className={cn("size-1.5 rounded-full", index === 2 ? "bg-[#f08c90]" : "bg-[#79e3a6]")} />
+                    <span className={cn("text-[10px]", index === 2 ? "text-[#f0a3a6]" : "text-[#79e3a6]")}>
+                      {index === 2 ? "fail" : "pass"}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

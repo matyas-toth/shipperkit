@@ -139,32 +139,27 @@ function Pricing3() {
           body="A managed platform charges for convenience. Running it yourself should not mean rebuilding the convenience from scratch."
           align="center"
         />
-        <div className="relative mt-10 sm:hidden">
-          <div className="overflow-x-auto pb-1">
-            <div className="min-w-[440px] overflow-hidden rounded-xl border border-white/[0.13] bg-[#101111]">
-              <div className="grid grid-cols-[1.25fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035]">
-                <div className="sticky left-0 z-10 bg-[#141515] px-4 py-4 text-[14px] text-[#8d8e88]">What you care about</div>
-                <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-3 py-4 text-center text-[14px] font-[520] text-[#f4f4f0]">Shipper</div>
-                <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#969791]">Managed PaaS</div>
-                <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#969791]">Hand-rolled</div>
-              </div>
-              {rows.map(([label, shipper, paas, ssh], index) => (
-                <div key={label} className={cn("grid grid-cols-[1.25fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
-                  <div className="sticky left-0 z-10 bg-[#101111] px-4 py-4 text-[14px] text-[#dcdcd6]">{label}</div>
-                  <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-3 py-4 text-center text-[14px]">
-                    {shipper === "Yes" ? (
-                      <HugeiconsIcon icon={Tick02Icon} size={17} strokeWidth={1.9} className="mx-auto text-[#79e3a6]" />
-                    ) : (
-                      <span className="text-[#dcdcd6]">{shipper}</span>
-                    )}
-                  </div>
-                  <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#8d8e88]">{paas}</div>
-                  <div className="border-l border-white/[0.09] px-3 py-4 text-center text-[14px] text-[#8d8e88]">{ssh}</div>
-                </div>
-              ))}
-            </div>
+        <div className="mt-10 overflow-hidden rounded-xl border border-white/[0.13] bg-[#101111] sm:hidden">
+          <div className="grid grid-cols-[1.05fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035]">
+            <div className="px-2 py-3 text-[11px] leading-tight text-[#8d8e88]">What you care about</div>
+            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[11px] font-[520] leading-tight text-[#f4f4f0]">Shipper</div>
+            <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[11px] leading-tight text-[#969791]">Managed PaaS</div>
+            <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[11px] leading-tight text-[#969791]">Hand-rolled</div>
           </div>
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#050606] via-[#050606]/70 to-transparent" />
+          {rows.map(([label, shipper, paas, ssh], index) => (
+            <div key={label} className={cn("grid grid-cols-[1.05fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
+              <div className="px-2 py-3 text-[12px] leading-tight text-[#dcdcd6]">{label}</div>
+              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[12px]">
+                {shipper === "Yes" ? (
+                  <HugeiconsIcon icon={Tick02Icon} size={16} strokeWidth={1.9} className="mx-auto text-[#79e3a6]" />
+                ) : (
+                  <span className="text-[#dcdcd6]">{shipper}</span>
+                )}
+              </div>
+              <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#8d8e88]">{paas}</div>
+              <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#8d8e88]">{ssh}</div>
+            </div>
+          ))}
         </div>
         <div className="surface mx-auto mt-12 hidden max-w-[920px] overflow-hidden rounded-2xl sm:block">
           <div className="grid grid-cols-[1.25fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035] sm:grid-cols-[1.5fr_repeat(3,1fr)]">

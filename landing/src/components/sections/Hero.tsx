@@ -238,7 +238,7 @@ function Hero3() {
             </a>
           </div>
         </div>
-        <div id="install" className="mt-9 flex scroll-mt-28 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div id="install" className="mt-9 scroll-mt-28">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <ActionPrimary href="#get-shipper" />
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -249,7 +249,7 @@ function Hero3() {
               <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
             </div>
           </div>
-          <CommandBar compact className="w-full [&_code]:text-[13px] lg:max-w-[420px]" />
+          <CommandBar className="mt-4" />
         </div>
         <div className="relative mt-10">
           <div className="pointer-events-none absolute -inset-x-24 -top-10 bottom-0 -z-10 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.1),transparent_64%)] blur-3xl" />
