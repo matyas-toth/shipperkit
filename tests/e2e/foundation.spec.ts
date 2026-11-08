@@ -45,7 +45,7 @@ test("secure setup, application grouping, deployment logs, settings, and failure
   const commit = "b".repeat(40);
   await page.route("**/api/repositories/inspect", r => r.fulfill({json:{method:"static",commit,variables:["BOOT_MODE"],installCommand:"",buildCommand:"",startCommand:""}}));
   await page.getByRole("link", { name: "Applications", exact: true }).first().click();
-  await page.getByRole("button", { name: "New application", exact: true }).click();
+  await page.getByRole("button", { name: "New application", exact: true }).click();await page.getByRole("button",{name:"Configure manually",exact:true}).click();
   await expect(page).toHaveTitle("New application | Shipper");
   await page.screenshot({path:join(tmpdir(),"shipper-phase95-source.png")});
   await page.getByLabel("Name", { exact: true }).fill("Portfolio");
@@ -179,7 +179,7 @@ test("Compose creation and focused service editing on desktop and mobile", async
   await editor.fill(savedCompose);
   await expect(review).toBeDisabled();
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/new");
+  await page.goto("/new");await page.getByRole("button",{name:"Configure manually",exact:true}).click();
   await page.getByText("Inline sources", { exact: true }).click();
   await page.getByRole("radio", { name: "Inline Docker Compose", exact: true }).check();
   await expect(page.getByRole("textbox", { name: "Repository URL", exact: true })).toHaveCount(0);

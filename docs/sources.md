@@ -8,8 +8,16 @@ intend to deploy. The repository list reflects the installation's permissions.
 An existing App or a repository-scoped token can instead be added through Add
 connection. Source connections are independent of dashboard login.
 
-Select the connection, repository and branch when creating an application.
-Branches and tags are suggested; a full commit SHA can be entered directly.
+Paste a repository URL when creating an application, or choose an account,
+container image or local files beneath the source field. Continue inspects the
+source and proposes a deployment before showing manual controls. Compose files,
+Dockerfiles and supported build systems are detected from the selected directory.
+Configure manually opens the original Source, Configure and Review steps, with
+the current source carried into the form. Without a GitHub connection, the first
+source option is Connect GitHub and opens Settings > Connections. With a connected
+account, GitHub Repository opens an account picker. Repository loading,
+repository selection and branch selection appear beneath the source input.
+The manual flow also accepts a full commit SHA.
 Credentials are encrypted in SQLite and omitted from ordinary API responses.
 Installation tokens are short-lived and restricted to the selected repository
 for cloning. HTTPS Git credentials use process-local configuration, never URL

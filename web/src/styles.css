@@ -10385,3 +10385,86 @@ body:has(.confirm-dialog) .page-actions {
     line-height: 0;
   }
 }
+
+/* Simple application creation. */
+.github-account-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(300px, calc(100vw - 24px));
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--floating);
+}
+.github-account-popover > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.github-account-popover > button:hover, .github-account-popover > button:focus-visible { background: var(--layer-02); }
+.github-account-popover > button > span { flex: 1; overflow-wrap: anywhere; }
+.connected-source-fields { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(160px, 1fr); gap: 16px; align-items: start; padding-top: 18px; }
+.connected-source-fields .repository-picker { display: flex; flex-direction: column; gap: 8px; background: transparent; padding: 0; border: 0; box-shadow: none; }
+.connected-branch-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.connected-source-fields .input { width: 100%; min-width: 0; }
+.connected-source-fields label { font-size: 13px; color: var(--secondary); }
+.source-entry {
+  position: relative;
+  max-width: 860px;
+  margin: 64px auto 0;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--raised);
+}
+.source-entry h1 { margin: 0 0 28px; text-align: center; font-size: 22px; letter-spacing: -.5px; }
+.source-entry fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.source-entry .source-url, .source-selected { width: 100%; min-height: 48px; border-radius: 12px; }
+.source-entry .source-url { padding-inline: 16px; }
+.source-selected { display: flex; align-items: center; gap: 12px; text-align: left; }
+.source-selected span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-entry-actions { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-top: 16px; }
+.source-entry-actions > .button { flex-shrink: 0; }
+.source-alternatives { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.source-alternatives .button { color: var(--muted); padding-inline: 8px; }
+.source-alternatives .button:hover { color: var(--text); }
+.source-extra { position: relative; }
+.source-extra > summary { cursor: pointer; display: flex; align-items: center; padding: 8px; list-style: none; }
+.source-extra > div { position: absolute; z-index: 12; width: 210px; top: 100%; right: 0; padding: 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--raised); }
+.source-extra > div .button { width: 100%; justify-content: flex-start; }
+.source-input-panel { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); min-width: 0; }
+.source-input-panel .form-fields { margin-top: 16px; }
+.source-input-panel .repository-picker { grid-column: 1 / -1; background: transparent; padding: 0; border: 0; box-shadow: none; }
+.source-input-panel .repository-picker select { width: 100%; }
+.source-manual { display: flex; justify-content: center; max-width: 860px; margin: 12px auto 0; }
+.source-manual .button { color: var(--muted); }
+.deployment-proposal { max-width: 800px; padding: 24px; margin-top: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--raised); }
+.deployment-proposal dl { display: grid; gap: 18px; margin: 0 0 20px; }
+.deployment-proposal .review-fact { display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 16px; }
+.deployment-proposal dt { color: var(--muted); }
+.deployment-proposal dd { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; overflow-wrap: anywhere; }
+.proposal-variables { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+@media (width < 48rem) {
+  .connected-source-fields { grid-template-columns: minmax(0, 1fr); }
+  .source-entry { padding: 22px 18px; margin-top: 24px; }
+  .source-entry h1 { font-size: 20px; }
+  .source-entry-actions { flex-direction: column; gap: 16px; }
+  .source-entry-actions > .button { align-self: flex-end; }
+  .source-extra > div { left: 0; right: auto; }
+  .deployment-proposal { padding: 20px 16px; }
+  .deployment-proposal .review-fact { grid-template-columns: 90px minmax(0,1fr); gap: 12px; }
+}

@@ -37,7 +37,7 @@ export function GitConnectionFields(props: {
   );
 }
 
-function RepositoryPicker(props: {
+export function RepositoryPicker(props: {
   sourceId: string;
   config: StaticConfig;
   change: (key: keyof StaticConfig, value: unknown) => void;
