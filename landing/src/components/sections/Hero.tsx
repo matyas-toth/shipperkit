@@ -11,7 +11,6 @@ import {
   AsciiField,
   CommandBar,
   Container,
-  CopyButton,
   Screenshot,
   Sparkline,
   Status,
@@ -248,19 +247,16 @@ function Hero3() {
             </div>
           </div>
           <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <CopyButton variant="primary" label="Copy install command" className="w-full shrink-0 lg:w-auto" />
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 lg:hidden">
-                <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
-                  <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
-                  GitHub
-                </a>
-                <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
-                <span className="text-[14px] text-[#8d8e88]">5-minute install</span>
-                <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
-              </div>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 lg:hidden">
+              <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
+                <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
+                GitHub
+              </a>
+              <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
+              <span className="text-[14px] text-[#8d8e88]">5-minute install</span>
+              <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
             </div>
-            <CommandBar showCopy={false} className="mt-4" />
+            <CommandBar emphasis className="mt-3 lg:mt-0" />
           </div>
         </div>
         <div className="relative mt-10">

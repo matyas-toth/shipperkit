@@ -180,10 +180,12 @@ export function CommandBar({
   command = INSTALL_COMMAND,
   className,
   showCopy = true,
+  emphasis = false,
 }: {
   command?: string;
   className?: string;
   showCopy?: boolean;
+  emphasis?: boolean;
 }) {
   return (
     <div
@@ -203,8 +205,7 @@ export function CommandBar({
           </div>
           {showCopy && (
             <>
-              <CopyButton iconOnly className="shrink-0 xl:hidden" />
-              <CopyButton className="hidden shrink-0 xl:inline-flex" />
+              <CopyButton variant={emphasis ? "primary" : "default"} className="shrink-0" />
             </>
           )}
         </div>

@@ -124,11 +124,11 @@ function Pricing2() {
 function Pricing3() {
   const rows = [
     ["Software cost", "Free", "Monthly fee", "Free"],
-    ["Per-seat pricing", "No", "Usually", "No"],
-    ["Build minutes", "No", "Usually", "No"],
-    ["Your server", "Yes", "No", "Yes"],
-    ["Your data", "Yes", "Vendor-held", "Yes"],
-    ["Open source", "Yes", "No", "Yes"],
+    ["Release history", "Included", "Limited", "Build it"],
+    ["Rollback", "One click", "Limited", "Manual"],
+    ["Agent parity", "Yes", "Partial", "Build it"],
+    ["Backups", "Included", "Paid add-on", "Script it"],
+    ["Open source", "MIT", "No", "Depends"],
   ] as const;
   return (
     <Section id="pricing" className="section-rule">

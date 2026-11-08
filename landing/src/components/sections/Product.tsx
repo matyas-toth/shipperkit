@@ -147,8 +147,9 @@ function Product3() {
               Deployment failed
             </div>
             <div className="mt-2 text-[16px] text-[#ecece7]">Build exited with status 1</div>
-            <div className="mt-3 border-t border-white/[0.08] pt-3 text-[13px] text-[#a2a39d]">
-              Sass compilation failed
+            <div className="mono mt-3 rounded-lg border border-white/[0.08] bg-black/25 px-3 py-2 text-[11px] leading-[1.8] text-[#a2a39d]">
+              <div><span className="text-[#797a75]">8</span> build <span className="text-[#f0a3a6]">Sass compilation failed</span></div>
+              <div><span className="text-[#797a75]">9</span> build Undefined variable: $accent</div>
             </div>
             <div className="mt-3 flex items-center justify-between text-[13px]">
               <span className="text-[#8d8e88]">Serving release</span>
