@@ -86,7 +86,7 @@ export function SectionIntro({
       <h2
         className={cn(
           "max-w-[21ch] text-[#ecece7] text-[clamp(2rem,4vw,3rem)]",
-          size === "sm" && "text-[clamp(1.7rem,3.2vw,2.3rem)]",
+          size === "sm" && "max-w-[24ch] text-[clamp(1.7rem,3.2vw,2.3rem)]",
           size === "lg" && "max-w-[17ch] text-[clamp(2.6rem,4.8vw,3.55rem)]",
           align === "center" && "mx-auto max-w-[20ch]",
         )}
@@ -145,26 +145,31 @@ export function CopyButton({
   className,
   iconOnly = false,
   compactIcon = false,
+  variant = "default",
 }: {
   value?: string;
   label?: string;
   className?: string;
   iconOnly?: boolean;
   compactIcon?: boolean;
+  variant?: "default" | "primary";
 }) {
+  const primary = variant === "primary";
   return (
     <button
       type="button"
       data-copy={value}
       aria-label={label === "Copy" ? "Copy install command" : label}
       className={cn(
-        "inline-flex h-11 shrink-0 items-center gap-2.5 rounded-lg border border-white/[0.14] bg-white/[0.05] px-4 text-[14px] font-[500] text-[#e7e7e2] transition-colors hover:border-white/[0.26] hover:bg-white/[0.09]",
+        primary
+          ? "inline-flex h-[52px] items-center justify-center gap-2.5 rounded-xl border border-white bg-white px-5 text-[15px] font-[550] text-[#070808] transition-colors hover:border-white hover:bg-white/90"
+          : "inline-flex h-11 shrink-0 items-center gap-2.5 rounded-lg border border-white/[0.14] bg-white/[0.05] px-4 text-[14px] font-[500] text-[#e7e7e2] transition-colors hover:border-white/[0.26] hover:bg-white/[0.09]",
         iconOnly && "w-11 justify-center px-0",
         className,
       )}
     >
       <span data-copy-icon className="inline-flex">
-        <HugeiconsIcon icon={Copy01Icon} size={16} strokeWidth={1.6} />
+        <HugeiconsIcon icon={Copy01Icon} size={primary ? 17 : 16} strokeWidth={1.6} />
       </span>
       <span data-copy-label className={cn(iconOnly && "sr-only", compactIcon && "sr-only sm:not-sr-only")}>{label}</span>
     </button>

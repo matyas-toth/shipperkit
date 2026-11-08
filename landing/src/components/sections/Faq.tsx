@@ -122,6 +122,7 @@ function Faq3() {
         <SectionIntro
           title={<>Start with the practical parts.</>}
           body="The answers that change whether Shipper fits your server and your workflow."
+          size="sm"
         />
         <div className="mt-10 md:hidden">
           {faqs.slice(0, 6).map((item) => (

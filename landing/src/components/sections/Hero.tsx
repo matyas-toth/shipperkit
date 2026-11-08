@@ -11,6 +11,7 @@ import {
   AsciiField,
   CommandBar,
   Container,
+  CopyButton,
   Screenshot,
   Sparkline,
   Status,
@@ -251,7 +252,7 @@ function Hero3() {
           </div>
           <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <ActionPrimary href="#get-shipper" className="w-full shrink-0 justify-center lg:w-auto" />
+              <CopyButton variant="primary" label="Install Shipper" className="w-full shrink-0 lg:w-auto" />
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
                   <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />

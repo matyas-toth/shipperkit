@@ -119,6 +119,7 @@ function System3() {
         <SectionIntro
           title={<>The unglamorous parts, handled.</>}
           body="HTTPS, backups, logs, and health checks are part of the deploy, not a second project you have to finish later."
+          size="sm"
         />
         <div className="mt-11 grid gap-8 border-t border-white/[0.1] pt-8 md:grid-cols-3 md:gap-0">
           {([

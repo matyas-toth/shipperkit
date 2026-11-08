@@ -129,6 +129,7 @@ function Deploy3() {
         <SectionIntro
           title={<>Bring your repo, folder, or image.</>}
           body="Shipper fits the source you already have. There is no special project layout and no new config language."
+          size="sm"
         />
         <div className="surface mt-11 grid overflow-hidden rounded-2xl md:grid-cols-2 lg:grid-cols-3">
           {sources.map(([title, body, Icon]) => (

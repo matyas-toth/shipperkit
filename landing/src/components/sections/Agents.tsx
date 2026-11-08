@@ -125,6 +125,7 @@ function Agents3() {
         <SectionIntro
           title={<>The same guardrails for you and your agent.</>}
           body="A token does not get a shortcut through the checks. The dashboard, the CLI, and your agent all use the same release path."
+          size="sm"
         />
         <div className="mt-11 grid gap-4 lg:grid-cols-2">
           <div className="surface flex flex-col rounded-2xl p-7">
