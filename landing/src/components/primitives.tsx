@@ -188,7 +188,7 @@ export function CommandBar({
   return (
     <div
       className={cn(
-        "w-full rounded-xl border border-white/[0.12] bg-[#0a0b0b] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        "w-full rounded-xl border border-white/[0.09] bg-[#080909] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
         className,
       )}
     >

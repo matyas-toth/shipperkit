@@ -236,18 +236,6 @@ function Hero3() {
               See how it works
               <HugeiconsIcon icon={ArrowDown01Icon} size={13} strokeWidth={1.8} />
             </a>
-            <div className="mt-6 hidden divide-y divide-white/[0.08] border-t border-white/[0.08] lg:block">
-              {[
-                ["One command", "Installs Shipper and the proxy"],
-                ["One deploy", "Builds, verifies, and routes your app"],
-                ["One screen", "Releases, logs, and rollbacks"],
-              ].map(([title, body]) => (
-                <div key={title} className="py-3">
-                  <div className="text-[14px] font-[500] text-[#ecece7]">{title}</div>
-                  <div className="mt-0.5 text-[13px] leading-[1.5] text-[#8d8e88]">{body}</div>
-                </div>
-              ))}
-            </div>
           </div>
           <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -258,19 +246,11 @@ function Hero3() {
                   GitHub
                 </a>
                 <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
-                <span className="text-[14px] text-[#8d8e88] max-sm:hidden">5-minute install</span>
+                <span className="text-[14px] text-[#8d8e88] max-lg:hidden">5-minute install</span>
                 <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
               </div>
             </div>
             <CommandBar className="mt-4" />
-            <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-[#8d8e88] lg:hidden">
-              {["One command", "One deploy", "One screen"].map((item, index) => (
-                <span key={item} className="flex items-center gap-2.5">
-                  {index > 0 && <span className="size-1 rounded-full bg-white/20" />}
-                  {item}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
         <div className="relative mt-10">
