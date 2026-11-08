@@ -110,14 +110,14 @@ function Cta3() {
   return (
     <Section id="get-shipper" className="border-t border-white/[0.08]">
       <Container>
-        <div className="relative overflow-hidden rounded-[28px] border border-white/[0.12] bg-[#080909] px-7 py-14 md:px-14 md:py-20">
-          <div className="absolute inset-0 -z-0 bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,rgba(255,255,255,0.085),transparent_62%)]" />
+        <div className="relative overflow-hidden rounded-[28px] border border-white/[0.14] bg-[#101111] px-7 py-14 md:px-14 md:py-20">
+          <div className="absolute inset-0 -z-0 bg-[radial-gradient(ellipse_60%_100%_at_50%_0%,rgba(255,255,255,0.09),transparent_62%)]" />
           <div className="relative z-10 mx-auto flex max-w-[900px] flex-col items-center text-center">
             <h2 className="display max-w-[20ch] text-[clamp(2.375rem,6.4vw,6.4rem)] text-[#f4f4f0] [text-wrap:wrap]">
               Everything you
               <br className="sm:hidden" /> need,
               <br className="hidden sm:block" />{" "}
-              <span className="text-[#d8d8d3]">nothing<br className="sm:hidden" /> you rent.</span>
+              <span className="text-[#ecece7]">nothing<br className="sm:hidden" /> you rent.</span>
             </h2>
             <p className="mt-7 max-w-[52ch] text-[17px] leading-[1.7] text-[#a5a6a0]">
               The deploy console, the release history, and the recovery plan live on

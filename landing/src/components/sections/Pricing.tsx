@@ -141,15 +141,15 @@ function Pricing3() {
         <div className="mt-10 overflow-hidden rounded-xl border border-white/[0.13] bg-[#101111] sm:hidden">
           <div className="grid grid-cols-[1.05fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035]">
             <div className="px-2 py-3 text-[12px] leading-tight text-[#8d8e88]">What you care about</div>
-            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[12px] font-[520] leading-tight text-[#f4f4f0]">Shipper</div>
+            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.1] px-1.5 py-3 text-center text-[12px] font-[520] leading-tight text-[#f4f4f0]">Shipper</div>
             <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#969791]">Managed PaaS</div>
             <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[12px] leading-tight text-[#969791]">Hand-rolled</div>
           </div>
           {rows.map(([label, shipper, paas, ssh], index) => (
             <div key={label} className={cn("grid grid-cols-[1.05fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
               <div className="px-2 py-3 text-[13px] leading-tight text-[#dcdcd6]">{label}</div>
-              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-1.5 py-3 text-center text-[13px]">
-                <span className="text-[#dcdcd6]">{shipper}</span>
+            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.08] px-1.5 py-3 text-center text-[13px]">
+                <span className="text-[#f4f4f0]">{shipper}</span>
               </div>
               <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[13px] leading-tight text-[#8d8e88]">{paas}</div>
               <div className="border-l border-white/[0.09] px-1.5 py-3 text-center text-[13px] leading-tight text-[#8d8e88]">{ssh}</div>
@@ -159,15 +159,15 @@ function Pricing3() {
         <div className="surface mx-auto mt-12 hidden max-w-[920px] overflow-hidden rounded-2xl sm:block">
           <div className="grid grid-cols-[1.25fr_repeat(3,1fr)] border-b border-white/[0.1] bg-white/[0.035] sm:grid-cols-[1.5fr_repeat(3,1fr)]">
             <div className="px-4 py-5 text-[16px] text-[#8d8e88] sm:px-6">What you care about</div>
-            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-2 py-5 text-center text-[16px] font-[520] text-[#f4f4f0] sm:px-4">Shipper</div>
+            <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.1] px-2 py-5 text-center text-[16px] font-[520] text-[#f4f4f0] sm:px-4">Shipper</div>
             <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#969791] sm:px-4">Managed PaaS</div>
             <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#969791] sm:px-4">Hand-rolled</div>
           </div>
           {rows.map(([label, shipper, paas, ssh], index) => (
             <div key={label} className={cn("grid grid-cols-[1.25fr_repeat(3,1fr)] sm:grid-cols-[1.5fr_repeat(3,1fr)]", index !== rows.length - 1 && "border-b border-white/[0.09]")}>
               <div className="px-4 py-5 text-[16px] text-[#c3c4be] sm:px-6">{label}</div>
-              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.045] px-2 py-5 text-center text-[16px] sm:px-4">
-                <span className="text-[#dcdcd6]">{shipper}</span>
+              <div className="border-l border-white/[0.09] bg-[#79e3a6]/[0.08] px-2 py-5 text-center text-[16px] sm:px-4">
+                <span className="text-[#f4f4f0]">{shipper}</span>
               </div>
               <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#8d8e88] sm:px-4">{paas}</div>
               <div className="border-l border-white/[0.09] px-2 py-5 text-center text-[16px] text-[#8d8e88] sm:px-4">{ssh}</div>

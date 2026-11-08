@@ -238,7 +238,7 @@ function Hero3() {
             </a>
           </div>
           <div id="install" className="scroll-mt-28 lg:col-start-1 lg:row-start-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:flex-row">
               <ActionPrimary href="#get-shipper" className="w-full shrink-0 justify-center lg:w-auto" />
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[14px] text-[#a2a39d] transition-colors hover:text-white">
@@ -246,7 +246,7 @@ function Hero3() {
                   GitHub
                 </a>
                 <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
-                <span className="text-[14px] text-[#8d8e88] max-lg:hidden">5-minute install</span>
+                <span className="text-[14px] text-[#8d8e88] max-xl:hidden">5-minute install</span>
                 <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
               </div>
             </div>
@@ -265,12 +265,6 @@ function Hero3() {
               priority
             />
           </div>
-        </div>
-        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/[0.08] pt-4 text-[13px] text-[#8d8e88]">
-          <span className="text-[#797a75]">Runs on</span>
-          {["Docker", "Compose", "Git", "Any Git source"].map((item) => (
-            <span key={item}>{item}</span>
-          ))}
         </div>
       </Container>
     </section>
