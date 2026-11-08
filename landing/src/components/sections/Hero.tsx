@@ -261,9 +261,12 @@ function Hero3() {
               </div>
             </div>
             <CommandBar className="mt-4" />
-            <div className="mt-4 grid grid-cols-3 divide-x divide-white/[0.08] border-y border-white/[0.08] py-3 text-[12px] text-[#8d8e88] lg:hidden">
-              {["One command", "One deploy", "One screen"].map((item) => (
-                <span key={item} className="px-2 text-center">{item}</span>
+            <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-[#8d8e88] lg:hidden">
+              {["One command", "One deploy", "One screen"].map((item, index) => (
+                <span key={item} className="flex items-center gap-2.5">
+                  {index > 0 && <span className="size-1 rounded-full bg-white/20" />}
+                  {item}
+                </span>
               ))}
             </div>
           </div>
@@ -282,7 +285,8 @@ function Hero3() {
           </div>
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-white/[0.08] pt-4 text-[13px] text-[#8d8e88]">
-          {["Ubuntu 24.04", "Docker", "Compose", "Git", "MIT"].map((item) => (
+          <span className="text-[#797a75]">Runs on</span>
+          {["Ubuntu 24.04", "Docker", "Compose", "Git"].map((item) => (
             <span key={item}>{item}</span>
           ))}
         </div>
