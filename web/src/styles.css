@@ -2923,6 +2923,19 @@ button.service-card-body:hover {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+.service-card-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.service-card-metric .icon {
+  width: 12px;
+  height: 12px;
+  color: var(--muted);
+}
+.activity-disclosure {
+  margin-top: 24px;
+}
 .service-route {
   display: flex;
   align-items: center;

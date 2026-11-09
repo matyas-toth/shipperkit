@@ -11,7 +11,6 @@ import LogViewport, { logPresentation } from "./LogViewport";
 export default function LogViewer(props: {
   deployment: Deployment;
   current?: Deployment;
-  diagnostics?: () => void;
   cancel?: () => void;
   retry?: () => void;
   restore?: () => void;
@@ -104,7 +103,6 @@ export default function LogViewer(props: {
         </div>
         <div class="deployment-result-actions">
           <Show when={failedStep()}><Button small variant="ghost" onClick={() => filter(failedStep()!)}>Show failed step</Button></Show>
-          <Show when={props.diagnostics && state() === "failed"}><Button small variant="neutral" icon="terminal" onClick={props.diagnostics}>Diagnostics</Button></Show>
         </div>
       </section>
     </Show>
