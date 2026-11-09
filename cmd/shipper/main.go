@@ -236,6 +236,11 @@ func run() error {
 		}
 		return "127.0.0.1"
 	}()), HTTPPort: httpPort, HTTPSPort: httpsPort, ACMEEmail: env("SHIPPER_ACME_EMAIL", recovered.ACMEEmail), ACMECA: env("SHIPPER_ACME_CA", recovered.ACMECA)}
+	if _, dashboardPort, parseErr := net.SplitHostPort(env("SHIPPER_ADDR", "127.0.0.1:8080")); parseErr == nil {
+		if port, parseErr := strconv.Atoi(dashboardPort); parseErr == nil && port > 0 {
+			proxyConfig.ReservedPorts = []int{port}
+		}
+	}
 	proxyConfig.AutoHTTPS = os.Getenv("SHIPPER_AUTO_HTTPS") == "1" && httpPort == 80 && httpsPort == 443 && !net.ParseIP(proxyConfig.BindIP).IsLoopback()
 	if proxyConfig.ACMEEmail != "" {
 		address, e := mail.ParseAddress(proxyConfig.ACMEEmail)

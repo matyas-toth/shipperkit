@@ -1,0 +1,141 @@
+import { test, expect, type Page } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { installFixtures } from "./gallery-fixtures";
+
+// UI fixtures exercise presentation. Real Docker acceptance is kept separate.
+const output = join(process.cwd(), ".shipper", "resource-gallery", process.env.SHIPPER_RESOURCE_ROUND || "round-01");
+let number = 0;
+async function shot(page: Page, name: string) {
+  await expect(page.getByText("Shipper could not display this page", {exact:true})).toHaveCount(0);
+  await page.evaluate(() => document.fonts.ready);
+  await page.mouse.move(0, 0);
+  await page.screenshot({ path: join(output, String(++number).padStart(2, "0") + "-" + name + ".png"), animations: "disabled", fullPage: false });
+}
+test("capture database networking and terminal surfaces", async ({ page }) => {
+  await mkdir(output, { recursive: true });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await page.getByLabel("Setup token").fill("shipper-browser-test-setup-token-00000000000000000000000000000000");
+  await page.getByLabel("Email", { exact: true }).fill("owner@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("shipper-browser-test-password");
+  await page.getByRole("button", { name: "Create administrator", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Applications", exact: true })).toBeVisible();
+  await page.request.post("http://127.0.0.1:9083/seed");
+  const original = await (await page.request.get("/api/applications/application-web")).json();
+  const session = await (await page.request.get("/api/auth/session")).json();
+  // Capture the creation form and reviewed proposal for each actual preset.
+  const engineList = [["postgresql", "18"], ["mysql", "8.4"], ["mariadb", "11.8"], ["mongodb", "8"], ["redis", "8"], ["clickhouse", "25.3"], ["sqlite", "3.50"]] as const;
+  const engineNames: Record<string, string> = { postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", mongodb: "MongoDB", redis: "Redis", clickhouse: "ClickHouse", sqlite: "SQLite" };
+  const displayNames: Record<string, string> = { postgresql: "Production database", mysql: "Production MySQL", mariadb: "Production MariaDB", mongodb: "Analytics database", redis: "Job queue", clickhouse: "Events warehouse", sqlite: "Local database" };
+  const presets: Record<string, any> = {};
+  for (const [engine, version] of engineList) {
+    await page.goto("/new");
+    await page.getByRole("button", { name: "Database", exact: true }).click();
+    await page.locator(".database-engine-card").filter({ hasText: engineNames[engine] }).click();
+    const displayName = displayNames[engine];
+    await page.getByLabel("Name", { exact: true }).fill(displayName);
+    await shot(page, "create-" + engine);
+    const response = await page.request.post("/api/database-resources/prepare", { headers: { "X-CSRF-Token": session.csrfToken }, data: { engine, version } });
+    expect(response.ok()).toBe(true);
+    presets[engine] = (await response.json()).config;
+    await page.getByRole("button", { name: "Review database", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Review database", exact: true, level: 1 })).toBeVisible();
+    await shot(page, "review-" + engine);
+  }
+  await installFixtures(page);
+  let config = presets.postgresql;
+  let name = "Production database";
+  const release = () => ({ ...original.activeDeployment, config, resolvedMethod: "image", runtimePort: config.port });
+  const application = () => ({ ...original.application, name, sourceKind: "image", method: "image", activeMethod: "image", sourceRef: config.image, config, domains: [], containers: [{ ...original.application.containers[0], name: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), applicationId: "application-web", managed: true, state: "running", health: "healthy", image: config.image }] });
+  await page.route("**/api/applications/application-web", r => r.fulfill({ json: { application: application(), activeDeployment: release(), deployments: [release()], database: { engine: config.database.engine, host: "app-application-web", port: config.port } } }));
+  await page.route("**/api/applications/application-web/database/connection", r => r.fulfill({ json: { uri: "postgresql://app:gallery-password@app-application-web:5432/app?sslmode=require", deploymentId: release().id } }));
+  await page.route("**/api/applications/application-web/diagnostics", r => r.fulfill({ json: { checks: [], observations: [], changesSinceServing: [], unknowns: [], servingRelease: release(), latestOperation: release(), durationSeconds: 14 } }));
+  await page.route("**/api/applications/application-web/incidents", r => r.fulfill({ json: { items: [] } }));
+  await page.route("**/api/applications/application-web/networking", r => r.fulfill({ json: {
+    networking: { applications: [], ports: [] },
+    host: "app-application-web",
+    applications: [
+      { id: "application-atlas", name: "Atlas API", host: "app-application-atlas" },
+      { id: "application-api", name: "API", host: "app-application-api" },
+    ],
+  } }));
+  await page.route("**/api/applications/application-web/changes", r => r.fulfill({ json: {
+    operation: "recreate", changes: ["Networking"], revision: "resource-gallery-network",
+    downtime: "Public ports switch during replacement",
+    effects: ["Publish reviewed TCP and UDP ports", "Preserve persistent data and current domains"],
+  } }));
+  const auditItems = [
+    { sequence: 4, sessionId: "gallery-terminal", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 60 },
+    { sequence: 3, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "revoke", reason: "user_revoked", createdAt: Math.floor(Date.now() / 1000) - 140 },
+    { sequence: 2, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "end", reason: "session_expired", createdAt: Math.floor(Date.now() / 1000) - 900 },
+    { sequence: 1, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 1800 },
+  ];
+  await page.route("**/api/applications/application-web/terminal/audit", r => r.fulfill({ json: { items: auditItems } }));
+  for (const engine of ["postgresql", "mysql", "mariadb", "mongodb", "redis", "clickhouse", "sqlite"]) {
+    config = presets[engine]; name = displayNames[engine];
+    await page.goto("/applications/application-web");
+    const importName = engine === "redis" ? "Restore snapshot" : engine === "mongodb" ? "Create from archive" : engine === "clickhouse" || engine === "sqlite" ? "" : "Create from dump";
+    if (importName) {
+      await expect(page.getByRole("button", { name: importName, exact: true })).toBeVisible();
+      await shot(page, "overview-" + engine);
+      await page.getByRole("button", { name: importName, exact: true }).click();
+      await expect(page.getByRole("heading", { name: importName, exact: true })).toBeVisible();
+      await shot(page, "import-" + engine);
+    } else {
+      await shot(page, "overview-" + engine);
+    }
+  }
+  config = presets.postgresql; name = "Production database";
+  await page.goto("/applications/application-web?tab=backups");
+  await shot(page, "database-backups");
+  await page.goto("/applications/application-web?tab=networking");
+  await shot(page, "networking-empty");
+  await page.getByRole("button", { name: "Connect application", exact: true }).click();
+  await shot(page, "private-connection");
+  await page.getByRole("button", { name: "Add port", exact: true }).click();
+  await page.getByLabel("Public port", { exact: true }).fill("15432");
+  await page.getByLabel("Container port", { exact: true }).fill("5432");
+  await page.getByRole("switch", { name: "Public TLS", exact: true }).click();
+  await page.getByLabel("TLS hostname", { exact: true }).fill("db.example.com");
+  await shot(page, "public-database-tls");
+  await page.getByRole("button", { name: "Review changes", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await shot(page, "review-network-change");
+  await page.getByRole("button", { name: "Keep editing", exact: true }).click();
+  await page.getByRole("button", { name: "Add port", exact: true }).click();
+  await page.getByLabel("Protocol", { exact: true }).last().selectOption("udp");
+  await page.getByLabel("Public port", { exact: true }).last().fill("19000");
+  await page.getByLabel("Container port", { exact: true }).last().fill("9000");
+  await shot(page, "tcp-udp-mappings");
+  await page.route("**/api/applications/application-web/changes", r => r.fulfill({ status: 409, json: { error: { message: "Port 15432/tcp is already in use" } } }));
+  await page.getByRole("button", { name: "Review changes", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("already in use");
+  await shot(page, "port-conflict");
+  await page.route("**/api/applications/application-web/terminal", r => r.fulfill({ json: { id: "gallery-terminal", ticket: "gallery-ticket", expiresAt: Math.floor(Date.now()/1000)+900 } }));
+  await page.route("**/api/applications/application-web/terminal/*/revoke", r => r.fulfill({ json: { revoked: true } }));
+  let terminalSocket: any;
+  await page.routeWebSocket("**/api/applications/application-web/terminal/gallery-terminal", socket => {
+    terminalSocket = socket;
+    socket.onMessage(message => { const frame = JSON.parse(String(message)); if (frame.type === "connect") { socket.send(JSON.stringify({ type: "ready" })); socket.send(JSON.stringify({ type: "output", data: Buffer.from("app@production-database:/$ psql --version\r\npsql (PostgreSQL) 18.0\r\napp@production-database:/$ ").toString("base64") })); } });
+  });
+  await page.goto("/applications/application-web?tab=terminal");
+  await shot(page, "terminal-closed");
+  await page.getByRole("button", { name: "Open terminal", exact: true }).click();
+  await expect(page.getByRole("button", { name: "End session", exact: true })).toBeVisible();
+  await page.waitForTimeout(100);
+  await expect(page.locator(".terminal-audit-row")).toHaveCount(4);
+  await page.locator(".terminal-audit summary").click();
+  await shot(page, "terminal-connected");
+  auditItems.unshift({ sequence: 5, sessionId: "gallery-terminal", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "end", reason: "session_expired", createdAt: Math.floor(Date.now() / 1000) });
+  terminalSocket.send(JSON.stringify({ type: "end", reason: "Terminal session expired" }));
+  await expect(page.getByRole("alert")).toContainText("expired");
+  await expect(page.locator(".terminal-audit-row").first()).toContainText("Session expired");
+  await shot(page, "terminal-expired");
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [tab, state] of [["overview", "database"], ["networking", "networking"], ["backups", "backups"], ["terminal", "terminal"]]) {
+    await page.goto("/applications/application-web?tab=" + tab);
+    await shot(page, "mobile-" + state);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+});

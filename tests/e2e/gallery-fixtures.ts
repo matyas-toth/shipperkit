@@ -28,6 +28,11 @@ export async function installFixtures(page: Page) {
     if (!response.ok()) throw new Error("Could not preview gallery schedule: " + schedule);
     return ((await response.json()).items as number[])[0];
   }));
+  const databasePreview = await page.request.post("/api/protection/schedule-preview", {
+    headers: { "X-CSRF-Token": session.csrfToken }, data: { schedule: "0 3 * * *", timezone: "UTC" },
+  });
+  if (!databasePreview.ok()) throw new Error("Could not preview gallery database schedule");
+  const databaseNext = ((await databasePreview.json()).items as number[])[0];
 
   const variables = [
     { name: "DATABASE_URL", value: "", secret: true, scope: "both", keep: true, hasValue: true },
@@ -237,7 +242,7 @@ export async function installFixtures(page: Page) {
 
   const protection = {
     plans: [
-      { id: "plan-postgres", applicationId: "application-web", name: "Nightly database", config: { kind: "database", service: "", volume: "uploads", engine: "postgres", database: "atlas", user: "atlas", password: "", host: "127.0.0.1", port: 5432, tls: "prefer", destination: "s3-eu", keep: 14 }, enabled: true, schedule: "0 2 * * *", timezone: "Europe/Budapest", nextAt: nextRuns[2] },
+      { id: "plan-postgres", applicationId: "application-web", name: "Nightly backup", config: { kind: "database", service: "", volume: "uploads", engine: "postgres", database: "atlas", user: "atlas", password: "", host: "127.0.0.1", port: 5432, tls: "prefer", destination: "s3-eu", keep: 14 }, enabled: true, schedule: "0 3 * * *", timezone: "UTC", nextAt: databaseNext },
       { id: "plan-uploads", applicationId: "application-web", name: "Uploads volume", config: { kind: "volume", service: "", volume: "uploads", engine: "", database: "", user: "", password: "", host: "", port: 0, tls: "", destination: "s3-eu", keep: 7 }, enabled: true, schedule: "0 4 * * *", timezone: "Europe/Budapest", nextAt: nextRuns[3] },
     ],
     runs: [

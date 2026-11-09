@@ -104,6 +104,8 @@ type RuntimePolicy struct {
 	DrainSeconds   int     `json:"drainSeconds,omitempty"`
 }
 type StaticConfig struct {
+	Database      *DatabaseResource `json:"database,omitempty"`
+	Networking    NetworkAccess     `json:"networking,omitempty"`
 	CommandsKeep  bool              `json:"commandsKeep,omitempty"`
 	LocalSource   string            `json:"localSource,omitempty"`
 	VolumeSources map[string]string `json:"volumeSources,omitempty"`
@@ -145,6 +147,11 @@ type StaticConfig struct {
 	ComposeKeep      bool            `json:"composeKeep,omitempty"`
 	ComposeHasValue  bool            `json:"composeHasValue,omitempty"`
 	Services         []ServiceConfig `json:"services"`
+}
+type DatabaseResource struct {
+	Engine      string `json:"engine"`
+	Version     string `json:"version"`
+	TLSHostname string `json:"tlsHostname,omitempty"`
 }
 type ServiceConfig struct {
 	Runtime        RuntimePolicy `json:"runtime"`

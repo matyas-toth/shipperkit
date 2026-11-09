@@ -74,12 +74,14 @@ collapsed; commands/passwords do not appear in history responses.
 | PostgreSQL | Native `pg_dump` custom archive of one database, consistent snapshot, no ownership/ACL replay |
 | MySQL | Native SQL dump of one database, global read lock with routines/events/triggers and binary data |
 | MariaDB | Native `mariadb-dump`, with the same explicit global-read-lock boundary |
+| MongoDB | Native `mongodump` gzip archive of one database, restored under a new namespace |
+| ClickHouse, SQLite, Redis | Cold archive of the engine data volume, including numeric ownership and modes |
 | Named volume | Cold archive of regular files, directories and internal relative symlinks, including numeric ownership and modes |
 
 Database tools execute **inside the one selected Shipper-owned service** against
 its loopback endpoint. Default users/passwords can come from the service's actual
-`POSTGRES_*`, `MYSQL_*` or `MARIADB_*` environment. Explicit overrides are encrypted
-at rest. Initialization environment values are not proof that a password remains
+`POSTGRES_*`, `MYSQL_*`, `MARIADB_*` or `MONGO_INITDB_*` environment. Explicit
+overrides are encrypted at rest. Initialization environment values are not proof that a password remains
 current; supply the current credential if it has changed. `_FILE` secrets and
 custom database images may require explicit credentials. The selected engine must
 match the native client tools available in that image. Confirm the engine in the
@@ -186,9 +188,9 @@ Fixtures only remove resources with their own random instance identity.
 
 Cloud-provider interoperability, real domain recovery after a host rebuild, and
 the planned Contabo distribution matrix still require the real-system acceptance
-lab. Public dashboard ACME issuance has passed on staging. MongoDB, SQLite,
-ClickHouse, Redis-family policies, generic SQL imports, application cloning and
-Coolify migration remain P8.3 later parity.
+lab. Public dashboard ACME issuance has passed on staging. Redis-family policies,
+generic SQL imports, application cloning and Coolify migration remain P8.3 later
+parity.
 
 ## Phase 9 local sources and automation
 

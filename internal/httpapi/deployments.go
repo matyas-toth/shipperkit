@@ -11,6 +11,7 @@ import (
 	"net/netip"
 	"net/url"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -175,6 +176,9 @@ func (s *Server) mutationAvailable(w http.ResponseWriter) bool {
 	return true
 }
 func (s *Server) validateConfig(w http.ResponseWriter, c *store.StaticConfig, id string) bool {
+	if !s.validateNetworkingConfig(w, c, id) {
+		return false
+	}
 	if len(c.Domains) > 0 {
 		domains, e := deploy.NormalizeDomains(c.Domains)
 		if e != nil {
@@ -238,6 +242,8 @@ func (s *Server) enqueueJob(w http.ResponseWriter, r *http.Request, a store.Appl
 		switch {
 		case errors.Is(e, store.ErrBusy):
 			s.problem(w, 409, "operation_in_progress", e.Error())
+		case errors.Is(e, store.ErrPortInUse):
+			s.problem(w, 409, "port_in_use", e.Error())
 		case errors.Is(e, store.ErrDomainInUse):
 			s.problem(w, 409, "domain_in_use", e.Error())
 		case errors.Is(e, store.ErrIdempotencyConflict):
@@ -322,6 +328,10 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 		s.json(w, 200, map[string]any{"applicationId": a.ID, "revision": revision, "operation": "deploy", "name": a.Name, "commit": input.Commit, "config": store.PublicConfig(a.Config), "changes": []string{"Create application", "Prepare the source and start services", "Preserve declared persistent storage"}})
 		return
 	}
+	if len(a.Config.Networking.Ports) > 0 && (input.ID == "" || input.Revision == "") {
+		s.problem(w, 409, "network_review_required", "Review public ports before deploying")
+		return
+	}
 	if input.ID != "" && input.Revision != revision {
 		s.problem(w, 409, "configuration_changed", "The planned inputs changed; review again")
 		return
@@ -367,6 +377,10 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		}
 		if e := store.MergeReleaseVariables(&next, a.Config, release); e != nil {
 			s.problem(w, 422, "invalid_variables", e.Error())
+			return
+		}
+		if err := store.ValidateDatabaseTransition(a.Config, next); err != nil {
+			s.problem(w, 422, "invalid_database_change", err.Error())
 			return
 		}
 		next.Domain = a.Config.Domain
@@ -417,6 +431,10 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		plan := deploy.PlanChanges(old, a.Config)
 		plan.Revision = s.db.ChangeRevision(current, a)
 		s.json(w, 200, plan)
+		return
+	}
+	if input.Config != nil && !reflect.DeepEqual(current.Config.Networking.Ports, a.Config.Networking.Ports) && input.Revision == "" {
+		s.problem(w, 409, "network_review_required", "Review public ports before applying networking changes")
 		return
 	}
 	if input.Revision != "" && input.Revision != s.db.ChangeRevision(current, a) {

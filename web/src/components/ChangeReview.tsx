@@ -1,9 +1,9 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { ChangePlan, Command, Deployment, Hook, Variable } from "../types";
+import type { ChangePlan, Command, Deployment, Hook, Variable, ReviewSummaryItem } from "../types";
 import { operationTime, deploymentRef } from "../data";
 import { Button, ErrorNotice, IconButton } from "./Controls";
-import { Icon } from "./Icon";
+import { Icon, type IconName } from "./Icon";
 import { commandStageLabel, commandText } from "./Commands";
 import { variableScopeLabel, variableSignature } from "../env";
 
@@ -68,11 +68,20 @@ export default function ChangeReview(props: {
   hooks?: { before?: Hook[]; after?: Hook[] };
   compose?: boolean;
   variables?: { before?: Variable[]; after?: Variable[] };
+  summary?: ReviewSummaryItem[];
+  note?: string;
+  icon?: IconName;
+  subject?: "application" | "database";
   plan: ChangePlan;
   apply: () => Promise<void>;
   close: () => void;
 }) {
   const [busy, setBusy] = createSignal(false), [error, setError] = createSignal("");
+  const subject = () => props.subject ?? "application";
+  const confirmName = () => props.plan.operation === "recreate" ? (subject() === "database" ? (props.summary?.length ? "Apply changes" : "Redeploy database") : "Recreate application") : confirmNames[props.plan.operation];
+  const actionIcon = () => props.summary?.length ? "check" : props.plan.operation === "recreate" ? "refresh" : "deploy";
+  const effectText = (effect: string) => subject() === "database" ? effect.replace("current domains", "current network settings") : effect;
+  const effects = () => props.summary?.length ? (props.plan.effects ?? []).filter(effect => !effect.startsWith("Publish reviewed") && !effect.startsWith("Preserve persistent")) : (props.plan.effects ?? []);
   const hookChanges = createMemo(() => {
     if (!props.hooks || !props.plan.changes.includes("Lifecycle commands")) return [];
     const key = (hook: Hook) => hook.stage + ":" + hook.command.service;
@@ -132,14 +141,15 @@ export default function ChangeReview(props: {
       <header><h2 id="review-title">{props.title ?? "Review changes"}</h2><IconButton icon="close" label="Close review" ghost disabled={busy()} onClick={props.close} /></header>
       <div class="change-review-content">
         <Show when={error()}><ErrorNotice message={error()} /></Show>
-        <Show when={props.application}><strong class="review-application"><Icon name="box" />{props.application}</strong></Show>
-        <Show when={props.release} fallback={<p class="change-operation">{operationNames[props.plan.operation]}</p>}>{release =>
+        <Show when={props.application}><strong class="review-application"><Icon name={props.icon ?? "box"} />{props.application}</strong></Show>
+        <Show when={props.release} fallback={<Show when={!props.summary?.length}><p class="change-operation">{subject() === "database" && props.plan.operation === "recreate" ? "Redeploy using the current image" : operationNames[props.plan.operation]}</p></Show>}>{release =>
           <dl class="release-comparison">
             <div><dt>Current release</dt><dd><ReleaseReference deployment={release().serving} /></dd></div>
             <div><dt>Restore to</dt><dd><ReleaseReference deployment={release().target} /></dd></div>
           </dl>
         }</Show>
-        <Show when={props.plan.changes.length}><ul class="change-list">
+        <Show when={props.summary?.length}><dl class="review-summary"><For each={props.summary!}>{item => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>}</For></dl></Show>
+        <Show when={props.plan.changes.length && !props.summary?.length}><ul class="change-list">
           <For each={props.plan.changes}>{change => <li>
             {change === "Lifecycle commands" ? "Deployment commands" : change}
             <Show when={change === "Lifecycle commands" && hookChanges().length}>
@@ -162,16 +172,18 @@ export default function ChangeReview(props: {
             </Show>
           </li>}</For>
         </ul></Show>
-        <Show when={props.plan.effects?.length || props.plan.downtime}>
+        <Show when={props.note} fallback={<Show when={effects().length || props.plan.downtime}>
           <ul class="review-effects">
-            <For each={props.plan.effects}>{effect => <li classList={{ caution: caution(effect) }}><Icon name={caution(effect) ? "warning" : "check"} />{effect}</li>}</For>
+            <For each={effects()}>{effect => <li classList={{ caution: caution(effect) }}><Icon name={caution(effect) ? "warning" : "check"} />{effectText(effect)}</li>}</For>
             <Show when={props.plan.downtime}><li classList={{ caution: caution(props.plan.downtime!) }}><Icon name={caution(props.plan.downtime!) ? "warning" : "clock"} />{props.plan.downtime}</li></Show>
           </ul>
+        </Show>}>
+          <ul class="review-effects"><li class="caution"><Icon name="warning" />{props.note}</li></ul>
         </Show>
       </div>
       <div class="form-actions">
         <Button variant="ghost" disabled={busy()} onClick={props.close}>{props.plan.operation === "rollback" ? "Cancel" : "Keep editing"}</Button>
-        <Button variant="primary" icon="deploy" disabled={busy() || props.plan.operation === "none"} onClick={() => void apply()}>{busy() ? "Applying changes" : props.confirm ?? confirmNames[props.plan.operation]}</Button>
+        <Button variant="primary" icon={actionIcon()} disabled={busy() || props.plan.operation === "none"} onClick={() => void apply()}>{busy() ? "Applying changes" : props.confirm ?? confirmName()}</Button>
       </div>
     </section>
   </Portal>;

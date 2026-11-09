@@ -13,21 +13,22 @@ import (
 )
 
 type BackupSpec struct {
-	Remote      *BackupDestination `json:"remote,omitempty"`
-	Kind        string             `json:"kind"`
-	Service     string             `json:"service"`
-	Volume      string             `json:"volume"`
-	Engine      string             `json:"engine"`
-	Database    string             `json:"database"`
-	User        string             `json:"user"`
-	Password    string             `json:"password,omitempty"`
-	Host        string             `json:"host"`
-	Port        int                `json:"port"`
-	TLS         string             `json:"tls"`
-	Destination string             `json:"destination"`
-	Keep        int                `json:"keep"`
-	Target      string             `json:"target,omitempty"`
-	Identity    string             `json:"identity,omitempty"`
+	NativeImport bool               `json:"nativeImport,omitempty"`
+	Remote       *BackupDestination `json:"remote,omitempty"`
+	Kind         string             `json:"kind"`
+	Service      string             `json:"service"`
+	Volume       string             `json:"volume"`
+	Engine       string             `json:"engine"`
+	Database     string             `json:"database"`
+	User         string             `json:"user"`
+	Password     string             `json:"password,omitempty"`
+	Host         string             `json:"host"`
+	Port         int                `json:"port"`
+	TLS          string             `json:"tls"`
+	Destination  string             `json:"destination"`
+	Keep         int                `json:"keep"`
+	Target       string             `json:"target,omitempty"`
+	Identity     string             `json:"identity,omitempty"`
 }
 type BackupPlan struct {
 	ID            string     `json:"id"`

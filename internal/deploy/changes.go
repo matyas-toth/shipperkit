@@ -20,6 +20,7 @@ type ChangePlan struct {
 }
 
 func buildConfig(c store.Config) store.Config {
+	c.Networking = store.NetworkAccess{}
 	c.AutoDeploy = store.AutoDeploy{}
 	c.Runtime = store.RuntimePolicy{}
 	c.Hooks = nil
@@ -113,6 +114,10 @@ func PlanChanges(old, next store.Config) ChangePlan {
 			p.Operation = "rebuild"
 		}
 	}
+	if len(next.Networking.Ports) > 0 {
+		p.Downtime = "Public ports switch during replacement"
+		p.Effects = append(p.Effects, "Publish reviewed TCP and UDP ports")
+	}
 	if !reflect.DeepEqual(buildConfig(old), buildConfig(next)) {
 		p.Operation = "rebuild"
 	}
@@ -152,7 +157,7 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	var left, right map[string]any
 	json.Unmarshal(a, &left)
 	json.Unmarshal(b, &right)
-	labels := map[string]string{"localSource": "Source files", "runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
+	labels := map[string]string{"localSource": "Source files", "networking": "Networking", "runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
 	for key, label := range labels {
 		if !reflect.DeepEqual(left[key], right[key]) && !slices.Contains(p.Changes, label) {
 			p.Changes = append(p.Changes, label)
@@ -191,6 +196,9 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	return p
 }
 func (r *DockerRuntime) ReuseCompose(ctx context.Context, d *store.Deployment, previous store.Deployment) error {
+	if e := r.ValidatePublishedPorts(ctx, d.ApplicationID, d.Config.Networking.Ports); e != nil {
+		return e
+	}
 	var plan composePlan
 	if e := json.Unmarshal([]byte(previous.ComposePlan), &plan); e != nil {
 		return e
@@ -203,6 +211,9 @@ func (r *DockerRuntime) ReuseCompose(ctx context.Context, d *store.Deployment, p
 		return fmt.Errorf("Previous Compose configuration is unavailable")
 	}
 	d.Services = append([]store.Service{}, previous.Services...)
+	if e := r.reuseComposeNetworking(ctx, *d, &plan); e != nil {
+		return e
+	}
 	for name, raw := range services {
 		svc := raw.(map[string]any)
 		// Recover the original entrypoint before replacing/removing a startup hook.
@@ -263,9 +274,9 @@ func (r *DockerRuntime) ReuseCompose(ctx context.Context, d *store.Deployment, p
 					networks = map[string]any{}
 				}
 				if d.Services[i].Port > 0 {
-					networks["shipper_edge"] = map[string]any{"aliases": []string{composeAlias(d.ApplicationID, name)}}
+					networks["shipper_edge"] = map[string]any{"aliases": composeServiceAliases(*d, name)}
 				} else {
-					delete(networks, "shipper_edge")
+					networks["shipper_edge"] = map[string]any{"aliases": composeServiceAliases(*d, name)}
 				}
 				svc["networks"] = networks
 			}

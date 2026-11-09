@@ -1,11 +1,21 @@
 import { Show, createSignal, onCleanup } from "solid-js";
 import { post } from "../api";
 import { useAuth } from "../context";
+import { mediaQuery } from "../media";
 import { Button, ErrorNotice, IconButton } from "./Controls";
 
-export default function DatabaseConnection(props: { applicationId: string; deploymentId: string }) {
+export default function DatabaseConnection(props: { applicationId: string; deploymentId: string; preview?: string }) {
   const auth = useAuth();
+  const compact = mediaQuery("(width < 640px)");
   const [uri, setURI] = createSignal(""), [busy, setBusy] = createSignal(false), [copied, setCopied] = createSignal(false), [error, setError] = createSignal("");
+  const parts = () => {
+    try {
+      const value = new URL(props.preview ?? "");
+      if (value.protocol === "sqlite:") return { file: value.pathname, host: "", user: "", database: "", tls: "" };
+      return { file: "", host: value.host, database: value.pathname.replace(/^\//, "") || "default", user: decodeURIComponent(value.username) || "default", tls: value.searchParams.get("sslmode") ?? (value.protocol === "rediss:" ? "Required" : "") };
+    } catch { return undefined; }
+  };
+  const scope = () => (props.preview ?? "").startsWith("sqlite:") ? "Local file" : "Private network";
   let mounted = true, timer: ReturnType<typeof setTimeout> | undefined;
   onCleanup(() => { mounted = false; clearTimeout(timer); });
   async function load(copy: boolean) {
@@ -30,11 +40,26 @@ export default function DatabaseConnection(props: { applicationId: string; deplo
     finally { if (mounted) setBusy(false); }
   }
   return <section class="database-connection" aria-label="Database connection">
-    <label for="database-connection-string">Connection string</label>
+    <div class="database-connection-head"><h2>Connection string</h2><span>{scope()}</span></div>
     <div class="database-connection-controls">
-      <input id="database-connection-string" class="input mono" readonly type={uri() ? "text" : "password"} value={uri() || "connection-string"} autocomplete="off" spellcheck={false} />
-      <IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} />
-      <Button icon={copied() ? "check" : "copy"} disabled={busy()} aria-label="Copy connection string" onClick={() => void load(true)}>{copied() ? "Copied" : "Copy"}</Button>
+      <Show when={props.preview} fallback={<><input id="database-connection-string" class="input mono" aria-label="Connection string" readonly type={uri() ? "text" : "password"} value={uri() || "connection-string"} autocomplete="off" spellcheck={false} /><IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
+        <Show when={compact()} fallback={<><div class="database-connection-field">
+          <code class="database-connection-preview mono" aria-label="Connection string">{uri() || props.preview}</code>
+        </div>
+        <IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
+          <dl class="database-connection-parts" aria-label="Connection string">
+            <Show when={parts()?.file} fallback={<>
+              <div><dt>Host</dt><dd class="mono">{parts()?.host ?? props.preview}</dd></div>
+              <div><dt>User</dt><dd class="mono">{parts()?.user ?? "default"}</dd></div>
+              <div><dt>Database</dt><dd class="mono">{parts()?.database ?? "default"}</dd></div>
+              <Show when={parts()?.tls}><div><dt>TLS</dt><dd>{parts()!.tls === "require" ? "Required" : parts()!.tls}</dd></div></Show>
+            </>}>
+              <div><dt>File</dt><dd class="mono">{parts()!.file}</dd></div>
+            </Show>
+          </dl>
+        </Show>
+      </Show>
+      <Button variant="primary" icon={copied() ? "check" : "copy"} disabled={busy()} aria-label="Copy full connection string" title="Copies the full connection string" onClick={() => void load(true)}>{copied() ? "Copied" : "Copy"}</Button>
     </div>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
   </section>;

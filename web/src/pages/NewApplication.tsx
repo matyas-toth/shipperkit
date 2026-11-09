@@ -23,6 +23,7 @@ import RuntimeFields from "../components/RuntimeFields";
 import ServiceSummary from "../components/ServiceSummary";
 import { ImageFields, InlineFields, RepositoryPicker, useConnections } from "../components/SourceFields";
 import { emptyConfig } from "../components/StaticFields";
+import DatabaseResource from "../components/DatabaseResource";
 import Variables from "../components/Variables";
 import Volumes from "../components/Volumes";
 
@@ -81,6 +82,7 @@ export default function NewApplication() {
   const [config, setConfig] = createStore<StaticConfig>({ ...emptyConfig(), ...draft?.config });
   const [source, setSource] = createSignal<Source>(draftSource(draft));
   const [name, setName] = createSignal(draft?.name ?? "");
+  const [databaseOpen, setDatabaseOpen] = createSignal(false);
   const [manual, setManual] = createSignal(false);
   const [sourcePanel, setSourcePanel] = createSignal(false);
   const connections = useConnections();
@@ -140,6 +142,11 @@ export default function NewApplication() {
     onCleanup(() => { document.removeEventListener("click", outside); if (trigger?.isConnected) trigger.focus({ preventScroll: true }); });
   });
 
+  async function prepareDatabase(value: StaticConfig, databaseName: string) {
+    batch(() => { chooseSource("image"); setConfig(reconcile(value)); setName(databaseName); });
+    await plan();
+    if (review()) setDatabaseOpen(false);
+  }
   function enterManual() { setManual(true); go("source"); }
   function selectAccount(id: string) {
     batch(() => {
@@ -310,7 +317,7 @@ export default function NewApplication() {
 
   return <div class="content creation-page">
     <A href="/" class="back-link"><Icon name="back" />Applications</A>
-    <Show when={manual() || step() !== "source"}><header class="page-heading"><h1>New application</h1></header></Show>
+    <Show when={manual() || step() !== "source" || databaseOpen()}><header class="page-heading"><h1>{databaseOpen() ? "New database" : step() === "review" && config.database ? "Review database" : config.database ? "New database" : "New application"}</h1></header></Show>
     <Show when={manual()}><ol class="creation-steps" aria-label="Creation steps">
       <For each={steps}>{(entry, index) => <li>
         <button type="button" aria-current={step() === entry.value ? "step" : undefined}
@@ -321,7 +328,8 @@ export default function NewApplication() {
       </li>}</For>
     </ol></Show>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
-    <Show when={!manual() && step() === "source"}>
+    <Show when={databaseOpen()}><DatabaseResource prepare={prepareDatabase} close={() => setDatabaseOpen(false)} /></Show>
+    <Show when={!manual() && !databaseOpen() && step() === "source"}>
       <form class="source-entry" onSubmit={e => { e.preventDefault(); setSourcePanel(false); void plan(); }}>
         <h1 ref={heading} tabindex="-1">Deploy an application</h1>
         <fieldset disabled={pending()}>
@@ -341,6 +349,7 @@ export default function NewApplication() {
                 </Show>
               </Show>
               <Show when={!git() || config.sourceId}><Button small variant="ghost" icon="git" onClick={() => { chooseSource("git"); change("sourceId", ""); change("repositoryId", 0); setSourcePanel(false); }}>Repository URL</Button></Show>
+              <Button small variant="ghost" icon="database" onClick={() => setDatabaseOpen(true)}>Database</Button>
               <Button small variant="ghost" icon="folder" onClick={() => { chooseSource("local"); setSourcePanel(true); }}>Local files</Button>
               <Button small variant="ghost" icon="box" onClick={() => { chooseSource("image"); setSourcePanel(true); }}>Container image</Button>
               <details class="source-extra"><summary aria-label="More sources"><Icon name="more" /></summary><div><For each={sources.slice(3)}>{s => <Button small variant="ghost" icon={s.icon} onClick={() => { chooseSource(s.value); setSourcePanel(true); }}>{s.label}</Button>}</For></div></details>
@@ -491,22 +500,23 @@ export default function NewApplication() {
       </form>
     </Show>
     <Show when={!manual() && step() === "review" && review()}>{approved => <>
-      <h2 ref={heading} tabindex="-1">Ready to deploy</h2>
-      <section class="deployment-proposal" aria-label="Proposed deployment">
+      <h2 ref={heading} tabindex="-1" classList={{ "sr-only": !!config.database }}>{config.database ? "Review database" : "Ready to deploy"}</h2>
+      <section class="deployment-proposal" classList={{ "database-proposal": !!config.database }} aria-label="Proposed deployment">
         <dl>
-          <ReviewFact label="Application">{approved().plan.name}</ReviewFact>
-          <ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact>
-          <ReviewFact label="Build">{methodLabel(method())}</ReviewFact>
-          <Show when={!compose()}><ReviewFact label="Domain">{worker() ? "Worker" : approved().plan.config.domain || "No public domain"}</ReviewFact></Show>
+          <ReviewFact label={config.database ? "Database" : "Application"}>{approved().plan.name}</ReviewFact>
+          <Show when={!config.database}><ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact></Show>
+          <ReviewFact label={config.database ? "Engine" : "Build"}>{config.database ? ({postgresql:"PostgreSQL",mysql:"MySQL",mariadb:"MariaDB",mongodb:"MongoDB",clickhouse:"ClickHouse",redis:"Redis",sqlite:"SQLite"}[config.database.engine]) + " " + config.database.version : methodLabel(method())}</ReviewFact>
+          <Show when={config.database}><ReviewFact label="Storage">Persistent volume</ReviewFact><ReviewFact label="Backups">{config.database!.engine === "clickhouse" || config.database!.engine === "sqlite" ? "Nightly volume" : "Nightly, 7 days"}</ReviewFact><ReviewFact label="Access">{config.database!.engine === "sqlite" ? "Local volume" : "Private network"}</ReviewFact><ReviewFact label="Credentials">{config.database!.engine === "sqlite" ? "None" : "Shown after deploy"}</ReviewFact></Show>
+          <Show when={!compose() && !config.database}><ReviewFact label="Domain">{worker() ? "Worker" : approved().plan.config.domain || "No public domain"}</ReviewFact></Show>
           <Show when={compose()}><ReviewFact label="Services"><For each={stack()?.services}>{s => <span>{s.name}</span>}</For></ReviewFact></Show>
           <Show when={compose()}><ReviewFact label="Domain"><Show when={approved().plan.config.domains?.length} fallback={<><span>No public domain</span><Button small variant="ghost" onClick={enterManual}>Add domain</Button></>}><For each={approved().plan.config.domains}>{d => <span>{d.hostname}</span>}</For></Show></ReviewFact></Show>
         </dl>
         <Show when={missing().length}><div class="proposal-variables"><span>{missing().length} detected {missing().length === 1 ? "variable" : "variables"} to review</span><Button small onClick={() => { addVariables(); enterManual(); }}>Review variables</Button></div></Show>
-        <Button variant="ghost" onClick={enterManual}>Configure manually<Icon name="chevron" /></Button>
+        <Button variant="ghost" onClick={enterManual}>{config.database ? "Advanced settings" : "Configure manually"}<Icon name="chevron" /></Button>
       </section>
       <div class="form-actions creation-actions">
         <Button variant="ghost" icon="back" disabled={pending()} onClick={() => go("source")}>Back</Button>
-        <Button variant="primary" icon="deploy" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
+        <Button variant="primary" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
       </div>
     </>}</Show>
     <Show when={manual() && step() === "review" && review()}>{approved => <>
@@ -568,7 +578,7 @@ export default function NewApplication() {
       </div>
       <div class="form-actions creation-actions">
         <Button variant="ghost" icon="back" disabled={pending()} onClick={() => go("configure")}>Back</Button>
-        <Button variant="primary" icon="deploy" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
+        <Button variant="primary" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
       </div>
     </>}</Show>
   </div>;

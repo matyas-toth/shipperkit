@@ -316,6 +316,13 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			w.log(d, "Automatic deployment settings updated")
 			return nil
 		}
+		if d.Operation == "deploy" || d.Operation == "apply" || d.Operation == "rollback" {
+			if runtime, ok := w.Runtime.(*DockerRuntime); ok {
+				if e := runtime.ValidatePublishedPorts(ctx, d.ApplicationID, d.Config.Networking.Ports); e != nil {
+					return e
+				}
+			}
+		}
 		if e := w.Runtime.Ensure(ctx); e != nil {
 			return fmt.Errorf("Proxy setup failed: %w", e)
 		}
@@ -652,6 +659,11 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		if e := w.stage(ctx, &d, "starting"); e != nil {
 			return e
 		}
+		if runtime, ok := w.Runtime.(*DockerRuntime); ok {
+			if e := runtime.PrepareNetworkCutover(ctx, d); e != nil {
+				return e
+			}
+		}
 		var e error
 		d.ContainerID, e = w.Runtime.Start(ctx, d)
 		if e != nil {
@@ -736,6 +748,13 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			if a, e := w.DB.Application(cleanup, d.ApplicationID); e == nil && a.ActiveDeploymentID != d.ID {
 				if e = w.Runtime.RemoveDeployment(cleanup, d); e != nil {
 					w.log(d, "Candidate cleanup failed: "+e.Error())
+				}
+			}
+			if runtime, ok := w.Runtime.(*DockerRuntime); ok {
+				if a, e := w.DB.Application(cleanup, d.ApplicationID); e == nil && a.ActiveDeploymentID != d.ID && a.DesiredState != "stopped" {
+					if e = runtime.RestoreNetworkCutover(cleanup, d); e != nil {
+						w.log(d, "Previous release recovery failed: "+e.Error())
+					}
 				}
 			}
 			stop()

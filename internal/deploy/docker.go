@@ -28,6 +28,7 @@ const ApacheImage = "httpd:2.4-alpine@sha256:070da7661f0be8a05430b2c125c0cde9e53
 const TraefikImage = "traefik:v3.6@sha256:31267173a15b4944e797a76ffd9c419707c8d8b32fe5b610f80cd0cfa05f372d"
 
 type ProxyConfig struct {
+	ReservedPorts      []int  `json:"-"`
 	DashboardURL       string `json:"dashboardURL,omitempty"`
 	DashboardUpstream  string `json:"dashboardUpstream,omitempty"`
 	DashboardContainer string `json:"-"`
@@ -311,6 +312,13 @@ func (r *DockerRuntime) Package(ctx context.Context, d store.Deployment, archive
 	return image.ID, e
 }
 func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, error) {
+	ports := d.Config.Networking.Ports
+	if d.TaskCommand != nil {
+		ports = nil
+	}
+	if err := r.ValidatePublishedPorts(ctx, d.ApplicationID, ports); err != nil {
+		return "", err
+	}
 	name := runtimeName(d)
 	if d.TaskCommand != nil {
 		name = taskName(d, store.TaskRun{ID: d.ID})
@@ -330,6 +338,9 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 			return "", errors.New("Container ownership check failed")
 		}
 		if !old.Container.State.Running && d.TaskCommand == nil {
+			if e = r.seedDatabaseTLS(ctx, d, old.Container.ID); e != nil {
+				return "", e
+			}
 			_, e = r.Client.ContainerStart(ctx, old.Container.ID, client.ContainerStartOptions{})
 			if e != nil {
 				return "", e
@@ -359,6 +370,13 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 	if d.TaskCommand != nil {
 		configuration.Labels["io.shipper.infrastructure"] = "task"
 		configuration.Labels["io.shipper.task.id"] = d.ID
+	}
+	if e := r.configureDatabaseTLS(ctx, d, configuration); e != nil {
+		return "", e
+	}
+	endpoints, e := r.applicationEndpoints(ctx, d)
+	if e != nil {
+		return "", e
 	}
 	mounts := []mount.Mount{}
 	for _, v := range d.Config.Volumes {
@@ -412,9 +430,12 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 		restart = container.RestartPolicy{Name: "no"}
 	}
 	configuration.StopTimeout = ptr(StopSeconds(d.Config.Runtime))
-	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, CapAdd: databaseCapabilities(d), SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: cpus, PidsLimit: ptr(pids)}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {Aliases: []string{"site-" + d.ID}}}}})
+	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{PortBindings: publishedBindings(ports), Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, CapAdd: databaseCapabilities(d), SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: cpus, PidsLimit: ptr(pids)}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: endpoints}})
 	if e != nil {
 		return "", e
+	}
+	if e = r.seedDatabaseTLS(ctx, d, c.ID); e != nil {
+		return c.ID, e
 	}
 	if d.TaskCommand != nil {
 		return c.ID, nil
@@ -721,6 +742,9 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 }
 
 func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, active map[string]store.Deployment) error {
+	if err := r.reconcileApplicationAliases(ctx, active); err != nil {
+		return err
+	}
 	config, e := r.EffectiveProxy(ctx)
 	if e != nil {
 		return e

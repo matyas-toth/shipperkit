@@ -131,7 +131,7 @@ test("capture product surfaces", async ({ page }) => {
   await shot(page, "backup-detail", { scroll: false });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole("button", { name: "Close backup details", exact: true }).click();
-  await page.getByRole("button", { name: "New backup", exact: true }).click();
+  await page.getByRole("button", { name: "New schedule", exact: true }).click();
   await page.waitForTimeout(400);
   await shot(page, "backup-editor");
 
