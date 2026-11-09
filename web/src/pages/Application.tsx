@@ -49,8 +49,8 @@ export default function ApplicationPage() {
     const database = query.data?.application.config.database;
     if (!database) return appTabs;
     const ids = database.engine === "sqlite"
-      ? ["overview", "terminal", "backups", "logs", "settings"]
-      : ["overview", "networking", "terminal", "backups", "logs", "settings"];
+      ? ["overview", "deployments", "terminal", "backups", "logs", "settings"]
+      : ["overview", "deployments", "networking", "backups", "terminal", "logs", "settings"];
     return ids.map(id => appTabs.find(item => item.id === id)!);
   };
   const visibleTabs = () => !managed() ? 1 : compact() ? (query.data?.application.config.database ? 4 : 3) : tabs().length;
