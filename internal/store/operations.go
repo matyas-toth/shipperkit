@@ -63,7 +63,11 @@ func scanOperationToken(row interface{ Scan(...any) error }) (t OperationToken, 
 	return
 }
 func (s *Store) OperationToken(ctx context.Context, raw string) (OperationToken, error) {
-	return scanOperationToken(s.db.QueryRowContext(ctx, "SELECT id,name,token_hash,user_id,scopes,applications,expires_at,created_at FROM operation_tokens WHERE token_hash=? AND expires_at>?", auth.Hash(raw), time.Now().Unix()))
+	return scanOperationToken(s.db.QueryRowContext(ctx, `SELECT t.id,t.name,t.token_hash,t.user_id,t.scopes,t.applications,t.expires_at,t.created_at
+		FROM operation_tokens t WHERE t.token_hash=? AND t.expires_at>?
+		AND EXISTS(SELECT 1 FROM administrators a WHERE a.id=t.user_id AND a.disabled=0 AND a.password_change_required=0)
+		AND (NOT EXISTS(SELECT 1 FROM settings WHERE key='require_factor' AND value='true')
+			OR EXISTS(SELECT 1 FROM account_factors f WHERE f.user_id=t.user_id))`, auth.Hash(raw), time.Now().Unix()))
 }
 func (s *Store) OperationTokens(ctx context.Context) ([]OperationToken, error) {
 	rows, e := s.db.QueryContext(ctx, "SELECT id,name,token_hash,user_id,scopes,applications,expires_at,created_at FROM operation_tokens ORDER BY created_at DESC LIMIT 100")

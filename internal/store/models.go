@@ -1,9 +1,31 @@
 package store
 
+const (
+	RoleAdmin     = "admin"
+	RoleDeveloper = "developer"
+	RoleViewer    = "viewer"
+)
+
 type User struct {
-	ID           string `json:"id"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"-"`
+	ID                     string     `json:"id"`
+	Email                  string     `json:"email"`
+	PasswordHash           string     `json:"-"`
+	Role                   string     `json:"role"`
+	Disabled               bool       `json:"disabled,omitempty"`
+	PasswordChangeRequired bool       `json:"passwordChangeRequired,omitempty"`
+	HasPassword            bool       `json:"hasPassword"`
+	CreatedAt              int64      `json:"createdAt,omitempty"`
+	LastLoginAt            int64      `json:"lastLoginAt,omitempty"`
+	FactorEnabled          bool       `json:"factorEnabled,omitempty"`
+	Identities             []Identity `json:"identities,omitempty"`
+}
+
+type Identity struct {
+	Provider    string `json:"provider"`
+	Subject     string `json:"-"`
+	Email       string `json:"email,omitempty"`
+	CreatedAt   int64  `json:"createdAt"`
+	LastLoginAt int64  `json:"lastLoginAt"`
 }
 
 type Session struct {
@@ -12,7 +34,13 @@ type Session struct {
 	ExpiresAt int64
 	Factor    FactorState
 	Verified  bool
+	FirstFactor   string
+	PendingProvider string
+	PendingSubject  string
+	PendingEmail    string
 }
+
+func (u User) IsAdmin() bool { return u.Role == RoleAdmin }
 
 func (a Application) Managed() bool {
 	if a.Method == "" {
@@ -26,6 +54,9 @@ func (a Application) Managed() bool {
 }
 
 func (s Session) AuthStep() string {
+	if s.User.PasswordChangeRequired {
+		return "password_change"
+	}
 	if s.Factor.Enrolled && !s.Verified {
 		return "verify"
 	}

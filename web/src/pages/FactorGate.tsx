@@ -12,8 +12,12 @@ export default function FactorGate() {
   const [recovery, setRecovery] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
+  const [currentPassword, setCurrentPassword] = createSignal("");
+  const [newPassword, setNewPassword] = createSignal("");
+  const [confirmPassword, setConfirmPassword] = createSignal("");
   const codes = () => auth.session()?.recoveryCodes ?? [];
-  const title = () => codes().length ? "Save recovery codes" : auth.session()?.authStep === "enroll" ? "Set up two-factor authentication" : "Verify sign-in";
+  const step = () => auth.session()?.authStep;
+  const title = () => codes().length ? "Save recovery codes" : step() === "password_change" ? "Set your password" : step() === "enroll" ? "Set up two-factor authentication" : "Verify sign-in";
   createEffect(() => { document.title = title() + " | Shipper"; });
   async function verify(event: SubmitEvent) {
     event.preventDefault();
@@ -21,6 +25,20 @@ export default function FactorGate() {
     setBusy(true); setError("");
     try { auth.accept(await post<Session>("/auth/factor/verify", { code: code() }, auth.session()?.csrfToken)); }
     catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+  async function changePassword(event: SubmitEvent) {
+    event.preventDefault();
+    if (busy()) return;
+    if (newPassword() !== confirmPassword()) {
+      setError("The passwords do not match");
+      return;
+    }
+    setBusy(true); setError("");
+    try {
+      auth.accept(await post<Session>("/auth/password", { currentPassword: currentPassword(), newPassword: newPassword() }, auth.session()?.csrfToken));
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+    } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
   async function logout() {
@@ -40,10 +58,29 @@ export default function FactorGate() {
               <Button onClick={() => auth.accept({ ...auth.session()!, recoveryCodes: undefined })}>Done</Button>
             </div>
           </Match>
-          <Match when={auth.session()?.authStep === "enroll"}>
+          <Match when={step() === "password_change"}>
+            <form class="factor-form" onSubmit={changePassword}>
+              <div class="form-fields">
+                <label for="current-password">Current password</label>
+                <input id="current-password" class="input" type="password" autocomplete="current-password" required
+                  value={currentPassword()} onInput={e => setCurrentPassword(e.currentTarget.value)} />
+                <label for="new-password">New password</label>
+                <input id="new-password" class="input" type="password" autocomplete="new-password" minlength={12} maxlength={72} required
+                  value={newPassword()} onInput={e => setNewPassword(e.currentTarget.value)} />
+                <label for="confirm-password">Confirm new password</label>
+                <input id="confirm-password" class="input" type="password" autocomplete="new-password" minlength={12} maxlength={72} required
+                  value={confirmPassword()} onInput={e => setConfirmPassword(e.currentTarget.value)} />
+              </div>
+              <div class="form-actions">
+                <Button variant="ghost" disabled={busy()} onClick={() => void logout()}>Sign out</Button>
+                <Button type="submit" disabled={busy()}>Save password</Button>
+              </div>
+            </form>
+          </Match>
+          <Match when={step() === "enroll"}>
             <FactorEnrollment cancel={() => void logout()} cancelLabel="Sign out" />
           </Match>
-          <Match when={auth.session()?.authStep === "verify"}>
+          <Match when={step() === "verify"}>
             <form class="factor-form" onSubmit={verify}>
               <div class="form-fields">
                 <label for="login-code">{recovery() ? "Recovery code" : "Authenticator code"}</label>

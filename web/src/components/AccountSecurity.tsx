@@ -28,10 +28,10 @@ export function FactorEnrollment(props: { cancel: () => void; cancelLabel: strin
     finally { setBusy(false); }
   }
   return <form class="factor-form" onSubmit={submit}>
-    <Show when={setup()} fallback={<div class="form-fields">
+    <Show when={setup()} fallback={<Show when={auth.session()?.user?.hasPassword !== false}><div class="form-fields">
       <label for="factor-password">Current password</label>
       <input id="factor-password" class="input" type="password" autocomplete="current-password" required value={password()} onInput={e => setPassword(e.currentTarget.value)} />
-    </div>}>{value => <div class="form-fields">
+    </div></Show>}>{value => <div class="form-fields">
       <img class="factor-qr" src={value().qr} alt="Scan with your authenticator" width="184" height="184" />
       <label for="factor-key">Setup key</label>
       <input id="factor-key" class="input mono" readonly value={value().key} onFocus={e => e.currentTarget.select()} />
@@ -100,8 +100,10 @@ export default function AccountSecurity(props: { scope?: "account" | "instance" 
       <form class="factor-form" onSubmit={submit}>
         <h2>{label()}</h2>
         <div class="form-fields">
-          <label for="change-factor-password">Current password</label>
-          <input id="change-factor-password" class="input" type="password" autocomplete="current-password" required value={password()} onInput={e => setPassword(e.currentTarget.value)} />
+          <Show when={auth.session()?.user?.hasPassword !== false}>
+            <label for="change-factor-password">Current password</label>
+            <input id="change-factor-password" class="input" type="password" autocomplete="current-password" required value={password()} onInput={e => setPassword(e.currentTarget.value)} />
+          </Show>
           <Show when={factor()?.enrolled}>
             <label for="change-factor-code">Authenticator code</label>
             <input id="change-factor-code" class="input mono" inputmode="numeric" autocomplete="one-time-code"

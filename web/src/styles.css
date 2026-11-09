@@ -11110,3 +11110,361 @@ body:has(.confirm-dialog) .page-actions {
     background: #171818;
   }
 }
+
+.auth-providers {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.auth-provider {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+}
+.auth-divider {
+  height: 1px;
+  margin: 0 0 24px;
+  background: var(--border);
+}
+.method-state {
+  margin-left: 10px;
+  color: var(--secondary);
+  font-size: 13px;
+}
+.provider-list {
+  display: grid;
+  gap: 12px;
+}
+.provider-card {
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border-muted);
+}
+.provider-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-muted);
+}
+.provider-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.provider-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--layer-03);
+  color: var(--secondary);
+}
+.provider-fields {
+  display: grid;
+  padding: 16px;
+}
+.provider-fields label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 530;
+}
+.provider-fields .input {
+  width: 100%;
+  margin-bottom: 14px;
+}
+.provider-fields .password-field .input {
+  margin-bottom: 14px;
+}
+.provider-fields .secret-state {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 11px;
+  pointer-events: none;
+}
+.provider-fields .password-field input {
+  padding-right: 70px;
+}
+.callback-field {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--border-muted);
+  padding-left: 10px;
+}
+.callback-field code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.provider-help {
+  padding: 0 16px 14px;
+}
+.provider-help summary {
+  color: var(--secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+.provider-help ol {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 19px;
+}
+.provider-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-muted);
+}
+.provider-enable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--secondary);
+  font-size: 13px;
+}
+.provider-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.provider-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #86ddb210;
+  box-shadow: inset 0 0 0 1px #86ddb255;
+  color: var(--success);
+}
+.users-tray {
+  overflow-x: auto;
+}
+.users-table {
+  min-width: 760px;
+}
+.users-table td {
+  height: 60px;
+}
+.user-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  font-size: 12px;
+}
+.user-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.user-name strong {
+  overflow: hidden;
+  font-weight: 520;
+  text-overflow: ellipsis;
+}
+.role-select {
+  width: auto;
+  min-width: 112px;
+}
+.signin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.signin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--border-muted);
+  color: var(--secondary);
+  font-size: 11px;
+}
+.signin-chip .icon {
+  width: 12px;
+  height: 12px;
+}
+.signin-chip.is-empty {
+  color: var(--muted);
+}
+.user-drawer .drawer-scroll {
+  overflow-y: auto;
+  padding: 20px;
+}
+.user-form {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.user-form .form-fields .input {
+  margin-bottom: 12px;
+}
+.user-form .form-fields > .password-field {
+  margin-bottom: 12px;
+}
+.user-access legend {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 530;
+}
+.user-access .choice-card {
+  display: flex;
+  min-height: 44px;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.audit-list {
+  display: grid;
+  margin: 0;
+}
+.audit-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-muted);
+}
+.audit-list dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.audit-list dd {
+  flex: none;
+  color: var(--secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.audit-detail {
+  color: var(--muted);
+  font-size: 12px;
+}
+.activity-user {
+  margin-bottom: 16px;
+  font-weight: 530;
+}
+@media (width < 48rem) {
+  .provider-card footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .provider-actions {
+    width: 100%;
+  }
+}
+
+.provider-scopes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 16px 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.provider-scopes code {
+  color: var(--secondary);
+}
+
+.users-table {
+  table-layout: fixed;
+  min-width: 700px;
+}
+.users-table th, .users-table td {
+  padding-inline: 10px;
+}
+.users-table th:nth-child(1) { width: 30%; }
+.users-table th:nth-child(2) { width: 18%; }
+.users-table th:nth-child(3) { width: 24%; }
+.users-table th:nth-child(4) { width: 17%; }
+.users-table th:nth-child(5) { width: 56px; min-width: 56px; }
+.users-table .role-select {
+  width: 100%;
+  min-width: 0;
+}
+.users-table .user-name {
+  flex-wrap: wrap;
+}
+.users-table .user-name strong {
+  flex: 1 1 100%;
+}
+.users-table .row-chevron {
+  width: 56px;
+}
+
+.user-drawer {
+  display: flex;
+  flex-direction: column;
+}
+.user-drawer > .drawer-scroll {
+  flex: 1;
+}
+.user-drawer form.user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.user-form > .form-actions {
+  margin-top: auto;
+}
+
+.password-actions {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+}
+.password-actions .icon-button {
+  position: static;
+}
+.provider-fields .password-field {
+  margin-bottom: 14px;
+}
+
+.user-form .password-field input {
+  padding-right: 68px;
+}
+
+.provider-fields .password-field .input {
+  margin-bottom: 0;
+}
+
+.mobile-nav-pill.is-simple {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.mobile-bottom-nav.is-simple .mobile-nav-indicator {
+  width: calc((100% - 10px) / 2);
+}
+.mobile-bottom-nav.is-simple[data-active="settings"] .mobile-nav-indicator {
+  transform: translate3d(100%, 0, 0);
+}

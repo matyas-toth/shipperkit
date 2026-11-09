@@ -143,20 +143,7 @@ func (s *Store) consumeFactor(ctx context.Context, tx *sql.Tx, user, code string
 }
 
 func rotateFactorSession(ctx context.Context, tx *sql.Tx, user, previous, next, csrf string, now time.Time, verified, all bool) error {
-	result, e := tx.ExecContext(ctx, "DELETE FROM sessions WHERE token_hash=? AND user_id=? AND expires_at>?", previous, user, now.Unix())
-	if e != nil {
-		return e
-	}
-	if n, _ := result.RowsAffected(); n != 1 {
-		return sql.ErrNoRows
-	}
-	if all {
-		if _, e = tx.ExecContext(ctx, "DELETE FROM sessions WHERE user_id=?", user); e != nil {
-			return e
-		}
-	}
-	_, e = tx.ExecContext(ctx, "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at,factor_verified) VALUES (?,?,?,?,?)", next, user, csrf, now.Add(7*24*time.Hour).Unix(), verified)
-	return e
+	return rotateSession(ctx, tx, user, previous, next, csrf, now, 7*24*time.Hour, &verified, all)
 }
 
 func (s *Store) VerifyFactor(ctx context.Context, sessionHash, user, code, next, csrf string, now time.Time) error {
@@ -175,11 +162,7 @@ func (s *Store) VerifyFactor(ctx context.Context, sessionHash, user, code, next,
 }
 
 func auditAccount(ctx context.Context, tx *sql.Tx, user, action string, now time.Time) error {
-	if _, e := tx.ExecContext(ctx, "INSERT INTO account_audit(user_id,action,created_at) VALUES (?,?,?)", user, action, now.Unix()); e != nil {
-		return e
-	}
-	_, e := tx.ExecContext(ctx, "DELETE FROM account_audit WHERE sequence <= (SELECT max(sequence)-1000 FROM account_audit)")
-	return e
+	return auditAccountDetail(ctx, tx, user, "", action, "", now)
 }
 
 func (s *Store) SetFactorPolicy(ctx context.Context, sessionHash, user, code string, required bool, now time.Time) error {

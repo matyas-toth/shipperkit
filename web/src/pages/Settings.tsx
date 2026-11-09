@@ -1,5 +1,5 @@
 import { useLocation } from "@solidjs/router";
-import { For, Show, createSignal, onMount } from "solid-js";
+import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
 import type { SystemInfo, ProxyConfig } from "../types";
@@ -12,6 +12,8 @@ import { Icon, type IconName } from "../components/Icon";
 import AccountSecurity from "../components/AccountSecurity";
 import DashboardSettings from "../components/DashboardSettings";
 import Updates from "../components/Updates";
+import Users from "../components/Users";
+import Authentication from "../components/Authentication";
 
 type SettingsGroup = {
   id: string;
@@ -19,25 +21,26 @@ type SettingsGroup = {
   sections: { id: string; label: string; icon: IconName }[];
 };
 
-const groups: SettingsGroup[] = [
-  { id: "account", label: "Account settings", sections: [
-    { id: "account", label: "Account", icon: "user" },
-  ] },
-  { id: "server", label: "Server settings", sections: [
-    { id: "instance", label: "Instance", icon: "sliders" },
-    { id: "dashboard", label: "Dashboard", icon: "globe" },
-    { id: "sources", label: "Connections", icon: "git" },
-    { id: "updates", label: "Updates", icon: "refresh" },
-    { id: "recovery", label: "Recovery", icon: "database" },
-    { id: "security", label: "Access policy", icon: "shield" },
-  ] },
-];
-const sections = groups.flatMap(group => group.sections);
+const accountGroup: SettingsGroup = { id: "account", label: "Account settings", sections: [
+  { id: "account", label: "Account", icon: "user" },
+] };
+const serverGroup: SettingsGroup = { id: "server", label: "Server settings", sections: [
+  { id: "instance", label: "Instance", icon: "sliders" },
+  { id: "users", label: "Users", icon: "users" },
+  { id: "authentication", label: "Authentication", icon: "security" },
+  { id: "dashboard", label: "Dashboard", icon: "globe" },
+  { id: "sources", label: "Connections", icon: "git" },
+  { id: "updates", label: "Updates", icon: "refresh" },
+  { id: "recovery", label: "Recovery", icon: "database" },
+  { id: "security", label: "Access policy", icon: "shield" },
+] };
 
 export default function Settings() {
   const auth = useAuth();
   const location = useLocation();
-  const section = () => sections.find(item => item.id === location.hash.slice(1))?.id ?? "instance";
+  const groups = createMemo(() => auth.session()?.user?.role === "admin" ? [accountGroup, serverGroup] : [accountGroup]);
+  const sections = createMemo(() => groups().flatMap(group => group.sections));
+  const section = () => sections().find(item => item.id === location.hash.slice(1))?.id ?? (auth.session()?.user?.role === "admin" ? "instance" : "account");
   const [actionError, setActionError] = createSignal("");
   onMount(() => { document.title = "Settings | Shipper"; });
   async function logout() {
@@ -57,7 +60,7 @@ export default function Settings() {
     <header class="page-heading"><h1>Settings</h1></header>
     <div class="settings-layout">
       <nav class="settings-navigation" aria-label="Settings sections">
-        <For each={groups}>{group => <section class="settings-nav-group">
+        <For each={groups()}>{group => <section class="settings-nav-group">
           <h2 class="settings-nav-heading">{group.label}</h2>
           <For each={group.sections}>{item => <a href={"/settings#" + item.id} class="settings-link"
             aria-current={section() === item.id ? "page" : undefined}><Icon name={item.icon} />{item.label}</a>}</For>
@@ -67,6 +70,8 @@ export default function Settings() {
         <Show when={query.error}><ErrorNotice message={query.error!.message} retry={() => void query.refetch()} /></Show>
         <Show when={actionError()}><ErrorNotice message={actionError()} /></Show>
         <Show when={section() === "sources"}><Connections /></Show>
+        <Show when={section() === "users"}><Users /></Show>
+        <Show when={section() === "authentication"}><Authentication /></Show>
         <Show when={section() === "updates"}><Updates /></Show>
         <Show when={section() === "recovery"}><section class="settings-section" id="recovery"><Backups /></section></Show>
         <Show when={section() === "account"}><section class="settings-section" id="account"><h2>Account</h2><dl class="settings-group">

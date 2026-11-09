@@ -47,6 +47,7 @@ type Config struct {
 	SetupClaim     func() (string, error)
 	Operations     *operations.Service
 	Updates        *updates.Service
+	OAuth          *OAuthEndpoints
 }
 type Server struct {
 	terminalMu sync.Mutex
@@ -67,6 +68,10 @@ type Server struct {
 	urlMu           sync.RWMutex
 	publicURLValue  string
 	dashboardValue  string
+	oauth           *OAuthEndpoints
+	jwksMu          sync.Mutex
+	jwks            map[string]jwksKey
+	jwksFetched     time.Time
 }
 type contextKey int
 
@@ -95,80 +100,94 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 	}
 	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, limitMax: limitMax, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1), publicURLValue: publicURL, dashboardValue: dashboard}
 	s.authChanged = make(chan struct{})
+	s.oauth = cfg.OAuth
+	if s.oauth == nil {
+		s.oauth = DefaultOAuthEndpoints()
+	}
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, s.headers)
 	r.Get("/connect/github/manifest", s.githubManifest)
 	r.Get("/connect/github/installed", s.githubInstalled)
 	r.Post("/hooks/github/{connection}", s.githubWebhook)
 	r.Post("/api/v1/applications/{id}/deploy", s.tokenDeploy)
+	r.With(s.limit).Get("/auth/oauth/{provider}/start", s.oauthStart)
+	r.Get("/auth/oauth/{provider}/callback", s.oauthCallback)
 	r.Route("/api", func(r chi.Router) {
 		r.Use(s.origin)
 		r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 			s.json(w, 200, map[string]string{"status": "ok", "version": s.cfg.Version})
 		})
 		r.Get("/auth/session", s.currentSession)
+		r.Get("/auth/methods", s.authMethods)
 		r.With(s.limit, s.hashCapacity).Post("/auth/setup", s.setup)
 		r.With(s.limit, s.hashCapacity).Post("/auth/login", s.login)
 		s.factorRoutes(r)
 		r.Group(func(r chi.Router) {
 			r.Use(s.requireSession)
 			s.operationsRoutes(r)
-			s.databaseResourceRoutes(r)
 			s.networkingRoutes(r)
-			s.terminalRoutes(r)
-			s.protectionRoutes(r)
 			r.Get("/containers", s.containers)
 			r.Get("/applications", s.applications)
 			r.Get("/applications/{id}", s.application)
 			r.Get("/applications/{id}/deployments/{deployment}", s.deployment)
 			r.Get("/applications/{id}/deployments/{deployment}/logs", s.deploymentLogs)
 			r.Get("/applications/{id}/tasks", s.tasks)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/tasks", s.saveTask)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/tasks/{task}/run", s.runTask)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/tasks/{task}/delete", s.deleteTask)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/schedule-preview", s.schedulePreview)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/changes", s.redeploy)
-			r.Get("/connections", s.connections)
-			r.Get("/connections/{connection}/repositories", s.repositories)
-			r.With(s.csrf, s.limit).Post("/connections", s.saveConnection)
-			r.With(s.csrf, s.limit).Post("/connections/{connection}/delete", s.deleteConnection)
-			r.With(s.csrf, s.limit).Post("/connections/{connection}/webhook", s.connectionWebhook)
-			r.With(s.csrf, s.limit).Post("/connections/github", s.beginGitHub)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/inline/source", s.inlineSource)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/deploy-token", s.deployToken)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/cancel", s.cancelDeployment)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/retry", s.retryDeployment)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/rollback", s.rollbackRelease)
-			r.With(s.csrf, s.limit).Post("/proxy/check", s.checkProxy)
-			r.With(s.csrf, s.limit).Post("/proxy", s.saveProxy)
 			r.Get("/proxy", s.proxyInfo)
 			r.Get("/domain-options", s.domainOptions)
-			r.With(s.csrf, s.limit).Post("/compose/preview", s.previewCompose)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/compose/source", s.composeSource)
-			r.With(s.csrf, s.limit).Post("/repositories/branches", s.sourceBranches)
-			r.With(s.csrf, s.limit).Post("/repositories/inspect", s.inspectSource)
-			r.With(s.csrf, s.limit).Post("/variables/parse", s.parseVariables)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/name", s.renameApplication)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/domains", s.updateDomains)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/lifecycle", s.lifecycle)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/variables/reveal", s.revealVariable)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/database/connection", s.databaseConnection)
-			r.Get("/applications/{id}/logs", s.runtimeLogs)
-
-			r.With(s.csrf, s.limit).Post("/applications", s.createApplication)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/deployments", s.redeploy)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/delete", s.deleteApplication)
-			r.With(s.csrf, s.limit).Post("/applications/{id}/domain-check", s.checkDomain)
-			r.Get("/system", s.system)
 			r.Get("/updates", s.updateState)
 			r.Get("/updates/status", s.updateStatus)
-			r.With(s.csrf, s.limit).Post("/updates/check", s.checkUpdates)
-			r.With(s.csrf, s.limit).Post("/updates/settings", s.saveUpdateSettings)
-			r.With(s.csrf, s.limit).Post("/updates/apply", s.applyUpdate)
 			r.Get("/events", s.stream)
-			r.With(s.csrf, s.limit).Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
-				s.monitor.Trigger()
-				s.json(w, 202, map[string]string{"status": "queued"})
+			r.Group(func(r chi.Router) {
+				r.Use(s.requireRole(store.RoleDeveloper))
+				s.databaseResourceRoutes(r)
+				s.terminalRoutes(r)
+				s.protectionRoutes(r)
+				r.Get("/connections", s.connections)
+				r.Get("/connections/{connection}/repositories", s.repositories)
+				r.Get("/applications/{id}/logs", s.runtimeLogs)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/tasks", s.saveTask)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/tasks/{task}/run", s.runTask)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/tasks/{task}/delete", s.deleteTask)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/schedule-preview", s.schedulePreview)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/changes", s.redeploy)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/inline/source", s.inlineSource)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/deploy-token", s.deployToken)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/cancel", s.cancelDeployment)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/retry", s.retryDeployment)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/deployments/{deployment}/rollback", s.rollbackRelease)
+				r.With(s.csrf, s.limit).Post("/compose/preview", s.previewCompose)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/compose/source", s.composeSource)
+				r.With(s.csrf, s.limit).Post("/repositories/branches", s.sourceBranches)
+				r.With(s.csrf, s.limit).Post("/repositories/inspect", s.inspectSource)
+				r.With(s.csrf, s.limit).Post("/variables/parse", s.parseVariables)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/name", s.renameApplication)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/domains", s.updateDomains)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/lifecycle", s.lifecycle)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/variables/reveal", s.revealVariable)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/database/connection", s.databaseConnection)
+				r.With(s.csrf, s.limit).Post("/applications", s.createApplication)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/deployments", s.redeploy)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/delete", s.deleteApplication)
+				r.With(s.csrf, s.limit).Post("/applications/{id}/domain-check", s.checkDomain)
+				r.With(s.csrf, s.limit).Post("/refresh", func(w http.ResponseWriter, r *http.Request) {
+					s.monitor.Trigger()
+					s.json(w, 202, map[string]string{"status": "queued"})
+				})
+			})
+			r.Group(func(r chi.Router) {
+				r.Use(s.requireRole(store.RoleAdmin))
+				s.userRoutes(r)
+				s.authProviderRoutes(r)
+				r.With(s.csrf, s.limit).Post("/connections", s.saveConnection)
+				r.With(s.csrf, s.limit).Post("/connections/{connection}/delete", s.deleteConnection)
+				r.With(s.csrf, s.limit).Post("/connections/{connection}/webhook", s.connectionWebhook)
+				r.With(s.csrf, s.limit).Post("/connections/github", s.beginGitHub)
+				r.With(s.csrf, s.limit).Post("/proxy/check", s.checkProxy)
+				r.With(s.csrf, s.limit).Post("/proxy", s.saveProxy)
+				r.Get("/system", s.system)
+				r.With(s.csrf, s.limit).Post("/updates/check", s.checkUpdates)
+				r.With(s.csrf, s.limit).Post("/updates/settings", s.saveUpdateSettings)
+				r.With(s.csrf, s.limit).Post("/updates/apply", s.applyUpdate)
 			})
 		})
 		r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -261,7 +280,11 @@ func (s *Server) requireSession(next http.Handler) http.Handler {
 		session, err := s.session(r)
 		if err != nil {
 			if errors.Is(err, errFactorGate) {
-				s.problem(w, 403, "factor_required", "Complete two-factor authentication")
+				code := "factor_required"
+				if session.User.PasswordChangeRequired {
+					code = "password_change_required"
+				}
+				s.problem(w, 403, code, "Complete account setup to continue")
 				return
 			}
 			s.problem(w, 401, "unauthenticated", "Sign in to continue")
@@ -269,6 +292,48 @@ func (s *Server) requireSession(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), sessionKey, session)))
 	})
+}
+
+func roleRank(role string) int {
+	switch role {
+	case store.RoleAdmin:
+		return 3
+	case store.RoleDeveloper:
+		return 2
+	case store.RoleViewer:
+		return 1
+	}
+	return 0
+}
+
+// requireRole is applied after requireSession so the browser session is
+// authoritative. Personal API credentials never gain administration rights.
+func (s *Server) requireRole(minimum string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if principal(r) != nil {
+				// Operations tokens already passed the path-and-scope allowlist in
+				// the automation middleware. They can never reach administration
+				// routes, which are marked admin-only.
+				if minimum == store.RoleAdmin {
+					s.problem(w, 403, "forbidden", "This action needs an interactive account")
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+			session, ok := r.Context().Value(sessionKey).(store.Session)
+			if !ok {
+				s.problem(w, 401, "unauthenticated", "Sign in to continue")
+				return
+			}
+			if roleRank(session.User.Role) < roleRank(minimum) {
+				s.problem(w, 403, "forbidden", "Your role does not allow this action")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 func (s *Server) csrf(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -316,6 +381,13 @@ func (s *Server) currentSession(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.json(w, 200, map[string]any{"setupRequired": !configured, "user": nil})
 		return
+	}
+	if session.AuthStep() == "" {
+		if err = s.db.FinalizeSessionIdentity(r.Context(), sessionHash(r), time.Now()); err != nil {
+			_ = s.db.DeleteSession(r.Context(), sessionHash(r))
+			s.json(w, 200, map[string]any{"setupRequired": false, "user": nil})
+			return
+		}
 	}
 	s.writeSession(w, 200, session, nil)
 }
@@ -395,6 +467,9 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.Worker != nil {
 		s.cfg.Worker.Trigger()
 	}
+	user.Role = store.RoleAdmin
+	user.HasPassword = true
+	user.CreatedAt = time.Now().Unix()
 	s.json(w, 201, map[string]any{"setupRequired": false, "user": user, "csrfToken": csrf})
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -402,13 +477,22 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if !s.decode(w, r, &input) {
 		return
 	}
+	enabled, err := s.db.PasswordLoginEnabled(r.Context())
+	if err != nil {
+		s.internal(w, err)
+		return
+	}
+	if !enabled {
+		s.problem(w, 403, "password_login_disabled", "Password sign-in is disabled. Use a configured provider.")
+		return
+	}
 	user, err := s.db.FindUser(r.Context(), strings.ToLower(strings.TrimSpace(input.Email)))
 	hash := s.dummyHash
-	if err == nil {
+	if err == nil && user.HasPassword {
 		hash = user.PasswordHash
 	}
 	valid := auth.Verify(hash, input.Password)
-	if err != nil || !valid {
+	if err != nil || !user.HasPassword || !valid {
 		s.problem(w, 401, "invalid_credentials", "The email or password is incorrect")
 		return
 	}
@@ -419,15 +503,19 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, err)
 		return
 	}
-	if factor.Enrolled || factor.Required {
+	if user.PasswordChangeRequired || factor.Enrolled || factor.Required {
 		expiry = time.Now().Add(10 * time.Minute).Unix()
 	}
-	if err = s.db.CreateSession(r.Context(), auth.Hash(token), user.ID, csrf, expiry); err != nil {
+	if err = s.db.CreateSession(r.Context(), auth.Hash(token), user.ID, csrf, expiry, "password", nil); err != nil {
+		s.internal(w, err)
+		return
+	}
+	if err = s.db.RecordLogin(r.Context(), user.ID, "password", time.Now()); err != nil {
 		s.internal(w, err)
 		return
 	}
 	s.cookie(w, r, token, expiry)
-	s.writeSession(w, 200, store.Session{User: user, CSRF: csrf, ExpiresAt: expiry, Factor: factor}, nil)
+	s.writeSession(w, 200, store.Session{User: user, CSRF: csrf, ExpiresAt: expiry, Factor: factor, FirstFactor: "password"}, nil)
 }
 func (s *Server) cookie(w http.ResponseWriter, r *http.Request, token string, expiry int64) {
 	http.SetCookie(w, &http.Cookie{Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: s.secureRequest(r), SameSite: http.SameSiteStrictMode, Expires: time.Unix(expiry, 0), MaxAge: max(1, int(expiry-time.Now().Unix()))})

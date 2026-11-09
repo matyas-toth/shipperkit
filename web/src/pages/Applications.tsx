@@ -2,6 +2,7 @@ import { For, Show, createMemo, createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import type { Application } from "../types";
 import { useInventory } from "../context";
+import { useAuth } from "../context";
 import { applicationState, methodLabel, operationTime, primaryDomain, deploymentLabel } from "../data";
 import { Icon } from "../components/Icon";
 import { Button, ErrorNotice, IconButton, Status } from "../components/Controls";
@@ -11,6 +12,7 @@ import HighlightedText from "../components/HighlightedText";
 const WINDOW_ROWS = 32;
 export default function Applications() {
   const inventory = useInventory(), navigate = useNavigate();
+  const auth = useAuth();
   const [search, setSearch] = createSignal(""), [status, setStatus] = createSignal("all"), [scrollTop, setScrollTop] = createSignal(0);
   let viewport!: HTMLDivElement;
   const compact = mediaQuery("(width < 48rem)");
@@ -38,7 +40,7 @@ export default function Applications() {
       <select class="input status-filter" aria-label="Filter by status" value={status()} onChange={e => { setStatus(e.currentTarget.value); resetScroll(); }}>
         <option value="all">All statuses</option><option value="running">Running</option><option value="exited">Stopped</option><option value="failed">Failed</option><option value="degraded">Degraded</option><option value="queued">Queued</option><option value="cloning">Cloning</option><option value="building">Building</option><option value="routing">Updating domains</option><option value="operating">Applying action</option><option value="packaging">Packaging</option><option value="starting">Starting</option><option value="checking">Checking</option><option value="promoting">Promoting</option><option value="unavailable">Unavailable</option><option value="missing">Missing</option>
       </select>
-      <Button class="inventory-create" variant="primary" icon="plus" onClick={() => navigate("/new")}>New application</Button>
+      <Show when={auth.session()?.user?.role !== "viewer"}><Button class="inventory-create" variant="primary" icon="plus" onClick={() => navigate("/new")}>New application</Button></Show>
     </div>
     <div ref={viewport} class="table-tray inventory-viewport" style={{ "--inventory-row": rowHeight() + "px" }} onScroll={e => setScrollTop(e.currentTarget.scrollTop)} aria-busy={inventory.pending()}>
       <table class="inventory-table applications-table"><thead><tr><th>Application</th><th>Status</th><th>Domain</th><th>Method</th><th>Last activity</th><th aria-label="Details" /></tr></thead><tbody>

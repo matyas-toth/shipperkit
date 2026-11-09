@@ -1,5 +1,11 @@
-export interface User { id: string; email: string }
-export interface Session { setupRequired: boolean; user: User | null; csrfToken?: string; authStep?: "enroll" | "verify"; factor?: { enrolled: boolean; required: boolean }; recoveryCodes?: string[] }
+export type Role = "admin" | "developer" | "viewer";
+export interface User { id: string; email: string; role: Role; hasPassword?: boolean; disabled?: boolean; passwordChangeRequired?: boolean; factorEnabled?: boolean; createdAt?: number; lastLoginAt?: number; identities?: Identity[] }
+export interface Identity { provider: "google" | "github" | "discord"; email?: string; createdAt: number; lastLoginAt: number }
+export interface Session { setupRequired: boolean; user: User | null; csrfToken?: string; authStep?: "password_change" | "enroll" | "verify"; factor?: { enrolled: boolean; required: boolean }; recoveryCodes?: string[] }
+export interface AuthMethods { password: boolean; google: boolean; github: boolean; discord: boolean }
+export interface AuthProviderSettings { provider: "google" | "github" | "discord"; enabled: boolean; configured: boolean; clientId: string; hasSecret: boolean; callback: string }
+export interface AuthSettings { passwordEnabled: boolean; origin: string; providers: AuthProviderSettings[] }
+export interface AuditEvent { sequence: number; userId: string; actorId?: string; action: string; detail?: string; createdAt: number }
 export interface Port { ip: string; private: number; public: number; protocol: string }
 export interface Container {
   id: string; name: string; image: string; state: string; status: string; health: string;
