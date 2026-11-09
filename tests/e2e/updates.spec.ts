@@ -109,7 +109,7 @@ test("update badge, channels, settings and progress dialog", async ({ page }) =>
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
-  await page.locator(".primary-navigation").getByRole("link", { name: /Settings/ }).click();
+  await page.locator('.mobile-nav-link[href="/settings"]').click();
   await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Updates", exact: true }).click();
   await expect(page.locator(".update-success-banner")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
