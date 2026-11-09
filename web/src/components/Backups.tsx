@@ -863,6 +863,7 @@ export default function Backups(props: {
                       >
                         {p.name}<Icon name="edit" />
                       </button>
+                      <Show when={p.config.keep > 0}><span class="backup-plan-meta">{p.config.keep} day retention</span></Show>
                     </td>
                     <td>
                       {p.enabled && p.schedule

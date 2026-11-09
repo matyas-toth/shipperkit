@@ -147,7 +147,7 @@ export default function ServiceTerminal(props: { application: Application; conta
     <Show when={state() !== "closed"} fallback={<div class="terminal-frame terminal-frame-idle" classList={{ "is-ended": !!error() }} role={error() ? "alert" : undefined}>
       <header><span class="terminal-frame-dot" /><span class="terminal-frame-state">{error() ? "Session expired" : "Not connected"}</span></header>
       <div class="terminal-idle-body">
-        <Show when={error()}><span class="terminal-idle-reason">{error() === "Terminal session expired" ? "Session expired after " + minutes() + " minutes." : error()}</span></Show>
+        <Show when={error()}><span class="terminal-idle-reason">{error() === "Terminal session expired" ? "Session expired." : error()}</span></Show>
         <Button variant="primary" icon={error() ? "refresh" : "terminal"} disabled={!selected()} onClick={start}>{error() ? "Reconnect" : "Open terminal"}</Button>
       </div>
     </div>}>

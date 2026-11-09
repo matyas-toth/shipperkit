@@ -2444,6 +2444,12 @@ input::placeholder {
   color: var(--muted);
   font-size: 12px;
 }
+.backup-plan-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .backup-error {
   display: block;
   margin-top: 2px;

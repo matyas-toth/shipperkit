@@ -76,7 +76,7 @@ export default function Networking(props: {
       <Show when={ports().length} fallback={<div class="network-empty">
         <span class="network-empty-icon"><Icon name="globe" /></span>
         <div class="network-empty-copy"><strong>No public ports</strong></div>
-        <Button small icon="plus" variant="neutral" onClick={() => update({ ports: [{ service: props.services?.[0]?.name, protocol: "tcp", bindIP: "0.0.0.0", hostPort: 0, containerPort: 0 }] })}>Add port</Button>
+        <Button small icon="plus" variant="primary" onClick={() => update({ ports: [{ service: props.services?.[0]?.name, protocol: "tcp", bindIP: "0.0.0.0", hostPort: 0, containerPort: 0 }] })}>Add port</Button>
       </div>}>
         <div class="network-port-list" classList={{ "has-service": !!props.services?.length }}>
           <div class="network-port-head">
