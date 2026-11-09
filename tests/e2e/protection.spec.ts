@@ -32,7 +32,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   await restoreSteps.click();
   await expect(recovery.getByText("Empty data directory", { exact: true })).toBeHidden();
   await recovery
-    .getByRole("button", { name: "New backup", exact: true })
+    .getByRole("button", { name: "New schedule", exact: true })
     .click();
   await page
     .getByLabel("Name", { exact: true })
@@ -55,7 +55,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   await page
     .locator(".backup-editor")
     .screenshot({ path: join(tmpdir(), "shipper-phase8-schedule.png") });
-  await page.getByRole("button", { name: "Save backup", exact: true }).click();
+  await page.getByRole("button", { name: "Save schedule", exact: true }).click();
   await expect(
     recovery.getByRole("button", {
       name: "Daily instance recovery",
@@ -69,7 +69,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   expect((await keyPromise).suggestedFilename()).toBe(
     "shipper-recovery-key.txt",
   );
-  await recovery.getByRole("button", { name: "Back up", exact: true }).click();
+  await recovery.getByRole("button", { name: "Run now", exact: true }).click();
   await expect(recovery.locator(".backup-history").getByText("Backed up", { exact: true })).toBeVisible({
     timeout: 15000,
   });
@@ -86,7 +86,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
     .getByRole("button", { name: "Close backup details", exact: true })
     .click();
   await recovery
-    .getByRole("button", { name: "New backup", exact: true })
+    .getByRole("button", { name: "New schedule", exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
     path: join(tmpdir(), "shipper-phase8-recovery.png"),
@@ -117,9 +117,9 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   );
   await page.goto("/applications/application-web?tab=backups");
   await expect(
-    page.getByRole("button", { name: "New backup", exact: true }),
+    page.getByRole("button", { name: "New schedule", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "New backup", exact: true }).click();
+  await page.getByRole("button", { name: "New schedule", exact: true }).click();
   await page
     .getByRole("radio", { name: "Persistent volume", exact: true })
     .check();

@@ -29,8 +29,8 @@ async function checkDatabaseConnection(page: import("@playwright/test").Page) {
   await page.goto("/applications/application-web");
   await expect(page.getByLabel("Connection string", { exact: true })).toHaveAttribute("type", "password");
   expect(requests).toBe(0);
-  await page.getByRole("button", { name: "Copy connection string", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Copy connection string", exact: true })).toHaveText("Copied");
+  await page.getByRole("button", { name: "Copy full connection string", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Copy full connection string", exact: true })).toHaveText("Copied");
   copies = await page.evaluate(() => (window as any).copiedDatabase);
   expect(copies).toBe(uri);
   await expect(page.getByLabel("Connection string", { exact: true })).not.toHaveValue(uri);
@@ -46,7 +46,7 @@ async function checkDatabaseConnection(page: import("@playwright/test").Page) {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
     document.execCommand = (command: string) => { (window as any).fallbackDatabase = (document.activeElement as HTMLTextAreaElement).value; return command === "copy"; };
   });
-  await page.getByRole("button", { name: "Copy connection string", exact: true }).click();
+  await page.getByRole("button", { name: "Copy full connection string", exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).fallbackDatabase)).toBe(uri);
   available = false;
   await page.getByRole("link", { name: "Applications", exact: true }).first().click();

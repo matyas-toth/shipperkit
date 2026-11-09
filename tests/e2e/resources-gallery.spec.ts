@@ -29,32 +29,54 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   for (const [engine, version] of [["postgresql", "18"], ["mysql", "8.4"], ["mariadb", "11.8"], ["redis", "8"]]) {
     await page.goto("/new");
     await page.getByRole("button", { name: "Database", exact: true }).click();
-    await page.getByLabel("Engine", { exact: true }).selectOption(engine);
-    await page.getByLabel("Name", { exact: true }).fill(engine === "redis" ? "Job queue" : "Production " + engine);
+    await page.locator(".database-engine-card").filter({ hasText: ({ postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", redis: "Redis" } as Record<string, string>)[engine] }).click();
+    const displayName = engine === "postgresql" ? "Production database" : engine === "redis" ? "Job queue" : "Production " + ({ mysql: "MySQL", mariadb: "MariaDB" } as Record<string, string>)[engine];
+    await page.getByLabel("Name", { exact: true }).fill(displayName);
     await shot(page, "create-" + engine);
     const response = await page.request.post("/api/database-resources/prepare", { headers: { "X-CSRF-Token": session.csrfToken }, data: { engine, version } });
     expect(response.ok()).toBe(true);
     presets[engine] = (await response.json()).config;
     await page.getByRole("button", { name: "Review database", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Ready to deploy", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review database", exact: true, level: 1 })).toBeVisible();
     await shot(page, "review-" + engine);
   }
   await installFixtures(page);
   let config = presets.postgresql;
   let name = "Production database";
   const release = () => ({ ...original.activeDeployment, config, resolvedMethod: "image", runtimePort: config.port });
-  const application = () => ({ ...original.application, name, sourceKind: "image", method: "image", activeMethod: "image", sourceRef: config.image, config, domains: [], containers: [{ ...original.application.containers[0], name: "production-database", applicationId: "application-web", managed: true, state: "running", health: "healthy", image: config.image }] });
+  const application = () => ({ ...original.application, name, sourceKind: "image", method: "image", activeMethod: "image", sourceRef: config.image, config, domains: [], containers: [{ ...original.application.containers[0], name: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), applicationId: "application-web", managed: true, state: "running", health: "healthy", image: config.image }] });
   await page.route("**/api/applications/application-web", r => r.fulfill({ json: { application: application(), activeDeployment: release(), deployments: [release()], database: { engine: config.database.engine, host: "app-application-web", port: config.port } } }));
   await page.route("**/api/applications/application-web/database/connection", r => r.fulfill({ json: { uri: "postgresql://app:gallery-password@app-application-web:5432/app?sslmode=require", deploymentId: release().id } }));
   await page.route("**/api/applications/application-web/diagnostics", r => r.fulfill({ json: { checks: [], observations: [], changesSinceServing: [], unknowns: [], servingRelease: release(), latestOperation: release(), durationSeconds: 14 } }));
   await page.route("**/api/applications/application-web/incidents", r => r.fulfill({ json: { items: [] } }));
+  await page.route("**/api/applications/application-web/networking", r => r.fulfill({ json: {
+    networking: { applications: [], ports: [] },
+    host: "app-application-web",
+    applications: [
+      { id: "application-atlas", name: "Atlas API", host: "app-application-atlas" },
+      { id: "application-api", name: "API", host: "app-application-api" },
+    ],
+  } }));
+  await page.route("**/api/applications/application-web/changes", r => r.fulfill({ json: {
+    operation: "recreate", changes: ["Networking"], revision: "resource-gallery-network",
+    downtime: "Public ports switch during replacement",
+    effects: ["Publish reviewed TCP and UDP ports", "Preserve persistent data and current domains"],
+  } }));
+  const auditItems = [
+    { sequence: 4, sessionId: "gallery-terminal", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 60 },
+    { sequence: 3, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "revoke", reason: "user_revoked", createdAt: Math.floor(Date.now() / 1000) - 140 },
+    { sequence: 2, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "end", reason: "session_expired", createdAt: Math.floor(Date.now() / 1000) - 900 },
+    { sequence: 1, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 960 },
+  ];
+  await page.route("**/api/applications/application-web/terminal/audit", r => r.fulfill({ json: { items: auditItems } }));
   for (const engine of ["postgresql", "mysql", "mariadb", "redis"]) {
-    config = presets[engine]; name = engine === "redis" ? "Job queue" : "Production " + engine;
+    config = presets[engine]; name = engine === "postgresql" ? "Production database" : engine === "redis" ? "Job queue" : "Production " + ({ mysql: "MySQL", mariadb: "MariaDB" } as Record<string, string>)[engine];
     await page.goto("/applications/application-web");
-    await expect(page.getByRole("button", { name: "Import dump", exact: true })).toBeVisible();
+    const importName = engine === "redis" ? "Restore snapshot" : "Create from dump";
+    await expect(page.getByRole("button", { name: importName, exact: true })).toBeVisible();
     await shot(page, "overview-" + engine);
-    await page.getByRole("button", { name: "Import dump", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Import a copy" })).toBeVisible();
+    await page.getByRole("button", { name: importName, exact: true }).click();
+    await expect(page.getByRole("heading", { name: importName, exact: true })).toBeVisible();
     await shot(page, "import-" + engine);
   }
   config = presets.postgresql; name = "Production database";
@@ -67,6 +89,7 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await page.getByRole("button", { name: "Add port", exact: true }).click();
   await page.getByLabel("Public port", { exact: true }).fill("15432");
   await page.getByLabel("Container port", { exact: true }).fill("5432");
+  await page.getByRole("switch", { name: "Public TLS", exact: true }).click();
   await page.getByLabel("TLS hostname", { exact: true }).fill("db.example.com");
   await shot(page, "public-database-tls");
   await page.getByRole("button", { name: "Review changes", exact: true }).click();
@@ -92,11 +115,15 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await page.goto("/applications/application-web?tab=terminal");
   await shot(page, "terminal-closed");
   await page.getByRole("button", { name: "Open terminal", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Close terminal", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "End session", exact: true })).toBeVisible();
   await page.waitForTimeout(100);
+  await expect(page.locator(".terminal-audit-row")).toHaveCount(4);
+  await page.locator(".terminal-audit summary").click();
   await shot(page, "terminal-connected");
+  auditItems.unshift({ sequence: 5, sessionId: "gallery-terminal", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "end", reason: "session_expired", createdAt: Math.floor(Date.now() / 1000) });
   terminalSocket.send(JSON.stringify({ type: "end", reason: "Terminal session expired" }));
   await expect(page.getByRole("alert")).toContainText("expired");
+  await expect(page.locator(".terminal-audit-row").first()).toContainText("Session expired");
   await shot(page, "terminal-expired");
   await page.setViewportSize({ width: 390, height: 844 });
   for (const [tab, state] of [["overview", "database"], ["networking", "networking"], ["backups", "backups"], ["terminal", "terminal"]]) {

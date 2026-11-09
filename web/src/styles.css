@@ -1346,9 +1346,99 @@ input::placeholder {
   border-radius: 10px;
   background: var(--surface);
 }
-.database-connection > label { display: block; margin-bottom: 10px; }
+.database-connection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.database-connection-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.database-connection-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
 .database-connection-controls { display: flex; align-items: center; gap: 8px; }
+.database-connection-preview {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 38px;
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.database-connection-field {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.database-connection-parts {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  background: var(--background);
+  overflow: hidden;
+}
+.database-connection-parts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+}
+.database-connection-parts > div + div {
+  border-top: 0.5px solid var(--border-muted);
+}
+.database-connection-parts dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+.database-connection-parts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 13px;
+  text-align: right;
+}
+.database-connection-controls .icon-button {
+  width: 38px;
+  height: 38px;
+  flex: none;
+}
+@media (max-width: 640px) {
+  .database-connection-controls {
+    flex-wrap: wrap;
+  }
+  .database-connection-field {
+    flex-basis: 100%;
+  }
+  .database-connection-parts {
+    flex-basis: 100%;
+  }
+  .database-connection-controls .button {
+    flex: 1;
+  }
+}
 .database-connection-controls .input { flex: 1; min-width: 0; width: 0; }
+.database-connection-controls .input[readonly] {
+  color: var(--secondary);
+  background: var(--background);
+}
 .database-connection-controls .button { flex: none; }
 .database-connection .error-notice { margin-top: 12px; }
 
@@ -2298,6 +2388,10 @@ input::placeholder {
 .backup-destinations {
   margin-top: 28px;
 }
+.backup-history > .backup-history-title {
+  font-size: 16px;
+  font-weight: 560;
+}
 .backups-panel h3 {
   font-size: 13px;
   font-weight: 500;
@@ -2320,6 +2414,45 @@ input::placeholder {
 }
 .backups-table .button {
   white-space: nowrap;
+}
+.database-facts .setting-row dt {
+  color: var(--muted);
+  font-weight: 440;
+}
+.database-facts .setting-row dd {
+  color: var(--text);
+}
+.database-strip-state time {
+  font-variant-numeric: tabular-nums;
+}
+.backup-next-label {
+  display: none;
+}
+@media (max-width: 640px) {
+  .backup-next-label {
+    display: inline;
+  }
+}
+.backup-run-date {
+  display: block;
+  color: var(--text);
+  font-weight: 530;
+  font-variant-numeric: tabular-nums;
+}
+.backup-plan-name {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.backup-error {
+  display: block;
+  margin-top: 2px;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 17px;
+}
+.backup-history .container-row:has(.backup-error) {
+  background: #ff9c9d0a;
 }
 .backup-time {
   display: block;
@@ -4321,6 +4454,33 @@ textarea::placeholder {
   margin: 10px 0 12px;
   font-size: 14px;
 }
+.review-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  background: var(--border-muted);
+}
+.review-summary > div {
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--deep);
+}
+.review-summary > div:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.review-summary dt {
+  margin-bottom: 3px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+.review-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .review-application {
   display: flex;
   align-items: center;
@@ -4731,7 +4891,7 @@ textarea::placeholder {
     width: 30px;
   }
 }
-@media (width < 25rem) {
+@media (width < 22rem) {
   .app-heading .application-title > .icon {
     display: none;
   }
@@ -5044,6 +5204,10 @@ textarea::placeholder {
   }
   .application-tabs {
     overflow: visible;
+    gap: 14px;
+  }
+  .application-tabs .app-section-select {
+    max-width: 118px;
   }
   .application-tabs .app-section-select {
     display: block;
@@ -5497,7 +5661,7 @@ textarea::placeholder {
   align-items: start;
 }
 .backup-readiness dt {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--secondary);
   margin-bottom: 4px;
   font-weight: 550;
@@ -5513,8 +5677,19 @@ textarea::placeholder {
   font-size: 12px;
   color: var(--muted);
 }
+.backup-kind {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .backup-readiness > .button {
   margin-left: auto;
+  align-self: flex-start;
+}
+.backup-readiness .button,
+.backup-plans .button {
+  min-height: 32px;
 }
 .backup-readiness dl:has(> :only-child) {
   grid-template-columns: 1fr;
@@ -9588,22 +9763,40 @@ body:has(.confirm-dialog) .page-actions {
 }
 @media (width < 48rem) {
   .application-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1.4fr 0.7fr 0.9fr;
-    gap: 0;
+    display: flex;
+    gap: 2px;
     overflow: visible;
   }
   .application-tabs > button {
     min-width: 0;
+    flex: 0 0 auto;
     padding-inline: 4px;
-    font-size: 14px;
+    font-size: 13px;
   }
   .application-tabs .app-section-select {
     min-width: 0;
     width: 100%;
     margin: 0;
-    padding-inline: 4px;
-    font-size: 14px;
+    padding-inline: 4px 20px;
+    font-size: 13px;
+    appearance: none;
+  }
+  .app-more-select {
+    position: relative;
+    display: flex;
+    min-width: 56px;
+    flex: 1 1 auto;
+    margin-left: 2px;
+  }
+  .app-more-select > .icon {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    width: 12px;
+    height: 12px;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
   }
   .backup-detail .setting-row {
     grid-template-columns: 110px minmax(0, 1fr);
@@ -10455,6 +10648,18 @@ body:has(.confirm-dialog) .page-actions {
 .deployment-proposal { max-width: 800px; padding: 24px; margin-top: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--raised); }
 .deployment-proposal dl { display: grid; gap: 18px; margin: 0 0 20px; }
 .deployment-proposal .review-fact { display: grid; grid-template-columns: 120px minmax(0,1fr); gap: 16px; }
+.heading-actions { flex-shrink: 0; }
+.heading-actions .button { white-space: nowrap; }
+.backup-history th:nth-child(3),
+.backup-history td:nth-child(3) { text-align: right; }
+.database-proposal dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+.database-proposal .review-fact {
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+}
 .deployment-proposal dt { color: var(--muted); }
 .deployment-proposal dd { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; overflow-wrap: anywhere; }
 .proposal-variables { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
@@ -10467,4 +10672,146 @@ body:has(.confirm-dialog) .page-actions {
   .source-extra > div { left: 0; right: auto; }
   .deployment-proposal { padding: 20px 16px; }
   .deployment-proposal .review-fact { grid-template-columns: 90px minmax(0,1fr); gap: 12px; }
+  .database-proposal dl { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .backup-plans thead,
+  .backup-history thead {
+    display: none;
+  }
+  .backup-plans .backups-table,
+  .backup-history .backups-table,
+  .backup-plans .backups-table tbody,
+  .backup-history .backups-table tbody {
+    display: block;
+  }
+  .backup-readiness > dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .backup-plans .backups-table tr,
+  .backup-history .backups-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px 10px;
+    height: auto;
+    padding: 10px 12px;
+    border-bottom: 0.5px solid var(--border-muted);
+  }
+  .backup-plans .backups-table td,
+  .backup-history .backups-table td {
+    height: auto;
+    padding: 0;
+    border: 0;
+  }
+  .backup-plans .backups-table td:first-child,
+  .backup-history .backups-table td:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .backup-plans .backups-table td:nth-child(2),
+  .backup-history .backups-table td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .backup-plans .backups-table td:last-child {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+  .backup-history .backups-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: right;
+  }
+  .backup-history .backups-table td:last-child {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+  .backup-plans .backups-table .task-name {
+    padding: 0;
+  }
+  .backup-history .backups-table .backup-time {
+    display: block;
+  }
+  .backups-table .empty-row td {
+    grid-column: 1 / -1;
+  }
+}
+
+
+@media (max-width: 640px) {
+  .application-title h1 {
+    font-size: 20px;
+    line-height: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-context .app-heading {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-heading .application-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+  .app-heading .application-title h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app-context .app-heading .heading-actions {
+    width: auto;
+    margin-left: auto;
+    flex: none;
+  }
+  .app-heading .heading-actions > .button {
+    display: none;
+  }
+  .database-connection-controls .button:not(.icon-button) {
+    flex: 1;
+    width: auto;
+  }
+  .database-connection-preview {
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-wrap: normal;
+    min-height: 38px;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, #000 88%, transparent);
+  }
+  .database-connection-preview::-webkit-scrollbar {
+    display: none;
+  }
+  .network-toolbar > .button,
+  .backup-readiness .button,
+  .backup-plans .button,
+  .network-remove {
+    min-height: 44px;
+  }
+  .backups-panel .toolbar-actions {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+  }
+  .backups-panel .toolbar-actions .button {
+    flex: 1;
+  }
+  .backups-panel .toolbar-actions .button:first-child {
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--border-muted);
+  }
+}
+.terminal-remaining,
+.backup-readiness time,
+.database-strip-state time {
+  color: var(--secondary);
 }

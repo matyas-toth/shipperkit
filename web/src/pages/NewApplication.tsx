@@ -317,7 +317,7 @@ export default function NewApplication() {
 
   return <div class="content creation-page">
     <A href="/" class="back-link"><Icon name="back" />Applications</A>
-    <Show when={manual() || step() !== "source"}><header class="page-heading"><h1>New application</h1></header></Show>
+    <Show when={manual() || step() !== "source" || databaseOpen()}><header class="page-heading"><h1>{databaseOpen() ? "New database" : step() === "review" && config.database ? "Review database" : config.database ? "New database" : "New application"}</h1></header></Show>
     <Show when={manual()}><ol class="creation-steps" aria-label="Creation steps">
       <For each={steps}>{(entry, index) => <li>
         <button type="button" aria-current={step() === entry.value ? "step" : undefined}
@@ -500,19 +500,19 @@ export default function NewApplication() {
       </form>
     </Show>
     <Show when={!manual() && step() === "review" && review()}>{approved => <>
-      <h2 ref={heading} tabindex="-1">Ready to deploy</h2>
-      <section class="deployment-proposal" aria-label="Proposed deployment">
+      <h2 ref={heading} tabindex="-1" classList={{ "sr-only": !!config.database }}>{config.database ? "Review database" : "Ready to deploy"}</h2>
+      <section class="deployment-proposal" classList={{ "database-proposal": !!config.database }} aria-label="Proposed deployment">
         <dl>
-          <ReviewFact label="Application">{approved().plan.name}</ReviewFact>
-          <ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact>
+          <ReviewFact label={config.database ? "Database" : "Application"}>{approved().plan.name}</ReviewFact>
+          <Show when={!config.database}><ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact></Show>
           <ReviewFact label={config.database ? "Engine" : "Build"}>{config.database ? ({postgresql:"PostgreSQL",mysql:"MySQL",mariadb:"MariaDB",redis:"Redis"}[config.database.engine]) + " " + config.database.version : methodLabel(method())}</ReviewFact>
-          <Show when={config.database}><ReviewFact label="Storage">Persistent data volume</ReviewFact><ReviewFact label="Backups">Daily at 03:00 UTC</ReviewFact></Show>
+          <Show when={config.database}><ReviewFact label="Storage">Persistent volume</ReviewFact><ReviewFact label="Backups">Nightly</ReviewFact><ReviewFact label="Access">Private network</ReviewFact><ReviewFact label="Credentials">Shown after deploy</ReviewFact></Show>
           <Show when={!compose() && !config.database}><ReviewFact label="Domain">{worker() ? "Worker" : approved().plan.config.domain || "No public domain"}</ReviewFact></Show>
           <Show when={compose()}><ReviewFact label="Services"><For each={stack()?.services}>{s => <span>{s.name}</span>}</For></ReviewFact></Show>
           <Show when={compose()}><ReviewFact label="Domain"><Show when={approved().plan.config.domains?.length} fallback={<><span>No public domain</span><Button small variant="ghost" onClick={enterManual}>Add domain</Button></>}><For each={approved().plan.config.domains}>{d => <span>{d.hostname}</span>}</For></Show></ReviewFact></Show>
         </dl>
         <Show when={missing().length}><div class="proposal-variables"><span>{missing().length} detected {missing().length === 1 ? "variable" : "variables"} to review</span><Button small onClick={() => { addVariables(); enterManual(); }}>Review variables</Button></div></Show>
-        <Button variant="ghost" onClick={enterManual}>Configure manually<Icon name="chevron" /></Button>
+        <Button variant="ghost" onClick={enterManual}>{config.database ? "Advanced settings" : "Configure manually"}<Icon name="chevron" /></Button>
       </section>
       <div class="form-actions creation-actions">
         <Button variant="ghost" icon="back" disabled={pending()} onClick={() => go("source")}>Back</Button>

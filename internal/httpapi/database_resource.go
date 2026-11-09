@@ -83,8 +83,12 @@ func (s *Server) importDatabaseDump(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
-	if r.FormValue("confirm") != a.Name || r.FormValue("revision") != s.db.ConfigRevision(a) {
-		s.problem(w, 409, "review_changed", "Review the current database and enter its name to import a copy")
+	if r.FormValue("revision") != s.db.ConfigRevision(a) || (a.Config.Database.Engine == "redis" && r.FormValue("confirm") != a.Name) {
+		message := "Review the current database before importing a copy"
+		if a.Config.Database.Engine == "redis" {
+			message = "Review the current database and enter its name to import a snapshot"
+		}
+		s.problem(w, 409, "review_changed", message)
 		return
 	}
 	f, _, e := r.FormFile("file")

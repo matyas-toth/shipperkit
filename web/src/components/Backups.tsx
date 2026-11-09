@@ -83,6 +83,7 @@ interface Protection {
   revision: string;
 }
 const when = (n: number) => n ? operationTime(n, true) : "";
+const whenShort = (n: number) => n ? operationTime(n) : "";
 const freshSpec = (): Spec => ({
   kind: "database",
   service: "",
@@ -146,11 +147,13 @@ export default function Backups(props: {
     [attaching, setAttaching] = createSignal<Volume>(),
     [logical, setLogical] = createSignal(""),
     [deleting, setDeleting] = createSignal<Volume>();
-  createEffect(() => props.editorScope?.(editing() ? editing()?.id ? "Edit backup" : "New backup" : importing() ? "Import backup" : undefined));
+  createEffect(() => props.editorScope?.(editing() ? editing()?.id ? "Edit schedule" : "New schedule" : importing() ? importLabel() : undefined));
   onCleanup(() => props.editorScope?.());
+  const database = () => !!props.application?.config.database;
+  const importLabel = () => database() ? "Create from dump" : "Import archive";
   const plans = () =>
     query.data?.plans.filter(
-      (p) => !props.service || p.config.service === props.service,
+      (p) => (!props.service || p.config.service === props.service) && (!database() || p.config.kind === "database"),
     ) ?? [];
   const volumes = () =>
     (query.data?.volumes ?? [])
@@ -161,13 +164,12 @@ export default function Backups(props: {
       )
       .sort((a, b) => a.logical.localeCompare(b.logical) || a.name.localeCompare(b.name));
   const runs = createMemo(() => {
-    if (!props.service) return query.data?.runs ?? [];
     const ids = new Set(plans().map((p) => p.id));
-    return (
-      query.data?.runs.filter(
-        (r) => r.service === props.service || ids.has(r.planId),
-      ) ?? []
-    );
+    const all = query.data?.runs ?? [];
+    const scoped = props.service
+      ? all.filter((r) => r.service === props.service || ids.has(r.planId))
+      : all;
+    return database() ? scoped.filter((r) => r.kind === "database" || ids.has(r.planId)) : scoped;
   });
   const update = (patch: Partial<Plan>) =>
       setEditing((p) => (p ? { ...p, ...patch } : p)),
@@ -338,7 +340,7 @@ export default function Backups(props: {
   };
   const latestAttempt = createMemo(() => runs().find(run => run.operation === "backup"));
   const latestCopy = createMemo(() => runs().find(run => run.operation === "backup" && run.state === "succeeded"));
-  const backupKinds: Record<string, string> = { instance: "Instance settings", database: "Database", volume: "Persistent volume" };
+  const backupKinds: Record<string, string> = { instance: "Instance settings", database: "Database backup", volume: "Volume archive" };
   const copyKind = (run: Run) => backupKinds[run.kind || plans().find(plan => plan.id === run.planId)?.config.kind || ""] ?? "Encrypted archive";
   const attemptStatus = () => {
     const run = latestAttempt();
@@ -360,17 +362,18 @@ export default function Backups(props: {
         <Show when={!editing() && !importing()}><div class="toolbar-actions">
           <Show when={props.application}>
             <Button
-              variant="ghost"
+              variant="neutral"
+              icon="upload"
               onClick={() => {
                 setImporting(!importing());
                 setSelected(undefined);
               }}
             >
-              Import backup
+              {importLabel()}
             </Button>
           </Show>
-          <Button variant="primary" icon="plus" onClick={create} disabled={busy()}>
-            New backup
+          <Button variant={plans().length ? "neutral" : "primary"} icon="plus" onClick={create} disabled={busy()}>
+            New schedule
           </Button>
         </div></Show>
       </div>
@@ -383,7 +386,7 @@ export default function Backups(props: {
                 <strong>{copyKind(copy())}</strong>
                 <time datetime={new Date((copy().finishedAt || copy().createdAt) * 1000).toISOString()}>{when(copy().finishedAt || copy().createdAt)}</time>
                 <Status value={copy().objectKey ? "succeeded" : "warning"} label={copy().objectKey ? "Local and off-server" : "Local copy only"} />
-                <Button small variant="neutral" onClick={() => choose(copy())}>Inspect latest copy</Button>
+                <Button small variant="ghost" onClick={() => choose(copy())}>Inspect latest<Icon name="chevron" /></Button>
                 <Show when={attemptStatus().value !== "succeeded"}><Status value={attemptStatus().value} label={attemptStatus().label} /></Show>
               </div>
             }</Show>
@@ -602,7 +605,7 @@ export default function Backups(props: {
           </div>
           <div class="form-actions">
             <Button type="submit" disabled={busy() || !upload()}>
-              Import backup
+              {importLabel()}
             </Button>
           </div>
         </form>
@@ -611,7 +614,7 @@ export default function Backups(props: {
         {(p) => (
           <form id={formId} class="backup-editor" onSubmit={save}>
             <div class="section-toolbar">
-              <h3>{p().id ? "Edit backup" : "New backup"}</h3>
+              <h3>{p().id ? "Edit schedule" : "New schedule"}</h3>
               <div class="editor-heading-actions">
             <label class="check-field">
               <input
@@ -819,7 +822,7 @@ export default function Backups(props: {
                 Cancel
               </Button>
               <Button type="submit" form={formId} variant="primary" disabled={busy()}>
-                {busy() ? "Saving" : "Save backup"}
+                {busy() ? "Saving" : "Save schedule"}
               </Button>
             </EditorActions>
           </form>
@@ -831,13 +834,10 @@ export default function Backups(props: {
             <dl>
               <div><dt>Backup status</dt><dd><Status value={attemptStatus().value} label={attemptStatus().label} /></dd></div>
               <Show when={latestCopy()}>{copy => <>
-                <div><dt>Latest copy</dt><dd><strong>{copyKind(copy())}</strong><time datetime={new Date((copy().finishedAt || copy().createdAt) * 1000).toISOString()}>{when(copy().finishedAt || copy().createdAt)}</time></dd></div>
-                <div><dt>Storage</dt><dd>{copy().objectKey ? "Local and off-server" : "Local only"}</dd></div>
+                <div><dt>Latest backup</dt><dd><strong>{whenShort(copy().finishedAt || copy().createdAt)}</strong><Button small variant="ghost" onClick={() => choose(copy())}>View backup</Button></dd></div>
+                <div><dt>Destination</dt><dd>{copy().objectKey ? "Local and off-server" : "Local only"}</dd></div>
               </>}</Show>
             </dl>
-            <Show when={latestCopy()}>{copy =>
-              <Button small variant="neutral" onClick={() => choose(copy())}>Inspect latest copy</Button>
-            }</Show>
           </div>
         </Show>
         <div class="table-tray backup-plans" classList={{ "is-empty": !plans().length }}>
@@ -866,7 +866,7 @@ export default function Backups(props: {
                     </td>
                     <td>
                       {p.enabled && p.schedule
-                        ? when(p.nextAt)
+                        ? <><span class="backup-next-label">Next </span>{whenShort(p.nextAt)}</>
                         : p.enabled
                           ? "Manual"
                           : "Disabled"}
@@ -874,7 +874,7 @@ export default function Backups(props: {
                     <td>
                       <Button
                         icon="play"
-                        variant="ghost"
+                        variant={plans().length ? "primary" : "ghost"}
                         disabled={busy() || !p.enabled}
                         onClick={() =>
                           void action(async () => {
@@ -886,7 +886,7 @@ export default function Backups(props: {
                           })
                         }
                       >
-                        Back up
+                        Run now
                       </Button>
                     </td>
                   </tr>
@@ -905,7 +905,7 @@ export default function Backups(props: {
       </Show>
       <Show when={!editing() && runs().length}>
         <section class="backup-history">
-          <h3>History</h3>
+          <h3 class="backup-history-title">History</h3>
           <div class="table-tray">
             <table class="inventory-table backups-table">
               <thead>
@@ -931,13 +931,8 @@ export default function Backups(props: {
                       }}
                     >
                       <td>
-                        {r.operation === "restore"
-                          ? "Restore copy"
-                          : r.operation === "delete-volume"
-                            ? "Delete volume"
-                            : (plans().find((p) => p.id === r.planId)?.name ??
-                              "Imported backup")}
-                        <time class="backup-time">{when(r.createdAt)}</time>
+                        <time class="backup-run-date" datetime={new Date((r.finishedAt || r.createdAt) * 1000).toISOString()}>{whenShort(r.finishedAt || r.createdAt)}</time>
+                        <Show when={!database() || r.operation !== "backup"}><span class="backup-plan-name">{r.operation === "restore" ? "Restore copy" : r.operation === "delete-volume" ? "Delete volume" : (plans().find((p) => p.id === r.planId)?.name ?? "Imported backup")}</span></Show>
                       </td>
                       <td>
                         <Status
@@ -956,6 +951,7 @@ export default function Backups(props: {
                               : undefined
                           }
                         />
+                        <Show when={r.state === "failed" && r.error}><span class="backup-error">{r.error}</span></Show>
                       </td>
                       <td class="mono">{r.bytes ? bytes(r.bytes) : ""}</td>
                       <td class="row-chevron"><Icon name="chevron" /></td>
@@ -1128,7 +1124,7 @@ export default function Backups(props: {
           </section>
         )}
       </Show>
-      <section class="retained-volumes">
+      <Show when={!database()}><section class="retained-volumes">
         <h3>{props.application ? "Persistent volumes" : "Retained volumes"}</h3>
         <Show when={query.data?.volumeError}>
           <ErrorNotice message={query.data!.volumeError} />
@@ -1195,7 +1191,7 @@ export default function Backups(props: {
             </tbody>
           </table>
         </div>
-      </section>
+      </section></Show>
       <Show when={attaching()}>
         <form
           class="backup-editor"
