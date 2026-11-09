@@ -122,6 +122,7 @@ export default function Shell(props: RouteSectionProps) {
     try { await auth.logout(); } catch (error) { setActionError((error as Error).message); }
   }
   const connected = () => query.data?.docker.connected && live();
+  const section = () => location.pathname === "/settings" ? "settings" : location.pathname === "/system" ? "system" : "applications";
   return <UpdatesContext.Provider value={{ data: () => updates.data, pending: () => updates.isPending, error: () => updates.error,
     loadedVersion, check: checkUpdates, save: saveUpdates, apply: applyUpdate, open: openUpdate }}>
   <InventoryContext.Provider value={{ data: () => query.data, pending: () => query.isPending, error: () => query.error,
@@ -138,7 +139,7 @@ export default function Shell(props: RouteSectionProps) {
           <span class={"connection " + (connected() ? "is-connected" : "")} title={query.data?.docker.error ?? "Docker connection"}>
             <span class="status-dot" /><span class="connection-label">{connected() ? "Connected" : "Reconnecting"}</span>
           </span>
-          <IconButton icon="search" label="Search applications" ghost onClick={focusSearch} />
+          <IconButton icon="search" label="Search applications" class="topbar-search" ghost onClick={focusSearch} />
           <div class="account">
             <button ref={accountButton} class="account-trigger" aria-label="Account" aria-expanded={menu()} aria-haspopup="menu" onClick={() => setMenu(!menu())}>
               <span class="avatar">{auth.session()?.user?.email.slice(0, 1)}</span>
@@ -165,6 +166,29 @@ export default function Shell(props: RouteSectionProps) {
         <main class="page-scroll">{props.children}</main>
         <div ref={setEditorActions} class="page-actions" />
       </EditorActionsContext.Provider>
+      <nav class="mobile-bottom-nav" data-active={section()} aria-label="Main navigation">
+        <div class="mobile-nav-pill">
+          <span class="mobile-nav-indicator" aria-hidden="true" />
+          <A href="/" end activeClass="" class="mobile-nav-link" classList={{ active: section() === "applications" }} aria-current={section() === "applications" ? "page" : undefined}>
+            <span class="mobile-nav-icon"><Icon name="layers" /></span>
+            <span class="mobile-nav-label">Applications</span>
+          </A>
+          <A href="/system" activeClass="" class="mobile-nav-link" classList={{ active: section() === "system" }} aria-current={section() === "system" ? "page" : undefined}>
+            <span class="mobile-nav-icon"><Icon name="terminal" /></span>
+            <span class="mobile-nav-label">System</span>
+          </A>
+          <A href="/settings" activeClass="" class="mobile-nav-link" classList={{ active: section() === "settings" }} aria-current={section() === "settings" ? "page" : undefined}>
+            <span class="mobile-nav-icon"><Icon name="settings" /></span>
+            <span class="mobile-nav-label">Settings</span>
+            <Show when={updateBadge() || updating()}>
+              <span classList={{ "mobile-nav-badge": true, "is-updating": updating() }} title={updating() ? "Shipper is updating" : updates.data?.available ? "Update to " + updates.data.available.version : "Update available"} aria-hidden="true" />
+            </Show>
+          </A>
+        </div>
+        <button type="button" class="mobile-nav-search" aria-label="Search applications" title="Search applications" onClick={focusSearch}>
+          <Icon name="search" />
+        </button>
+      </nav>
     </div>
     <UpdateDialog open={updateOpen()} close={closeUpdate} done={() => void updates.refetch()} initial={updateInitial()} />
   </InventoryContext.Provider>
