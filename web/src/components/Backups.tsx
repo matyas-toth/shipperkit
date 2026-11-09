@@ -360,7 +360,7 @@ export default function Backups(props: {
       <div class="section-toolbar toolbar-end">
         <Show when={!props.application && !editing() && !importing()}><h2>Recovery</h2></Show>
         <Show when={!editing() && !importing()}><div class="toolbar-actions">
-          <Show when={props.application}>
+          <Show when={props.application && !database()}>
             <Button
               variant="neutral"
               icon="upload"
@@ -372,7 +372,7 @@ export default function Backups(props: {
               {importLabel()}
             </Button>
           </Show>
-          <Button variant={plans().length ? "neutral" : "primary"} icon="plus" onClick={create} disabled={busy()}>
+          <Button variant="primary" icon="plus" onClick={create} disabled={busy()}>
             New schedule
           </Button>
         </div></Show>
@@ -874,7 +874,7 @@ export default function Backups(props: {
                     <td>
                       <Button
                         icon="play"
-                        variant={plans().length ? "primary" : "ghost"}
+                        variant="ghost"
                         disabled={busy() || !p.enabled}
                         onClick={() =>
                           void action(async () => {

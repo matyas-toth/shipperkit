@@ -107,7 +107,7 @@
   overflow: hidden;
   color: var(--text);
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 13px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -231,7 +231,7 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  height: 300px;
+  height: 220px;
   padding: 18px;
   text-align: center;
 }
@@ -259,7 +259,7 @@
   background: var(--success);
 }
 .service-terminal-viewport {
-  height: clamp(320px, calc(100dvh - 500px), 520px);
+  height: clamp(320px, calc(100dvh - 540px), 420px);
   min-height: 320px;
   padding: 14px;
   overflow: hidden;

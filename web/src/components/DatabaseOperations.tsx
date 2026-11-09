@@ -68,9 +68,11 @@ export default function DatabaseOperations(props: { application: Application; op
       <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void showImport()}>
         <Icon name="upload" /><span>{importLabel()}</span>
       </button>
-      <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void downloadCA()}>
-        <Icon name="download" /><span>Download CA</span>
-      </button>
+      <Show when={props.application.config.database?.tlsHostname}>
+        <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void downloadCA()}>
+          <Icon name="download" /><span>Download CA</span>
+        </button>
+      </Show>
     </div>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
     <Show when={open()}><ImportDialog application={props.application} redis={redis()} busy={busy()} error={error()}

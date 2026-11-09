@@ -194,6 +194,7 @@
   width: 100%;
   min-width: 0;
   height: 36px;
+  font-size: 14px;
 }
 .network-field input[type="number"] {
   appearance: textfield;
@@ -425,6 +426,7 @@
 }
 .network-tls .form-fields .input {
   margin-bottom: 0;
+  font-size: 14px;
 }
 .network-tls .form-fields .input.is-invalid {
   border-color: var(--danger);

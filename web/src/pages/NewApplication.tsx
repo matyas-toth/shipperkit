@@ -516,7 +516,7 @@ export default function NewApplication() {
       </section>
       <div class="form-actions creation-actions">
         <Button variant="ghost" icon="back" disabled={pending()} onClick={() => go("source")}>Back</Button>
-        <Button variant="primary" icon="deploy" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
+        <Button variant="primary" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
       </div>
     </>}</Show>
     <Show when={manual() && step() === "review" && review()}>{approved => <>
@@ -578,7 +578,7 @@ export default function NewApplication() {
       </div>
       <div class="form-actions creation-actions">
         <Button variant="ghost" icon="back" disabled={pending()} onClick={() => go("configure")}>Back</Button>
-        <Button variant="primary" icon="deploy" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
+        <Button variant="primary" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
       </div>
     </>}</Show>
   </div>;

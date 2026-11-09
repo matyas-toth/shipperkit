@@ -11,7 +11,7 @@ export default function DatabaseConnection(props: { applicationId: string; deplo
   const parts = () => {
     try {
       const value = new URL(props.preview ?? "");
-      return { host: value.host, database: value.pathname.replace(/^\//, "") || "default", tls: value.searchParams.get("sslmode") ?? (value.protocol === "rediss:" ? "Required" : "") };
+      return { host: value.host, database: value.pathname.replace(/^\//, "") || "default", user: decodeURIComponent(value.username) || "default", tls: value.searchParams.get("sslmode") ?? (value.protocol === "rediss:" ? "Required" : "") };
     } catch { return undefined; }
   };
   let mounted = true, timer: ReturnType<typeof setTimeout> | undefined;
@@ -47,6 +47,7 @@ export default function DatabaseConnection(props: { applicationId: string; deplo
         <IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
           <dl class="database-connection-parts" aria-label="Connection string">
             <div><dt>Host</dt><dd class="mono">{parts()?.host ?? props.preview}</dd></div>
+            <div><dt>User</dt><dd class="mono">{parts()?.user ?? "default"}</dd></div>
             <div><dt>Database</dt><dd class="mono">{parts()?.database ?? "default"}</dd></div>
             <Show when={parts()?.tls}><div><dt>TLS</dt><dd>{parts()!.tls === "require" ? "Required" : parts()!.tls}</dd></div></Show>
           </dl>

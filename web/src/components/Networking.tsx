@@ -31,7 +31,7 @@ export default function Networking(props: {
   const app = (applicationId: string) => props.applications.find(entry => entry.id === applicationId);
   const [copiedHost, setCopiedHost] = createSignal("");
   async function copyHost(value: string) { try { await navigator.clipboard.writeText(value); setCopiedHost(value); setTimeout(() => setCopiedHost(""), 1500); } catch {} }
-  const endpoint = () => props.tlsHostname ? tcpPorts().map(port => props.tlsHostname + ":" + port.hostPort).join(", ") : "";
+  const endpoint = () => tcpPorts().map(port => (props.tlsHostname.trim() || location.hostname) + ":" + port.hostPort).join(", ");
   const [copiedEndpoint, setCopiedEndpoint] = createSignal(false);
   async function copyEndpoint() { if (!endpoint()) return; try { await navigator.clipboard.writeText(endpoint()); setCopiedEndpoint(true); setTimeout(() => setCopiedEndpoint(false), 1500); } catch {} }
   const target = () => props.host + (props.port ? ":" + props.port : "");
@@ -46,11 +46,12 @@ export default function Networking(props: {
         <div class="network-heading">
           <h2 id="private-connections-title">Private connections</h2>
         </div>
-        <Button small icon="plus" disabled={!canConnect()} onClick={connect}>Connect application</Button>
+        <Show when={connections().length}><Button small icon="plus" disabled={!canConnect()} onClick={connect}>Connect application</Button></Show>
       </div>
       <Show when={connections().length} fallback={<div class="network-empty">
         <span class="network-empty-icon"><Icon name="plug" /></span>
         <div class="network-empty-copy"><strong>No private connections</strong></div>
+        <Button small icon="plus" variant="primary" disabled={!canConnect()} onClick={connect}>Connect application</Button>
       </div>}>
         <div class="network-connection-head"><span>Application</span><span>Can reach</span><span /></div>
         <Index each={connections()}>{(applicationId, index) => <div class="network-connection-row">
@@ -70,11 +71,12 @@ export default function Networking(props: {
     <section class="network-section" aria-labelledby="public-ports-title">
       <div class="section-toolbar network-toolbar">
         <div class="network-heading"><h2 id="public-ports-title">Public ports</h2></div>
-        <Button small icon="plus" onClick={() => update({ ports: [...ports(), { service: props.services?.[0]?.name, protocol: "tcp", bindIP: "0.0.0.0", hostPort: 0, containerPort: 0 }] })}>Add port</Button>
+        <Show when={ports().length}><Button small icon="plus" onClick={() => update({ ports: [...ports(), { service: props.services?.[0]?.name, protocol: "tcp", bindIP: "0.0.0.0", hostPort: 0, containerPort: 0 }] })}>Add port</Button></Show>
       </div>
       <Show when={ports().length} fallback={<div class="network-empty">
         <span class="network-empty-icon"><Icon name="globe" /></span>
         <div class="network-empty-copy"><strong>No public ports</strong></div>
+        <Button small icon="plus" variant="neutral" onClick={() => update({ ports: [{ service: props.services?.[0]?.name, protocol: "tcp", bindIP: "0.0.0.0", hostPort: 0, containerPort: 0 }] })}>Add port</Button>
       </div>}>
         <div class="network-port-list" classList={{ "has-service": !!props.services?.length }}>
           <div class="network-port-head">
@@ -136,9 +138,7 @@ export default function Networking(props: {
           </div>
           <div class="network-tls-endpoint" classList={{ "is-conflict": !!props.conflictPort }}>
             <span>Endpoint</span>
-            <Show when={!props.conflictPort} fallback={<code>Unavailable while the port conflicts</code>}>
-              <div class="network-endpoint-value"><code>{endpoint() || "Not configured"}</code><Show when={endpoint()}><IconButton icon={copiedEndpoint() ? "check" : "copy"} ghost label="Copy TLS endpoint" onClick={() => void copyEndpoint()} /></Show></div>
-            </Show>
+            <div class="network-endpoint-value"><code>{endpoint()}</code><Show when={!props.conflictPort}><IconButton icon={copiedEndpoint() ? "check" : "copy"} ghost label="Copy endpoint" onClick={() => void copyEndpoint()} /></Show></div>
           </div>
         </div></Show>
       </section>
