@@ -583,11 +583,18 @@ func (s *Server) verifyGoogleToken(ctx context.Context, spec oauthSpec, clientID
 		return nil, oauthCodeError("provider_error")
 	}
 	sum := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
-	keys, err := s.googleKeys(ctx, spec)
+	keys, err := s.googleKeys(ctx, spec, false)
 	if err != nil {
 		return nil, err
 	}
 	key, ok := keys[header.KeyID]
+	if !ok {
+		keys, err = s.googleKeys(ctx, spec, true)
+		if err != nil {
+			return nil, err
+		}
+		key, ok = keys[header.KeyID]
+	}
 	if !ok {
 		return nil, oauthCodeError("provider_error")
 	}
@@ -648,10 +655,10 @@ func numberValue(value any) float64 {
 	return 0
 }
 
-func (s *Server) googleKeys(ctx context.Context, spec oauthSpec) (map[string]jwksKey, error) {
+func (s *Server) googleKeys(ctx context.Context, spec oauthSpec, refresh bool) (map[string]jwksKey, error) {
 	s.jwksMu.Lock()
 	defer s.jwksMu.Unlock()
-	if s.jwks != nil && time.Since(s.jwksFetched) < 15*time.Minute {
+	if !refresh && s.jwks != nil && time.Since(s.jwksFetched) < 15*time.Minute {
 		return s.jwks, nil
 	}
 	request, err := http.NewRequestWithContext(ctx, "GET", spec.JWKS, nil)
