@@ -87,12 +87,12 @@ export default function Authentication() {
     <Show when={result()}><div class="provider-result" role="status"><Icon name="check" />{result()}</div></Show>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
     <dl class="settings-group">
-      <div class="setting-row"><dt>Email and password</dt><dd>
+      <div class="setting-row"><dt>Email and password</dt><dd class="method-control">
         <label class="update-switch"><input type="checkbox" aria-label="Enable email and password sign-in" checked={settings.data?.passwordEnabled ?? true} disabled={busy() || !settings.data} onChange={event => void savePassword(event.currentTarget.checked)} /><span class="update-switch-track" /></label>
         <span class="method-state">{settings.data?.passwordEnabled ? "Enabled" : "Disabled"}</span>
       </dd></div>
     </dl>
-    <h2>Providers</h2>
+    <h2 class="settings-subheading">Providers</h2>
     <div class="provider-list">
       <For each={settings.data?.providers}>{item => <ProviderCard item={item} remove={() => setRemoving(item)} />}</For>
     </div>

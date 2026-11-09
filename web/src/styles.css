@@ -11468,3 +11468,16 @@ body:has(.confirm-dialog) .page-actions {
 .mobile-bottom-nav.is-simple[data-active="settings"] .mobile-nav-indicator {
   transform: translate3d(100%, 0, 0);
 }
+
+.settings-subheading {
+  margin-top: 28px;
+}
+.method-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.method-control .method-state {
+  margin-left: 0;
+}
