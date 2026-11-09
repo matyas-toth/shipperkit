@@ -1,11 +1,11 @@
 import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { Container } from "../types";
-import { createdDate, portLabel, statusOf } from "../data";
+import { createdDate, bytes, portLabel, statusOf } from "../data";
 import { ErrorNotice, IconButton, Status } from "./Controls";
 import { Icon } from "./Icon";
 
-export default function ContainerDrawer(props: { container: Container; close: () => void }) {
+export default function ContainerDrawer(props: { container: Container; stats?: { cpuPercent?: number; memoryBytes?: number }; close: () => void }) {
   const [copied, setCopied] = createSignal(false);
   const [copyError, setCopyError] = createSignal("");
   let panel!: HTMLDivElement;
@@ -30,6 +30,8 @@ export default function ContainerDrawer(props: { container: Container; close: ()
     ["Container ID", props.container.id],
     ["State", props.container.status],
     ["Health", props.container.health || "Not configured"],
+    ["CPU", props.stats?.cpuPercent == null ? "Not measured" : props.stats.cpuPercent.toFixed(1) + "%"],
+    ["Memory", props.stats?.memoryBytes == null ? "Not measured" : bytes(props.stats.memoryBytes)],
     ["Ports", portLabel(props.container.ports) || "None"],
     ["Created", createdDate(props.container.createdAt)],
     ["Ownership", props.container.managed ? "Shipper" : "External"],

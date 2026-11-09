@@ -58,11 +58,6 @@ test("capture product surfaces", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Website", exact: true })).toBeVisible();
   await page.waitForTimeout(600);
   await shot(page, "website-overview");
-  await page.getByRole("button", { name: "Show checks", exact: true }).click();
-  await page.getByText("Evidence", { exact: true }).click();
-  await page.locator(".diagnostics-section").scrollIntoViewIfNeeded();
-  await page.waitForTimeout(250);
-  await shot(page, "website-diagnostics-expanded", { scroll: false });
 
   await page.goto("/applications/application-atlas");
   await expect(page.getByRole("heading", { name: "Atlas API", exact: true })).toBeVisible();

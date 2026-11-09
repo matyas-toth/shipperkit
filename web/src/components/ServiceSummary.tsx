@@ -1,16 +1,19 @@
 import { For, Show, type JSX } from "solid-js";
 import type { Service } from "../types";
+import { bytes } from "../data";
 import { Status } from "./Controls";
 import { Icon } from "./Icon";
 
 export default function ServiceSummary(props: {
   services: Service[];
   status?: (service: Service) => string;
+  stats?: (service: string) => { cpuPercent?: number; memoryBytes?: number } | undefined;
   open?: (name: string) => void;
   routes?: (service: Service) => JSX.Element;
 }) {
   return <div class="service-grid" role="list">
     <For each={props.services}>{service => {
+      const stats = () => props.stats?.(service.name);
       const facts = () => <>
         <span class="service-card-heading"><Icon name="box" /><strong>{service.name}</strong>
           <Show when={props.status}><Status value={props.status!(service)} /></Show>
@@ -20,6 +23,8 @@ export default function ServiceSummary(props: {
         <span class="service-card-facts">
           <span>{service.oneShot ? "Job" : service.port ? "Port " + service.port : "Internal"}</span>
           <Show when={service.volumes?.length}><span>{service.volumes.length} {service.volumes.length === 1 ? "volume" : "volumes"}</span></Show>
+          <Show when={stats()?.cpuPercent != null}><span class="service-card-metric" title="CPU"><Icon name="cpu" />{stats()!.cpuPercent!.toFixed(1)}%</span></Show>
+          <Show when={stats()?.memoryBytes != null}><span class="service-card-metric" title="Memory"><Icon name="memory" />{bytes(stats()!.memoryBytes!)}</span></Show>
         </span>
       </>;
       return <div role="listitem" class="service-card">

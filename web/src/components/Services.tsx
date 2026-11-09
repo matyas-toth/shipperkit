@@ -11,7 +11,7 @@ import RuntimeLogs from "./RuntimeLogs";
 import Domains from "./Domains";
 import ServiceSummary from "./ServiceSummary";
 
-export function ServiceList(props: { application: Application; services: Service[]; select: (name: string) => void }) {
+export function ServiceList(props: { application: Application; services: Service[]; stats?: (service: string) => { cpuPercent?: number; memoryBytes?: number } | undefined; select: (name: string) => void }) {
   const byService = createMemo(() => {
     const groups = new Map<string, Application["containers"]>();
     for (const container of props.application.containers) {
@@ -30,7 +30,7 @@ export function ServiceList(props: { application: Application; services: Service
   }
   return <section class="containers-section"><h2>Services</h2>
     <Show when={props.services.length} fallback={<div class="empty-state">Not deployed</div>}>
-      <ServiceSummary services={props.services} open={props.select} status={status} />
+      <ServiceSummary services={props.services} stats={props.stats} open={props.select} status={status} />
     </Show>
   </section>;
 }

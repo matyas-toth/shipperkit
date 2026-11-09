@@ -364,6 +364,7 @@ export async function installFixtures(page: Page) {
     const url = r.request().url();
     const id = url.match(/applications\/([^/]+)\/diagnostics/)?.[1];
     const checkHost = id === "application-atlas" ? "atlas.localhost" : id === "application-api" ? "api.localhost" : id === "application-checkout" ? "checkout.localhost" : "website.localhost";
+    const detail = id === "application-atlas" ? atlasDetail : id === "application-api" ? apiDetail : websiteDetail;
     const serviceObservations = id === "application-atlas"
       ? [
           { service: "api", cpuPercent: 2.4, memoryBytes: 184_320_000, memoryLimit: 536_870_912, restarts: 0 },
@@ -371,13 +372,12 @@ export async function installFixtures(page: Page) {
           { service: "postgres", cpuPercent: 1.1, memoryBytes: 268_435_456, memoryLimit: 1_073_741_824, restarts: 0 },
           { service: "redis", cpuPercent: 0.2, memoryBytes: 31_457_280, memoryLimit: 268_435_456, restarts: 0 },
         ].map((details, index) => ({ stale: false, id: "service-" + index, kind: "service", state: "healthy", summary: "Service resources", reference: details.service, observedAt: t - 10 - index, details }))
-      : [{ stale: false, id: "runtime", kind: "service", state: "healthy", summary: "Service resources", reference: "apache", observedAt: t - 12, details: { service: "apache", cpuPercent: 1.8, memoryBytes: 184_320_000, memoryLimit: 536_870_912, restarts: 0 } }];
+      : [{ stale: false, id: "runtime", kind: "service", state: "healthy", summary: "Service resources", reference: detail.application.containers[0]?.id ?? "apache", observedAt: t - 12, details: { service: "apache", cpuPercent: 1.8, memoryBytes: 184_320_000, memoryLimit: 536_870_912, restarts: 0 } }];
     const observations = [
       { stale: false, id: "route", kind: "route", state: "healthy", summary: "HTTP 200 from " + checkHost, reference: checkHost, observedAt: t - 18, details: {} },
       ...serviceObservations,
       { stale: false, id: "artifact", kind: "artifact", state: "healthy", summary: "Serving release artifact is present", reference: "sha256:apache-fixture", observedAt: t - 900, details: {} },
     ];
-    const detail = id === "application-atlas" ? atlasDetail : id === "application-api" ? apiDetail : websiteDetail;
     const base = { ...baseDiagnostics, applicationId: id, name: id === "application-atlas" ? "Atlas API" : id === "application-api" ? "API" : id === "application-checkout" ? "Checkout" : "Website", observations, checks: baseDiagnostics.checks.map((check: Json) => check.layer === "route" ? { ...check, summary: checkHost, state: "healthy", observedAt: t - 10 } : check.layer === "build" ? { ...check, observedAt: t - 900, state: "healthy" } : check), servingRelease: detail.activeDeployment, latestOperation: detail.activeDeployment, durationSeconds: 14 };
     if (id === "application-checkout") {
       return r.fulfill({ json: { ...base, name: "Checkout", checks: [
