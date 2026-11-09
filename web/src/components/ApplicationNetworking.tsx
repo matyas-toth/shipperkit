@@ -90,8 +90,11 @@ export default function ApplicationNetworking(props: {
     event.preventDefault();
     if (!changed() || saving() || props.busy || tlsInvalid() || portProblem()) return;
     setError(""); setConflict(undefined); setSaving(true);
+    const note = summary().some(item => item.label === "Public ports")
+      ? "The database becomes reachable from the internet. Connections drop while the ports switch."
+      : "Data is preserved; connections drop while the network changes.";
     try {
-      await props.save({ ...props.application.config, networking: value(), database: props.application.config.database ? { ...props.application.config.database, tlsHostname: tlsOn() ? tlsHostname().trim() : undefined } : undefined }, summary(), "Data is preserved; connections drop while the ports switch.");
+      await props.save({ ...props.application.config, networking: value(), database: props.application.config.database ? { ...props.application.config.database, tlsHostname: tlsOn() ? tlsHostname().trim() : undefined } : undefined }, summary(), note);
     } catch (e) {
       const message = (e as Error).message;
       setError(message);
@@ -114,7 +117,7 @@ export default function ApplicationNetworking(props: {
       <Show when={changed()}><span class="network-unsaved-page"><span class="network-unsaved-dot" />Unsaved changes</span></Show>
       <Show when={changed()}><Button variant="neutral" type="button" disabled={saving()} onClick={reset}>Discard changes</Button></Show>
       <Show when={portProblem()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem()}</span></Show>
-      <Show when={conflict() !== undefined || tlsInvalid()}><span class="network-issue-count">{issues()} {issues() === 1 ? "issue" : "issues"}</span></Show>
+      <Show when={conflict() !== undefined || tlsInvalid()}><button type="button" class="network-issue-count" onClick={() => document.querySelector<HTMLInputElement>(".network-field.is-conflict input, .network-tls .is-invalid")?.focus()}>{issues()} {issues() === 1 ? "issue" : "issues"}</button></Show>
       <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Preparing review" : "Review changes"}</Button>
     </div></Show>
   </form>;

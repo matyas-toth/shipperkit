@@ -66,7 +66,7 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
     { sequence: 4, sessionId: "gallery-terminal", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 60 },
     { sequence: 3, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "revoke", reason: "user_revoked", createdAt: Math.floor(Date.now() / 1000) - 140 },
     { sequence: 2, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "end", reason: "session_expired", createdAt: Math.floor(Date.now() / 1000) - 900 },
-    { sequence: 1, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 960 },
+    { sequence: 1, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 1800 },
   ];
   await page.route("**/api/applications/application-web/terminal/audit", r => r.fulfill({ json: { items: auditItems } }));
   for (const engine of ["postgresql", "mysql", "mariadb", "redis"]) {

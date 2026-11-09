@@ -397,10 +397,11 @@
   margin-top: 22px;
 }
 .database-import-dialog .button.primary:disabled {
-  opacity: 1;
+  opacity: 0.55;
   background: transparent;
   color: var(--muted);
   box-shadow: inset 0 0 0 1px var(--border-muted);
+  cursor: not-allowed;
 }
 @media (width < 72rem) {
   .database-overview {

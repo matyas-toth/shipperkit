@@ -100,7 +100,7 @@ export default function Networking(props: {
             <label class="network-field" classList={{ "is-conflict": props.conflictPort === port().hostPort }}>
               <span>Public port</span>
               <input class="input mono" aria-label="Public port" aria-invalid={props.conflictPort === port().hostPort} type="number" min="1024" max="65535" required value={port().hostPort || ""} onInput={e => updatePort(index, { hostPort: Number(e.currentTarget.value) })} />
-              <Show when={props.conflictPort === port().hostPort}><span class="network-field-error" role="alert"><Icon name="warning" />Host port {port().hostPort} is already in use. Choose another port.</span></Show>
+              <Show when={props.conflictPort === port().hostPort}><span class="network-field-error" role="alert"><Icon name="warning" />Public port {port().hostPort} is already in use. Choose another port.</span></Show>
             </label>
             <label class="network-field">
               <span>Container port</span>
@@ -136,7 +136,7 @@ export default function Networking(props: {
             <input id={id + "-tls"} class="input" classList={{ "is-invalid": props.tlsInvalid }} aria-invalid={!!props.tlsInvalid} placeholder="db.example.com" value={props.tlsHostname} onInput={e => props.changeTLS(e.currentTarget.value)} />
             <Show when={props.tlsInvalid}><span class="network-field-error" role="alert"><Icon name="warning" />Enter a TLS hostname.</span></Show>
           </div>
-          <div class="network-tls-endpoint" classList={{ "is-conflict": !!props.conflictPort }}>
+          <div class="network-tls-endpoint">
             <span>Endpoint</span>
             <div class="network-endpoint-value"><code>{endpoint()}</code><Show when={!props.conflictPort}><IconButton icon={copiedEndpoint() ? "check" : "copy"} ghost label="Copy endpoint" onClick={() => void copyEndpoint()} /></Show></div>
           </div>

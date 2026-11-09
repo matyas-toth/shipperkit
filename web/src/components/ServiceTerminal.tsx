@@ -152,7 +152,7 @@ export default function ServiceTerminal(props: { application: Application; conta
       </div>
     </div>}>
       <div class="terminal-frame">
-        <header><span class="terminal-frame-dot" classList={{ live: state() === "connected" }} /><span class="terminal-frame-state">{state() === "connected" ? "Live" : "Opening"}</span><code class="terminal-frame-container">{selectedName()}</code><Show when={state() === "connected" && remaining() > 0}><span class="terminal-remaining">{remainingLabel()}</span></Show><Button small variant="ghost" disabled={state() !== "connected"} onClick={() => void disconnect()}>End session</Button></header>
+        <header><span class="terminal-frame-dot" classList={{ live: state() === "connected" }} /><span class="terminal-frame-state">{state() === "connected" ? "Live" : "Opening"}</span><Show when={state() === "connected" && remaining() > 0}><span class="terminal-remaining">{remainingLabel()}</span></Show><Button small variant="ghost" disabled={state() !== "connected"} onClick={() => void disconnect()}>End session</Button></header>
         <div class="service-terminal-viewport" ref={viewport} role="region" aria-label="Interactive container terminal" />
       </div>
     </Show>

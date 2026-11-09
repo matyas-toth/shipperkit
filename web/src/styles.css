@@ -10805,7 +10805,7 @@ body:has(.confirm-dialog) .page-actions {
   .backups-panel .toolbar-actions .button {
     flex: 1;
   }
-  .backups-panel .toolbar-actions .button:first-child {
+  .backups-panel .toolbar-actions .button:first-child:not(.primary) {
     background: var(--surface);
     box-shadow: inset 0 0 0 1px var(--border-muted);
   }

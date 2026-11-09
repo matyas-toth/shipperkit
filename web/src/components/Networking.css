@@ -163,7 +163,7 @@
 }
 .network-connection-head {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) 72px;
+  grid-template-columns: minmax(180px, 360px) minmax(180px, 1fr) 72px;
   gap: 12px;
   padding: 0 0 8px;
   border-bottom: 0.5px solid var(--border-muted);
@@ -172,7 +172,7 @@
 }
 .network-connection-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) 72px;
+  grid-template-columns: minmax(180px, 360px) minmax(180px, 1fr) 72px;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
@@ -330,8 +330,15 @@
   background: var(--warning);
 }
 .network-issue-count {
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--danger);
   font-size: 12px;
+  cursor: pointer;
+}
+.network-issue-count:hover {
+  color: var(--text);
 }
 .network-tls-state.pending {
   background: #edca8b1f;
