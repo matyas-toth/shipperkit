@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0-rc.21](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.20...v1.0.0-rc.21) (2026-11-09)
+
+
+### Features
+
+* add liquid-glass mobile bottom navigation ([#48](https://github.com/matyas-toth/shipperkit/issues/48)) ([c244d2f](https://github.com/matyas-toth/shipperkit/commit/c244d2f1c82a5a6b5a0b4871b7b30ee84af1d181))
+* add simple application creation with the original manual wizard ([#42](https://github.com/matyas-toth/shipperkit/issues/42)) ([57352f0](https://github.com/matyas-toth/shipperkit/commit/57352f0e2847f7ec6a4a3abec1960b76d68bca2b))
+* first-class databases, networking and service terminal ([#45](https://github.com/matyas-toth/shipperkit/issues/45)) ([d7b6e3b](https://github.com/matyas-toth/shipperkit/commit/d7b6e3b51d2845d3bac333bb07a999041bf8013b))
+* ship the polished Shipper landing page ([#44](https://github.com/matyas-toth/shipperkit/issues/44)) ([19e0208](https://github.com/matyas-toth/shipperkit/commit/19e020876ece33d59000c38317245aa9d67c7895))
+* show deployment history for database resources ([#46](https://github.com/matyas-toth/shipperkit/issues/46)) ([68931cb](https://github.com/matyas-toth/shipperkit/commit/68931cb3ff016f3f2710a4582f28e13614b9984b))
+
+
+### Bug Fixes
+
+* simplify application overview and surface resource usage ([#47](https://github.com/matyas-toth/shipperkit/issues/47)) ([474ec20](https://github.com/matyas-toth/shipperkit/commit/474ec20abb5ea6ede64240fdc025ed63ffd5fb6d))
+
 ## [1.0.0-rc.20](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.19...v1.0.0-rc.20) (2026-11-07)
 
 
