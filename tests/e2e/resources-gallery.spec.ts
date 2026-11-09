@@ -87,6 +87,8 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
     }
   }
   config = presets.postgresql; name = "Production database";
+  await page.goto("/applications/application-web?tab=deployments");
+  await shot(page, "database-deployments");
   await page.goto("/applications/application-web?tab=backups");
   await shot(page, "database-backups");
   await page.goto("/applications/application-web?tab=networking");
