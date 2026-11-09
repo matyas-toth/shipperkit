@@ -16,7 +16,7 @@ export interface RuntimePolicy { cpus?:number; pids?:number; restart?:string; st
 export interface ServiceConfig { runtime?:RuntimePolicy; name: string; port?: number; healthPath: string; memoryMB: number; variables: Variable[]; unsetVariables?: string[] }
 export interface Service { oneShot?: boolean; name: string; image: string; port: number; healthPath: string; volumes: PersistentVolume[]; variables?: Variable[] }
 export interface Domain { pathPrefix?:string; stripPrefix?:boolean; compress?:boolean; maintenance?:boolean; responseHeaders?:Record<string,string>; certificateExpiresAt?:number; certificateIssuer?:string; service?: string; id: string; hostname: string; https: boolean; primary: boolean; redirect: boolean; verificationState?: string; message?: string; checkedAt?: number }
-export interface DatabaseResource { engine: "postgresql" | "mysql" | "mariadb" | "redis"; version: string; tlsHostname?: string }
+export interface DatabaseResource { engine: "postgresql" | "mysql" | "mariadb" | "mongodb" | "clickhouse" | "redis" | "sqlite"; version: string; tlsHostname?: string }
 export interface PublishedPort { service?: string; protocol: "tcp" | "udp"; bindIP: string; hostPort: number; containerPort: number }
 export interface NetworkAccess { applications: string[]; ports: PublishedPort[] }
 export interface NetworkApplication { id: string; name: string; host: string }

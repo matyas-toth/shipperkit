@@ -122,6 +122,9 @@ func (r *DockerRuntime) configureDatabaseTLS(ctx context.Context, d store.Deploy
 	if e := ValidateDatabaseResource(d.Config); e != nil {
 		return e
 	}
+	if !databaseTLSCapable(d.Config.Database.Engine) {
+		return nil
+	}
 	c.Entrypoint = nil // Keep the official entrypoint's initialization and privilege drop.
 	health := ""
 
@@ -147,7 +150,7 @@ func (r *DockerRuntime) configureDatabaseTLS(ctx context.Context, d store.Deploy
 	return nil
 }
 func (r *DockerRuntime) seedDatabaseTLS(ctx context.Context, d store.Deployment, id string) error {
-	if d.Config.Database == nil || d.TaskCommand != nil {
+	if d.Config.Database == nil || d.TaskCommand != nil || !databaseTLSCapable(d.Config.Database.Engine) {
 		return nil
 	}
 	files, e := r.databaseCertificate(d.ApplicationID, d.Config.Database.TLSHostname)

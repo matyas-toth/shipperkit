@@ -50,6 +50,10 @@ func databaseImage(image string) (string, int) {
 		return "mariadb", 3306
 	case "docker.io/library/mongo":
 		return "mongodb", 27017
+	case "docker.io/clickhouse/clickhouse-server":
+		return "clickhouse", 9000
+	case "docker.io/keinos/sqlite3":
+		return "sqlite", 0
 	case "docker.io/library/redis", "docker.io/valkey/valkey":
 		return "redis", 6379
 	default:
@@ -74,6 +78,9 @@ func DatabaseURI(d store.Deployment) (string, error) {
 	endpoint := DatabaseEndpointFor(d)
 	if endpoint == nil {
 		return "", errors.New("This release is not a supported database image")
+	}
+	if d.Config.Database != nil && endpoint.Engine == "sqlite" {
+		return "sqlite:///home/sqlite/app.db", nil
 	}
 	if d.Config.StartCommand != "" {
 		return "", errors.New("Custom database commands require a manually configured connection string")
@@ -133,6 +140,11 @@ func DatabaseURI(d store.Deployment) (string, error) {
 		}
 		if user != "" {
 			u.RawQuery = "authSource=admin"
+		}
+	case "clickhouse":
+		user, password, database = env["CLICKHOUSE_USER"], env["CLICKHOUSE_PASSWORD"], env["CLICKHOUSE_DB"]
+		if user == "" || password == "" {
+			return "", errors.New("Set the ClickHouse user and password in the database environment")
 		}
 	case "redis":
 		// Official Redis/Valkey images do not consume REDIS_PASSWORD or VALKEY_PASSWORD.

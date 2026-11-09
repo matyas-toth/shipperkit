@@ -14,8 +14,11 @@ export default function DatabaseOperations(props: { application: Application; op
   const [open, setOpen] = createSignal(false), [busy, setBusy] = createSignal(false), [error, setError] = createSignal("");
   const [file, setFile] = createSignal<File>(), [target, setTarget] = createSignal(""), [confirm, setConfirm] = createSignal(""), [revision, setRevision] = createSignal("");
   const base = () => `/applications/${props.application.id}/database`;
-  const redis = () => props.application.config.database?.engine === "redis";
-  const importLabel = () => redis() ? "Restore snapshot" : "Create from dump";
+  const engine = () => props.application.config.database?.engine;
+  const redis = () => engine() === "redis";
+  const mongodb = () => engine() === "mongodb";
+  const supportsImport = () => ["postgresql", "mysql", "mariadb", "redis", "mongodb"].includes(engine() ?? "");
+  const importLabel = () => redis() ? "Restore snapshot" : mongodb() ? "Create from archive" : "Create from dump";
   const defaultTarget = () => ((props.application.name.toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^[^a-z_]+/, "").slice(0, 48)) || "database") + "_copy";
   async function showImport() {
     setError(""); setBusy(true);
@@ -65,9 +68,11 @@ export default function DatabaseOperations(props: { application: Application; op
           <Icon name="terminal" /><span>Open terminal</span>
         </button>
       </Show>
-      <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void showImport()}>
-        <Icon name="upload" /><span>{importLabel()}</span>
-      </button>
+      <Show when={supportsImport()}>
+        <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void showImport()}>
+          <Icon name="upload" /><span>{importLabel()}</span>
+        </button>
+      </Show>
       <Show when={props.application.config.database?.tlsHostname}>
         <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void downloadCA()}>
           <Icon name="download" /><span>Download CA</span>
@@ -75,7 +80,7 @@ export default function DatabaseOperations(props: { application: Application; op
       </Show>
     </div>
     <Show when={error()}><ErrorNotice message={error()} /></Show>
-    <Show when={open()}><ImportDialog application={props.application} redis={redis()} busy={busy()} error={error()}
+    <Show when={open()}><ImportDialog application={props.application} redis={redis()} mongodb={mongodb()} busy={busy()} error={error()}
       file={file()} target={target()} confirm={confirm()}
       setFile={setFile} setTarget={setTarget} setConfirm={setConfirm}
       close={() => { if (!busy()) { setOpen(false); setError(""); } }} submit={importDump} /></Show>
@@ -83,14 +88,16 @@ export default function DatabaseOperations(props: { application: Application; op
 }
 
 function ImportDialog(props: {
-  application: Application; redis: boolean; busy: boolean; error: string;
+  application: Application; redis: boolean; mongodb: boolean; busy: boolean; error: string;
   file?: File; target: string; confirm: string;
   setFile: (file?: File) => void; setTarget: (value: string) => void; setConfirm: (value: string) => void;
   close: () => void; submit: (event: SubmitEvent) => void;
 }) {
   let panel!: HTMLFormElement;
   const previous = document.activeElement as HTMLElement | null;
-  const importLabel = () => props.redis ? "Restore snapshot" : "Create from dump";
+  const importLabel = () => props.redis ? "Restore snapshot" : props.mongodb ? "Create from archive" : "Create from dump";
+  const fileHint = () => props.redis ? ".rdb" : props.mongodb ? ".archive or .gz" : props.application.config.database?.engine === "postgresql" ? ".dump or .backup" : ".sql";
+  const fileType = () => props.redis ? ".rdb" : props.mongodb ? ".archive,.gz" : props.application.config.database?.engine === "postgresql" ? ".dump,.backup" : ".sql";
   onMount(() => {
     panel.querySelector<HTMLInputElement>("input:not([type=file])")?.focus();
     const key = (event: KeyboardEvent) => {
@@ -109,14 +116,14 @@ function ImportDialog(props: {
     <div class="drawer-scrim" onClick={props.close} />
     <form ref={panel} onSubmit={props.submit} class="confirm-dialog database-import-dialog" role="dialog" aria-modal="true" aria-labelledby="database-import-title">
       <header><h2 id="database-import-title">{importLabel()}</h2><IconButton icon="close" label="Close import" ghost disabled={props.busy} onClick={props.close} /></header>
-      <div class="database-import-copy" classList={{ "is-warning": props.redis }}>{props.redis && <Icon name="warning" />}<span>{props.redis ? "The snapshot is loaded into this Redis service. Current keys can be replaced." : "The dump is restored into a new database on this instance. The current database stays online."}</span></div>
+      <div class="database-import-copy" classList={{ "is-warning": props.redis }}>{props.redis && <Icon name="warning" />}<span>{props.redis ? "The snapshot is loaded into this Redis service. Current keys can be replaced." : props.mongodb ? "The archive is restored into a new database on this instance. The current database stays online." : "The dump is restored into a new database on this instance. The current database stays online."}</span></div>
       <Show when={props.error}><ErrorNotice message={props.error} /></Show>
       <label class="database-file-input" classList={{ selected: !!props.file }}>
-        <input type="file" required accept={props.redis ? ".rdb" : props.application.config.database?.engine === "postgresql" ? ".dump,.backup" : ".sql"}
+        <input type="file" required accept={fileType()}
           onChange={e => props.setFile(e.currentTarget.files?.[0])} />
         <Icon name="upload" />
-        <span>{props.file?.name ?? (props.redis ? "Choose an RDB snapshot" : "Choose a database dump")}</span>
-        <small>{props.redis ? ".rdb" : props.application.config.database?.engine === "postgresql" ? ".dump or .backup" : ".sql"}</small>
+        <span>{props.file?.name ?? (props.redis ? "Choose an RDB snapshot" : props.mongodb ? "Choose a MongoDB archive" : "Choose a database dump")}</span>
+        <small>{fileHint()}</small>
       </label>
       <fieldset disabled={props.busy} class="form-fields">
         <Show when={!props.redis}>
@@ -130,7 +137,7 @@ function ImportDialog(props: {
       </fieldset>
       <div class="form-actions">
         <Button variant="ghost" disabled={props.busy} onClick={props.close}>Cancel</Button>
-        <Button type="submit" variant="primary" icon="upload" disabled={props.busy || !props.file || (props.redis && props.confirm !== props.application.name)}>{props.busy ? (props.redis ? "Restoring snapshot" : "Creating copy") : importLabel()}</Button>
+        <Button type="submit" variant="primary" icon="upload" disabled={props.busy || !props.file || (props.redis && props.confirm !== props.application.name)}>{props.busy ? (props.redis ? "Restoring snapshot" : props.mongodb ? "Restoring archive" : "Creating copy") : importLabel()}</Button>
       </div>
     </form>
   </Portal>;

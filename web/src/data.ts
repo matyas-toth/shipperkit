@@ -35,7 +35,7 @@ export function applicationState(app: import("./types").Application) {
   return app.state;
 }
 export function methodLabel(app: import("./types").Application) {
-  if (app.config?.database) return ({ postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", redis: "Redis" }[app.config.database.engine]) + " " + app.config.database.version;
+  if (app.config?.database) return ({ postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", mongodb: "MongoDB", clickhouse: "ClickHouse", redis: "Redis", sqlite: "SQLite" }[app.config.database.engine]) + " " + app.config.database.version;
   const methods: Record<string, string> = { image:"Container image",inline:"Dockerfile",static: "Static site", compose: "Compose", dockerfile: "Dockerfile", railpack: "Railpack" };
   return methods[app.method] ?? methods[app.latestDeployment?.resolvedMethod ?? ""] ?? (app.method === "auto" ? "Automatic" : app.containers.some(c => c.project) ? "Compose" : "Docker");
 }

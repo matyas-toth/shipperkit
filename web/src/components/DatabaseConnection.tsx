@@ -11,9 +11,11 @@ export default function DatabaseConnection(props: { applicationId: string; deplo
   const parts = () => {
     try {
       const value = new URL(props.preview ?? "");
-      return { host: value.host, database: value.pathname.replace(/^\//, "") || "default", user: decodeURIComponent(value.username) || "default", tls: value.searchParams.get("sslmode") ?? (value.protocol === "rediss:" ? "Required" : "") };
+      if (value.protocol === "sqlite:") return { file: value.pathname, host: "", user: "", database: "", tls: "" };
+      return { file: "", host: value.host, database: value.pathname.replace(/^\//, "") || "default", user: decodeURIComponent(value.username) || "default", tls: value.searchParams.get("sslmode") ?? (value.protocol === "rediss:" ? "Required" : "") };
     } catch { return undefined; }
   };
+  const scope = () => (props.preview ?? "").startsWith("sqlite:") ? "Local file" : "Private network";
   let mounted = true, timer: ReturnType<typeof setTimeout> | undefined;
   onCleanup(() => { mounted = false; clearTimeout(timer); });
   async function load(copy: boolean) {
@@ -38,7 +40,7 @@ export default function DatabaseConnection(props: { applicationId: string; deplo
     finally { if (mounted) setBusy(false); }
   }
   return <section class="database-connection" aria-label="Database connection">
-    <div class="database-connection-head"><h2>Connection string</h2><span>Private network</span></div>
+    <div class="database-connection-head"><h2>Connection string</h2><span>{scope()}</span></div>
     <div class="database-connection-controls">
       <Show when={props.preview} fallback={<><input id="database-connection-string" class="input mono" aria-label="Connection string" readonly type={uri() ? "text" : "password"} value={uri() || "connection-string"} autocomplete="off" spellcheck={false} /><IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
         <Show when={compact()} fallback={<><div class="database-connection-field">
@@ -46,10 +48,14 @@ export default function DatabaseConnection(props: { applicationId: string; deplo
         </div>
         <IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
           <dl class="database-connection-parts" aria-label="Connection string">
-            <div><dt>Host</dt><dd class="mono">{parts()?.host ?? props.preview}</dd></div>
-            <div><dt>User</dt><dd class="mono">{parts()?.user ?? "default"}</dd></div>
-            <div><dt>Database</dt><dd class="mono">{parts()?.database ?? "default"}</dd></div>
-            <Show when={parts()?.tls}><div><dt>TLS</dt><dd>{parts()!.tls === "require" ? "Required" : parts()!.tls}</dd></div></Show>
+            <Show when={parts()?.file} fallback={<>
+              <div><dt>Host</dt><dd class="mono">{parts()?.host ?? props.preview}</dd></div>
+              <div><dt>User</dt><dd class="mono">{parts()?.user ?? "default"}</dd></div>
+              <div><dt>Database</dt><dd class="mono">{parts()?.database ?? "default"}</dd></div>
+              <Show when={parts()?.tls}><div><dt>TLS</dt><dd>{parts()!.tls === "require" ? "Required" : parts()!.tls}</dd></div></Show>
+            </>}>
+              <div><dt>File</dt><dd class="mono">{parts()!.file}</dd></div>
+            </Show>
           </dl>
         </Show>
       </Show>

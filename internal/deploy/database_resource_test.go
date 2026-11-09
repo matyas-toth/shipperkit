@@ -10,6 +10,7 @@ import (
 	"shipper/internal/auth"
 	"shipper/internal/events"
 	"shipper/internal/store"
+	"strconv"
 	"testing"
 )
 
@@ -63,6 +64,70 @@ func TestDatabaseResourcePresets(t *testing.T) {
 	}
 	if _, e := DatabaseResourceConfig("postgresql", "latest;evil"); e == nil {
 		t.Fatal("unvetted version accepted")
+	}
+}
+func TestDatabaseResourceEngineConnections(t *testing.T) {
+	cases := []struct {
+		engine, version, scheme, database string
+		port                              int
+		user, password                    string
+	}{
+		{"mongodb", "8", "mongodb", "app", 27017, "app", "MONGO_INITDB_ROOT_PASSWORD"},
+		{"clickhouse", "25.3", "clickhouse", "app", 9000, "app", "CLICKHOUSE_PASSWORD"},
+	}
+	for _, tc := range cases {
+		c, e := DatabaseResourceConfig(tc.engine, tc.version)
+		if e != nil {
+			t.Fatal(tc.engine, e)
+		}
+		d := store.Deployment{ID: "release", ApplicationID: "resource", ContainerID: "container", Config: c, ResolvedMethod: "image"}
+		raw, e := DatabaseURI(d)
+		if e != nil {
+			t.Fatal(tc.engine, e)
+		}
+		u, e := url.Parse(raw)
+		if e != nil || u.Scheme != tc.scheme || u.Hostname() != "db-resource" || u.Port() != strconv.Itoa(tc.port) || u.Path != "/"+tc.database || u.User.Username() != tc.user {
+			t.Fatal(tc.engine, raw, e)
+		}
+		password, _ := u.User.Password()
+		if password != databaseEnvironment(c)[tc.password] {
+			t.Fatal(tc.engine, "wrong password")
+		}
+		if tc.engine == "mongodb" && u.Query().Get("authSource") != "admin" {
+			t.Fatal("Mongo authentication database missing")
+		}
+	}
+	c, e := DatabaseResourceConfig("sqlite", "3.50")
+	if e != nil {
+		t.Fatal(e)
+	}
+	d := store.Deployment{ID: "release", ApplicationID: "resource", ContainerID: "container", Config: c, ResolvedMethod: "image"}
+	if raw, e := DatabaseURI(d); e != nil || raw != "sqlite:///home/sqlite/app.db" {
+		t.Fatal(raw, e)
+	}
+	c.Database.TLSHostname = "db.example.test"
+	if e = ValidateDatabaseResource(c); e == nil {
+		t.Fatal("SQLite accepted public TLS")
+	}
+}
+func TestDatabaseResourceBackupPlans(t *testing.T) {
+	for _, engine := range []string{"mongodb", "clickhouse", "sqlite"} {
+		version := map[string]string{"mongodb": "8", "clickhouse": "25.3", "sqlite": "3.50"}[engine]
+		c, e := DatabaseResourceConfig(engine, version)
+		if e != nil {
+			t.Fatal(engine, e)
+		}
+		spec, e := DatabaseBackupSpec(store.Deployment{ApplicationID: "resource", Config: c})
+		if e != nil {
+			t.Fatal(engine, e)
+		}
+		if engine == "mongodb" {
+			if spec.Kind != "database" || spec.Engine != "mongodb" || spec.User == "" || spec.Password == "" || spec.Database != "app" {
+				t.Fatal("unexpected MongoDB backup spec", spec)
+			}
+		} else if spec.Kind != "volume" || spec.Database != "" {
+			t.Fatal("unexpected volume backup spec", engine, spec)
+		}
 	}
 }
 func TestDatabaseResourceNativeTLSIdentity(t *testing.T) {

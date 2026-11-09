@@ -12,6 +12,7 @@ export default function Networking(props: {
   applicationId?: string;
   services?: Service[];
   database?: boolean;
+  tlsCapable?: boolean;
   tlsHostname: string;
   tlsOn?: boolean;
   tlsInvalid?: boolean;
@@ -121,7 +122,7 @@ export default function Networking(props: {
       </Show>
     </section>
 
-    <Show when={props.database && tcpPorts().length}>
+    <Show when={props.database && props.tlsCapable && tcpPorts().length}>
       <section class="network-section" aria-labelledby="public-tls-title">
         <div class="section-toolbar network-toolbar">
           <div class="network-heading">

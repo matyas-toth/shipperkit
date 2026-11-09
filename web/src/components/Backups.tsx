@@ -153,7 +153,7 @@ export default function Backups(props: {
   const importLabel = () => database() ? "Create from dump" : "Import archive";
   const plans = () =>
     query.data?.plans.filter(
-      (p) => (!props.service || p.config.service === props.service) && (!database() || p.config.kind === "database"),
+      (p) => (!props.service || p.config.service === props.service) && (!database() || p.config.kind === "database" || !!p.config.engine),
     ) ?? [];
   const volumes = () =>
     (query.data?.volumes ?? [])
@@ -200,7 +200,13 @@ export default function Backups(props: {
     if (database) {
       config.engine = database.engine === "postgresql" ? "postgres" : database.engine;
       config.database = "app";
-      if (database.engine === "redis") { config.kind = "volume"; config.engine = "redis"; config.database = ""; const volume = query.data?.volumes.find(row => row.logical === "data" && !row.restored); config.volume = volume?.name ?? ""; }
+      if (["redis", "clickhouse", "sqlite"].includes(database.engine)) {
+        config.kind = "volume";
+        config.engine = database.engine;
+        config.database = "";
+        const volume = query.data?.volumes.find(row => row.logical === "data" && !row.restored);
+        config.volume = volume?.name ?? "";
+      }
     }
     if (props.application?.method !== "compose") config.service = "";
     setEditing({
@@ -679,6 +685,7 @@ export default function Backups(props: {
                     <option value="postgres">PostgreSQL</option>
                     <option value="mysql">MySQL</option>
                     <option value="mariadb">MariaDB</option>
+                    <option value="mongodb">MongoDB</option>
                   </select></div>
                   <div class="field"><label for="backup-database">Database name</label>
                   <input

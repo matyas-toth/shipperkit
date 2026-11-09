@@ -12,7 +12,7 @@ import "./DatabaseResource.css";
 type BackupPlan = { id: string; name: string; enabled: boolean; schedule: string; nextAt: number; config: { kind: string } };
 type BackupRun = { id: string; state: string; createdAt: number; finishedAt: number; kind?: string };
 type Protection = { plans: BackupPlan[]; runs: BackupRun[] };
-const engineNames: Record<string, string> = { postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", redis: "Redis" };
+const engineNames: Record<string, string> = { postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", mongodb: "MongoDB", clickhouse: "ClickHouse", redis: "Redis", sqlite: "SQLite" };
 
 export default function DatabaseOverview(props: {
   application: Application;
@@ -37,13 +37,14 @@ export default function DatabaseOverview(props: {
   const preview = () => {
     const engine = database()?.engine;
     if (!engine || !info()) return undefined;
-    const scheme = engine === "postgresql" ? "postgresql" : engine === "redis" ? "rediss" : "mysql";
+    if (engine === "sqlite") return "sqlite:///home/sqlite/app.db";
+    const scheme = engine === "postgresql" ? "postgresql" : engine === "mongodb" ? "mongodb" : engine === "clickhouse" ? "clickhouse" : engine === "redis" ? "rediss" : "mysql";
     const user = engine === "redis" ? "default" : "app";
     const path = engine === "redis" ? "0" : "app";
-    const query = engine === "postgresql" ? "?sslmode=require" : "";
+    const query = engine === "postgresql" ? "?sslmode=require" : engine === "mongodb" ? "?authSource=admin" : "";
     return scheme + "://" + user + ":••••@" + address() + "/" + path + query;
   };
-  const publicAccess = () => ports().length ? ports().map(port => port.hostPort + "/" + port.protocol + " → " + port.containerPort).join(", ") : "No public ports";
+  const publicAccess = () => database()?.engine === "sqlite" ? "File volume" : ports().length ? ports().map(port => port.hostPort + "/" + port.protocol + " → " + port.containerPort).join(", ") : "No public ports";
   const lastBackup = () => {
     const run = latestRun();
     if (!run) return "";

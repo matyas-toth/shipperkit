@@ -31,6 +31,9 @@ func (w *Worker) ImportDatabaseDump(ctx context.Context, app, target string, src
 	if e != nil {
 		return empty, e
 	}
+	if spec.Kind == "volume" && spec.Engine != "redis" {
+		return empty, errors.New("This database engine does not support native imports")
+	}
 	if spec.Kind == "volume" {
 		spec.Volume = runtimeVolumeName(w.Runtime, app)
 	}
@@ -75,7 +78,10 @@ func (w *Worker) ImportDatabaseDump(ctx context.Context, app, target string, src
 		if spec.Engine == "postgres" && string(magic) != "PGDMP" {
 			return empty, errors.New("Upload a PostgreSQL custom-format dump created with pg_dump -Fc")
 		}
-		if spec.Engine != "postgres" {
+		if spec.Engine == "mongodb" && !(magic[0] == 0x1f && magic[1] == 0x8b) {
+			return empty, errors.New("Upload a MongoDB archive created with mongodump --archive --gzip")
+		}
+		if spec.Engine != "postgres" && spec.Engine != "mongodb" {
 			// A copy restore cannot permit a dump to select or create another database.
 			data, e := os.ReadFile(raw)
 			if e != nil {

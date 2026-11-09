@@ -45,7 +45,14 @@ export default function ApplicationPage() {
  const [now, setNow] = createSignal(Date.now()/1000);
   const app = () => query.data?.application;
   const compact = mediaQuery("(width < 48rem)");
-  const tabs = () => query.data?.application.config.database ? ["overview", "networking", "terminal", "backups", "logs", "settings"].map(id => appTabs.find(item => item.id === id)!) : appTabs;
+  const tabs = () => {
+    const database = query.data?.application.config.database;
+    if (!database) return appTabs;
+    const ids = database.engine === "sqlite"
+      ? ["overview", "terminal", "backups", "logs", "settings"]
+      : ["overview", "networking", "terminal", "backups", "logs", "settings"];
+    return ids.map(id => appTabs.find(item => item.id === id)!);
+  };
   const visibleTabs = () => !managed() ? 1 : compact() ? (query.data?.application.config.database ? 4 : 3) : tabs().length;
   const tab = () => (() => { const list = tabs(); return search.tab === "variables" ? "env" : list.some(item => item.id === search.tab) ? String(search.tab) : "overview"; })();
   const serviceView = () => tab() === "overview" && app()?.method === "compose" && !!search.service;

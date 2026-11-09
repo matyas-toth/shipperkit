@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -445,6 +447,11 @@ func (r *DockerRuntime) InferBackupCredentials(ctx context.Context, d store.Depl
 			if c.User == "" {
 				c.User = "postgres"
 			}
+		} else if c.Engine == "mongodb" {
+			c.User = env["MONGO_INITDB_ROOT_USERNAME"]
+			if c.User == "" {
+				c.User = "root"
+			}
 		} else {
 			c.User = "root"
 		}
@@ -452,6 +459,8 @@ func (r *DockerRuntime) InferBackupCredentials(ctx context.Context, d store.Depl
 	if c.Password == "" {
 		if c.Engine == "postgres" {
 			c.Password = env["POSTGRES_PASSWORD"]
+		} else if c.Engine == "mongodb" {
+			c.Password = env["MONGO_INITDB_ROOT_PASSWORD"]
 		} else if c.User == "root" {
 			c.Password = env["MYSQL_ROOT_PASSWORD"]
 			if c.Password == "" {
@@ -462,6 +471,12 @@ func (r *DockerRuntime) InferBackupCredentials(ctx context.Context, d store.Depl
 			if c.Password == "" {
 				c.Password = env["MARIADB_PASSWORD"]
 			}
+		}
+	}
+	if c.Engine == "mongodb" && c.Database == "" {
+		c.Database = env["MONGO_INITDB_DATABASE"]
+		if c.Database == "" {
+			c.Database = "app"
 		}
 	}
 	return nil
@@ -482,8 +497,8 @@ func ValidateBackupSpec(c *store.BackupSpec) error {
 		}
 		return nil
 	}
-	if c.Kind != "database" || (c.Engine != "postgres" && c.Engine != "mysql" && c.Engine != "mariadb") {
-		return errors.New("Choose PostgreSQL, MySQL or MariaDB")
+	if c.Kind != "database" || (c.Engine != "postgres" && c.Engine != "mysql" && c.Engine != "mariadb" && c.Engine != "mongodb") {
+		return errors.New("Choose PostgreSQL, MySQL, MariaDB or MongoDB")
 	}
 	if !sourceDatabaseName.MatchString(c.Database) || c.User == "" || strings.HasPrefix(c.User, "-") || len(c.User) > 128 || strings.ContainsAny(c.User, "\x00\r\n") {
 		return errors.New("Enter a database name and user")
@@ -564,7 +579,7 @@ func dbArgs(c store.BackupSpec) ([]string, []string) {
 	return a, []string{"MYSQL_PWD=" + c.Password}
 }
 func (r *DockerRuntime) DatabaseVersion(ctx context.Context, id string, c store.BackupSpec) (string, error) {
-	tool := map[string]string{"postgres": "pg_dump", "mysql": "mysqldump", "mariadb": "mariadb-dump"}[c.Engine]
+	tool := map[string]string{"postgres": "pg_dump", "mysql": "mysqldump", "mariadb": "mariadb-dump", "mongodb": "mongodump"}[c.Engine]
 	var out cappedBuffer
 	e := r.protectionExec(ctx, id, []string{tool, "--version"}, nil, nil, &out)
 	v := strings.TrimSpace(out.String())
@@ -587,10 +602,59 @@ func (l *limitFile) Write(p []byte) (int, error) {
 	l.n += int64(n)
 	return n, e
 }
+func mongoConnection(c store.BackupSpec, database string) string {
+	port := c.Port
+	if port == 0 {
+		port = 27017
+	}
+	u := url.URL{Scheme: "mongodb", Host: net.JoinHostPort(c.Host, strconv.Itoa(port)), Path: "/" + database}
+	if c.User != "" {
+		u.User = url.UserPassword(c.User, c.Password)
+	}
+	if c.User != "" {
+		query := u.Query()
+		query.Set("authSource", "admin")
+		u.RawQuery = query.Encode()
+	}
+	return u.String()
+}
+func (r *DockerRuntime) dumpMongoDatabase(ctx context.Context, id string, c store.BackupSpec, file string) (string, error) {
+	version, e := r.DatabaseVersion(ctx, id, c)
+	if e != nil {
+		return "", e
+	}
+	f, e := os.OpenFile(file, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if e != nil {
+		return "", e
+	}
+	env := []string{"MONGO_URI=" + mongoConnection(c, c.Database)}
+	e = r.protectionExec(ctx, id, []string{"sh", "-c", `exec mongodump --uri="$MONGO_URI" --archive --gzip`}, env, nil, &limitFile{w: f})
+	ce := f.Close()
+	if e == nil {
+		e = ce
+	}
+	return version, e
+}
+func (r *DockerRuntime) restoreMongoDatabase(ctx context.Context, id string, c store.BackupSpec, file string) error {
+	f, e := os.Open(file)
+	if e != nil {
+		return e
+	}
+	defer f.Close()
+	env := []string{
+		"MONGO_URI=" + mongoConnection(c, c.Target),
+		"MONGO_NS_FROM=" + c.Database + ".*",
+		"MONGO_NS_TO=" + c.Target + ".*",
+	}
+	return r.protectionExec(ctx, id, []string{"sh", "-c", `exec mongorestore --uri="$MONGO_URI" --archive=/dev/stdin --gzip --nsInclude="$MONGO_NS_FROM" --nsFrom="$MONGO_NS_FROM" --nsTo="$MONGO_NS_TO"`}, env, f, io.Discard)
+}
 func (r *DockerRuntime) DumpDatabase(ctx context.Context, d store.Deployment, c store.BackupSpec, file string) (string, error) {
 	id, e := r.databaseContainer(ctx, d, c)
 	if e != nil {
 		return "", e
+	}
+	if c.Engine == "mongodb" {
+		return r.dumpMongoDatabase(ctx, id, c, file)
 	}
 	version, e := r.DatabaseVersion(ctx, id, c)
 	if e != nil {
@@ -636,6 +700,9 @@ func (r *DockerRuntime) RestoreDatabase(ctx context.Context, d store.Deployment,
 	}
 	if m.Engine != c.Engine || m.EngineVersion != version {
 		return errors.New("Restore requires the same database tool version and engine as the backup")
+	}
+	if c.Engine == "mongodb" {
+		return r.restoreMongoDatabase(ctx, id, c, file)
 	}
 	if c.NativeImport {
 		return r.restoreNativeDatabase(ctx, id, c, file)

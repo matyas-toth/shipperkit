@@ -25,12 +25,15 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   const original = await (await page.request.get("/api/applications/application-web")).json();
   const session = await (await page.request.get("/api/auth/session")).json();
   // Capture the creation form and reviewed proposal for each actual preset.
+  const engineList = [["postgresql", "18"], ["mysql", "8.4"], ["mariadb", "11.8"], ["mongodb", "8"], ["redis", "8"], ["clickhouse", "25.3"], ["sqlite", "3.50"]] as const;
+  const engineNames: Record<string, string> = { postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", mongodb: "MongoDB", redis: "Redis", clickhouse: "ClickHouse", sqlite: "SQLite" };
+  const displayNames: Record<string, string> = { postgresql: "Production database", mysql: "Production MySQL", mariadb: "Production MariaDB", mongodb: "Analytics database", redis: "Job queue", clickhouse: "Events warehouse", sqlite: "Local database" };
   const presets: Record<string, any> = {};
-  for (const [engine, version] of [["postgresql", "18"], ["mysql", "8.4"], ["mariadb", "11.8"], ["redis", "8"]]) {
+  for (const [engine, version] of engineList) {
     await page.goto("/new");
     await page.getByRole("button", { name: "Database", exact: true }).click();
-    await page.locator(".database-engine-card").filter({ hasText: ({ postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", redis: "Redis" } as Record<string, string>)[engine] }).click();
-    const displayName = engine === "postgresql" ? "Production database" : engine === "redis" ? "Job queue" : "Production " + ({ mysql: "MySQL", mariadb: "MariaDB" } as Record<string, string>)[engine];
+    await page.locator(".database-engine-card").filter({ hasText: engineNames[engine] }).click();
+    const displayName = displayNames[engine];
     await page.getByLabel("Name", { exact: true }).fill(displayName);
     await shot(page, "create-" + engine);
     const response = await page.request.post("/api/database-resources/prepare", { headers: { "X-CSRF-Token": session.csrfToken }, data: { engine, version } });
@@ -69,15 +72,19 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
     { sequence: 1, sessionId: "gallery-terminal-prev", userId: "owner", applicationId: "application-web", containerId: original.application.containers[0].id, event: "start", reason: "", createdAt: Math.floor(Date.now() / 1000) - 1800 },
   ];
   await page.route("**/api/applications/application-web/terminal/audit", r => r.fulfill({ json: { items: auditItems } }));
-  for (const engine of ["postgresql", "mysql", "mariadb", "redis"]) {
-    config = presets[engine]; name = engine === "postgresql" ? "Production database" : engine === "redis" ? "Job queue" : "Production " + ({ mysql: "MySQL", mariadb: "MariaDB" } as Record<string, string>)[engine];
+  for (const engine of ["postgresql", "mysql", "mariadb", "mongodb", "redis", "clickhouse", "sqlite"]) {
+    config = presets[engine]; name = displayNames[engine];
     await page.goto("/applications/application-web");
-    const importName = engine === "redis" ? "Restore snapshot" : "Create from dump";
-    await expect(page.getByRole("button", { name: importName, exact: true })).toBeVisible();
-    await shot(page, "overview-" + engine);
-    await page.getByRole("button", { name: importName, exact: true }).click();
-    await expect(page.getByRole("heading", { name: importName, exact: true })).toBeVisible();
-    await shot(page, "import-" + engine);
+    const importName = engine === "redis" ? "Restore snapshot" : engine === "mongodb" ? "Create from archive" : engine === "clickhouse" || engine === "sqlite" ? "" : "Create from dump";
+    if (importName) {
+      await expect(page.getByRole("button", { name: importName, exact: true })).toBeVisible();
+      await shot(page, "overview-" + engine);
+      await page.getByRole("button", { name: importName, exact: true }).click();
+      await expect(page.getByRole("heading", { name: importName, exact: true })).toBeVisible();
+      await shot(page, "import-" + engine);
+    } else {
+      await shot(page, "overview-" + engine);
+    }
   }
   config = presets.postgresql; name = "Production database";
   await page.goto("/applications/application-web?tab=backups");

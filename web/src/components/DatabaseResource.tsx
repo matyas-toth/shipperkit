@@ -12,7 +12,10 @@ const engines: Engine[] = [
   { id: "postgresql", name: "PostgreSQL", icon: "database", versions: ["18", "17", "16"], port: 5432 },
   { id: "mysql", name: "MySQL", icon: "server", versions: ["8.4"], port: 3306 },
   { id: "mariadb", name: "MariaDB", icon: "layers", versions: ["11.8", "11.4"], port: 3306 },
+  { id: "mongodb", name: "MongoDB", icon: "database", versions: ["8", "7"], port: 27017 },
   { id: "redis", name: "Redis", icon: "bolt", versions: ["8", "7"], port: 6379 },
+  { id: "clickhouse", name: "ClickHouse", icon: "layers", versions: ["25.3", "24.8"], port: 9000 },
+  { id: "sqlite", name: "SQLite", icon: "code", versions: ["3.50"], port: 0 },
 ];
 
 export default function DatabaseResource(props: { prepare: (config: StaticConfig, name: string) => void | Promise<void>; close: () => void }) {

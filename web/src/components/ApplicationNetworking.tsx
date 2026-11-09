@@ -108,7 +108,7 @@ export default function ApplicationNetworking(props: {
     <Show when={info.data} fallback={<Show when={!info.error}><span class="loading-line" aria-label="Loading networking" /></Show>}>
       <fieldset disabled={props.busy || saving()} class="creation-fields">
         <Networking value={value()} change={update} applicationId={props.application.id} services={props.services}
-          applications={info.data!.applications} host={info.data!.host} port={props.application.config.port} database={!!props.application.config.database}
+          applications={info.data!.applications} host={info.data!.host} port={props.application.config.port} database={!!props.application.config.database} tlsCapable={["postgresql", "mysql", "mariadb", "redis"].includes(props.application.config.database?.engine ?? "")}
           tlsHostname={tlsHostname()} changeTLS={setTlsHostname} conflictPort={conflict()} tlsOn={tlsOn()} changeTLSOn={toggleTLS} tlsInvalid={tlsInvalid()} />
       </fieldset>
     </Show>

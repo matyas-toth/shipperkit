@@ -7,6 +7,12 @@ only by those actions, through the same secret-access boundary as environment
 variable reveals. Ordinary application responses contain only engine, host and port.
 Compose applications and unrecognized/custom images do not show this control.
 
+Managed database resources support PostgreSQL, MySQL, MariaDB, MongoDB,
+ClickHouse and SQLite. PostgreSQL, MySQL, MariaDB, MongoDB and ClickHouse use a
+private host and port. SQLite uses a file URI on its persistent data volume:
+`sqlite:///home/sqlite/app.db`. SQLite has no public networking or TLS surface;
+attach its data volume to an application that needs local file access.
+
 The URI addresses the active release's `site-<release-id>` alias on the instance's
 shared Docker network, using its resolved container port. Other single-container
 Shipper apps and Compose services attached to the edge network can use it in their

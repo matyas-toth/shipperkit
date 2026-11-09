@@ -13,7 +13,11 @@ import (
 
 var databaseVersions = map[string]map[string]string{
 	"postgresql": {"16": "postgres:16", "17": "postgres:17", "18": "postgres:18"},
-	"mysql":      {"8.4": "mysql:8.4"}, "mariadb": {"11.4": "mariadb:11.4", "11.8": "mariadb:11.8"}, "redis": {"7": "redis:7", "8": "redis:8"},
+	"mysql":      {"8.4": "mysql:8.4"}, "mariadb": {"11.4": "mariadb:11.4", "11.8": "mariadb:11.8"},
+	"mongodb":    {"7": "mongo:7", "8": "mongo:8"},
+	"clickhouse": {"24.8": "clickhouse/clickhouse-server:24.8", "25.3": "clickhouse/clickhouse-server:25.3"},
+	"redis":      {"7": "redis:7", "8": "redis:8"},
+	"sqlite":     {"3.50": "keinos/sqlite3:3.50.4"},
 }
 
 // DatabaseResourceConfig generates initialization secrets on the server only.
@@ -53,6 +57,25 @@ func DatabaseResourceConfig(engine, version string) (store.Config, error) {
 		c.Port = 6379
 		c.Volumes = append(c.Volumes, store.Volume{Name: "data", Path: "/data"})
 		add("REDIS_PASSWORD", password, true)
+	case "mongodb":
+		c.Port = 27017
+		add("MONGO_INITDB_ROOT_USERNAME", "app", false)
+		add("MONGO_INITDB_ROOT_PASSWORD", password, true)
+		add("MONGO_INITDB_DATABASE", "app", false)
+		c.Volumes = append(c.Volumes, store.Volume{Name: "data", Path: "/data/db"})
+	case "clickhouse":
+		c.Port = 9000
+		c.MemoryMB = 1024
+		add("CLICKHOUSE_DB", "app", false)
+		add("CLICKHOUSE_USER", "app", false)
+		add("CLICKHOUSE_PASSWORD", password, true)
+		add("CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT", "1", false)
+		c.Volumes = append(c.Volumes, store.Volume{Name: "data", Path: "/var/lib/clickhouse"})
+	case "sqlite":
+		c.Port = 0
+		c.MemoryMB = 128
+		c.StartCommand = "touch /home/sqlite/app.db && exec sleep infinity"
+		c.Volumes = append(c.Volumes, store.Volume{Name: "data", Path: "/home/sqlite"})
 	}
 	return c, nil
 }
@@ -65,6 +88,9 @@ func databaseEnvironment(c store.Config) map[string]string {
 	}
 	return m
 }
+func databaseTLSCapable(engine string) bool {
+	return engine == "postgresql" || engine == "mysql" || engine == "mariadb" || engine == "redis"
+}
 func ValidateDatabaseResource(c store.Config) error {
 	if c.Database == nil {
 		return nil
@@ -73,13 +99,16 @@ func ValidateDatabaseResource(c store.Config) error {
 	if e != nil {
 		return e
 	}
-	if c.Method != "image" || c.Image != preset.Image || c.StartupPolicy != "process" || c.Port != preset.Port || c.StartCommand != "" || len(c.Hooks) > 0 {
+	if c.Method != "image" || c.Image != preset.Image || c.StartupPolicy != "process" || c.Port != preset.Port || c.StartCommand != preset.StartCommand || len(c.Hooks) > 0 {
 		return errors.New("Managed databases use their engine's image, port and startup command")
 	}
 	if len(c.Volumes) != 1 || c.Volumes[0] != preset.Volumes[0] {
 		return errors.New("Keep the database data volume at its engine's data directory")
 	}
 	host := c.Database.TLSHostname
+	if host != "" && !databaseTLSCapable(c.Database.Engine) {
+		return errors.New("This database engine does not expose TLS through Shipper")
+	}
 	if host != "" && net.ParseIP(host) == nil && (!regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9.-]{0,251}[a-zA-Z0-9])?$`).MatchString(host) || strings.Contains(host, "..")) {
 		return errors.New("Enter a database TLS hostname or IP address")
 	}
@@ -174,6 +203,15 @@ func DatabaseBackupSpec(d store.Deployment) (store.BackupSpec, error) {
 	case "redis":
 		c.Kind = "volume"
 		c.Engine = "redis"
+		c.Database = ""
+	case "mongodb":
+		c.Engine = "mongodb"
+		c.User = env["MONGO_INITDB_ROOT_USERNAME"]
+		c.Password = env["MONGO_INITDB_ROOT_PASSWORD"]
+		c.Database = env["MONGO_INITDB_DATABASE"]
+	case "clickhouse", "sqlite":
+		c.Kind = "volume"
+		c.Engine = d.Config.Database.Engine
 		c.Database = ""
 	}
 	return c, nil
