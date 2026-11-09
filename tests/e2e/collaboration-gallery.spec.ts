@@ -10,6 +10,10 @@ test.use({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 });
 test("capture collaboration settings", async ({ page }) => {
   await mkdir(out, { recursive: true });
   await page.goto("/");
+  await expect(page.getByLabel("Setup token")).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: join(out, "00-admin-setup.png"), animations: "disabled" });
   await page.getByLabel("Setup token").fill(token);
   await page.getByLabel("Email", { exact: true }).fill(account.email);
   await page.getByLabel("Password", { exact: true }).fill(account.password);
@@ -67,14 +71,17 @@ test("capture collaboration settings", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await action("/api/auth/logout", {});
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Sign in", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome back aboard.", exact: true })).toBeVisible();
   await page.waitForTimeout(250);
   await page.screenshot({ path: join(out, "06-sign-in.png"), animations: "disabled" });
 
   await page.getByLabel("Email", { exact: true }).fill("mara@example.test");
   await page.getByLabel("Password", { exact: true }).fill("temporary-password-123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Set your password", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Make it yours.", exact: true })).toBeVisible();
   await page.waitForTimeout(220);
   await page.screenshot({ path: join(out, "07-password-gate.png"), animations: "disabled" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(180);
+  await page.screenshot({ path: join(out, "08-password-gate-mobile.png"), animations: "disabled" });
 });
