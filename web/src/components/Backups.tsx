@@ -4,7 +4,7 @@ import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application, Service, StaticConfig } from "../types";
 import { bytes, formatDuration, operationTime } from "../data";
-import { Button, Disclosure, ErrorNotice, IconButton, Status } from "./Controls";
+import { Button, ErrorNotice, IconButton, Status } from "./Controls";
 import EditorActions from "./EditorActions";
 import SchedulePicker from "./SchedulePicker";
 import { ChoiceCards } from "./Choices";
@@ -537,43 +537,46 @@ export default function Backups(props: {
             </form>
           </Show>
         </section>
-          <div class="recovery-actions">
-        <dl class="settings-group recovery-key">
-          <div class="setting-row">
-            <dt>Recovery key</dt>
-            <dd>
-              <Button
-                disabled={!!downloading()}
-                onClick={() => void transfer("/protection/key", "shipper-recovery-key.txt", {
-                  confirm: "Download recovery key",
-                })}
-              >
-                {downloading() === "shipper-recovery-key.txt" ? "Downloading recovery key" : "Download recovery key"}
-              </Button>
-            </dd>
-          </div>
-        </dl>
-        <Disclosure label="Recover an installation" icon="terminal" class="recovery-disclosure">
-          <pre class="recovery-command"><code>shipper restore --archive backup.age --identity shipper-recovery-key.txt --data-dir /new/shipper</code></pre>
-          <dl class="settings-group">
-            <div class="setting-row">
-              <dt>Target</dt>
-              <dd>Empty data directory</dd>
+          <div class="recovery-tools">
+            <div class="recovery-tools-heading"><h3>Recovery tools</h3></div>
+            <div class="recovery-tool-grid">
+              <article class="recovery-tool">
+                <div class="recovery-tool-row">
+                  <span class="recovery-tool-icon"><Icon name="key" /></span>
+                  <div class="recovery-tool-copy">
+                    <h4>Recovery key</h4>
+                    <p>Decrypts instance archives and encrypted backups.</p>
+                  </div>
+                  <Button
+                    disabled={!!downloading()}
+                    onClick={() => void transfer("/protection/key", "shipper-recovery-key.txt", {
+                      confirm: "Download recovery key",
+                    })}
+                  >
+                    {downloading() === "shipper-recovery-key.txt" ? "Downloading key" : "Download recovery key"}
+                  </Button>
+                </div>
+              </article>
+              <details class="recovery-tool recovery-restore">
+                <summary class="recovery-tool-row">
+                  <span class="recovery-tool-icon"><Icon name="terminal" /></span>
+                  <div class="recovery-tool-copy">
+                    <h4>Recover an installation</h4>
+                    <p>Restore an archive onto a fresh host.</p>
+                  </div>
+                  <span class="recovery-tool-toggle">View command<Icon name="chevron" /></span>
+                </summary>
+                <div class="recovery-restore-body">
+                  <pre class="recovery-command"><code>shipper restore --archive backup.age --identity shipper-recovery-key.txt --data-dir /new/shipper</code></pre>
+                  <dl class="recovery-facts">
+                    <div><dt>Target</dt><dd>Empty data directory</dd></div>
+                    <div><dt>Applications</dt><dd>Stopped after recovery</dd></div>
+                    <div><dt>Schedules</dt><dd>Disabled after recovery</dd></div>
+                    <div><dt>Workload data</dt><dd>Separate database and volume backups</dd></div>
+                  </dl>
+                </div>
+              </details>
             </div>
-            <div class="setting-row">
-              <dt>Applications</dt>
-              <dd>Stopped after recovery</dd>
-            </div>
-            <div class="setting-row">
-              <dt>Schedules</dt>
-              <dd>Disabled after recovery</dd>
-            </div>
-            <div class="setting-row">
-              <dt>Workload data</dt>
-              <dd>Separate database and volume backups</dd>
-            </div>
-          </dl>
-        </Disclosure>
           </div>
         </div>
       </Show>
@@ -847,6 +850,7 @@ export default function Backups(props: {
             </dl>
           </div>
         </Show>
+        <Show when={!props.application}><div class="backup-plans-heading"><h3>Scheduled backups</h3></div></Show>
         <div class="table-tray backup-plans" classList={{ "is-empty": !plans().length }}>
           <table class="inventory-table backups-table">
             <thead>

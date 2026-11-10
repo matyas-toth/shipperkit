@@ -162,6 +162,7 @@ test("capture product surfaces", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   await page.goto("/new");
+  await page.getByRole("button", { name: "Configure manually", exact: true }).click();
   await expect(page.getByRole("heading", { name: "New application", exact: true })).toBeVisible();
   await shot(page, "new-source");
   await page.getByLabel("Name", { exact: true }).fill("Portfolio");

@@ -45,9 +45,12 @@ unmanaged Shipper data fail preflight. Installer stages are recorded in
 
 ## First administrator
 
-The installer prints the public address, for example `http://203.0.113.10:8080`.
-Open it. Create the first administrator with `sudo shipperctl claim` on the host,
-or use the setup token from `/var/lib/shipper/setup-token` on the setup form.
+The installer prints the public address, for example `http://203.0.113.10:8080`,
+and the one-time setup token at the end. Open the address and paste the token into
+the first-run form to create the administrator. The token expires 30 minutes after
+it is issued; rotate it with `sudo shipperctl rotate-claim`. You can also create
+the first administrator entirely on the host with `sudo shipperctl claim`.
+
 Allow TCP 80, 443 and 8080 through the provider firewall.
 
 The dashboard initially runs without a domain. After signing in, open
