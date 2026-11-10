@@ -1,0 +1,17 @@
+{
+  "name": "Shipper",
+  "short_name": "Shipper",
+  "description": "Deploy your apps to your own server.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050606",
+  "theme_color": "#050606",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

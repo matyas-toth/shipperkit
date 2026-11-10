@@ -4,12 +4,33 @@ import "@/styles/global.css";
 interface Props {
   title?: string;
   description?: string;
+  image?: string;
+  noindex?: boolean;
 }
 
 const {
   title = "Shipper · Deploy your apps to your own server",
   description = "Install Shipper on the server you already own. Deploy from a repo, folder, image, or Compose file, with HTTPS, logs, rollbacks, backups, and agent access included.",
+  image = "/og.png",
+  noindex = false,
 } = Astro.props;
+const site = Astro.site ?? new URL("https://shipperkit.dev");
+const canonical = new URL(Astro.url.pathname, site);
+const imageURL = new URL(image, site);
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Shipper",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Linux",
+  description,
+  url: "https://shipperkit.dev/",
+  image: imageURL.href,
+  license: "https://opensource.org/license/mit",
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  sameAs: ["https://github.com/matyas-toth/shipperkit"],
+};
 ---
 
 <!doctype html>
@@ -20,12 +41,28 @@ const {
     <meta name="theme-color" content="#050606" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content={description} />
+    <meta name="author" content="Shipper" />
+    <meta name="robots" content={noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large"} />
+    <link rel="canonical" href={canonical.href} />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <meta property="og:site_name" content="Shipper" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical.href} />
+    <meta property="og:image" content={imageURL.href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Shipper self-hosted deployment console" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" type="image/svg+xml" href="/shipper.svg" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageURL.href} />
     <title>{title}</title>
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
   </head>
   <body>
     <a

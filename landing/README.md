@@ -28,6 +28,33 @@ npm run preview
 From the repository root, `npm run landing:dev`, `npm run landing:build`, and
 `npm run landing:check` are available.
 
+## Deployment
+
+The site is static Astro output and assumes the canonical production origin
+`https://shipperkit.dev`. That origin powers canonical tags, Open Graph URLs and
+the sitemap.
+
+`/install.sh` must resolve to the generated installer channel. The project ships:
+
+- `public/_redirects` for Netlify and Cloudflare Pages.
+- `vercel.json` for Vercel.
+- `public/install.sh` as a static fallback that downloads and executes the same
+  `latest` installer.
+
+Keep `/install.sh` on a `302`, not a long-cached permanent redirect, because the
+target branch file changes with every release. The landing itself uses
+`https://shipperkit.dev` in every install command.
+
+## SEO
+
+- `src/layouts/Base.astro` owns the canonical URL, robots policy, Open Graph,
+  Twitter card and SoftwareApplication JSON-LD.
+- `public/og.png` is the 1200 x 630 social preview.
+- `public/robots.txt` and `src/pages/sitemap.xml.ts` expose the production site.
+- `/v/*` and `/variants` are noindex lab routes. The homepage is the only URL in
+  the sitemap.
+- The favicon is the same rounded-square Shipper mark used by the dashboard.
+
 ## Routes
 
 | Route | Purpose |

@@ -13,8 +13,15 @@ apply=true
 check=false
 explicit_apply=false
 uninstall=false
-die() { printf 'Shipper: %s\n' "$*" >&2; exit 1; }
-stage() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$1"; }
+if [[ -t 1 ]]; then
+  bold=$'\033[1m'; dim=$'\033[2m'; green=$'\033[32m'; cyan=$'\033[36m'; red=$'\033[31m'; yellow=$'\033[33m'; reset=$'\033[0m'
+else
+  bold= dim= green= cyan= red= yellow= reset=
+fi
+die() { printf '%sShipper:%s %s\n' "$red" "$reset" "$*" >&2; exit 1; }
+stage() { printf '%s%s%s %s✓%s %s\n' "$dim" "$(date -u +%H:%M:%S)" "$reset" "$green" "$reset" "$1"; }
+info() { printf '%s•%s %s\n' "$cyan" "$reset" "$1"; }
+warn() { printf '%s!%s %s\n' "$yellow" "$reset" "$1"; }
 compose() { docker compose --project-name shipper-host --env-file "$cfg/instance.env" -f "$cfg/compose.yaml" "$@"; }
 while (($#)); do
   case "$1" in
@@ -42,6 +49,8 @@ if $check; then
 elif $uninstall && ! $explicit_apply; then
   apply=false
 fi
+printf '\n%sShipper installer%s\n' "$bold" "$reset"
+printf '%sA calm install for the server you own.%s\n' "$dim" "$reset"
 [[ $(uname -s) == Linux && -r /etc/os-release ]] || die 'This installer requires Linux'
 . /etc/os-release
 [[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 24.04 && $(uname -m) == x86_64 ]] || die 'Use Ubuntu 24.04 on x86-64'
@@ -52,6 +61,8 @@ if [[ -e $cfg || -L $cfg || -e $data || -L $data ]]; then
   [[ ! -L $cfg && ! -L $data && -f $cfg/managed-install ]] || die 'Existing Shipper paths are not owned by this installer'
   installed=true
 fi
+fresh=false
+$installed || fresh=true
 begin() {
   [[ ! -L $state ]] || die 'Invalid installer state directory'
   install -d -m 0700 "$state"
@@ -122,19 +133,32 @@ if [[ ! $public_ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   public_ip=$(hostname -I | awk '{print $1}')
 fi
 [[ -n $public_ip ]] || public_ip='<server-ip>'
-printf 'Host: Ubuntu 24.04 x86-64\nDocker: %s\nDashboard: http://%s:8080\n' "$engine" "$public_ip"
-printf '%s\n' 'Bind app traffic on TCP 80/443 and the dashboard on TCP 8080. Keep firewall and SSH settings.'
-$apply || exit 0
+printf '\n%sInstall plan%s\n' "$bold" "$reset"
+info "Host        Ubuntu 24.04 x86-64"
+if [[ $engine == install ]]; then
+  info "Docker      install from the signed repository"
+else
+  info "Docker      use the existing engine"
+fi
+info "Dashboard   http://%s:8080" "$public_ip"
+info "Firewall    allow TCP 80, 443 and 8080"
+printf '\n'
+if ! $apply; then
+  printf '%sHost checks passed. No changes were applied.%s\n' "$green" "$reset"
+  printf '%sRerun without --check to install Shipper.%s\n' "$dim" "$reset"
+  exit 0
+fi
+printf '%sInstalling Shipper%s\n' "$bold" "$reset"
 begin
-stage 'preflight: passed'
+stage 'Host checks passed'
 export DEBIAN_FRONTEND=noninteractive
 if [[ $engine == install ]] || { [[ -z $archive ]] && { ! command -v curl >/dev/null || [[ ! -s /etc/ssl/certs/ca-certificates.crt ]]; }; }; then
-  stage 'dependencies: ensuring curl and trusted CA certificates'
+  stage 'Preparing network tools and trusted certificates'
   apt-get -q update
   apt-get -o DPkg::Lock::Timeout=60 -qy install ca-certificates curl
 fi
 if [[ $engine == install ]]; then
-  stage 'docker: installing packages from the signed Docker repository'
+  stage 'Installing Docker from the signed repository'
   install -d -m 0755 /etc/apt/keyrings
   curl -fsSL --proto '=https' --retry 3 https://download.docker.com/linux/ubuntu/gpg -o "$state/docker.asc"
   if [[ -e /etc/apt/keyrings/shipper-docker.asc ]]; then
@@ -168,7 +192,7 @@ fi
 if [[ -z $archive && ! $image =~ $pin ]] && ! docker image inspect "$image" >/dev/null 2>&1; then
   die 'Use a pinned Shipper image digest or a locally loaded image'
 fi
-stage 'artifact: loading and checking the image'
+stage 'Verifying the Shipper release image'
 if [[ -n $archive ]]; then docker load -i "$archive"; elif ! docker image inspect "$image" >/dev/null 2>&1; then docker pull "$image"; fi
 image_id=$(docker image inspect --format '{{.Id}}' "$image")
 [[ $image_id =~ ^sha256:[0-9a-f]{64}$ ]] || die 'Invalid local image identity'
@@ -512,5 +536,27 @@ stage "service: Shipper $reported is ready"
 systemctl enable --now shipper-host-status.timer
 systemctl enable --now shipper-update.path shipper-update.timer
 systemctl start shipper-host-status.service
-printf 'Open Shipper: http://%s:8080\n' "$public_ip"
-printf '%s\n' 'For a fresh installation, run sudo shipperctl claim, then add the dashboard domain in Settings.'
+setup_token=
+if $fresh; then
+  for _ in {1..15}; do
+    if [[ -s $data/setup-token ]]; then break; fi
+    sleep 1
+  done
+fi
+if [[ -f $data/setup-token && ! -L $data/setup-token ]]; then
+  setup_token=$(head -c 128 "$data/setup-token" | tr -d '[:space:]')
+fi
+printf '\n%sShipper is ready.%s\n\n' "$green" "$reset"
+printf '  %sOpen%s       http://%s:8080\n' "$bold" "$reset" "$public_ip"
+if [[ ${#setup_token} == 64 ]]; then
+  printf '  %sToken%s      %s\n\n' "$bold" "$reset" "$setup_token"
+  printf '%sPaste the token into the first-run form to create your administrator account.%s\n' "$dim" "$reset"
+  printf '%sIt expires 30 minutes after issue. Rotate it with sudo shipperctl rotate-claim.%s\n' "$dim" "$reset"
+  printf '%sPrefer the terminal? Run sudo shipperctl claim instead.%s\n' "$dim" "$reset"
+elif $fresh; then
+  printf '\n'
+  warn "The setup token is still being written. Read it with: sudo cat $data/setup-token"
+else
+  printf '\n%sSign in with an existing administrator account.%s\n' "$dim" "$reset"
+fi
+printf '\n%sNext:%s add the dashboard domain in Settings > Dashboard.\n' "$bold" "$reset"

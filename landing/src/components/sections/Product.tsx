@@ -99,7 +99,7 @@ function Product2() {
               alt="Shipper failed deployment view with the failed stage, logs, and serving release"
             />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Screenshot src="/shots/diagnostics.png" alt="Shipper diagnostics with checks and service resources" />
+              <Screenshot src="/shots/logs.png" alt="Shipper runtime logs while the previous release keeps serving" />
               <div className="rounded-2xl border border-white/[0.1] bg-[#080909] p-6">
                 <div className="flex items-center justify-between">
                   <span className="text-[16px] text-[#dcdcd6]">Serving release</span>
@@ -272,6 +272,8 @@ function Product5() {
     ["Domains", "HTTPS, aliases, and redirects in one place.", "/shots/domains.png"],
     ["New app", "Pick a source and ship the first release.", "/shots/create.png"],
     ["System", "Know what your server is doing at a glance.", "/shots/system.png"],
+    ["Users", "Give collaborators the access they need.", "/shots/users.png"],
+    ["Sign-in", "Password or Google, GitHub and Discord.", "/shots/authentication.png"],
   ];
   return (
     <Section id="product" className="section-rule">

@@ -272,6 +272,18 @@ between the two groups and 3 px between links inside a group. Do not add helper
 text below the headings. On narrow screens, hide the group headings and render
 the links as one horizontal scroll strip.
 
+### Recovery
+
+- Recovery is one page, ordered by what the operator needs: latest copy,
+  off-server storage, recovery tools, scheduled backups, then history.
+- The latest copy and off-server storage are full-width facts, not side cards, so
+  a destination table never squeezes the recovery controls.
+- Recovery tools are two full-width rows. Recovery key carries the download
+  action; Recover an installation expands into the restore command and its four
+  facts. Do not place a download button beside a disclosure summary.
+- Keep the restore command in monospace and the facts in a compact definition
+  list. The page never hides the destructive consequence of recovery.
+
 ### Users
 
 - The Users page is an operational table, not a profile gallery. Columns are
@@ -448,6 +460,7 @@ The current beta surfaces are captured in
   `password-gate-mobile.png` for the authentication shell.
 - `users.png`, `add-user.png` and `activity.png` for collaboration settings.
 - `authentication.png` for the provider configuration surface.
+- `recovery.png` for the instance recovery and restore tools.
 
 Treat these as composition references, not pixel-perfect specifications. The
 live components and `web/src/styles.css` remain authoritative.

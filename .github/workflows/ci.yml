@@ -30,8 +30,10 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             web/package-lock.json
+            landing/package-lock.json
       - run: npm ci
       - run: npm ci --prefix web
+      - run: npm ci --prefix landing
       - name: Typecheck and frontend unit tests
         run: |
           npm run check
@@ -45,6 +47,8 @@ jobs:
       - name: Production build and installer syntax
         run: |
           npm run build
+          npm run check --prefix landing
+          npm run build --prefix landing
           bash -n install.sh
 
   browser:
