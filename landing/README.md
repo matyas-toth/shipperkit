@@ -48,6 +48,23 @@ channel, updated by the release workflow after each versioned release, so the
 one-liner always resolves to the newest Main installer. The landing itself uses
 `https://shipperkit.dev` in every install command.
 
+## First visit
+
+The homepage opens with the Shipper mark on a dark field. The mark pulses for about
+1.5 seconds, dissolves into the page through its own silhouette, and that window
+eases into a 20 degree zoom until it clears the viewport. The page itself never
+moves, only the mask boundary.
+
+- `src/layouts/Base.astro` owns the mark, the SVG mask and the timeline.
+- The reveal grows the mask along the same path as `public/shipper.svg`, so the
+  silhouette is exact and no second asset is requested.
+- The end scale is measured from the viewport, which keeps every corner covered on
+  phones as well as desktops.
+- Runs on `/` only, once per tab. The flag is `shipper-intro` in `sessionStorage`.
+  Append `?intro` to replay it without clearing storage.
+- Skipped for `prefers-reduced-motion: reduce`, Save-Data, a URL hash, and every
+  page except the homepage. Without JavaScript the page loads normally.
+
 ## SEO
 
 - `src/layouts/Base.astro` owns the canonical URL, robots policy, Open Graph,
@@ -149,7 +166,7 @@ landing/
 - ASCII fields and a fixed film grain provide texture without another asset request.
 - CSS motion only, with reduced-motion fallbacks. Hero content enters once; nothing
   animates continuously except the deploy pulse, the floating deploy card, and the
-  source marquee.
+  source marquee. The only scripted motion is the first-visit mark reveal.
 
 ## Screenshots
 

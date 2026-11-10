@@ -6,6 +6,7 @@ interface Props {
   description?: string;
   image?: string;
   noindex?: boolean;
+  intro?: boolean;
 }
 
 const {
@@ -13,7 +14,12 @@ const {
   description = "Install Shipper on the server you already own. Deploy from a repo, folder, image, or Compose file, with HTTPS, logs, rollbacks, backups, and agent access included.",
   image = "/og.png",
   noindex = false,
+  intro = false,
 } = Astro.props;
+
+// The mark opens into the page on the first visit. Keep this path identical to
+// public/shipper.svg so the mask hands off from the pulsing mark without a seam.
+const mark = "m5.46 35.39 24.09 11.16-23.81 13.25c5.84 2.79 11.9 4.14 17.34 4.14 12.15 0 24.03-6.33 32.02-18.18 7.4-11.21 13.77-20.23 20.54-28.74l-70.18 18.37z";
 const site = Astro.site ?? new URL("https://shipperkit.dev");
 const canonical = new URL(Astro.url.pathname, site);
 const imageURL = new URL(image, site);
@@ -63,6 +69,29 @@ const structuredData = {
     <meta name="twitter:image" content={imageURL.href} />
     <title>{title}</title>
     <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
+    {intro && (
+      <style is:inline>
+        .intro { display: none; }
+        html.intro-active .intro { display: block; }
+      </style>
+      <script is:inline>
+        (function () {
+          try {
+            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+            if (location.pathname !== "/") return;
+            var forced = /[?&]intro(?:=|&|$)/.test(location.search);
+            if (!forced) {
+              if (location.hash) return;
+              if (navigator.connection && navigator.connection.saveData) return;
+              try {
+                if (sessionStorage.getItem("shipper-intro") === "1") return;
+              } catch (error) {}
+            }
+            document.documentElement.classList.add("intro-active");
+          } catch (error) {}
+        })();
+      </script>
+    )}
   </head>
   <body>
     <a
@@ -71,10 +100,169 @@ const structuredData = {
     >
       Skip to content
     </a>
+    {intro && (
+      <div class="intro" id="intro" aria-hidden="true">
+        <svg class="intro-curtain" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <defs>
+            <radialGradient id="intro-field-fill" cx="50%" cy="44%" r="80%">
+              <stop offset="0%" stop-color="#1b1c1c" />
+              <stop offset="54%" stop-color="#121313" />
+              <stop offset="100%" stop-color="#0a0b0b" />
+            </radialGradient>
+            <mask id="intro-hole" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%" style="mask-type:luminance">
+              <rect x="0" y="0" width="100%" height="100%" fill="#fff" />
+              <path id="intro-hole-path" d={mark} fill="#000" />
+            </mask>
+          </defs>
+          <rect id="intro-field" x="0" y="0" width="100%" height="100%" fill="url(#intro-field-fill)" />
+        </svg>
+        <div class="intro-mark" id="intro-mark">
+          <span class="intro-halo"></span>
+          <svg viewBox="0 0 81 81" xmlns="http://www.w3.org/2000/svg" focusable="false">
+            <path d={mark} fill="#fff" />
+          </svg>
+        </div>
+      </div>
+    )}
     <div class="page-grain" aria-hidden="true"></div>
     <main id="main">
       <slot />
     </main>
+    {intro && (
+      <script is:inline define:vars={{ mark }}>
+        (function () {
+          var root = document.documentElement;
+          if (!root.classList.contains("intro-active")) return;
+          var intro = document.getElementById("intro");
+          var field = document.getElementById("intro-field");
+          var hole = document.getElementById("intro-hole-path");
+          var markEl = document.getElementById("intro-mark");
+          if (!intro || !field || !hole || !markEl) {
+            root.classList.remove("intro-active");
+            intro && intro.remove();
+            return;
+          }
+
+          var BOX = 81;
+          var CENTER = BOX / 2;
+          var ROTATION = 20;
+          var BLOOM = 0.28;
+          var BLOOM_SCALE = 2.6;
+          var PULSE = 1420;
+          var REVEAL = 1000;
+          var forced = /[?&]intro(?:=|&|$)/.test(location.search);
+          var size = parseFloat(window.getComputedStyle(markEl).width) || 160;
+          var base = size / BOX;
+          var done = false;
+          var begun = false;
+
+          function finish() {
+            if (done) return;
+            done = true;
+            root.classList.remove("intro-active");
+            intro.remove();
+            if (!forced) {
+              try {
+                sessionStorage.setItem("shipper-intro", "1");
+              } catch (error) {}
+            }
+          }
+
+          function transform(cx, cy, rotation, scale) {
+            return "translate(" + cx + " " + cy + ") rotate(" + rotation + ") scale(" + scale + ") translate(" + -CENTER + " " + -CENTER + ")";
+          }
+
+          // Grow the hole until the whole viewport sits inside the rotated mark.
+          function endScale(cx, cy) {
+            try {
+              var context = document.createElement("canvas").getContext("2d");
+              var shape = new Path2D(mark);
+              var width = window.innerWidth;
+              var height = window.innerHeight;
+              var points = [];
+              var columns = 16;
+              var rows = 10;
+              for (var i = 0; i <= columns; i++) {
+                for (var j = 0; j <= rows; j++) {
+                  points.push([(width * i) / columns, (height * j) / rows]);
+                }
+              }
+              var radians = (ROTATION * Math.PI) / 180;
+              var cos = Math.cos(radians);
+              var sin = Math.sin(radians);
+              function fits(multiplier) {
+                var scale = base * multiplier;
+                for (var index = 0; index < points.length; index++) {
+                  var dx = points[index][0] - cx;
+                  var dy = points[index][1] - cy;
+                  if (!context.isPointInPath(shape, (dx * cos + dy * sin) / scale + CENTER, (-dx * sin + dy * cos) / scale + CENTER)) {
+                    return false;
+                  }
+                }
+                return true;
+              }
+              var low = 1;
+              var high = 640;
+              if (!fits(high)) return base * high;
+              for (var step = 0; step < 16; step++) {
+                var middle = (low + high) / 2;
+                if (fits(middle)) high = middle;
+                else low = middle;
+              }
+              return base * high * 1.04;
+            } catch (error) {
+              return base * 110;
+            }
+          }
+
+          function begin() {
+            if (begun) return;
+            begun = true;
+            var cx = window.innerWidth / 2;
+            var cy = window.innerHeight / 2;
+            var target = endScale(cx, cy);
+            markEl.classList.add("is-leaving");
+            markEl.style.opacity = "1";
+            markEl.style.transform = "scale(1)";
+            field.setAttribute("mask", "url(#intro-hole)");
+            hole.setAttribute("transform", transform(cx, cy, 0, base));
+            var started = performance.now();
+
+            function frame(now) {
+              var progress = Math.min(1, (now - started) / REVEAL);
+              var bloomProgress = Math.min(1, progress / BLOOM);
+              var bloom = 1 + (BLOOM_SCALE - 1) * (1 - Math.pow(1 - bloomProgress, 3));
+              var zoom = Math.max(0, (progress - BLOOM) / (1 - BLOOM));
+              var eased = 0.5 - 0.5 * Math.cos(Math.PI * zoom);
+              var scale = base * bloom * Math.pow(target / (base * BLOOM_SCALE), eased);
+              hole.setAttribute("transform", transform(cx, cy, ROTATION * eased, scale));
+              markEl.style.transform = "scale(" + (1 + 0.06 * bloomProgress) + ")";
+              markEl.style.opacity = String(Math.max(0, 1 - progress / 0.14));
+              field.setAttribute("opacity", progress <= 0.86 ? 1 : Math.max(0, 1 - (progress - 0.86) / 0.14));
+              if (progress < 1) window.requestAnimationFrame(frame);
+              else finish();
+            }
+            window.requestAnimationFrame(frame);
+          }
+
+          markEl.addEventListener("animationend", function (event) {
+            if (event.target === markEl && event.animationName === "intro-pulse") begin();
+          });
+          var pulse = markEl.getAnimations ? markEl.getAnimations().filter(function (animation) {
+            return animation.animationName === "intro-pulse";
+          })[0] : null;
+          if (pulse && pulse.ready) {
+            pulse.ready.then(function () {
+              window.setTimeout(begin, PULSE * 0.82);
+            });
+          } else {
+            window.setTimeout(begin, PULSE + 300);
+          }
+          window.setTimeout(begin, PULSE + 900);
+          window.setTimeout(finish, 6000);
+        })();
+      </script>
+    )}
     <script>
       const labels = new WeakMap();
 
