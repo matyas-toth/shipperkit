@@ -2,6 +2,7 @@ import { For, Show, createSignal, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { api, post } from "../api";
+import { useAuth } from "../context";
 import type { AuthProviderSettings, AuthSettings } from "../types";
 import { Button, ErrorNotice, IconButton, Status } from "./Controls";
 import { Icon, type IconName } from "./Icon";
@@ -46,6 +47,7 @@ const testErrors: Record<string, string> = {
 
 export default function Authentication() {
   const client = useQueryClient();
+  const auth = useAuth();
   const [error, setError] = createSignal("");
   const [result, setResult] = createSignal("");
   const [removing, setRemoving] = createSignal<AuthProviderSettings>();
@@ -65,7 +67,7 @@ export default function Authentication() {
   async function savePassword(enabled: boolean) {
     setBusy(true); setError("");
     try {
-      await post("/auth/password-policy", { enabled });
+      await post("/auth/password-policy", { enabled }, auth.session()?.csrfToken);
       await client.invalidateQueries({ queryKey: ["auth-settings"] });
       await client.invalidateQueries({ queryKey: ["auth-methods"] });
     } catch (e) { setError((e as Error).message); }
@@ -74,7 +76,7 @@ export default function Authentication() {
   async function remove(item: AuthProviderSettings) {
     setBusy(true); setError("");
     try {
-      await post("/auth/providers/" + item.provider + "/remove", {});
+      await post("/auth/providers/" + item.provider + "/remove", {}, auth.session()?.csrfToken);
       setRemoving(undefined);
       await client.invalidateQueries({ queryKey: ["auth-settings"] });
       await client.invalidateQueries({ queryKey: ["auth-methods"] });
@@ -110,6 +112,7 @@ export default function Authentication() {
 
 function ProviderCard(props: { item: AuthProviderSettings; remove: () => void }) {
   const client = useQueryClient();
+  const auth = useAuth();
   const copy = () => providerCopy[props.item.provider];
   const [clientID, setClientID] = createSignal(props.item.clientId);
   const [secret, setSecret] = createSignal("");
@@ -120,7 +123,7 @@ function ProviderCard(props: { item: AuthProviderSettings; remove: () => void })
   async function save() {
     setBusy(true); setError("");
     try {
-      await post("/auth/providers/" + props.item.provider, { clientId: clientID(), clientSecret: secret(), enabled: enabled() });
+      await post("/auth/providers/" + props.item.provider, { clientId: clientID(), clientSecret: secret(), enabled: enabled() }, auth.session()?.csrfToken);
       setSecret("");
       await client.invalidateQueries({ queryKey: ["auth-settings"] });
       await client.invalidateQueries({ queryKey: ["auth-methods"] });
@@ -130,7 +133,7 @@ function ProviderCard(props: { item: AuthProviderSettings; remove: () => void })
   async function test() {
     setBusy(true); setError("");
     try {
-      const response = await post<{ url: string }>("/auth/providers/" + props.item.provider + "/test", {});
+      const response = await post<{ url: string }>("/auth/providers/" + props.item.provider + "/test", {}, auth.session()?.csrfToken);
       window.open(response.url, "_blank", "width=560,height=760");
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
