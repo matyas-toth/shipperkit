@@ -539,7 +539,7 @@ systemctl start shipper-host-status.service
 setup_token=
 if $fresh; then
   for _ in {1..15}; do
-    [[ -s $data/setup-token ]] && break
+    if [[ -s $data/setup-token ]]; then break; fi
     sleep 1
   done
 fi
