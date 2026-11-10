@@ -646,65 +646,65 @@ provider-specific duplicate accounts or mandatory team/project hierarchy. The
 
 ### P11.1: Accounts and enabled login methods
 
-- [ ] Users live in an administrator-managed Settings list, with optional simple
+- [x] Users live in an administrator-managed Settings list, with optional simple
   Viewer/Developer/Admin roles and one implicit workspace
-- [ ] No public registration, signup UI, self-invitation, OAuth just-in-time account
+- [x] No public registration, signup UI, self-invitation, OAuth just-in-time account
   creation or domain-wide auto-admission; only admins provision additional users
-- [ ] Enable Email + Password, Google, GitHub and Discord independently at instance
+- [x] Enable Email + Password, Google, GitHub and Discord independently at instance
   level. Only configured/enabled methods appear on login; provider login does not
   grant repository access or a Shipper role
-- [ ] Add email + temporary password: hash the password and require a different
+- [x] Add email + temporary password: hash the password and require a different
   password on first successful password login before granting application access;
   never email or persist a readable password through Shipper
-- [ ] Add email + no password: create no password credential. The account can log
+- [x] Add email + no password: create no password credential. The account can log
   in only through an enabled verified matching provider; require password change
   if a temporary password is added later. Do not silently enable password login
-- [ ] Keep the outstanding temporary-password gate when another login method is
+- [x] Keep the outstanding temporary-password gate when another login method is
   used; replacing/removing that credential through a verified/admin action clears
   it deliberately, so switching providers cannot bypass onboarding requirements
-- [ ] One internal account for matching verified email across the enabled methods.
+- [x] One internal account for matching verified email across the enabled methods.
   Match only an active admin-provisioned account, then bind the provider's stable
   subject/user ID after all required gates; do not trust a typed email, display name,
   an unverified claim or email changes on an already linked provider identity
-- [ ] Handle missing/private/unverified email and ambiguous identities explicitly;
+- [x] Handle missing/private/unverified email and ambiguous identities explicitly;
   do not guess, create a new account or silently merge existing accounts. Where a
   provider cannot establish current mailbox ownership, require an additional proof
   or explicit administrator-approved identity binding
-- [ ] Disabling/removing an account revokes sessions and user credentials across all
+- [x] Disabling/removing an account revokes sessions and user credentials across all
   providers. Prevent changes that strand the last administrator without a usable
   login/recovery route; enabled methods and available account credentials both matter
 
 ### P11.2: Provider setup without guesswork
 
-- [ ] Admins supply each provider's client ID and secret in Settings; encrypt/mask
+- [x] Admins supply each provider's client ID and secret in Settings; encrypt/mask
   secrets, support deliberate rotation and validate configuration before enabling
-- [ ] Show the exact callback derived from the canonical dashboard HTTPS origin,
+- [x] Show the exact callback derived from the canonical dashboard HTTPS origin,
   provide Copy and provider-specific setup steps, and test return-to-Shipper
-- [ ] Google: configure a web OAuth/OIDC client and consent/audience settings with
+- [x] Google: configure a web OAuth/OIDC client and consent/audience settings with
   the exact redirect URI and minimal identity/email scopes
-- [ ] GitHub: configure a sign-in OAuth client and exact callback with identity and
+- [x] GitHub: configure a sign-in OAuth client and exact callback with identity and
   verified/private email access; keep it separate from deployment GitHub Apps
-- [ ] Discord: configure an OAuth2 application and exact redirect with identify/email
+- [x] Discord: configure an OAuth2 application and exact redirect with identify/email
   scopes; no bot, guild membership or repository permissions required
-- [ ] Protect redirects/code exchange with expiring one-use state and PKCE where
+- [x] Protect redirects/code exchange with expiring one-use state and PKCE where
   supported; validate Google issuer/audience/signature/nonce and provider identities
   server-side; never use wildcard callbacks or trust browser-supplied profile data
 
 ### P11.3: Shared 2FA policy and collaboration isolation
 
-- [ ] Reuse the P10 TOTP/account model. After successful Google/GitHub/Discord or
+- [x] Reuse the P10 TOTP/account model. After successful Google/GitHub/Discord or
   password authentication, enrolled users must complete Shipper's own 2FA challenge;
   upstream provider 2FA claims do not bypass it
-- [ ] A required password change, optional/forced factor enrollment or factor
+- [x] A required password change, optional/forced factor enrollment or factor
   challenge grants only a restricted onboarding session, with no app/API access
   until all requirements pass. Enforce policy changes against existing sessions
-- [ ] A fresh OAuth-only account under forced 2FA goes directly into setup; existing
+- [x] A fresh OAuth-only account under forced 2FA goes directly into setup; existing
   unenrolled users, including admins, also enroll before continuing. Users cannot
   remove their last required factor while instance enforcement is enabled
 - [ ] Optional groups, application variants, linked values and reviewed propagation;
   external secret references, passkeys/general OIDC and wider role/workspace models
   can extend the same account/permission boundary later
-- [ ] Audit account provisioning, role/provider/factor changes, recovery and revocation
+- [x] Audit account provisioning, role/provider/factor changes, recovery and revocation
   without storing credentials, OTPs or tokens in ordinary logs or browser drafts
 
 Acceptance: reject unprovisioned sign-ins; exercise all four enabled methods on

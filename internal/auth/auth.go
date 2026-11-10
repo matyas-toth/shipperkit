@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -26,6 +27,22 @@ func Token() string {
 func Hash(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(sum[:])
+}
+
+func RandomBase64(bytes int) string {
+	b := make([]byte, bytes)
+	if _, err := rand.Read(b); err != nil {
+		panic(err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// PKCEVerifier returns an RFC 7636 code verifier with 256 bits of entropy.
+func PKCEVerifier() string { return RandomBase64(32) }
+
+func PKCEChallenge(verifier string) string {
+	sum := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 func Equal(a, b string) bool {
 	return subtle.ConstantTimeCompare([]byte(Hash(a)), []byte(Hash(b))) == 1

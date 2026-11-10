@@ -3,7 +3,7 @@ import { ErrorBoundary, Show, lazy, onCleanup, onMount } from "solid-js";
 import { Router, Route } from "@solidjs/router";
 import { QueryClient, QueryClientProvider, createQuery } from "@tanstack/solid-query";
 import { api, post, APIError } from "./api";
-import { AuthContext } from "./context";
+import { AuthContext, useAuth } from "./context";
 import type { Session } from "./types";
 import AuthPage from "./pages/Auth";
 import FactorGate from "./pages/FactorGate";
@@ -21,6 +21,13 @@ const NewApplication = lazy(() => import("./pages/NewApplication"));
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: (count, error) => !(error instanceof APIError && error.status < 500) && count < 2, refetchOnWindowFocus: false } },
 });
+function SystemRoute() {
+  const auth = useAuth();
+  return <Show when={auth.session()?.user?.role === "admin"} fallback={<div class="content content-narrow"><header class="page-heading"><h1>System</h1></header><ErrorNotice message="Your role does not allow this page." /></div>}>
+    <System />
+  </Show>;
+}
+
 function App() {
   const session = createQuery(() => ({ queryKey: ["session"], queryFn: () => api<Session>("/auth/session"), retry: 1 }));
   function expire() { queryClient.setQueryData<Session>(["session"], { setupRequired: false, user: null });clearVolatileDrafts(); }
@@ -50,7 +57,7 @@ function App() {
       <Show when={!session.error || session.data?.user} fallback={<div class="boot-screen"><ErrorNotice message={session.error?.message ?? "Shipper could not be reached"} retry={() => void session.refetch()} /></div>}>
         <Show when={session.data?.user} fallback={<AuthPage setup={session.data?.setupRequired ?? false} onAuthenticated={accept} refreshSession={() => session.refetch()} />}>
           <Show when={!session.data?.authStep && !session.data?.recoveryCodes?.length} fallback={<FactorGate />}>
-            <Router root={Shell}><Route path="/" component={Applications} /><Route path="/settings" component={Settings} /><Route path="/system" component={System}/>
+            <Router root={Shell}><Route path="/" component={Applications} /><Route path="/settings" component={Settings} /><Route path="/system" component={SystemRoute}/>
               <Route path="/new" component={NewApplication} /><Route path="/applications/:id" component={Application} />
               <Route path="*404" component={() => <div class="content content-narrow"><h1>Page not found</h1><Button onClick={() => window.location.assign("/")}>Applications</Button></div>} />
             </Router>

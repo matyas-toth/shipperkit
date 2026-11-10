@@ -132,7 +132,7 @@ export default function Shell(props: RouteSectionProps) {
         <A class="brand" href="/" aria-label="Shipper"><span class="brand-mark"><Logo /></span><span>Shipper</span></A>
         <nav class="primary-navigation" aria-label="Main navigation">
           <A href="/" end activeClass="" class="nav-link" classList={{ active: !["/settings", "/system"].includes(location.pathname) }} aria-current={!["/settings", "/system"].includes(location.pathname) ? "page" : undefined}><Icon name="layers" />Applications</A>
-          <A href="/system" activeClass="active" class="nav-link"><Icon name="terminal" />System</A>
+          <Show when={auth.session()?.user?.role === "admin"}><A href="/system" activeClass="active" class="nav-link"><Icon name="terminal" />System</A></Show>
           <A href="/settings" activeClass="active" class="nav-link"><Icon name="settings" />Settings<Show when={updateBadge()}><span class="nav-update-badge" title={updates.data?.available ? "Update to " + updates.data.available.version : "Update available"}>Update</span></Show><Show when={updating()}><span class="nav-update-badge is-updating" title="Shipper is updating">Updating</span></Show></A>
         </nav>
         <div class="topbar-actions">
@@ -166,17 +166,17 @@ export default function Shell(props: RouteSectionProps) {
         <main class="page-scroll">{props.children}</main>
         <div ref={setEditorActions} class="page-actions" />
       </EditorActionsContext.Provider>
-      <nav class="mobile-bottom-nav" data-active={section()} aria-label="Main navigation">
-        <div class="mobile-nav-pill">
+      <nav class="mobile-bottom-nav" classList={{ "is-simple": auth.session()?.user?.role !== "admin" }} data-active={section()} aria-label="Main navigation">
+        <div class="mobile-nav-pill" classList={{ "is-simple": auth.session()?.user?.role !== "admin" }}>
           <span class="mobile-nav-indicator" aria-hidden="true" />
           <A href="/" end activeClass="" class="mobile-nav-link" classList={{ active: section() === "applications" }} aria-current={section() === "applications" ? "page" : undefined}>
             <span class="mobile-nav-icon"><Icon name="layers" /></span>
             <span class="mobile-nav-label">Applications</span>
           </A>
-          <A href="/system" activeClass="" class="mobile-nav-link" classList={{ active: section() === "system" }} aria-current={section() === "system" ? "page" : undefined}>
+          <Show when={auth.session()?.user?.role === "admin"}><A href="/system" activeClass="" class="mobile-nav-link" classList={{ active: section() === "system" }} aria-current={section() === "system" ? "page" : undefined}>
             <span class="mobile-nav-icon"><Icon name="terminal" /></span>
             <span class="mobile-nav-label">System</span>
-          </A>
+          </A></Show>
           <A href="/settings" activeClass="" class="mobile-nav-link" classList={{ active: section() === "settings" }} aria-current={section() === "settings" ? "page" : undefined}>
             <span class="mobile-nav-icon"><Icon name="settings" /></span>
             <span class="mobile-nav-label">Settings</span>

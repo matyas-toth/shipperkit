@@ -22,6 +22,7 @@ func (s *Server) factorRoutes(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireBrowserSession, s.csrf)
 		r.Post("/auth/logout", s.logout)
+		r.With(s.limit, s.hashCapacity).Post("/auth/password", s.changePassword)
 		r.With(s.limit, s.hashCapacity).Post("/auth/factor/start", s.startFactor)
 		r.With(s.limit).Post("/auth/factor/confirm", s.confirmFactor)
 		r.With(s.limit).Post("/auth/factor/verify", s.verifyFactor)
@@ -77,6 +78,8 @@ func (s *Server) factorError(w http.ResponseWriter, e error) {
 		s.problem(w, 409, "enrollment_expired", e.Error())
 	case errors.Is(e, store.ErrFactorRequired):
 		s.problem(w, 409, "factor_policy", e.Error())
+	case errors.Is(e, store.ErrIdentityConflict), errors.Is(e, store.ErrProviderLinked):
+		s.problem(w, 409, "identity_conflict", e.Error())
 	case errors.Is(e, sql.ErrNoRows):
 		s.problem(w, 401, "unauthenticated", "Sign in to continue")
 	default:
@@ -105,7 +108,11 @@ func (s *Server) startFactor(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 409, "already_enrolled", "Two-factor authentication is already enabled")
 		return
 	}
-	if !s.verifyPassword(w, r, session, input.Password) {
+	if session.AuthStep() == "password_change" {
+		s.problem(w, 409, "password_change_required", "Set a permanent password first")
+		return
+	}
+	if session.User.HasPassword && !s.verifyPassword(w, r, session, input.Password) {
 		return
 	}
 	secret := auth.FactorSecret()
@@ -135,6 +142,10 @@ func (s *Server) confirmFactor(w http.ResponseWriter, r *http.Request) {
 	session := r.Context().Value(sessionKey).(store.Session)
 	if session.Factor.Enrolled {
 		s.problem(w, 409, "already_enrolled", "Two-factor authentication is already enabled")
+		return
+	}
+	if session.AuthStep() == "password_change" {
+		s.problem(w, 409, "password_change_required", "Set a permanent password first")
 		return
 	}
 	token, csrf := auth.Token(), auth.Token()
@@ -179,10 +190,14 @@ func (s *Server) changeFactor(w http.ResponseWriter, r *http.Request) {
 	}
 	session := r.Context().Value(sessionKey).(store.Session)
 	if session.AuthStep() != "" {
-		s.problem(w, 403, "factor_required", "Complete two-factor authentication")
+		s.problem(w, 403, "factor_required", "Complete account setup to continue")
 		return
 	}
-	if !s.verifyPassword(w, r, session, input.Password) {
+	if strings.TrimSpace(input.Action) == "policy" && !session.User.IsAdmin() {
+		s.problem(w, 403, "forbidden", "Only administrators can change the instance policy")
+		return
+	}
+	if session.User.HasPassword && !s.verifyPassword(w, r, session, input.Password) {
 		return
 	}
 	switch strings.TrimSpace(input.Action) {
@@ -217,11 +232,58 @@ func (s *Server) changeFactor(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) factorSession(w http.ResponseWriter, r *http.Request, token string, codes []string) {
-	fresh, e := s.db.Session(r.Context(), auth.Hash(token))
+	hash := auth.Hash(token)
+	fresh, e := s.db.Session(r.Context(), hash)
 	if e != nil {
 		s.internal(w, e)
 		return
 	}
+	if fresh.AuthStep() == "" {
+		if e = s.db.FinalizeSessionIdentity(r.Context(), hash, time.Now()); e != nil {
+			_ = s.db.DeleteSession(r.Context(), hash)
+			s.factorError(w, e)
+			return
+		}
+	}
 	s.cookie(w, r, token, fresh.ExpiresAt)
 	s.writeSession(w, 200, fresh, codes)
+}
+
+func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if !s.decode(w, r, &input) {
+		return
+	}
+	session := r.Context().Value(sessionKey).(store.Session)
+	if session.AuthStep() != "password_change" {
+		s.problem(w, 409, "password_change_not_required", "This account does not need a password change")
+		return
+	}
+	if !session.User.HasPassword || !auth.Verify(session.User.PasswordHash, input.CurrentPassword) {
+		s.problem(w, 422, "invalid_password", "The current password is incorrect")
+		return
+	}
+	if input.NewPassword == input.CurrentPassword {
+		s.problem(w, 422, "password_reused", "Choose a password different from the temporary one")
+		return
+	}
+	hash, err := auth.Password(input.NewPassword)
+	if err != nil {
+		s.problem(w, 422, "invalid_password", err.Error())
+		return
+	}
+	token, csrf := auth.Token(), auth.Token()
+	if err = s.db.ChangePassword(r.Context(), sessionHash(r), session.User.ID, hash, auth.Hash(token), csrf, time.Now()); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			s.problem(w, 401, "unauthenticated", "Sign in to continue")
+		} else {
+			s.internal(w, err)
+		}
+		return
+	}
+	s.revokeStreams()
+	s.factorSession(w, r, token, nil)
 }

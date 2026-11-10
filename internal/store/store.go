@@ -138,7 +138,12 @@ func (s *Store) CreateAdmin(ctx context.Context, user User, hash, csrf string, e
 	if count > 0 {
 		return ErrAlreadyConfigured
 	}
-	_, err = tx.ExecContext(ctx, "INSERT INTO administrators(id,email,password_hash,created_at) VALUES (?,?,?,?)", user.ID, user.Email, user.PasswordHash, time.Now().Unix())
+	role := user.Role
+	if role == "" {
+		role = RoleAdmin
+	}
+	now := time.Now().Unix()
+	_, err = tx.ExecContext(ctx, "INSERT INTO administrators(id,email,password_hash,role,created_at,updated_at,last_login_at) VALUES (?,?,?,?,?,?,?)", user.ID, user.Email, user.PasswordHash, role, now, now, now)
 	if err != nil {
 		return err
 	}
@@ -146,20 +151,32 @@ func (s *Store) CreateAdmin(ctx context.Context, user User, hash, csrf string, e
 		return err
 	}
 	if hash != "" {
-		if _, err = tx.ExecContext(ctx, "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at) VALUES (?,?,?,?)", hash, user.ID, csrf, expiry); err != nil {
+		if _, err = tx.ExecContext(ctx, "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at,first_factor) VALUES (?,?,?,?,'password')", hash, user.ID, csrf, expiry); err != nil {
 			return err
 		}
+	}
+	if err = auditAccountDetail(ctx, tx, user.ID, user.ID, "account_created", "setup", time.Now()); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
 
-func (s *Store) FindUser(ctx context.Context, email string) (User, error) {
+func scanUser(row interface{ Scan(...any) error }) (User, error) {
 	var u User
-	err := s.db.QueryRowContext(ctx, "SELECT id,email,password_hash FROM administrators WHERE email=?", email).Scan(&u.ID, &u.Email, &u.PasswordHash)
+	var hash string
+	err := row.Scan(&u.ID, &u.Email, &hash, &u.Role, &u.Disabled, &u.PasswordChangeRequired, &u.CreatedAt, &u.LastLoginAt)
+	u.PasswordHash = hash
+	u.HasPassword = hash != ""
 	return u, err
 }
 
-func (s *Store) CreateSession(ctx context.Context, hash, userID, csrf string, expiry int64) error {
+const userColumns = "id,email,password_hash,role,disabled,password_change_required,created_at,last_login_at"
+
+func (s *Store) FindUser(ctx context.Context, email string) (User, error) {
+	return scanUser(s.db.QueryRowContext(ctx, "SELECT "+userColumns+" FROM administrators WHERE email=? AND disabled=0", email))
+}
+
+func (s *Store) CreateSession(ctx context.Context, hash, userID, csrf string, expiry int64, firstFactor string, pending *Identity) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -168,11 +185,21 @@ func (s *Store) CreateSession(ctx context.Context, hash, userID, csrf string, ex
 	if _, err = tx.ExecContext(ctx, "DELETE FROM sessions WHERE expires_at <= ?", time.Now().Unix()); err != nil {
 		return err
 	}
-	// Bound stored sessions even when the owner repeatedly signs in.
+	// Bound stored sessions even when a user repeatedly signs in.
 	if _, err = tx.ExecContext(ctx, "DELETE FROM sessions WHERE token_hash IN (SELECT token_hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT -1 OFFSET 19)", userID); err != nil {
 		return err
 	}
-	if _, err = tx.ExecContext(ctx, "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at) VALUES (?,?,?,?)", hash, userID, csrf, expiry); err != nil {
+	if firstFactor == "" {
+		firstFactor = "password"
+	}
+	var provider, subject, email string
+	if pending != nil {
+		provider, subject, email = pending.Provider, pending.Subject, pending.Email
+	}
+	if _, err = tx.ExecContext(ctx, "INSERT INTO sessions(token_hash,user_id,csrf_token,expires_at,first_factor,pending_provider,pending_subject,pending_email) VALUES (?,?,?,?,?,?,?,?)", hash, userID, csrf, expiry, firstFactor, provider, subject, email); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, "UPDATE administrators SET last_login_at=? WHERE id=?", time.Now().Unix(), userID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -180,10 +207,14 @@ func (s *Store) CreateSession(ctx context.Context, hash, userID, csrf string, ex
 
 func (s *Store) Session(ctx context.Context, hash string) (Session, error) {
 	var v Session
-	err := s.db.QueryRowContext(ctx, `SELECT a.id,a.email,s.csrf_token,s.expires_at,s.factor_verified,
+	var hashValue string
+	err := s.db.QueryRowContext(ctx, `SELECT a.id,a.email,a.password_hash,a.role,a.disabled,a.password_change_required,a.created_at,a.last_login_at,
+		s.csrf_token,s.expires_at,s.factor_verified,s.first_factor,s.pending_provider,s.pending_subject,s.pending_email,
 		EXISTS(SELECT 1 FROM account_factors f WHERE f.user_id=a.id),
 		EXISTS(SELECT 1 FROM settings WHERE key='require_factor' AND value='true')
-		FROM sessions s JOIN administrators a ON a.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?`, hash, time.Now().Unix()).Scan(&v.User.ID, &v.User.Email, &v.CSRF, &v.ExpiresAt, &v.Verified, &v.Factor.Enrolled, &v.Factor.Required)
+		FROM sessions s JOIN administrators a ON a.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND a.disabled=0`, hash, time.Now().Unix()).Scan(&v.User.ID, &v.User.Email, &hashValue, &v.User.Role, &v.User.Disabled, &v.User.PasswordChangeRequired, &v.User.CreatedAt, &v.User.LastLoginAt, &v.CSRF, &v.ExpiresAt, &v.Verified, &v.FirstFactor, &v.PendingProvider, &v.PendingSubject, &v.PendingEmail, &v.Factor.Enrolled, &v.Factor.Required)
+	v.User.PasswordHash = hashValue
+	v.User.HasPassword = hashValue != ""
 	return v, err
 }
 
@@ -198,7 +229,7 @@ func (s *Store) ResetPassword(ctx context.Context, email, passwordHash string) e
 		return err
 	}
 	defer tx.Rollback()
-	result, err := tx.ExecContext(ctx, "UPDATE administrators SET password_hash=? WHERE email=?", passwordHash, email)
+	result, err := tx.ExecContext(ctx, "UPDATE administrators SET password_hash=?,password_change_required=0,updated_at=? WHERE email=?", passwordHash, time.Now().Unix(), email)
 	if err != nil {
 		return err
 	}
@@ -206,7 +237,16 @@ func (s *Store) ResetPassword(ctx context.Context, email, passwordHash string) e
 	if count != 1 {
 		return sql.ErrNoRows
 	}
-	if _, err = tx.ExecContext(ctx, "DELETE FROM sessions"); err != nil {
+	var user string
+	if err = tx.QueryRowContext(ctx, "SELECT id FROM administrators WHERE email=?", email).Scan(&user); err != nil {
+		return err
+	}
+	for _, query := range []string{"DELETE FROM sessions WHERE user_id=?", "DELETE FROM operation_tokens WHERE user_id=?", "DELETE FROM terminal_sessions WHERE user_id=?"} {
+		if _, err = tx.ExecContext(ctx, query, user); err != nil {
+			return err
+		}
+	}
+	if err = auditAccountDetail(ctx, tx, user, "", "offline_password_reset", "", time.Now()); err != nil {
 		return err
 	}
 	return tx.Commit()

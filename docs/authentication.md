@@ -1,12 +1,12 @@
 # Authentication and account provisioning
 
-The 1.0 release candidate supports a single owner, password sessions, personal
-TOTP, instance-wide TOTP enforcement, one-use recovery codes and offline owner
-recovery. Managed installations claim the first owner through `shipperctl claim`.
-The multi-user provisioning and Google, GitHub and Discord sign-in below are the
-planned P11 contract. GitHub repository access is a separate integration.
-See [installation and recovery](installation.md), the [roadmap](roadmap.md) and
-the [security boundary](../SECURITY.md).
+The 1.0 release candidate supports multiple administrator-provisioned accounts,
+password sessions, personal TOTP, instance-wide TOTP enforcement, one-use recovery
+codes and offline owner recovery. Managed installations claim the first owner
+through `shipperctl claim`. Email and password, Google, GitHub and Discord sign-in
+are configured independently in Settings. GitHub repository access is a separate
+integration. See [installation and recovery](installation.md), the
+[roadmap](roadmap.md) and the [security boundary](../SECURITY.md).
 
 ## Accounts are provisioned by administrators
 
@@ -146,10 +146,10 @@ rotation. Show a copyable callback derived from the canonical HTTPS dashboard
 origin, provider-specific instructions and a connection test. Origin changes
 require updated provider callbacks. Never derive them from untrusted headers.
 
-These paths are proposed, not existing endpoints. For a dashboard at
+These paths are the exact callbacks Shipper displays in Settings. For a dashboard at
 `https://shipper.example.com`, register the exact displayed URL:
 
-| Provider | Proposed callback | Identity scopes |
+| Provider | Callback | Identity scopes |
 | --- | --- | --- |
 | Google | `https://shipper.example.com/auth/oauth/google/callback` | `openid email profile` |
 | GitHub | `https://shipper.example.com/auth/oauth/github/callback` | `read:user user:email` |

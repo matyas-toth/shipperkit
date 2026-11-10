@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 export default defineConfig({
   testDir: "./tests/e2e",
   // Gallery and diagnostic captures need a separate, fresh setup session.
-  testIgnore: ["**/gallery.spec.ts", "**/debug.spec.ts", "**/resources-gallery.spec.ts"],
+  testIgnore: ["**/gallery.spec.ts", "**/collaboration-gallery.spec.ts", "**/debug.spec.ts", "**/resources-gallery.spec.ts"],
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,

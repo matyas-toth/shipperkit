@@ -16,24 +16,33 @@ import (
 )
 
 func (s *Server) protectionRoutes(r chi.Router) {
-	for _, base := range []string{"/protection", "/applications/{id}/protection"} {
-		r.Get(base, s.protectionInfo)
-		r.With(s.csrf, s.limit).Post(base+"/plans", s.saveBackupPlan)
-		r.With(s.csrf, s.limit).Post(base+"/plans/{plan}/run", s.runBackupPlan)
-		r.With(s.csrf, s.limit).Post(base+"/plans/{plan}/delete", s.deleteBackupPlan)
-		r.With(s.csrf, s.limit).Post(base+"/runs/{run}/download", s.downloadBackup)
-		// Encrypted archives may use native browser streaming. The private recovery
-		// identity remains available only through its explicit CSRF-protected POST.
-		r.Get(base+"/runs/{run}/download", s.downloadBackup)
-		r.Head(base+"/runs/{run}/download", s.downloadBackup)
-		r.With(s.csrf, s.limit).Post(base+"/runs/{run}/restore", s.restoreBackup)
-	}
-	r.With(s.csrf, s.limit).Post("/protection/key", s.recoveryKey)
-	r.With(s.csrf, s.limit).Post("/protection/destinations", s.saveBackupDestination)
-	r.With(s.csrf, s.limit).Post("/protection/schedule-preview", s.schedulePreview)
-	r.With(s.csrf, s.limit).Post("/applications/{id}/protection/import", s.importBackup)
-	r.With(s.csrf, s.limit).Post("/applications/{id}/protection/volumes/{volume}/delete", s.deleteProtectedVolume)
-	r.With(s.csrf, s.limit).Post("/protection/volumes/{volume}/delete", s.deleteProtectedVolume)
+	// Reading protection state and managing per-application plans belongs to
+	// developers; archive download, restore, recovery keys and destinations are
+	// administrator capabilities.
+	r.Group(func(r chi.Router) {
+		r.Use(s.requireRole(store.RoleDeveloper))
+		for _, base := range []string{"/protection", "/applications/{id}/protection"} {
+			r.Get(base, s.protectionInfo)
+			r.With(s.csrf, s.limit).Post(base+"/plans", s.saveBackupPlan)
+			r.With(s.csrf, s.limit).Post(base+"/plans/{plan}/run", s.runBackupPlan)
+			r.With(s.csrf, s.limit).Post(base+"/plans/{plan}/delete", s.deleteBackupPlan)
+			r.With(s.csrf, s.limit).Post(base+"/schedule-preview", s.schedulePreview)
+		}
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(s.requireRole(store.RoleAdmin))
+		for _, base := range []string{"/protection", "/applications/{id}/protection"} {
+			r.With(s.csrf, s.limit).Post(base+"/runs/{run}/download", s.downloadBackup)
+			r.Get(base+"/runs/{run}/download", s.downloadBackup)
+			r.Head(base+"/runs/{run}/download", s.downloadBackup)
+			r.With(s.csrf, s.limit).Post(base+"/runs/{run}/restore", s.restoreBackup)
+		}
+		r.With(s.csrf, s.limit).Post("/protection/key", s.recoveryKey)
+		r.With(s.csrf, s.limit).Post("/protection/destinations", s.saveBackupDestination)
+		r.With(s.csrf, s.limit).Post("/applications/{id}/protection/import", s.importBackup)
+		r.With(s.csrf, s.limit).Post("/applications/{id}/protection/volumes/{volume}/delete", s.deleteProtectedVolume)
+		r.With(s.csrf, s.limit).Post("/protection/volumes/{volume}/delete", s.deleteProtectedVolume)
+	})
 }
 func (s *Server) backupScope(w http.ResponseWriter, r *http.Request) (string, bool) {
 	id := chi.URLParam(r, "id")
