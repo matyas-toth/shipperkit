@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.22](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.21...v1.0.0-rc.22) (2026-11-10)
+
+
+### Features
+
+* administrator-provisioned collaboration and the new auth experience ([#49](https://github.com/matyas-toth/shipperkit/issues/49)) ([530abb7](https://github.com/matyas-toth/shipperkit/commit/530abb7fe07bd1da47fa8ae57a38dfd495ed324d))
+
 ## [1.0.0-rc.21](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.20...v1.0.0-rc.21) (2026-11-09)
 
 
