@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.23](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.22...v1.0.0-rc.23) (2026-11-10)
+
+
+### Bug Fixes
+
+* send CSRF tokens from settings mutations ([#51](https://github.com/matyas-toth/shipperkit/issues/51)) ([d0ad10a](https://github.com/matyas-toth/shipperkit/commit/d0ad10a5705882d617fc3a36f0a0c18ddd3f1059))
+
 ## [1.0.0-rc.22](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.21...v1.0.0-rc.22) (2026-11-10)
 
 
