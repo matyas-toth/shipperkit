@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.24](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.23...v1.0.0-rc.24) (2026-11-10)
+
+
+### Features
+
+* polish the first-run and launch surfaces ([#54](https://github.com/matyas-toth/shipperkit/issues/54)) ([7c8c3f4](https://github.com/matyas-toth/shipperkit/commit/7c8c3f444b2ed65e4f6d5ae57f733e3649a8282a))
+
 ## [1.0.0-rc.23](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.22...v1.0.0-rc.23) (2026-11-10)
 
 
