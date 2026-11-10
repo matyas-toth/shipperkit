@@ -162,6 +162,8 @@ test("capture product surfaces", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   await page.goto("/new");
+  await page.getByRole("textbox", { name: "Repository URL", exact: true }).fill("https://github.com/acme/atlas-api");
+  await shot(page, "new-quick");
   await page.getByRole("button", { name: "Configure manually", exact: true }).click();
   await expect(page.getByRole("heading", { name: "New application", exact: true })).toBeVisible();
   await shot(page, "new-source");
