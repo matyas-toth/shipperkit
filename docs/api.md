@@ -1,5 +1,75 @@
 # HTTP API
 
+## Accounts, roles and sign-in
+
+Shipper has one implicit workspace. Every account has an immutable user ID, a
+case-insensitive provisioned email and one role:
+
+| Role | Scope |
+| --- | --- |
+| `admin` | Users, authentication providers, instance policy, connections, updates, recovery, operation tokens and every application action. |
+| `developer` | Create and manage applications, deployments, tasks, domains, backup plans, secrets and terminals. Archive download and restore remain admin. |
+| `viewer` | Read applications, releases and activity. No mutation, secret reveal, terminal, backup download or server settings. |
+
+Role checks run on the server after session refresh. Browser sessions also carry
+an assurance step while onboarding is incomplete:
+
+| `authStep` | Meaning |
+| --- | --- |
+| `password_change` | Replace a temporary password before anything else. |
+| `enroll` | Enroll Shipper TOTP because instance policy requires a factor. |
+| `verify` | Submit TOTP or a recovery code for this sign-in. |
+
+Restricted sessions receive `403` from every non-auth route. Personal operation
+tokens stop working while the owner requires a password change or factor
+enrollment. Tokens never reach administration routes.
+
+### Auth and account routes
+
+| Method | Route | Access | Result |
+| --- | --- | --- | --- |
+| GET | `/api/auth/session` | Public | `setupRequired`, nullable `user`, `role`, `hasPassword`, `factor`, `authStep` and session `csrfToken` |
+| GET | `/api/auth/methods` | Public | Enabled `password`, `google`, `github` and `discord` booleans |
+| POST | `/api/auth/setup` | Setup capability | Create the first administrator |
+| POST | `/api/auth/login` | Public | Email and password sign-in; denied when password login is disabled |
+| POST | `/api/auth/logout` | Cookie + CSRF | Revoke the current session |
+| POST | `/api/auth/password` | Restricted session + CSRF | Replace a temporary password with a different permanent password |
+| POST | `/api/auth/factor/start` | Session + CSRF | Begin TOTP enrollment; password required only for password accounts |
+| POST | `/api/auth/factor/confirm` | Session + CSRF | Confirm enrollment and return one-use recovery codes |
+| POST | `/api/auth/factor/verify` | Restricted session + CSRF | Complete a sign-in challenge |
+| POST | `/api/auth/factor/change` | Session + CSRF | Disable a personal factor, replace recovery codes or change instance policy (`admin`) |
+| GET | `/api/users` | Admin | Account inventory with identity links and sign-in state |
+| POST | `/api/users` | Admin + CSRF | Provision `{email, role, password?}`; a password is temporary |
+| GET | `/api/users/{user}` | Admin | One account |
+| GET | `/api/users/{user}/audit` | Admin | Latest 50 audited account events |
+| POST | `/api/users/{user}/role` | Admin + CSRF | Change `{role}` with last-admin protection |
+| POST | `/api/users/{user}/disable` | Admin + CSRF | Disable and revoke sessions, tokens and terminals |
+| POST | `/api/users/{user}/enable` | Admin + CSRF | Re-enable sign-in |
+| POST | `/api/users/{user}/password` | Admin + CSRF | Set a temporary `{password}` and revoke credentials |
+| POST | `/api/users/{user}/password/remove` | Admin + CSRF | Remove the password credential and clear the temporary gate |
+| POST | `/api/users/{user}/factor/reset` | Admin + CSRF | Remove TOTP and recovery codes and revoke credentials |
+| POST | `/api/users/{user}/identities/{provider}/unlink` | Admin + CSRF | Remove one provider binding with last-admin protection |
+| POST | `/api/users/{user}/delete` | Admin + CSRF | Remove the account and revoke credentials |
+| GET | `/api/auth/providers` | Admin | Password policy and provider metadata with callbacks; never raw secrets |
+| POST | `/api/auth/providers/{provider}` | Admin + CSRF | Save `{clientId, clientSecret?, enabled}` |
+| POST | `/api/auth/providers/{provider}/remove` | Admin + CSRF | Remove provider configuration and linked identities |
+| POST | `/api/auth/providers/{provider}/test` | Admin + CSRF | Start a full provider round trip that returns to Settings |
+| POST | `/api/auth/password-policy` | Admin + CSRF | Enable or disable password sign-in |
+
+Provider authorization starts at `GET /auth/oauth/{provider}/start` and returns
+at `GET /auth/oauth/{provider}/callback`. These are outside `/api`: the callback
+is a public top-level navigation protected by a one-use state cookie. State is
+hashed in SQLite and expires after ten minutes. Google and Discord use PKCE.
+Google ID tokens are checked for signature, issuer, audience, expiry, nonce and
+verified email. GitHub reads verified private addresses from the authenticated
+emails endpoint. Discord requires a verified address. The callback redirects to
+`/` on success or `/?auth_error=CODE` on failure and never accepts a browser
+supplied identity.
+
+Every cookie mutation, including all account and provider actions, requires
+`X-CSRF-Token` from the session response. A missing or stale token returns
+`403 csrf_invalid`.
+
 ## Phase 9 operations contract
 
 Session clients keep `/api` with cookie + CSRF. Automation uses an explicitly
@@ -17,10 +87,10 @@ or legacy application deploy tokens. Unsupported v1 routes are denied by default
 | `GET /applications/{id}/diagnostics` | Bounded facts, serving/latest state, checks and references | read; `?include=logs` additionally needs logs |
 | `GET /applications/{id}/observations` | Current timestamped samples and stale flags | read |
 | `GET /applications/{id}/incidents` | Latest 100 ascending events; `after` retrieves the next cursor page | read |
-| `POST /operation-tokens`, `GET /operation-tokens`, `POST /operation-tokens/{token}/revoke` | Create/list/revoke scoped expiring credentials | Session only |
+| `POST /operation-tokens`, `GET /operation-tokens`, `POST /operation-tokens/{token}/revoke` | Create/list/revoke scoped expiring credentials | Admin session only |
 | `GET /system/operations`, `GET /system/retention` | System facts, delivery counts, cleanup preview/history | read with instance scope |
 | `POST /system/recheck`, `/system/repair`, `/system/retention` | Reconcile or review/queue narrow maintenance; repair accepts `{review:true}` then `{revision}` | host-admin with instance scope |
-| `GET /notifications`, `POST /notifications`, `POST /notifications/test` | Masked optional webhook/SMTP settings and deliberate delivery test | Session only |
+| `GET /notifications`, `POST /notifications`, `POST /notifications/test` | Masked optional webhook/SMTP settings and deliberate delivery test | Admin session only |
 | `POST /sources?application=ID&provenance=TEXT` | Raw `application/x-tar`, bounded regular files; immutable snapshot metadata | deploy; target application must match token scope |
 | `POST /plan` | New `{name,config,commit?}` returns application ID, normalized name and public configuration, reviewed commit, revision and effects | deploy with instance scope |
 | `POST /applications` | Optional reviewed `{id,revision,name,config,commit?}`; changed planned inputs fail | deploy with instance scope |
@@ -55,8 +125,10 @@ See [operations](operations.md) for bounds, CLI syntax, credential storage,
 notification delivery and cleanup/recovery guarantees. The existing routes below
 remain supported; this section does not expose every session route to tokens.
 
-Session routes are same-origin and prefixed with `/api`. Public provider callbacks,
-signed webhooks and Bearer deployment requests are documented in [sources](sources.md). JSON errors have the shape:
+Session routes are same-origin and prefixed with `/api`. Public provider callbacks
+are documented in [authentication](authentication.md); signed webhooks and Bearer
+deployment requests are documented in [sources](sources.md). JSON errors have the
+shape:
 
 ```json
 {"error":{"code":"unauthenticated","message":"Sign in to continue"}}
@@ -65,9 +137,9 @@ signed webhooks and Bearer deployment requests are documented in [sources](sourc
 | Method | Route | Authentication | Result |
 | --- | --- | --- | --- |
 | GET | /health | Public | Process liveness |
-| GET | /auth/session | Optional cookie | `setupRequired`, `user`, and authenticated `csrfToken` |
-| POST | /auth/setup | First-run setup capability | Create the singleton administrator and session |
-| POST | /auth/login | Email/password | Create a session |
+| GET | /auth/session | Optional cookie | `setupRequired`, nullable `user` with role, `csrfToken`, `factor`, and `authStep` for restricted onboarding |
+| POST | /auth/setup | First-run setup capability | Create the first administrator and session |
+| POST | /auth/login | Email/password when enabled | Create a session or restricted onboarding session |
 | POST | /auth/logout | Cookie + CSRF | Revoke current session |
 | GET | /containers | Cookie | Shipper-owned container projection and Docker connection health |
 | GET | /applications | Cookie | Persistent owned application records and their containers |
@@ -95,8 +167,10 @@ POST bodies require `Content-Type: application/json`. Setup accepts
 `email`, `password`, and `setupToken`; login accepts `email` and `password`.
 Passwords must be between 12 and 72 UTF-8 bytes. Session cookies are HttpOnly,
 SameSite=Strict, and Secure when the request arrives over TLS or reports an HTTPS
-forwarded protocol. Sessions expire after seven days and are not extended by
-background traffic.
+forwarded protocol. Full sessions expire after seven days and are not extended by
+background traffic. Restricted onboarding sessions expire after ten minutes.
+Temporary passwords, factor enrollment and factor challenges cannot be skipped by
+calling an application route directly.
 
 Authenticated mutations need `X-CSRF-Token` from the session response.
 All supplied Origin headers must match the canonical public origin or direct

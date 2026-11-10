@@ -1,11 +1,12 @@
 # Authentication and account provisioning
 
-The 1.0 release candidate supports multiple administrator-provisioned accounts,
-password sessions, personal TOTP, instance-wide TOTP enforcement, one-use recovery
-codes and offline owner recovery. Managed installations claim the first owner
-through `shipperctl claim`. Email and password, Google, GitHub and Discord sign-in
-are configured independently in Settings. GitHub repository access is a separate
-integration. See [installation and recovery](installation.md), the
+The 1.0 beta supports multiple administrator-provisioned accounts, password
+sessions, personal TOTP, instance-wide TOTP enforcement, one-use recovery codes
+and offline owner recovery. Managed installations claim the first owner through
+`shipperctl claim`. Email and password, Google, GitHub and Discord sign-in are
+configured independently in Settings. GitHub repository access is a separate
+integration. The current prerelease is **Shipper 1.0.0 Beta 2**
+(`1.0.0-rc.23`). See [installation and recovery](installation.md), the
 [roadmap](roadmap.md) and the [security boundary](../SECURITY.md).
 
 ## Accounts are provisioned by administrators
@@ -79,6 +80,42 @@ If proof cannot be established, fail clearly.
 Changing a Shipper email or identity link requires recent authentication,
 applicable 2FA and audit. It must not silently rebind identities or reactivate a
 removed account. Account revocation applies across every provider.
+
+## Settings surfaces
+
+**Settings → Users** is the account inventory. Each row shows the email, role,
+sign-in methods, temporary-password state, disabled state and last activity.
+Admins can change a role inline, add a user, reset or remove a password, reset a
+factor, disable or remove an account and open the per-user audit trail. The add
+and reset drawers generate a temporary password locally and show it once. Shipper
+never stores or returns a readable password.
+
+**Settings → Authentication** holds the instance login policy. Email and password
+has its own switch. Each provider card carries the client ID, masked client
+secret, exact callback, scopes, setup steps and a Test sign-in action. A stored
+secret reads as Saved or Not set, never as its value. Removing a provider also
+removes its linked identities after the last-admin guard passes.
+
+Every mutation uses the browser session and its CSRF token. Provider tests return
+to Settings with an inline result rather than creating a session.
+
+## Authentication screens
+
+Sign in, first-admin setup and restricted onboarding share the application shell:
+the Shipper topbar and the same rounded, shadowed panel used by the console. On
+desktop the panel splits into a muted cloud film on the left and a 400 px account
+card centered on the right. Narrow screens keep the card only and skip the video
+download. Reduced-motion visitors keep the poster frame without autoplay.
+
+The card uses step-specific copy: Welcome back aboard, Begin the journey, Make it
+yours, Add a second lock, One more check and Keep these somewhere safe. Provider
+buttons appear above the email form when configured, with one divider labeled
+`or`. Errors stay inline in the card. The card never shows taglines, setup
+instructions or credentials that belong in Settings.
+
+A temporary password change, factor enrollment, factor challenge and recovery
+code display all use the same card and shell. Restricted sessions cannot navigate
+the application or reach APIs until every required step passes.
 
 ## TOTP without administrator configuration
 

@@ -1,7 +1,7 @@
 # Security
 
-Shipper controls security-critical infrastructure. The 1.0 release candidate
-has not had an independent security review.
+Shipper controls security-critical infrastructure. The 1.0 beta has not had an
+independent security review.
 
 Keep it on loopback or behind authenticated private access. Configure the
 canonical HTTPS public origin when using a reverse proxy. A Docker socket grants
@@ -63,32 +63,45 @@ stateful rollback limits are documented in [Compose operations](docs/compose.md)
 
 ## Authentication and HTTPS policy
 
-The [authentication contract](docs/authentication.md) and
-[roadmap](docs/roadmap.md) describe future collaboration and OAuth support.
-There is no planned public registration: admins provision accounts, while the
-existing private first-admin capability remains the bootstrap exception.
+The [authentication contract](docs/authentication.md) describes the implemented
+account model. There is no public registration. Admins provision accounts and
+assign Admin, Developer or Viewer roles; the private first-admin capability
+remains the bootstrap exception.
 
-Collaboration will support independently enabled Email + Password, Google,
-GitHub and Discord sign-in. Empty-password accounts have no password credential;
-admin-supplied temporary passwords require replacement before full access.
-Verified-email admission may link a provider to an existing provisioned account,
-but stable provider subjects identify established links. Unverified/ambiguous or
+Email and password, Google, GitHub and Discord sign-in are enabled independently.
+Empty-password accounts have no password credential; admin-supplied temporary
+passwords require replacement before full access. Verified-email admission links
+a provider only to an existing active provisioned account. Stable provider
+subjects identify established links, and unverified, ambiguous or
 non-authoritative claims cannot silently link or create users. Login credentials
 remain separate from repository connections.
 
-Personal TOTP, recovery and instance-wide enforcement are implemented in the
-candidate. Every enrolled interactive login needs Shipper's own second factor.
-Enrollment and factor gates restrict UI, API and stream access, including active
-sessions. Separately scoped operations and deploy tokens remain automation
-identities; they cannot create browser sessions or change the account policy.
-Factor resets and offline recovery are audited. Ordinary APIs do not expose
-TOTP secrets or recovery codes.
+OAuth uses expiring one-use state bound to an HttpOnly cookie, exact canonical
+redirect URIs, PKCE for Google and Discord, server-side code exchange and
+server-side identity retrieval. Google ID tokens are checked for signature,
+issuer, audience, expiry, nonce and verified email. Provider client secrets are
+sealed with the instance key and excluded from ordinary API responses.
+
+Role checks and account assurance gates run server-side. A temporary password,
+required factor enrollment or factor challenge restricts the session to the
+onboarding endpoints. Every cookie mutation requires the session CSRF token.
+Disabling or removing an account revokes sessions, personal operation tokens and
+terminal sessions. A transaction guard prevents a change that would leave no
+active administrator with a working sign-in method.
+
+Personal TOTP, recovery and instance-wide enforcement are implemented. Every
+enrolled interactive login needs Shipper's own second factor. Enrollment and
+factor gates restrict UI, API and stream access, including active sessions.
+Separately scoped operations and deploy tokens remain automation identities; they
+cannot create browser sessions or change the account policy. Factor resets and
+offline recovery are audited. Ordinary APIs do not expose TOTP secrets or
+recovery codes.
 
 Managed HTTPS seeds the ACME contact from the first administrator's email.
 Traefik issues and renews certificates; Shipper observes readiness and expiry.
-The candidate preserved the certificate store through a real reboot; actual
-renewal is a separate acceptance check. Preserve deliberate CA and contact
-overrides during migration and recovery.
+The beta preserved the certificate store through a real reboot; actual renewal is
+a separate acceptance check. Preserve deliberate CA and contact overrides during
+migration and recovery.
 
 
 Phase 8 recovery archives use age authenticated encryption. Keep the separately

@@ -60,9 +60,12 @@ software producing a safe supported outcome.
 10. Apply a pinned update; inject interruption, low disk, daemon and port failures;
     verify diagnosis, safe retention and recovery without erasing live/retained data.
 11. Test P10 TOTP, enforcement against existing admin sessions and offline recovery.
-    Extend this in P11 to provisioned users, all OAuth methods, verified-email
-    linking, mandatory password/factor gates and role isolation.
-12. Exercise data-preserving uninstall and authorized cleanup; report manual
+    Provision multiple roles, sign in through Email and password, Google, GitHub and
+    Discord, verify email linking and stable identities, force temporary password
+    and factor gates, and exercise role isolation and last-admin protection.
+12. Upgrade a multi-user Beta 1 or rc installation in place; verify accounts,
+    provider identities, factors, sessions, applications and releases survive.
+13. Exercise data-preserving uninstall and authorized cleanup; report manual
     SSH/provider intervention needed during any normal or exceptional operation.
 
 ## Complementary manual and agent journeys

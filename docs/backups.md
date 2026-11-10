@@ -60,7 +60,7 @@ for the new machine. Recovered ACME state is installed privately into the owned
 proxy data volume before the proxy starts. Conflicting existing certificate state
 is rejected instead of overwritten. Public DNS/ports still need to reach the new
 host. The managed installer and public dashboard/application acceptance are
-complete for the current candidate; controlled renewal and broader host coverage
+complete for the current beta; controlled renewal and broader host coverage
 remain release gates.
 
 ## Protect application data

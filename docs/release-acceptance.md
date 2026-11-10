@@ -1,8 +1,9 @@
 # 1.0 release acceptance
 
-Candidate: 1.0.0-rc.6. Scope: one managed Ubuntu 24.04 x86-64 VPS, one Docker
-host, and the existing dashboard on desktop and mobile. The stable release and
-public installer assets have not been published.
+Candidate: **Shipper 1.0.0 Beta 2**, technical version `1.0.0-rc.23`. Scope: one
+managed Ubuntu 24.04 x86-64 VPS, one Docker host, and the existing dashboard on
+desktop and mobile. Public prerelease image and installer assets are published.
+The stable `1.0.0` release remains gated by the checks below.
 
 | Journey | Evidence |
 | --- | --- |
@@ -15,7 +16,7 @@ public installer assets have not been published.
 | CLI | Used a verified host key and temporary SSH identity for installer preflight. Paired with a scoped token, reviewed and applied a local static project, waited for deployment and verified trusted HTTPS in 24 seconds. Confirmed the revoked token could no longer list applications. |
 | Account | On the lab owner, verified 2FA enforcement for an existing session, QR enrollment, challenge on sign-in, one-use recovery and disabling under the optional policy. Restored the lab's original policy. |
 | Dashboard | On the existing local instance, opened the Compose service from Overview, searched timestamped deployment logs, opened .env, domains, backups and System, previewed a weekly schedule and its cron expression, opened the 2FA reauthentication step, and reviewed a Worker deployment without applying it. Rechecked stopped service log history after removing its misleading live state. |
-| Automated regression | Go and frontend suites, type checking and 13 desktop/mobile Playwright journeys. The two-factor tests verify API and stream gating, recovery code consumption, and rejection of a reused authenticator code. |
+| Automated regression | Go and frontend suites, type checking and 18 desktop/mobile Playwright journeys. The two-factor tests verify API and stream gating, recovery code consumption, and rejection of a reused authenticator code. |
 
 An observation after reboot: 12.88 MiB of control plane container memory,
 excluding Docker, Traefik and workloads. Five trusted health requests from the
@@ -61,22 +62,76 @@ control plane on 8080. Parameterless updates preserved the dashboard domain and
 the certificate. Final Linux image manifest:
 `sha256:bf14d2568a273b7d5188a1a2617192f793d1c6560c92e3f5cb681ac77bff76bb`.
 
+## Beta 2 collaboration acceptance
+
+Shipper 1.0.0 Beta 2 adds administrator-provisioned collaboration, Viewer,
+Developer and Admin roles, Email and password plus Google, GitHub and Discord
+sign-in, verified-email identity linking, temporary-password gates that survive
+provider login, personal and enforced TOTP, per-user audit, and the split-video
+authentication shell.
+
+Automated evidence:
+
+- Migration 014 upgrades a single-owner database and preserves its administrator,
+  session, factor and recovery state.
+- Provider secrets are sealed, excluded from API responses and rotate deliberately.
+- Google state replay, PKCE verifier, nonce, audience, issuer and signature
+  failures are rejected. GitHub and Discord verified and private-email paths are
+  covered, including changed addresses and ambiguous matches.
+- One provisioned identity signs in through password, Google, GitHub and Discord;
+  unprovisioned, disabled, unverified and ambiguous identities fail safely.
+- Temporary-password reuse, removal, later password additions and provider login
+  are covered. Disabling an account revokes sessions, operation tokens and
+  terminal sessions.
+- Factor enrollment and verification gate existing sessions and personal tokens.
+  Passwordless provider accounts enroll without a password.
+- Role isolation covers Viewer reads and blocked mutations, Developer application
+  actions, and Admin-only users and provider settings.
+- Last-admin protection covers demotion, disable, delete, password removal,
+  password policy disable and provider removal.
+- Browser coverage includes user provisioning and provider save through the real
+  Settings UI, including the CSRF regression that Beta 2 fixes.
+
+Staging was updated to `1.0.0-rc.22.nightly.36`, which includes the settings CSRF
+fix. Health reports that version after the install. Beta 2 is published as
+`1.0.0-rc.23`; the Main channel and installer assets use the release digest
+`sha256:7dcaf84aaf66f80058e9c88a2b752ce7ab7002f2867f6b497c4c7e9ff5c77bce`.
+
+Not yet proven on a real installation:
+
+- Live Google, GitHub and Discord consoles with real client credentials.
+- An in-place Main-channel update from Beta 1 or rc.21 to Beta 2 with an existing
+  multi-user database.
+- A restore of a multi-user database with provider identities, factors and
+  provider secrets onto a fresh host.
+- Full human role acceptance across every Viewer, Developer and Admin surface.
+
 ## Remaining stable-release gates
 
+- Run live Google, GitHub and Discord sign-in with real OAuth clients, including
+  provider-side callback registration, verified/private email, secret rotation,
+  provider removal, an outage and a failed return-to-Settings test.
+- Update a real Beta 1 or rc.21 installation in place to Beta 2 from the Main
+  channel and verify accounts, roles, provider links, factors, sessions,
+  applications and releases survive.
+- Restore a real off-server encrypted backup from a multi-user installation onto
+  a fresh supported host and verify application data, identities, factor state,
+  enforcement and provider secrets.
+- Exercise every Users and Authentication action as a human on staging for all
+  three roles, including password reset, factor reset, account removal and the
+  last-admin guard.
 - Run with a real GitHub App and private repository; exercise signed public push
   delivery, revoked access and repository/ref selection.
 - Prove certificate renewal using a controlled short-lived CA exercise, plus
   public www, DNS changes and representative failure/recovery cases. A proxy or
   host restart can prove persistence but cannot prove renewal.
-- Restore a real off-server encrypted backup onto a fresh supported host and
-  verify application data and deployment configuration.
 - Finish the independent agent and human runs and equivalent platform baselines
   described in the [roadmap](roadmap.md), including timed failure scenarios and
   resource measurements. The browser and automated fixture runs are separate
   from that acceptance matrix.
 - Complete the independent security review identified in
   [the security policy](../SECURITY.md).
-- Publish versioned install artifacts only after the release gate passes.
+- Publish the stable `1.0.0` install artifacts only after the release gate passes.
 
 See [managed installation](installation.md) for the supported platform,
 preflight, maintenance and recovery commands.
