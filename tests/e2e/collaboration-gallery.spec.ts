@@ -49,7 +49,11 @@ test("capture collaboration settings", async ({ page }) => {
   await page.getByLabel("Email", { exact: true }).fill("sara@example.test");
   await page.waitForTimeout(180);
   await page.screenshot({ path: join(out, "02-add-user.png"), animations: "disabled" });
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  const drawer = page.getByRole("dialog");
+  await drawer.getByRole("button", { name: "Add user", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "User created", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByText("sara@example.test", { exact: true })).toBeVisible();
 
   await page.locator('summary[aria-label="Actions for mara@example.test"]').click();
   await page.getByRole("button", { name: "View activity", exact: true }).click();
@@ -67,6 +71,10 @@ test("capture collaboration settings", async ({ page }) => {
   await page.locator(".provider-card").first().getByText("Setup steps", { exact: true }).click();
   await page.waitForTimeout(180);
   await page.screenshot({ path: join(out, "05-provider-steps.png"), animations: "disabled" });
+  const saved = page.waitForResponse(response => response.url().endsWith("/api/auth/providers/google") && response.request().method() === "POST");
+  await page.locator(".provider-card").first().getByRole("button", { name: "Save", exact: true }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(page.locator("#authentication .error-notice")).toHaveCount(0);
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await action("/api/auth/logout", {});

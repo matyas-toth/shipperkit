@@ -115,7 +115,7 @@ export default function Users() {
     if (busy()) return;
     setBusy(true); setError("");
     try {
-      const user = await post<User>("/users", { email: email(), role: role(), password: mode() === "temporary" ? password() : "" });
+      const user = await post<User>("/users", { email: email(), role: role(), password: mode() === "temporary" ? password() : "" }, auth.session()?.csrfToken);
       setCreated(user);
       await client.invalidateQueries({ queryKey: ["users"] });
     } catch (e) { setError((e as Error).message); }
@@ -124,7 +124,7 @@ export default function Users() {
   async function updateRole(user: User, value: string) {
     setError("");
     try {
-      await post("/users/" + user.id + "/role", { role: value });
+      await post("/users/" + user.id + "/role", { role: value }, auth.session()?.csrfToken);
       await client.invalidateQueries({ queryKey: ["users"] });
       if (user.id === auth.session()?.user?.id) await client.invalidateQueries({ queryKey: ["session"] });
     } catch (e) { setError((e as Error).message); await query.refetch(); }
@@ -132,7 +132,7 @@ export default function Users() {
   async function run(action: string, user: User) {
     setBusy(true); setError("");
     try {
-      await post("/users/" + user.id + "/" + action, {});
+      await post("/users/" + user.id + "/" + action, {}, auth.session()?.csrfToken);
       const self = user.id === auth.session()?.user?.id;
       setConfirming(undefined);
       await client.invalidateQueries({ queryKey: ["users"] });
@@ -151,7 +151,7 @@ export default function Users() {
     if (busy() || !resetting()) return;
     setBusy(true); setError("");
     try {
-      await post("/users/" + resetting()!.id + "/password", { password: resetPassword() });
+      await post("/users/" + resetting()!.id + "/password", { password: resetPassword() }, auth.session()?.csrfToken);
       setResetDone(true);
       await client.invalidateQueries({ queryKey: ["users"] });
     } catch (e) { setError((e as Error).message); }
