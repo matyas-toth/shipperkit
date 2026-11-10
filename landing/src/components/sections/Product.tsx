@@ -135,73 +135,18 @@ function Product3() {
       <div className="absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(ellipse_52%_100%_at_50%_0%,rgba(255,255,255,0.06),transparent_72%)]" />
       <Container>
         <SectionIntro
-          title={<>A failed deploy is not an outage.</>}
-          body="Shipper builds and verifies a new release before traffic moves. If anything fails, the app you already had keeps serving."
+          title={<>Deploy anything.</>}
+          body="Point Shipper at a Git repository, a local folder, a container image, or a database. The quick start turns any of them into a reviewable release."
           align="center"
           size="lg"
         />
-        <div className="mx-auto mt-10 max-w-[1080px] sm:hidden">
-          <div className="surface rounded-xl p-5">
-            <div className="flex items-center gap-2 text-[13px] text-[#f0a3a6]">
-              <span className="size-1.5 rounded-full bg-[#f08c90]" />
-              Deployment failed
-            </div>
-            <div className="mt-2 text-[16px] text-[#ecece7]">Build exited with status 1</div>
-            <div className="mono mt-3 rounded-lg border border-white/[0.08] bg-black/25 px-3 py-2 text-[11px] leading-[1.8] text-[#a2a39d]">
-              <div><span className="text-[#797a75]">8</span> build <span className="text-[#f0a3a6]">Sass compilation failed</span></div>
-              <div><span className="text-[#797a75]">9</span> build Undefined variable: $accent</div>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-[13px]">
-              <span className="text-[#8d8e88]">Serving release</span>
-              <span className="mono text-[#ecece7]">4f8ac21d</span>
-            </div>
-          </div>
-        </div>
-        <div className="mx-auto mt-12 max-w-[1080px] max-sm:hidden">
+        <div className="mx-auto mt-12 max-w-[1080px]">
           <Screenshot
-            src="/shots/failed.png"
-            alt="A failed deployment with logs and the previous release still serving"
-            frameClassName="max-sm:hidden"
+            src="/shots/deploy-anything.png"
+            alt="Shipper quick new application screen with Git repository, GitHub, database, local files and container image options"
             fade
             className="h-[500px] object-cover object-top"
           />
-        </div>
-        <div className="mx-auto mt-4 grid max-w-[1080px] gap-3 sm:-mt-8 sm:relative sm:z-10 md:grid-cols-3">
-          <div className="surface rounded-xl p-5">
-            <div className="text-[14px] text-[#a2a39d]">Failed stage</div>
-            <div className="mt-2 text-[17px] font-[500] text-[#f0a3a6]">Build</div>
-            <p className="mt-2 text-[14px] leading-[1.6] text-[#a2a39d]">
-              The error line is preserved with the failed release.
-            </p>
-          </div>
-          <div className="surface rounded-xl border-[#79e3a6]/20 bg-[#79e3a6]/[0.03] p-5">
-            <div className="text-[14px] text-[#79e3a6]">Still serving</div>
-            <div className="mono mt-2 text-[18px] text-[#ecece7]">4f8ac21d</div>
-            <div className="mt-2 flex items-center gap-2 text-[14px] text-[#79e3a6]">
-              <span className="size-2 rounded-full bg-[#79e3a6]" />
-              store.example.com
-            </div>
-          </div>
-          <div className="surface rounded-xl p-5">
-            <div className="text-[14px] text-[#a2a39d]">Operation</div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-[17px] font-[500] text-[#ecece7]">28s</span>
-              <span className="text-[14px] text-[#a2a39d]">4 checks</span>
-            </div>
-            <div className="mt-3 grid grid-cols-4 gap-1.5">
-              {["daemon", "runtime", "build", "route"].map((label, index) => (
-                <div key={label} className="rounded border border-white/[0.08] bg-white/[0.025] p-1.5">
-                  <div className="text-[11px] text-[#a2a39d]">{label}</div>
-                  <div className="mt-1 flex items-center gap-1">
-                    <span className={cn("size-1.5 rounded-full", index === 2 ? "bg-[#f08c90]" : "bg-[#79e3a6]")} />
-                    <span className={cn("text-[10px]", index === 2 ? "text-[#f0a3a6]" : "text-[#79e3a6]")}>
-                      {index === 2 ? "fail" : "pass"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </Container>
     </Section>
