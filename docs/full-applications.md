@@ -1,7 +1,8 @@
 # Full application operations
 
-Single-container applications support public HTTPS Git repositories. Source
-authentication and signed push webhooks are planned separately. For Compose and
+Single-container applications support public HTTPS Git repositories and connected
+private GitHub repositories through the instance connection. Source credentials
+and signed push webhooks are separate from Shipper sign-in. For Compose and
 service-specific domains/settings, see [Compose operations](compose.md).
 
 ## Build and run

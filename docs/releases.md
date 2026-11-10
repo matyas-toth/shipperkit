@@ -39,8 +39,10 @@ Versions use SemVer. The source of truth is `package.json`, mirrored in `web/pac
 Do not bump the version in ordinary feature branches. The release PR owns the bump.
 
 Shipper is on the `1.0.0-rc.N` line, so `release-please` uses the `rc` prerelease
-strategy. Feature and fix commits advance the release candidate and mark the
-GitHub release as a prerelease. To graduate to a stable release, add a
+strategy. Feature and fix commits advance the prerelease and mark the GitHub
+release as a prerelease. The current public milestone is **Shipper 1.0.0 Beta 2**
+at `1.0.0-rc.23`; the beta name lives in the GitHub release title while the `rc`
+suffix preserves SemVer update ordering. To graduate to a stable release, add a
 `Release-As: 1.0.0` footer to a commit and switch the versioning strategy back to
 the default once the stable line begins.
 
@@ -69,7 +71,7 @@ The `latest` branch is a generated release feed, not development history. The pu
 - `release-url.txt`, the source commit.
 - `SHA256SUMS`.
 
-The nightly version sorts after the release it is based on and before the next release candidate. This lets an instance on `1.0.0-rc.9` update to `1.0.0-rc.9.nightly.42`, and then to `1.0.0-rc.10` when that release is published.
+The nightly version sorts after the release it is based on and before the next prerelease. This lets an instance on `1.0.0-rc.22` update to `1.0.0-rc.22.nightly.36`, and then to `1.0.0-rc.23` when that release is published.
 
 See [updates](updates.md) for the in-app update flow and feed checks.
 
@@ -88,7 +90,7 @@ from the same `latest` branch and pulls the pinned digest.
 The pinned release form remains available:
 
 ```sh
-sudo bash install.sh --version 1.0.0-rc.8
+sudo bash install.sh --version 1.0.0-rc.23
 ```
 
 That path fetches the immutable release assets from GitHub.

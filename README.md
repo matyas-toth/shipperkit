@@ -11,6 +11,11 @@ scheduled tasks, automate signed push deployments, review configuration changes,
 and restore recorded releases. Dockerfile, Railpack and static Apache builds
 share the same application model.
 
+Add collaborators without a separate team hierarchy. Shipper supports one
+implicit workspace with Admin, Developer and Viewer roles, administrator-issued
+accounts, Email and password, Google, GitHub and Discord sign-in, verified-email
+identity linking and Shipper's own TOTP enforcement.
+
 New applications use a guided source, configuration and review flow. Automatic
 build selection recommends a method after inspecting the source. Workers skip
 HTTP settings, and Compose previews show services and their route targets.
@@ -30,12 +35,13 @@ model. The dashboard remains a complete manual workflow. See
 See [backups and recovery](docs/backups.md), [Compose operations](docs/compose.md) and [commands and tasks](docs/commands.md).
 The [feature parity audit](feature_parity.md) compares Coolify capabilities and
 sets the next [phases and milestones](docs/roadmap.md).
-The 1.0 release candidate adds a [managed Ubuntu installer](docs/installation.md),
-automatic HTTPS and [owner 2FA](docs/authentication.md). The installer runs
-without arguments, opens the first-run dashboard on `http://<public-ip>:8080`,
-and leaves the dashboard domain to **Settings → Dashboard**. See
-[release acceptance](docs/release-acceptance.md) for what has been verified and
-what remains before the stable release.
+The 1.0 beta adds [administrator-provisioned collaboration and provider sign-in](docs/authentication.md)
+on top of the [managed Ubuntu installer](docs/installation.md), automatic HTTPS
+and personal TOTP. The installer runs without arguments, opens the first-run
+dashboard on `http://<public-ip>:8080`, and leaves the dashboard domain to
+**Settings → Dashboard**. The current prerelease is **Shipper 1.0.0 Beta 2**
+(`1.0.0-rc.23`). See [release acceptance](docs/release-acceptance.md) for what
+has been verified and what remains before the stable release.
 
 ## Run locally
 

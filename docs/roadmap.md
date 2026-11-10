@@ -1,17 +1,17 @@
 # Roadmap
 
-Updated 2026-11-06. Phases 1–9.5 deliver the shared operations contract,
-local-project deployment and guided creation. The Phase 10 release candidate is
-implemented on the supported Ubuntu profile and under
-[release acceptance](release-acceptance.md). The managed installer now runs
-without arguments, opens the first-run dashboard on the public IP and 8080, and
-stores the dashboard domain under Settings. Settings is grouped into Account and
-Server scopes.
+Updated 2026-11-10. Phases 1–9.5 deliver the shared operations contract,
+local-project deployment and guided creation. The Phase 10 beta is implemented
+on the supported Ubuntu profile and under [release acceptance](release-acceptance.md).
+The managed installer runs without arguments, opens the first-run dashboard on
+the public IP and 8080, and stores the dashboard domain under Settings. Settings
+is grouped into Account and Server scopes. Collaboration and provider sign-in
+shipped in Shipper 1.0.0 Beta 2 (`1.0.0-rc.23`).
 
 The [Coolify parity audit](../feature_parity.md) tracks eventual capability breadth.
 A smaller, dependable 1.0 takes priority over completing every parity milestone.
 The [VPS test lab](vps-test-plan.md) and [account/authentication contract](authentication.md)
-record the real-system acceptance resources and the future access model.
+record the real-system acceptance resources and the implemented access model.
 Implemented code, locally verified behavior, and public-VPS acceptance are separate
 statuses. Public ACME issuance passed on staging. Actual renewal and GitHub
 onboarding/private checkout/public push delivery remain release gates.
@@ -21,7 +21,7 @@ onboarding/private checkout/public push delivery remain release gates.
 The target experience is: buy a supported Linux VPS, run one installer command,
 open Shipper, connect a source, and deploy. Routine deployment and server care
 should happen through Shipper without requiring Docker commands or repeated SSH
-sessions. The release candidate implements managed installation on Ubuntu
+sessions. The 1.0 beta implements managed installation on Ubuntu
 24.04 x86-64; the remaining production checks are listed in Phase 10.
 
 The lightweight, information-dense Coolify alternative and agent-accessible
@@ -596,7 +596,7 @@ Start with a small, explicitly tested Linux distribution/architecture matrix.
 - [x] Enrolled users complete Shipper's own second-factor step at every interactive
   login. Optional 2FA can be disabled after verification; enforced 2FA cannot be
   disabled by the user. Preserve this gate for all P11 OAuth login methods
-- [ ] Account/session management, audited offline owner recovery and credential/token
+- [x] Account/session management, audited offline owner recovery and credential/token
   lifecycle review, including bootstrap exposure, privileged operations, application
   execution, and separately scoped noninteractive automation identities
 - [ ] Use the offered disposable Contabo VPS (8 GB RAM) and 3–4 test domains once
@@ -640,9 +640,11 @@ Coolify breadth are not part of that promise.
 
 ## Phase 11: Admin-provisioned collaboration and reusable configuration
 
+Implemented in Shipper 1.0.0 Beta 2. The [authentication contract](authentication.md)
+defines setup, linking and login gates.
+
 Outcome: add collaborators to the same application model without public signup,
-provider-specific duplicate accounts or mandatory team/project hierarchy. The
-[authentication contract](authentication.md) defines setup, linking and login gates.
+provider-specific duplicate accounts or mandatory team/project hierarchy.
 
 ### P11.1: Accounts and enabled login methods
 

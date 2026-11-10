@@ -14,8 +14,8 @@ Every installation starts on **Main** with automatic updates off.
 | Nightly | Every successful `master` build | Testing upcoming changes |
 
 Nightly builds are published automatically and can contain bugs or breaking
-changes. They are useful for validating a release candidate, not for an
-installation that needs predictable behavior.
+changes. They are useful for validating a prerelease, not for an installation
+that needs predictable behavior.
 
 The feeds are generated branches:
 
@@ -94,7 +94,10 @@ installations keep the update controls disabled.
 ## Limits
 
 - The host must reach GHCR and the selected raw GitHub feed.
-- A release candidate is a normal update target on Main during the 1.0 preview.
+- Prereleases are normal update targets on Main during the 1.0 preview.
+- Shipper 1.0.0 Beta 2 uses the technical version `1.0.0-rc.23`. The `rc` suffix
+  keeps SemVer ordering correct so existing `rc.22` installations update
+  automatically; the GitHub release title carries the beta name.
 - Switching from Nightly to Main does not downgrade an installation; it only
   changes which releases are considered next.
 - Manual recovery remains available through `shipperctl` and the installer if

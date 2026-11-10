@@ -7,15 +7,18 @@ Apache site containers and Traefik run independently on the Docker host.
 ## Boundaries
 
 - `cmd/shipper`: configuration, lifecycle, local password recovery.
-- `internal/store`: transactional SQL migrations, identities, sessions, observed
-  snapshots, application configuration, deployments, logs, and worker lease.
-- `internal/auth`: bcrypt, random capabilities/session tokens, constant-time checks.
+- `internal/store`: transactional SQL migrations, accounts, roles, sessions,
+  provider identities and OAuth state, observed snapshots, application
+  configuration, deployments, logs, and worker lease.
+- `internal/auth`: bcrypt, random capabilities/session tokens, TOTP and PKCE helpers,
+  constant-time checks.
 - `internal/engine`: official SDK inventory/event projection, instance filtering.
 - `internal/inventory`: debounced reconciliation, reconnect, connection health.
 - `internal/deploy`: hardened public Git checkout, Apache archive/image strategy,
   candidate lifecycle, proxy adapter, durable worker, recovery and deletion.
 - `internal/events`: bounded nonblocking SSE invalidations.
-- `internal/httpapi`: authenticated REST contract, CSRF/origin checks, domain probes.
+- `internal/httpapi`: authenticated REST contract, role gates, TOTP and provider
+  sign-in, CSRF/origin checks, domain probes.
 - `internal/ui`: embedded production assets and SPA fallback.
 - `web/src`: persistent shell, cached routed application views, virtual tables/logs.
 
@@ -38,6 +41,40 @@ a failed update. Runtime routing points to the active deployment's immutable ima
 Domain policies are independent authoritative routing metadata with unique claims;
 route-only jobs reserve both old and proposed hosts until acknowledgment or rollback. Deletion leaves a
 tombstone, preventing late inventory events from recreating the application.
+
+## Accounts and collaboration
+
+The first setup capability creates the first administrator. Further accounts are
+only created by an admin. The `administrators` table stores the immutable user ID,
+case-insensitive email, optional password hash, role (`admin`, `developer` or
+`viewer`), disabled flag, temporary-password flag and last sign-in time. There is
+no public registration path. Migration 014 rebuilds the original single-owner
+table and preserves sessions, factors, recovery codes, terminals and operation
+tokens.
+
+Provider identities live in `user_identities`, keyed by provider and stable
+subject with one identity per provider for each account. A new identity is
+resolved by verified email to exactly one active provisioned account and is
+bound only after every onboarding gate passes. Once bound, the stable provider
+subject wins even if the provider later reports a different address. Provider
+configuration is stored in settings; client secrets are sealed with the instance
+key and never returned by an API.
+
+OAuth authorization uses a hashed one-use state with a ten-minute expiry, an
+HttpOnly SameSite state cookie and PKCE for Google and Discord. Callbacks are
+constructed from the canonical public origin, never request headers. Google ID
+tokens are verified against cached JWKS keys and checked for issuer, audience,
+expiry, nonce and verified email. GitHub identities use the numeric user ID and
+the authenticated email endpoint. Discord requires a verified email. Login
+creates a restricted session until a required password change and factor
+enrollment or verification finish.
+
+Role and account checks are server-side and evaluated on every request. Disabling
+or removing an account deletes its sessions, operation tokens and terminal
+sessions. A transaction guard rejects role, password, provider or account changes
+that would leave no active administrator with a working sign-in method. Account
+changes, provider changes, factor changes and recovery are written to the bounded
+account audit table without credentials, OTPs or tokens.
 
 ## Durable operations
 

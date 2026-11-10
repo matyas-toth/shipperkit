@@ -1,13 +1,13 @@
 # Managed Linux installation
 
-The release candidate targets one dedicated Ubuntu 24.04 x86-64 server with
-systemd. It checks for at least 1 GiB RAM and 8 GiB free in `/var/lib`. These are
-bootstrap thresholds, not workload sizing guidance. Docker Engine API 1.48 or
-newer, Compose and Buildx are required. The installer can install missing Docker
-from the [signed Docker package repository](https://docs.docker.com/engine/install/ubuntu/).
+The 1.0 beta targets one dedicated Ubuntu 24.04 x86-64 server with systemd. It
+checks for at least 1 GiB RAM and 8 GiB free in `/var/lib`. These are bootstrap
+thresholds, not workload sizing guidance. Docker Engine API 1.48 or newer, Compose
+and Buildx are required. The installer can install missing Docker from the
+[signed Docker package repository](https://docs.docker.com/engine/install/ubuntu/).
 
 Use the published installer. The default one-liner installs the newest published
-candidate without arguments, then prints the public IP and port to open:
+release without arguments, then prints the public IP and port to open:
 
 ```bash
 curl -fsSL https://shipperkit.dev/install.sh | sudo bash
@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/matyas-toth/shipperkit/latest/insta
 To pin a version or inspect the script first:
 
 ```bash
-version=1.0.0-rc.7
+version=1.0.0-rc.23
 origin="https://github.com/matyas-toth/shipperkit/releases/download/v$version"
 curl -fsSLO "$origin/install.sh"
 curl -fsSLO "$origin/image.txt"
@@ -35,8 +35,8 @@ sudo bash install.sh --version "$version" --check
 sudo bash install.sh --version "$version"
 ```
 
-The image is pulled by its release digest. An unpublished candidate can be tested
-by supplying a local Docker archive, its image name and its SHA-256 using
+The image is pulled by its release digest. An unpublished local build can be
+tested by supplying a local Docker archive, its image name and its SHA-256 using
 `--archive`, `--image` and `--sha256`. A local `image.txt` beside the installer
 selects an already loaded image for repeatable lab installs. Rerunning the
 installer reuses compatible Docker. Foreign services, conflicting ports and

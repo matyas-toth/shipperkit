@@ -1,15 +1,15 @@
 # Operations and local deployments
 
-1.0.0-rc.6. The dashboard and focused Go CLI use the same
+Current beta: 1.0.0-rc.23. The dashboard and focused Go CLI use the same
 application identities, validation, reviewed configuration and durable worker.
 No model, MCP server, separate collector or additional database is required.
 
 ## Diagnostics
 
-Application Overview includes the serving release, latest operation, failed stage,
-duration, checks, pending changes and bounded incident history. Serving state is
-independent of the latest deployment result. Open failed stage leads to that
-operation's existing log viewer. Runtime and deployment logs support pause/resume,
+Application Overview shows the serving release, latest operation and one issue
+alert when something needs attention. Opening the alert goes to Deployments or
+the route editor, never a separate diagnostics table. Activity is the single
+collapsible incident history. Runtime and deployment logs support pause/resume,
 search, filtered copy and text download; retained client windows remain bounded.
 Opening a Compose service from Overview keeps its log connection across unrelated
 inventory refreshes, just like selecting that service in the Logs tab.
@@ -20,6 +20,8 @@ rotation. Samples carry their own times, age and a stale flag after 60 seconds.
 Unavailable statistics remain unobserved. CPU needs two valid samples; memory is
 Docker's reported usage, not an estimate of free host RAM. Inspect verifies exact
 instance/application ownership before projecting state, exit code, restarts or OOM.
+Container details show the latest measured CPU and memory. Compose service cards
+show the summed CPU and memory of their containers next to port and volume facts.
 
 The data-filesystem check measures the filesystem containing Shipper's metadata.
 It does not claim to measure a remote Docker daemon's disk or the Docker Desktop
