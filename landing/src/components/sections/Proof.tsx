@@ -96,6 +96,9 @@ function Proof3() {
                 <div className="pt-3">
                   <Check>No dashboard account between you and your server.</Check>
                 </div>
+                <div className="pt-3">
+                  <Check>Invite collaborators with Admin, Developer, or Viewer roles.</Check>
+                </div>
               </div>
               <div className="mt-5 border-t border-white/[0.08] pt-4">
                 <ActionPrimary href="#get-shipper" />

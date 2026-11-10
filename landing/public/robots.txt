@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /variants
+Disallow: /v/
+
+Sitemap: https://shipperkit.dev/sitemap.xml

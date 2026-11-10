@@ -136,7 +136,7 @@ function Hero2() {
           <div className="relative animate-scale-in [animation-delay:120ms]">
             <Screenshot
               src="/shots/overview.png"
-              alt="Shipper application overview with deployment status and diagnostics"
+              alt="Shipper application overview with deployment status and release health"
               priority
               frameClassName="[transform:perspective(1900px)_rotateY(-3deg)] origin-left"
             />

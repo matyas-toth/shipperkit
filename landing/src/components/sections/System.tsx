@@ -270,8 +270,8 @@ function System6() {
         />
         <div className="mt-16 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <Screenshot
-            src="/shots/diagnostics.png"
-            alt="Shipper diagnostics view with deployment checks and service details"
+            src="/shots/container-drawer.png"
+            alt="Shipper container details with CPU, memory and restart facts"
           />
           <div className="rounded-2xl border border-white/[0.1] bg-[#080909] p-8">
             <div className="flex items-center justify-between">
