@@ -279,10 +279,13 @@ the links as one horizontal scroll strip.
 - The latest copy and off-server storage are full-width facts, not side cards, so
   a destination table never squeezes the recovery controls.
 - Recovery tools are two full-width rows. Recovery key carries the download
-  action; Recover an installation expands into the restore command and its four
+  action; Load a save expands into the three-step first-run flow and its four
   facts. Do not place a download button beside a disclosure summary.
-- Keep the restore command in monospace and the facts in a compact definition
-  list. The page never hides the destructive consequence of recovery.
+- Never print terminal commands. Full-instance recovery runs on the first-run
+  setup card: the administrator uploads the archive and recovery key, sees
+  restart progress, then signs in with the saved administrator. The Recovery page
+  explains that flow and keeps the archives and key one click away.
+- The page never hides the destructive consequence of recovery.
 
 ### Users
 

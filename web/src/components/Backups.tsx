@@ -559,17 +559,21 @@ export default function Backups(props: {
               </article>
               <details class="recovery-tool recovery-restore">
                 <summary class="recovery-tool-row">
-                  <span class="recovery-tool-icon"><Icon name="terminal" /></span>
+                  <span class="recovery-tool-icon"><Icon name="upload" /></span>
                   <div class="recovery-tool-copy">
-                    <h4>Recover an installation</h4>
-                    <p>Restore an archive onto a fresh host.</p>
+                    <h4>Load a save</h4>
+                    <p>Restore a fresh install from an instance archive.</p>
                   </div>
-                  <span class="recovery-tool-toggle">View command<Icon name="chevron" /></span>
+                  <span class="recovery-tool-toggle">How it works<Icon name="chevron" /></span>
                 </summary>
                 <div class="recovery-restore-body">
-                  <pre class="recovery-command"><code>shipper restore --archive backup.age --identity shipper-recovery-key.txt --data-dir /new/shipper</code></pre>
+                  <ol class="recovery-steps">
+                    <li>Download an instance archive and the recovery key.</li>
+                    <li>Install Shipper on the new server.</li>
+                    <li>On the first screen, choose Restore a save and upload both files.</li>
+                  </ol>
                   <dl class="recovery-facts">
-                    <div><dt>Target</dt><dd>Empty data directory</dd></div>
+                    <div><dt>Restore screen</dt><dd>Fresh install, first run</dd></div>
                     <div><dt>Applications</dt><dd>Stopped after recovery</dd></div>
                     <div><dt>Schedules</dt><dd>Disabled after recovery</dd></div>
                     <div><dt>Workload data</dt><dd>Separate database and volume backups</dd></div>
