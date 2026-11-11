@@ -542,7 +542,7 @@ html.intro-active .intro {
   margin: calc(var(--intro-size) / -2) 0 0 calc(var(--intro-size) / -2);
   opacity: 0;
   animation: intro-pulse 1420ms cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
-  will-change: transform, opacity;
+  will-change: opacity;
 }
 
 .intro-mark svg {
@@ -550,79 +550,34 @@ html.intro-active .intro {
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 20px 60px rgba(0, 0, 0, 0.5));
 }
 
 .intro-mark.is-leaving {
   animation: none;
   opacity: 1;
-  will-change: transform, opacity;
-}
-
-.intro-mark.is-leaving .intro-halo {
-  animation: none;
-  opacity: 0;
-}
-
-.intro-halo {
-  position: absolute;
-  inset: -150%;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0) 70%);
-  animation: intro-halo 1420ms ease-in-out both;
 }
 
 @keyframes intro-pulse {
   0% {
     opacity: 0;
-    transform: scale(0.9);
   }
-  7% {
+  8% {
     opacity: 1;
-    transform: scale(1);
   }
-  22% {
-    transform: scale(1.055);
+  28% {
+    opacity: 0.6;
   }
-  40% {
-    transform: scale(1);
+  46% {
+    opacity: 1;
   }
   62% {
-    transform: scale(1.075);
+    opacity: 0.62;
   }
-  83% {
-    transform: scale(1);
+  80% {
+    opacity: 1;
   }
   100% {
     opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes intro-halo {
-  0% {
-    opacity: 0;
-    transform: scale(0.7);
-  }
-  22% {
-    opacity: 0.8;
-    transform: scale(1);
-  }
-  40% {
-    opacity: 0.35;
-    transform: scale(0.94);
-  }
-  62% {
-    opacity: 0.95;
-    transform: scale(1.06);
-  }
-  83% {
-    opacity: 0.4;
-    transform: scale(0.98);
-  }
-  100% {
-    opacity: 0.5;
-    transform: scale(1);
   }
 }
 

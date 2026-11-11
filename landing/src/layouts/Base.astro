@@ -104,20 +104,14 @@ const structuredData = {
       <div class="intro" id="intro" aria-hidden="true">
         <svg class="intro-curtain" xmlns="http://www.w3.org/2000/svg" focusable="false">
           <defs>
-            <radialGradient id="intro-field-fill" cx="50%" cy="44%" r="80%">
-              <stop offset="0%" stop-color="#1b1c1c" />
-              <stop offset="54%" stop-color="#121313" />
-              <stop offset="100%" stop-color="#0a0b0b" />
-            </radialGradient>
             <mask id="intro-hole" maskUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%" style="mask-type:luminance">
               <rect x="0" y="0" width="100%" height="100%" fill="#fff" />
               <path id="intro-hole-path" d={mark} fill="#000" />
             </mask>
           </defs>
-          <rect id="intro-field" x="0" y="0" width="100%" height="100%" fill="url(#intro-field-fill)" />
+          <rect id="intro-field" x="0" y="0" width="100%" height="100%" fill="#111212" />
         </svg>
         <div class="intro-mark" id="intro-mark">
-          <span class="intro-halo"></span>
           <svg viewBox="0 0 81 81" xmlns="http://www.w3.org/2000/svg" focusable="false">
             <path d={mark} fill="#fff" />
           </svg>
@@ -146,8 +140,6 @@ const structuredData = {
           var BOX = 81;
           var CENTER = BOX / 2;
           var ROTATION = 20;
-          var BLOOM = 0.28;
-          var BLOOM_SCALE = 2.6;
           var PULSE = 1420;
           var REVEAL = 1000;
           var forced = /[?&]intro(?:=|&|$)/.test(location.search);
@@ -223,21 +215,15 @@ const structuredData = {
             var target = endScale(cx, cy);
             markEl.classList.add("is-leaving");
             markEl.style.opacity = "1";
-            markEl.style.transform = "scale(1)";
             field.setAttribute("mask", "url(#intro-hole)");
             hole.setAttribute("transform", transform(cx, cy, 0, base));
             var started = performance.now();
 
             function frame(now) {
               var progress = Math.min(1, (now - started) / REVEAL);
-              var bloomProgress = Math.min(1, progress / BLOOM);
-              var bloom = 1 + (BLOOM_SCALE - 1) * (1 - Math.pow(1 - bloomProgress, 3));
-              var zoom = Math.max(0, (progress - BLOOM) / (1 - BLOOM));
-              var eased = 0.5 - 0.5 * Math.cos(Math.PI * zoom);
-              var scale = base * bloom * Math.pow(target / (base * BLOOM_SCALE), eased);
-              hole.setAttribute("transform", transform(cx, cy, ROTATION * eased, scale));
-              markEl.style.transform = "scale(" + (1 + 0.06 * bloomProgress) + ")";
-              markEl.style.opacity = String(Math.max(0, 1 - progress / 0.14));
+              var eased = 1 - Math.pow(1 - progress, 2);
+              hole.setAttribute("transform", transform(cx, cy, ROTATION * eased, base * Math.pow(target / base, eased)));
+              markEl.style.opacity = String(progress < 0.03 ? 1 : Math.max(0, 1 - (progress - 0.03) / 0.15));
               field.setAttribute("opacity", progress <= 0.86 ? 1 : Math.max(0, 1 - (progress - 0.86) / 0.14));
               if (progress < 1) window.requestAnimationFrame(frame);
               else finish();
