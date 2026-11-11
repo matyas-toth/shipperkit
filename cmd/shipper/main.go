@@ -110,6 +110,11 @@ func run() error {
 		}
 		return store.RestoreCheckpoint(context.Background(), dataDir, id)
 	}
+	if len(os.Args) == 1 {
+		if e := deploy.ApplyPendingRestore(dataDir); e != nil {
+			slog.Error("Staged instance restore could not be applied", "error", e)
+		}
+	}
 	db, err := store.Open(dataDir)
 	if err != nil {
 		return err
@@ -343,7 +348,7 @@ func run() error {
 		worker.Run(ctx)
 	}()
 	addr := env("SHIPPER_ADDR", "127.0.0.1:8080")
-	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator, Updates: updateService}
+	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator, Updates: updateService, DataDir: dataDir, Restart: cancel}
 	if !configured && os.Getenv("SHIPPER_SETUP_TOKEN") == "" {
 		apiConfig.SetupClaim = func() (string, error) { return auth.ReadSetupClaim(dataDir) }
 	}

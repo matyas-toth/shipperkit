@@ -48,6 +48,8 @@ type Config struct {
 	Operations     *operations.Service
 	Updates        *updates.Service
 	OAuth          *OAuthEndpoints
+	DataDir        string
+	Restart        func()
 }
 type Server struct {
 	terminalMu sync.Mutex
@@ -120,6 +122,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		r.Get("/auth/session", s.currentSession)
 		r.Get("/auth/methods", s.authMethods)
 		r.With(s.limit, s.hashCapacity).Post("/auth/setup", s.setup)
+		r.With(s.limit).Post("/auth/restore", s.restoreInstance)
 		r.With(s.limit, s.hashCapacity).Post("/auth/login", s.login)
 		s.factorRoutes(r)
 		r.Group(func(r chi.Router) {
@@ -263,7 +266,7 @@ func (s *Server) origin(next http.Handler) http.Handler {
 		}
 		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
 			kind, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type"))
-			if kind != "application/json" && !(kind == "application/x-tar" && r.URL.Path == "/api/sources") && !(kind == "multipart/form-data" && (strings.HasSuffix(r.URL.Path, "/protection/import") || strings.HasSuffix(r.URL.Path, "/database/import"))) {
+			if kind != "application/json" && !(kind == "application/x-tar" && r.URL.Path == "/api/sources") && !(kind == "application/octet-stream" && r.URL.Path == "/api/auth/restore") && !(kind == "multipart/form-data" && (strings.HasSuffix(r.URL.Path, "/protection/import") || strings.HasSuffix(r.URL.Path, "/database/import"))) {
 				s.problem(w, 415, "json_required", "Send the request as JSON")
 				return
 			}

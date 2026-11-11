@@ -31,6 +31,7 @@ enrollment. Tokens never reach administration routes.
 | GET | `/api/auth/session` | Public | `setupRequired`, nullable `user`, `role`, `hasPassword`, `factor`, `authStep` and session `csrfToken` |
 | GET | `/api/auth/methods` | Public | Enabled `password`, `google`, `github` and `discord` booleans |
 | POST | `/api/auth/setup` | Setup capability | Create the first administrator |
+| POST | `/api/auth/restore` | Setup capability | Validate an encrypted instance archive and restart into it; first run only |
 | POST | `/api/auth/login` | Public | Email and password sign-in; denied when password login is disabled |
 | POST | `/api/auth/logout` | Cookie + CSRF | Revoke the current session |
 | POST | `/api/auth/password` | Restricted session + CSRF | Replace a temporary password with a different permanent password |
@@ -75,10 +76,14 @@ Every cookie mutation, including all account and provider actions, requires
 Session clients keep `/api` with cookie + CSRF. Automation uses an explicitly
 allowlisted subset under `/api/v1` with `Authorization: Bearer TOKEN` and the same
 handlers, validation, ownership and durable worker. Capabilities are `read`,
-`logs`, `deploy`, `execute`, `secrets`, `destructive`, and `host-admin`, optionally
-restricted to application IDs. Empty application scope means the whole instance.
-Tokens expire, can be revoked, and are never interchangeable with browser sessions
-or legacy application deploy tokens. Unsupported v1 routes are denied by default.
+`logs`, `deploy`, `execute`, `secrets`, `destructive`, `host-admin`, and `full`,
+optionally restricted to application IDs. Empty application scope means the whole
+instance. `full` covers the application surface for the selected applications:
+settings, environment, command bodies, secret reveals, domains, releases, backups,
+tasks and deletion. It never
+reaches administration routes, terminals or instance recovery. Tokens expire, can
+be revoked, and are never interchangeable with browser sessions or legacy
+application deploy tokens. Unsupported v1 routes are denied by default.
 
 | Session path | Contract | Automation capability |
 | --- | --- | --- |
@@ -101,6 +106,7 @@ or legacy application deploy tokens. Unsupported v1 routes are denied by default
 | `POST /applications/{id}/tasks/{task}/run` | Existing saved-task queue | execute |
 | `POST /applications/{id}/variables/reveal` | Explicit secret read | secrets |
 | `POST /applications/{id}/delete` | Existing named confirmation and scoped deletion | destructive |
+| Existing application routes through the same handlers | Environment, domains, name, lifecycle, compose, backups and other application edits | full, filtered to application scope |
 
 Read-only projections omit command bodies; `commandsKeep:true` preserves those
 fields during a round-trip update. Secret variables keep the existing retention
@@ -123,7 +129,8 @@ review a pinned image.
 
 See [operations](operations.md) for bounds, CLI syntax, credential storage,
 notification delivery and cleanup/recovery guarantees. The existing routes below
-remain supported; this section does not expose every session route to tokens.
+remain supported. `full` exposes the application workspace to tokens;
+administration, terminals and instance recovery stay interactive.
 
 Session routes are same-origin and prefixed with `/api`. Public provider callbacks
 are documented in [authentication](authentication.md); signed webhooks and Bearer

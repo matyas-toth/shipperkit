@@ -87,6 +87,12 @@ The installer remains the recovery path. Run it with a pinned version, or rerun
 the latest one-liner. Review the checks with `--check` before applying. Keep an
 off-host encrypted instance backup independently of these local checkpoints.
 
+To load an instance save, install Shipper on the new server and choose
+**Restore a save** on the first screen. Upload the latest instance archive and its
+recovery key. Shipper validates the archive, restarts with the saved
+administration, and starts with applications stopped and schedules disabled. The
+CLI `shipper restore` remains available for automated or offline recovery.
+
 The host's OS and Docker patch policy remains operator managed. System reports
 boot services, the distribution's security updates service, clock synchronization
 and whether a reboot is required. Run disruptive maintenance in a planned window

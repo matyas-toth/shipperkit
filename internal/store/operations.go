@@ -22,11 +22,20 @@ type OperationToken struct {
 	CreatedAt    int64    `json:"createdAt"`
 }
 
+var applicationScopes = map[string]struct{}{
+	"read": {}, "logs": {}, "deploy": {}, "execute": {}, "secrets": {}, "destructive": {},
+}
+
 func (t OperationToken) Allows(scope, app string) bool {
 	found := false
 	for _, s := range t.Scopes {
 		if s == scope {
 			found = true
+		}
+		if s == "full" && scope != "host-admin" {
+			if _, ok := applicationScopes[scope]; ok {
+				found = true
+			}
 		}
 	}
 	if !found {
