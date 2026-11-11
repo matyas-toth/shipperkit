@@ -17,3 +17,4 @@ playwright-report/
 
 
 internal/startup/assets/*.gz
+cli/dist/

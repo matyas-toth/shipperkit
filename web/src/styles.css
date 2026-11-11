@@ -12222,3 +12222,44 @@ input[type="checkbox"]:disabled {
   font-size: 12px;
   line-height: 18px;
 }
+
+/* The browser half of the CLI device authorization flow. */
+.cli-authorize {
+  display: grid;
+  place-items: center;
+  min-height: calc(100dvh - 120px);
+  padding: 40px 24px;
+}
+.cli-authorize .auth-card {
+  width: min(460px, 100%);
+}
+.cli-facts {
+  display: grid;
+  margin: 0 0 18px;
+}
+.cli-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-muted);
+  font-size: 13px;
+}
+.cli-facts > div:first-child {
+  border-top: 0;
+}
+.cli-facts dt {
+  color: var(--muted);
+}
+.cli-facts dd {
+  margin: 0;
+  color: var(--text);
+  text-align: right;
+}
+.cli-actions {
+  display: flex;
+  gap: 8px;
+}
+.cli-actions .button {
+  flex: 1;
+}

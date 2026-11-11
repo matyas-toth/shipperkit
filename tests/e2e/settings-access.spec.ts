@@ -27,3 +27,16 @@ test("user provisioning and provider settings send session CSRF tokens", async (
   expect((await saved).status()).toBe(200);
   await expect(page.locator("#authentication .error-notice")).toHaveCount(0);
 });
+
+test("CLI authorization renders for administrators", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/");
+  await page.getByLabel("Email", { exact: true }).fill(account.email);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Applications", exact: true })).toBeVisible();
+  await page.goto("/cli/authorize?state=" + "a".repeat(32) + "&port=53682&name=workstation");
+  await expect(page.getByRole("heading", { name: "Authorize the CLI.", exact: true })).toBeVisible();
+  await expect(page.getByText("Full app access", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Authorize CLI", exact: true })).toBeVisible();
+});
