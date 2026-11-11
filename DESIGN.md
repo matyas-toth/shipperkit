@@ -406,6 +406,22 @@ the four-stage editor without service tabs.
 - Configuration edits use Review changes and one review for the entire draft.
   Reviews list field names and effects without repeating secret values.
 
+### Selects and checkboxes
+
+- Selects use the same 40 px surface, radius and inset shadow as text inputs, and
+  draw the chevron inside the control. Never rely on the platform arrow.
+- The option list uses the surface color and `color-scheme: dark`, so the native
+  popup stays dark. Keyboard behavior remains native.
+- Checkboxes are 16 px squares with a 4 px radius on the input surface. Checked
+  is a near-white fill with a dark check, matching the primary action. Hover and
+  focus reuse the input ring.
+- Keep the switch (`update-switch`) for a single setting that applies
+  immediately. Use checkboxes for multi-select lists, acknowledgements and
+  optional behavior inside a form.
+- The compact app section select is a navigation tab, not a form control, and
+  opts out of the select skin.
+- Forced-colors mode falls back to the platform controls.
+
 ## Failure surfaces
 
 - Application issues use one alert above the overview facts. The alert names the
