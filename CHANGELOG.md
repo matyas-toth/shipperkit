@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.26](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.25...v1.0.0-rc.26) (2026-11-11)
+
+
+### Features
+
+* load instance saves from the first-run UI ([#62](https://github.com/matyas-toth/shipperkit/issues/62)) ([895e273](https://github.com/matyas-toth/shipperkit/commit/895e27312e1c32540b2b5f8b4f40c1e495386526))
+
 ## [1.0.0-rc.25](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.24...v1.0.0-rc.25) (2026-11-11)
 
 
