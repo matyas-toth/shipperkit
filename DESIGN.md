@@ -406,6 +406,27 @@ the four-stage editor without service tabs.
 - Configuration edits use Review changes and one review for the entire draft.
   Reviews list field names and effects without repeating secret values.
 
+### Selects and checkboxes
+
+- Selects use the same 40 px surface, radius and inset shadow as text inputs, and
+  draw the chevron inside the control. Never rely on the platform arrow.
+- Opening a select renders a portalled listbox on the surface with the overlay
+  shadow and a check on the current option. The menu snaps to roughly three
+  quarters of its height, then settles to full height with an ease-out. The select
+  keeps focus, `aria-expanded`, `aria-controls` and `aria-activedescendant`, so
+  keyboard and assistive technology get the same menu. Touch devices keep the
+  platform picker.
+- Checkboxes are 16 px squares with a 4 px radius on the input surface. Checked
+  is a near-white fill with a dark check that springs in with a slight overshoot,
+  matching the primary action. The box presses in on pointer down. Hover and
+  focus reuse the input ring.
+- Keep the switch (`update-switch`) for a single setting that applies
+  immediately. Use checkboxes for multi-select lists, acknowledgements and
+  optional behavior inside a form.
+- The compact app section select is a navigation tab, not a form control, and
+  opts out of the select skin.
+- Forced-colors mode falls back to the platform controls.
+
 ## Failure surfaces
 
 - Application issues use one alert above the overview facts. The alert names the
