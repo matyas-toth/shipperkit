@@ -73,7 +73,7 @@ function Agents1() {
             </div>
             <div className="mt-9 flex flex-wrap gap-3">
               <ActionPrimary href="#get-shipper" />
-              <ActionSecondary href="https://github.com/matyas-toth/shipperkit/blob/main/docs/api.md" external>
+              <ActionSecondary href="/docs/api-tokens/">
                 Read the API docs
               </ActionSecondary>
             </div>

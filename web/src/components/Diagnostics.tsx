@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
+import { docs } from "../docs";
 import { Button, Status } from "./Controls";
 import { Icon } from "./Icon";
 import { createdDate, statusLabel } from "../data";
@@ -43,6 +44,7 @@ export function ApplicationIssue(props: { diagnostic?: Diagnostic; domains: (hos
       <div class="application-issue-body">
         <strong>{issue() ? issueTitle() : "Deployment failed"}</strong>
         <span>{issue()?.summary || failed()?.error || props.diagnostic?.failedStage}</span>
+        <a class="docs-link application-issue-link" href={docs("diagnostics/")} target="_blank" rel="noreferrer">Troubleshooting</a>
       </div>
       <Button small onClick={() => route() ? props.domains(issue()!.summary) : !issue() && failed() ? props.view(failed()!.id) : props.deployments()}>
         {route() ? "Inspect route" : !issue() && failed() ? "View deployment" : "View deployments"}

@@ -1,0 +1,89 @@
+---
+import Default from "@astrojs/starlight/components/Head.astro";
+
+interface DocsRoute {
+  id: string;
+  entry: { data: { title: string; description?: string } };
+}
+
+const route = (Astro.locals as { starlightRoute?: DocsRoute }).starlightRoute;
+const site = Astro.site ?? new URL("https://shipperkit.dev");
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const canonical = new URL(Astro.url.pathname, site);
+const title = route?.entry.data.title ?? "Shipper documentation";
+const description = route?.entry.data.description ?? "Shipper documentation";
+const isHome = Astro.url.pathname.replace(/\/$/, "") === base;
+const docsHome = new URL(`${base}/`, site).href;
+
+const breadcrumbs = [
+  { "@type": "ListItem", position: 1, name: "Docs", item: docsHome },
+  ...(!isHome
+    ? [{ "@type": "ListItem", position: 2, name: title, item: canonical.href }]
+    : []),
+];
+
+const graph = [
+  {
+    "@type": "WebSite",
+    "@id": `${site.origin}/#website`,
+    url: site.href,
+    name: "Shipper",
+    description:
+      "A lightweight, self-hosted application platform for the server you already own.",
+    publisher: { "@id": `${site.origin}/#organization` },
+    inLanguage: "en",
+  },
+  {
+    "@type": "Organization",
+    "@id": `${site.origin}/#organization`,
+    name: "Shipper",
+    url: site.href,
+    logo: new URL("/shipper.svg", site).href,
+    sameAs: ["https://github.com/matyas-toth/shipperkit"],
+  },
+  isHome
+    ? {
+        "@type": "CollectionPage",
+        "@id": canonical.href,
+        url: canonical.href,
+        name: title,
+        description,
+        isPartOf: { "@id": `${site.origin}/#website` },
+        about: {
+          "@type": "SoftwareApplication",
+          name: "Shipper",
+          applicationCategory: "DeveloperApplication",
+          operatingSystem: "Linux",
+          license: "https://opensource.org/license/mit",
+          offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+        },
+        inLanguage: "en",
+      }
+    : {
+        "@type": "TechArticle",
+        "@id": canonical.href,
+        url: canonical.href,
+        headline: title,
+        description,
+        mainEntityOfPage: canonical.href,
+        isPartOf: { "@id": `${site.origin}/#website` },
+        author: { "@id": `${site.origin}/#organization` },
+        publisher: { "@id": `${site.origin}/#organization` },
+        image: new URL("/og.png", site).href,
+        inLanguage: "en",
+        about: { "@type": "SoftwareApplication", name: "Shipper" },
+      },
+  {
+    "@type": "BreadcrumbList",
+    "@id": `${canonical.href}#breadcrumb`,
+    itemListElement: breadcrumbs,
+  },
+];
+---
+<Default />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<meta name="author" content="Shipper" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<link rel="alternate" type="text/plain" href={`${base}/llms.txt`} title="LLM documentation index" />
+<script type="application/ld+json" is:inline set:html={JSON.stringify({ "@context": "https://schema.org", "@graph": graph })} />

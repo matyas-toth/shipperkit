@@ -1,0 +1,36 @@
+---
+import Search from "@astrojs/starlight/components/Search.astro";
+import SocialIcons from "@astrojs/starlight/components/SocialIcons.astro";
+import SiteTitle from "./DocsSiteTitle.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const path = Astro.url.pathname.replace(/\/$/, "");
+const links = [
+  { href: `${base}/install/`, label: "Install", match: `${base}/install` },
+  { href: `${base}/recovery/`, label: "Recovery", match: `${base}/recovery` },
+  { href: `${base}/diagnostics/`, label: "Troubleshooting", match: `${base}/diagnostics` },
+];
+---
+<div class="docs-header">
+  <div class="docs-header-title"><SiteTitle /></div>
+  <nav class="docs-header-nav" aria-label="Documentation shortcuts">
+    {links.map((link) => (
+      <a
+        href={link.href}
+        class:list={{ active: path === link.match }}
+      >
+        {link.label}
+      </a>
+    ))}
+  </nav>
+  <div class="docs-header-search"><Search /></div>
+  <div class="docs-header-right">
+    <div class="docs-header-social"><SocialIcons /></div>
+    <a class="docs-header-site" href="/">
+      shipperkit.dev
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M4 12 12 4M6 4h6v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    </a>
+  </div>
+</div>

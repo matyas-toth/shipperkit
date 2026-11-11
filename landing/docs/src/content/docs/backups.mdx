@@ -1,0 +1,172 @@
+---
+title: Shipper backups and off-server storage
+description: Encrypted Shipper instance archives, the recovery key, S3-compatible off-server storage, application database and volume backups, retention, and a restore test you can repeat.
+---
+
+Shipper separates two kinds of protection:
+
+- **Instance recovery** protects Shipper itself: the database, applications, releases, settings, credentials, and instance identity.
+- **Application data plans** protect databases and writable volumes owned by one application or Compose service.
+
+A local-only backup cannot survive loss of the VPS. Every production instance needs an off-server copy and a tested restore.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/recovery.png" target="_blank" rel="noreferrer"><img src="/docs/shots/recovery.png" alt="Shipper Settings Recovery screen with the latest recovery copy, S3 destination, recovery key, schedules, and history" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Recovery keeps the latest copy, off-server storage, recovery key, schedules, and history on one screen.</figcaption>
+</figure>
+
+## Start with the recovery key
+
+Open **Settings → Recovery** and choose **Download recovery key**. Save that file in a password manager or another location separate from both the VPS and its backup bucket.
+
+The key is an age X25519 recovery identity. It decrypts instance archives without depending on a key on the lost host. Anyone with both the archive and the key can read the installation's credentials.
+
+Shipper stores an encrypted copy of the recovery identity on the instance for convenience. That copy is not a substitute for the downloaded file. If the host and the downloaded key are both lost, the archive cannot be decrypted.
+
+## Create an instance recovery plan
+
+1. Open **Settings → Recovery**.
+2. Choose **New backup** or **Add schedule**.
+3. Select the instance as the source.
+4. Choose a schedule if the plan should run automatically.
+5. Open **Storage and retention**.
+6. Choose **Local disk** or **Local + S3 destination**.
+7. Set how many completed copies to keep, from 1 to 100. The default is 7.
+8. Run the plan once and download an archive, or confirm the object exists in the bucket.
+
+An instance archive contains:
+
+- An online SQLite snapshot.
+- The original `encryption.key`.
+- Encrypted source, registry, and database credentials.
+- Applications, releases, tasks, schedules, and domains.
+- Instance identity, proxy configuration, and ACME state when present.
+- Referenced immutable local source snapshots.
+
+An instance archive does **not** contain Docker images, BuildKit caches, Git working copies, every application volume, or a database dump. Protect workload data with separate plans.
+
+## Configure off-server storage
+
+Open **Settings → Recovery → Off-server storage → Add S3 destination**.
+
+| Field | What to enter |
+| --- | --- |
+| Endpoint | S3-compatible endpoint, for example `https://s3.eu-central-1.amazonaws.com` or your provider's endpoint |
+| Region | Bucket region, for example `eu-central-1` |
+| Bucket | Bucket name |
+| Prefix | A dedicated prefix for this Shipper instance |
+| Access key | Key with access only to that prefix |
+| Secret key | Secret for the access key |
+| Private endpoint | Opt in only for a private address or plain HTTP endpoint |
+
+S3 uses AWS Signature Version 4, HTTPS by default, and no redirects. Private endpoints and HTTP require explicit opt-in. ETags are never treated as content checksums.
+
+Give the credential access only to the chosen prefix. Bucket policies, provider-side encryption, object locking, and lifecycle rules remain under your control.
+
+Deleting a plan preserves its existing archives. Destination targets are captured per run, so changing a bucket or prefix does not redirect deletion of historical objects. Rotating credentials for the same endpoint and bucket updates access to those objects.
+
+## Schedules and retention
+
+The shared schedule picker covers minute intervals, hourly, daily, selected weekdays, and monthly schedules. It shows a copyable cron expression and the next three runs in the selected IANA timezone.
+
+- **Custom cron** preserves patterns the picker does not support.
+- Five-field cron uses UTC-minute iteration. Missing daylight-saving times are skipped and repeated times occur twice.
+- A restricted day-of-month and day-of-week use cron OR semantics.
+- Monthly days that do not exist are skipped.
+- The preview uses the same backend calculation as the scheduler.
+- Backup schedules collapse missed runs into one attempt and skip occurrences while the application is busy.
+
+Expiration runs only after a new successful backup and removes only recorded objects beneath this instance's prefix. Failed or interrupted attempts remain in history. A failed upload removes its new local artifact so a scheduled failure cannot fill the disk with unretained archives.
+
+Archives have a 2 GiB plaintext inventory limit and a 30-minute operation deadline. Temporary files are private, streaming bounds avoid loading whole dumps into RAM, and interrupted staging is cleaned when the worker reacquires the job.
+
+## Protect application data
+
+Open an application and choose **Backups**, or open a single Compose service. Each plan has one source, one destination, and a retention count.
+
+| Source | Supported format and consistency |
+| --- | --- |
+| PostgreSQL | Native `pg_dump` custom archive of one database, consistent snapshot, no ownership or ACL replay |
+| MySQL | Native SQL dump of one database, global read lock with routines, events, triggers, and binary data |
+| MariaDB | Native `mariadb-dump`, same explicit global-read-lock boundary |
+| MongoDB | Native `mongodump` gzip archive of one database, restored under a new namespace |
+| ClickHouse, SQLite, Redis | Cold archive of the engine data volume, including numeric ownership and modes |
+| Named volume | Cold archive of regular files, directories, and internal relative symlinks, including numeric ownership and modes |
+
+Database tools run inside the selected Shipper-owned service against its loopback endpoint. Default credentials can come from the service's `POSTGRES_*`, `MYSQL_*`, `MARIADB_*`, or `MONGO_INITDB_*` environment. Explicit overrides are encrypted at rest.
+
+Initialization variables are not proof that a password is still current. Supply the current credential if it changed. `_FILE` secrets and custom images may require explicit credentials. The selected engine must match the native tools in that image.
+
+MySQL and MariaDB dumps can briefly block writes. Pause schema changes during a native dump. Live raw archives of database directories are not supported.
+
+For a cold volume backup, stop every mounted writer through Shipper first so normal shutdown hooks run. Shared or foreign mounts, running or paused containers, escaping links, devices, and hard links are rejected. Bind mounts, sockets, device files, extended attributes, and external volume-driver guarantees are outside the archive boundary.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/backups.png" target="_blank" rel="noreferrer"><img src="/docs/shots/backups.png" alt="Shipper application Backups screen with protection status, schedules, history, and restore actions" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Application backups are separate from instance recovery. Both are needed.</figcaption>
+</figure>
+
+## Restore a copy
+
+Select a completed backup in **History → Restore a copy**.
+
+### Database restore
+
+Database restores require a new database name. An existing database is never silently replaced. The engine and native tool version must match the archive.
+
+1. Restore the copy.
+2. Inspect the restored records.
+3. Test the application against the restored database.
+4. Switch the connection string through **.env → Review changes**.
+5. Keep the previous database available for the rollback window.
+
+A database restore runs a create, insert, and select check in the restored copy. That is a database check, not proof that every application query works.
+
+### Volume restore
+
+A volume restore creates a new owned retained volume and compares its file contents, modes, owners, and links against the archive.
+
+1. Choose **Attach**.
+2. Select the application's logical volume.
+3. Review the configuration change.
+4. Deploy or restart so the application mounts the restored volume.
+
+The source volume is preserved. Ownership mismatches are rejected. Retained volumes left by deleted applications are discoverable in **Settings → Recovery**.
+
+### Import an archive
+
+**Import backup** accepts the encrypted Shipper `.age` format, including archives downloaded from S3. Supply its recovery key if it differs from the current instance's key. The archive's application identity must match. General cloning or cross-application import is later parity.
+
+Imported archives never provide trusted connection credentials. Use the matching local plan or explicit restore inputs. Restore only archives from a trusted source.
+
+## Test the restore
+
+A backup that has never been restored is a hypothesis.
+
+1. Create a disposable application or database with the same engine version.
+2. Restore the latest archive as a copy.
+3. Run a query or file check that proves the data is present.
+4. Destroy only the disposable copy after the check.
+5. Record the date, archive, size, and result.
+
+Repeat this after a database engine upgrade and after any change to `encryption.key` or the recovery key.
+
+## A practical 3-2-1 setup
+
+- **3 copies**: the live database or volume, the local Shipper archive, and the off-server S3 object.
+- **2 media**: the VPS disk and the object store.
+- **1 off-site**: a bucket in a different provider or region with credentials held outside the VPS.
+- Keep the recovery key somewhere that is neither the VPS nor the bucket.
+- Alert on backup failure and overdue protection. Shipper records both in application history and **System → Notifications**.
+- Keep enough retention to survive a slow discovery, not just the last nightly run.
+
+## What backups do not cover
+
+- Container images that the registry no longer serves.
+- BuildKit caches.
+- Git working copies and uncommitted source.
+- External object storage, DNS records, and provider accounts.
+- Secrets that only exist in a developer's environment.
+- A certificate authority decision to revoke a certificate.
+
+Retain pinned image digests and source revisions alongside the archive. A metadata backup cannot recreate an image that no registry still has.

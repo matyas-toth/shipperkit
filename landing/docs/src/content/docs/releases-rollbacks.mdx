@@ -1,0 +1,140 @@
+---
+title: Shipper releases and rollbacks
+description: What a Shipper release records, how Restore release differs from redeploy, how Compose rollback works, and why persistent data and database schema never roll back with an image.
+---
+
+A release is more than an image. Shipper records the source commit, resolved build method, runtime configuration, routes, and the image that served traffic. That record is what makes a rollback possible.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/deployments.png" target="_blank" rel="noreferrer"><img src="/docs/shots/deployments.png" alt="Shipper Deployments view with release history, status, commit, and live deployment log" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Release history stays beside the deployment log, including the serving and failed releases.</figcaption>
+</figure>
+
+## What a release records
+
+| Field | Meaning |
+| --- | --- |
+| Operation | `deploy`, `apply`, `rollback`, `restart`, or another lifecycle action |
+| State | `queued`, `building`, `starting`, `checking`, `promoting`, `succeeded`, `failed`, or `cancelled` |
+| Commit | The Git commit or local source identity used for the build |
+| Method | Dockerfile, Railpack, static, Compose, or image |
+| Image | The local image ID that served the release |
+| Config snapshot | Runtime settings, variables metadata, health path, port, and limits |
+| Services | Compose services and their route targets |
+| Duration | From start to the final state |
+| Error | The failed stage and message, when the release failed |
+
+Secrets are not stored in the release log. The config snapshot retains variable metadata and encrypted values, not readable secret text.
+
+## Deploy is not apply
+
+- **Redeploy** fetches the source again and builds a new image. Use it for a new commit or an uncached rebuild.
+- **Review changes → Apply** saves configuration and reuses the active image when the saved model can represent the change safely.
+- **Restart** restarts the current workload without rebuilding.
+- **Restore release** creates a new durable deployment from an older recorded release.
+
+Runtime-only edits such as a health path, memory limit, or environment value can reuse the pinned image. A source, Dockerfile, or build-method change requires a new build.
+
+## Restore a previous release
+
+1. Open **Deployments**.
+2. Select a previous successful release.
+3. Choose **Restore release**.
+4. Review the comparison of runtime configuration, retained domains and data, and skipped deployment migrations.
+5. Confirm.
+
+Shipper rejects stale state before enqueueing. The target must belong to this application, and every recorded local image artifact must still exist.
+
+Restoration creates a new deployment with a `rollbackId`. It reuses the target's recorded code and runtime settings and keeps current domains and push policy where the restored source supports GitHub triggers.
+
+Image, inline, and unconnected sources disable push deployment after a rollback. Before-deploy and after-deploy commands are skipped. Before-start still runs when its foreground container actually starts. The serving release's before-stop hook and graceful stop apply during replacement.
+
+A failed single-container readiness check or promotion preserves the previous serving release. Compose attempts to restore the previous pinned stack and its stopped or running intent if reconciliation fails.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/failed.png" target="_blank" rel="noreferrer"><img src="/docs/shots/failed.png" alt="Shipper failed deployment with the failed stage, build error, and log lines" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>A failed release names the stage and the first useful error. The serving release can remain healthy.</figcaption>
+</figure>
+
+## What rollback does not restore
+
+Persistent volume data and database schema are **not** rolled back.
+
+A historical runtime can be incompatible with newer data. If a migration added a column that the old code does not know about, the old code may run while the database is ahead. Review migration compatibility before restoring.
+
+Rollback also does not restore:
+
+- Deleted domains or certificates.
+- Environment variables that were changed after the release.
+- Application data deleted by a migration.
+- An image that an external Docker cleanup removed.
+- A source branch that no longer contains the recorded commit.
+
+Application data recovery is a separate operation. Use [Backups and off-server destinations](/docs/backups/) for database and volume restore.
+
+## Compose rollback
+
+A Compose rollback additionally needs:
+
+- The encrypted resolved plan for the target release.
+- Every named volume referenced by the plan.
+- The recorded image artifacts for each service.
+
+If the plan or an image is missing, Shipper rejects the operation. It does not fetch a changed branch or tag and call that a rollback.
+
+Compose uses its own service stop grace and stateful reconciliation. It has no blue-green traffic drain. A single-container release can optionally keep the old release alive briefly after the routing switch.
+
+## Image retention
+
+There is no automatic image pruning yet. That is deliberate: a rollback needs the image it recorded.
+
+External cleanup can make an older release unavailable:
+
+```sh
+docker image prune -a
+docker system prune
+```
+
+Neither is a supported maintenance command for a Shipper host. Use **System → Maintenance** and review what is protected by recorded releases. If you remove an image manually, verify that no release record points at it.
+
+## Roll back from the CLI
+
+The CLI uses the same reviewed rollback boundary:
+
+```sh
+shipper rollback shop --operation RELEASE_ID
+shipper rollback shop --operation RELEASE_ID --revision REVISION_ID --apply
+```
+
+`rollback` first returns a review revision. Applying with a stale revision fails. Use `shipper watch` to follow the durable operation.
+
+## Verify after a rollback
+
+1. The deployment state is **Succeeded**.
+2. The serving release is the restored release.
+3. **Overview → Diagnostics** shows the expected checks.
+4. **Domains → Verify** returns a valid response and certificate.
+5. The application log no longer shows the failure that triggered the rollback.
+6. A real read and write through the public hostname succeeds.
+
+If the application starts but reads the wrong data, rollback is not the fix. Stop and reconcile the data first.
+
+## When not to roll back
+
+- A migration already changed the schema in a way the old code cannot read.
+- The old image is gone.
+- The failure is DNS, TLS, or a proxy route, not the application.
+- The failure is a dependency that both releases use.
+- The data was corrupted before the release.
+
+In those cases, fix the layer that failed or restore data deliberately. A rollback is a code and runtime operation, not a time machine.
+
+## Keep a rollback window
+
+- Keep at least three successful releases with their images.
+- Record the commit and image digest in your own change log.
+- Do not run broad Docker cleanup.
+- Test one rollback on a disposable application before you need it.
+- Keep the database migration reversible or forward-compatible for one release.
+
+For a failed deploy that never served traffic, you usually do not need a rollback. The previous release is still serving. Read [Diagnostics and troubleshooting](/docs/diagnostics/) and fix the build or readiness failure.

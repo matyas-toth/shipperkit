@@ -1,6 +1,7 @@
 import { Show, createSignal } from "solid-js";
 import { operationTime } from "../data";
 import { useUpdates } from "../context";
+import { docs } from "../docs";
 import { Button, ErrorNotice } from "./Controls";
 import { Icon } from "./Icon";
 
@@ -40,7 +41,7 @@ export default function Updates() {
 
     <Show when={error() || data()?.error || updates.error()}><ErrorNotice message={error() || data()?.error || updates.error()!.message} retry={() => void check()} /></Show>
 
-    <Show when={data()?.enabled} fallback={updates.pending() ? <span class="loading-line" aria-label="Loading updates" /> : <div class="update-unavailable"><Icon name="server" /><div><strong>Managed updates are unavailable</strong><p>This installation does not have the host update helper. Run updates with the managed installer.</p></div></div>}>
+    <Show when={data()?.enabled} fallback={updates.pending() ? <span class="loading-line" aria-label="Loading updates" /> : <div class="update-unavailable"><Icon name="server" /><div><strong>Managed updates are unavailable</strong><p>This installation does not have the host update helper. Run updates with the managed installer.</p><a class="docs-link" href={docs("updates/")} target="_blank" rel="noreferrer">Update guide</a></div></div>}>
       <Show when={active()}>
         <div class="update-progress-banner" role="status">
           <span class="status-dot is-running" />
@@ -61,6 +62,7 @@ export default function Updates() {
           <div><strong>Update failed</strong><p>{status()?.message || "Shipper restored the previous release."}</p></div>
           <Show when={available()}><Button small variant="ghost" onClick={() => void apply()}>Try again</Button></Show>
           <Button small variant="ghost" onClick={updates.open}>Details</Button>
+          <a class="docs-link" href={docs("recovery/")} target="_blank" rel="noreferrer">Recovery guide</a>
         </div>
       </Show>
       <Show when={available() && !data()?.auto && !active()}>
@@ -69,6 +71,7 @@ export default function Updates() {
           <div><strong>Update available</strong><p>Shipper {available()!.version} is ready to install. Applications stay online.</p></div>
           <div class="update-banner-actions">
             <a class="button ghost small" href={available()!.releaseUrl} target="_blank" rel="noreferrer">See what changed<Icon name="external" /></a>
+            <a class="docs-link" href={docs("updates/")} target="_blank" rel="noreferrer">Update guide</a>
             <Button variant="primary" icon="download" disabled={locked()} onClick={() => void apply()}>Update</Button>
           </div>
         </div>

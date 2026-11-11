@@ -1,0 +1,199 @@
+---
+title: Install Shipper on Ubuntu 24.04
+description: Install Shipper on one Ubuntu 24.04 x86-64 server. Check the host, open ports 80, 443 and 8080, point DNS, claim the instance, and know exactly what the installer changes.
+---
+
+Shipper runs on one dedicated Ubuntu 24.04 x86-64 server with systemd. The installer is deliberately narrow: it prepares that host, starts the control plane, and leaves application workloads alone.
+
+## Requirements
+
+| Item | Requirement |
+| --- | --- |
+| Operating system | Ubuntu 24.04, x86-64, systemd |
+| Access | Root shell, or `sudo` |
+| Memory | At least 1 GiB RAM |
+| Disk | At least 8 GiB free in `/var/lib` |
+| Container engine | Docker Engine API 1.48 or newer, with Compose and Buildx |
+| Network | Public IPv4, TCP 80, 443 and 8080 reachable |
+| Base tools | `flock` from util-linux and `ss` from iproute2 |
+| DNS | One hostname with an A record pointing at the server |
+
+These are bootstrap thresholds, not workload sizing. Application images, build caches, and database volumes need their own capacity planning.
+
+The managed installer supports Ubuntu 24.04 on x86-64 only. Other distributions and ARM hosts need a manual installation and are not covered by the installer's repair or update path.
+
+The installer reuses a compatible existing Docker engine. It refuses to continue when Docker is installed but unavailable, when only `dockerd`, `containerd`, or Podman is present without a compatible Docker CLI, or when ports 80, 443, or 8080 are already in use on a fresh host.
+
+## Open the ports
+
+Allow these inbound TCP ports at the provider firewall and in the host firewall.
+
+| Port | Purpose |
+| --- | --- |
+| `80` | ACME HTTP-01 challenges and HTTP to HTTPS redirects |
+| `443` | Dashboard and application HTTPS |
+| `8080` | First-run setup and the direct recovery path to the control plane |
+
+Port 8080 stays reachable after setup. It is the way back in when DNS or a certificate is broken. Keep it private to your own addresses where possible, but do not remove it until the dashboard domain has been verified.
+
+:::caution
+Do not place a second reverse proxy in front of Shipper during installation. Traefik is provisioned by Shipper and needs to own ports 80 and 443.
+:::
+
+## Point DNS at the server
+
+Create an A record for the dashboard hostname, for example `shipper.example.com`, pointing at the server's public IPv4 address.
+
+If you publish an AAAA record, it must point to a reachable IPv6 listener. An unreachable AAAA record breaks certificate issuance even when the A record is correct. Remove the AAAA record until IPv6 is configured.
+
+Use a low TTL while moving an existing hostname. Wait for the record to resolve from outside your network before saving the dashboard domain.
+
+```sh
+dig +short shipper.example.com
+```
+
+The answer must be the server's public address. If it is empty or points somewhere else, fix DNS before continuing.
+
+## Install
+
+The published one-liner installs the newest release on the Main channel:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash
+```
+
+Run the host checks without changing anything:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --check
+```
+
+Pin a release when you need a repeatable install:
+
+```sh
+version=1.0.0-rc.25
+origin="https://github.com/matyas-toth/shipperkit/releases/download/v$version"
+curl -fsSLO "$origin/install.sh"
+curl -fsSLO "$origin/image.txt"
+curl -fsSLO "$origin/version.txt"
+curl -fsSLO "$origin/release-url.txt"
+curl -fsSLO "$origin/SHA256SUMS"
+sha256sum -c SHA256SUMS
+sudo bash install.sh --version "$version" --check
+sudo bash install.sh --version "$version"
+```
+
+Replace the version with the current release from GitHub Releases. The image is pulled by its release digest. An interrupted update is recovered by rerunning the installer.
+
+## What the root script changes
+
+The installer writes only the paths it owns.
+
+| Path | What it contains |
+| --- | --- |
+| `/etc/shipper/` | Ownership marker, pinned image, Docker socket group, and the control-plane Compose file |
+| `/etc/shipper/instance.env` | `SHIPPER_IMAGE`, `SHIPPER_DOCKER_GID`, and any instance environment you add |
+| `/var/lib/shipper/` | SQLite database, encryption key, setup token, dashboard domain, update request and update status |
+| `/var/lib/shipper-installer/` | Install log, host status, previous image record, and interrupted-update state |
+| `/etc/systemd/system/shipper.service` | Starts the control plane after Docker and waits for health |
+| `/etc/systemd/system/shipper-host-status.timer` | Records boot service, reboot, security update, clock sync, and update helper readiness |
+| `/etc/systemd/system/shipper-update.path` and `.timer` | Watches for update requests and runs the host updater |
+| `/usr/local/bin/shipperctl` | `claim`, `rotate-claim`, `reset-password`, `reset-factor`, `status`, and `logs` |
+| `/usr/local/libexec/shipper-update` | Privileged update helper used by Settings → Updates |
+| `/usr/local/libexec/shipper-host-status` | Host status collector used by the dashboard |
+
+When Docker must be installed, the installer also writes the signed Docker package repository configuration to `/etc/apt/keyrings/shipper-docker.asc` and `/etc/apt/sources.list.d/shipper-docker.sources`.
+
+The control-plane container runs as UID and GID `65532`, keeps a read-only root filesystem, drops Linux capabilities, mounts `/var/lib/shipper` at `/data`, and mounts the Docker socket read-only. The Docker socket still grants host-level control. Treat the dashboard as a privileged operations surface.
+
+The installer does not remove, adopt, or reconfigure unrelated containers, volumes, images, or Compose projects. Application data is never removed by an ordinary install, update, or uninstall.
+
+## Claim the first administrator
+
+The installer prints the address and a one-time setup token:
+
+```text
+Shipper is ready.
+
+  Open       http://203.0.113.10:8080
+  Token      8d0f...64 characters...
+```
+
+Open the address, paste the token, and create the administrator. The token expires 30 minutes after it is issued.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/auth-setup.png" target="_blank" rel="noreferrer"><img src="/docs/shots/auth-setup.png" alt="Shipper first-run administrator screen with setup token, email, and password fields" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>The first-run form claims the instance. The token is a local capability, not a public signup.</figcaption>
+</figure>
+
+If the token expired or the window closed, rotate it from the host:
+
+```sh
+sudo shipperctl rotate-claim
+```
+
+To create the administrator entirely in the terminal instead:
+
+```sh
+sudo shipperctl claim
+```
+
+The setup token is a host-local capability. It is stored in `/var/lib/shipper/setup-token` and is never returned by the API.
+
+## Add the dashboard domain
+
+After signing in, open **Settings → Dashboard**, enter the hostname, and save.
+
+Shipper validates the hostname, reserves it from application assignment, adds the dashboard route to the global proxy, and requests a trusted certificate. The first administrator email is stored as the ACME contact. The direct `http://<server-ip>:8080` listener remains available as the recovery path.
+
+Use **Settings → Dashboard → Verify dashboard** after DNS resolves. It checks DNS, a trusted certificate, and this instance's health route.
+
+See [Domains and TLS](/docs/domains-tls/) for the full DNS and certificate model.
+
+## Verify the install
+
+From the server:
+
+```sh
+sudo shipperctl status
+sudo shipperctl logs
+curl -fsS http://127.0.0.1:8080/api/health
+```
+
+From your workstation:
+
+```sh
+curl -fsS https://shipper.example.com/api/health
+```
+
+A healthy control plane returns a JSON body with `"status":"ok"`. If the service does not start, read the journal:
+
+```sh
+sudo journalctl -u shipper.service -n 100 --no-pager
+```
+
+## Update and recover
+
+The managed installer enables the host update helper. Open **Settings → Updates** to choose Main or Nightly, turn on automatic updates, or install an available release.
+
+The update helper waits for queued work, checkpoints SQLite, restarts only the control plane, and verifies the new release. Application containers, volumes, routes, and the proxy keep running. A failed candidate restores the previous image and checkpoint.
+
+The installer is also the recovery path. Rerun it with a pinned version to return to a known release. See [Updates and channels](/docs/updates/) and the [Recovery runbook](/docs/recovery/).
+
+## Uninstall
+
+Preview the removal first:
+
+```sh
+sudo bash install.sh --uninstall
+```
+
+Apply it:
+
+```sh
+sudo bash install.sh --uninstall --apply
+```
+
+Uninstall stops and removes the Shipper control plane and disables its boot services. The proxy, application containers, certificates, application data, Shipper metadata, and Docker are preserved. Rerunning the installer attaches the preserved state again.
+
+For a deliberate full removal, including application data and the Shipper data directory, follow [Uninstall](/docs/uninstall/). Never run `docker compose down -v` against the Shipper project unless you intend to erase the administrator, metadata, and encryption key.

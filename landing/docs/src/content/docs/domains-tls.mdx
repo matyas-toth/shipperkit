@@ -1,0 +1,177 @@
+---
+title: Shipper domains and TLS
+description: Point DNS at Shipper, add dashboard and application hostnames, issue trusted certificates with HTTP-01, configure aliases and redirects, and fix the certificate failures you will actually see.
+---
+
+Shipper owns one Traefik proxy per instance. Traefik terminates TLS, redirects HTTP to HTTPS, and routes each hostname to one application or Compose service.
+
+There is no DNS provider integration. You create the records. Shipper validates hostnames and requests certificates.
+
+## The DNS model
+
+| Record | Use |
+| --- | --- |
+| `A` | IPv4 address of the Shipper server. Required. |
+| `AAAA` | IPv6 address. Only add it when the server has a reachable IPv6 listener. |
+| `CNAME` | A hostname that points at another name. The final target still needs an A or AAAA record. |
+
+An unreachable AAAA record breaks HTTP-01 validation even when the A record is correct. Remove the AAAA record until IPv6 is configured end to end.
+
+Shipper does not use wildcard certificates, DNS-01, uploaded certificates, or a managed DNS account. Each hostname is validated and issued separately.
+
+## Open the right ports
+
+| Port | Requirement |
+| --- | --- |
+| `80` | ACME HTTP-01 challenge and HTTP to HTTPS redirect |
+| `443` | TLS and application traffic |
+
+Both ports must be reachable from the public internet for issuance and renewal. A CDN or cloud firewall in front of the server must forward the original host and the ACME challenge path.
+
+Do not run a second reverse proxy on the same host during issuance. Only one process can own ports 80 and 443.
+
+## Set the dashboard domain
+
+The managed installer starts the control plane on `http://<server-ip>:8080` without a domain. This is deliberate: the first administrator can claim the instance before DNS or HTTPS exists.
+
+After signing in:
+
+1. Point the dashboard hostname at the server.
+2. Wait for DNS to resolve from outside your network.
+3. Open **Settings → Dashboard**.
+4. Enter the hostname, for example `shipper.example.com`.
+5. Save.
+6. Run **Verify dashboard**.
+
+Shipper validates the hostname, reserves it from application assignment, adds the dashboard route to the global proxy, and requests a trusted certificate. The dashboard route uses HTTP-01, redirects HTTP to HTTPS, and carries the instance identity header used by verification.
+
+The direct `http://<server-ip>:8080` listener remains available. It is the recovery path when DNS or TLS is broken. Removing the dashboard domain removes only the dashboard route. The control plane stays reachable on 8080.
+
+The first administrator email is used as the ACME contact. A valid contact is required for public certificate issuance.
+
+## Add an application domain
+
+Open the application and choose **Domains**.
+
+Each application can have up to 32 hostnames. One hostname is primary. Additional hostnames can be aliases that redirect to the primary.
+
+1. Add the hostname.
+2. Choose whether HTTPS is enabled.
+3. Choose the primary hostname.
+4. Choose whether an alias redirects.
+5. Save domains.
+
+**Save domains** creates a route-only operation. It does not rebuild the application. Shipper validates inputs, writes the proxy configuration atomically, and waits for Traefik to acknowledge the router and service.
+
+For a root domain, Shipper can add the `www` alias automatically. A hostname belongs to one application or service. Sharing a hostname between services by path is not supported.
+
+### Route options
+
+Open **Routing options** on a hostname:
+
+| Option | Effect |
+| --- | --- |
+| Path prefix | Adds a Traefik `PathPrefix` match. A prefix is literal; `/api` also matches `/apiv2`. |
+| Strip prefix | Removes the matched prefix before forwarding |
+| Compression | Enables Traefik HTTP compression |
+| Response headers | One `Name: value` per line |
+| Maintenance mode | Returns HTTP 503 while containers keep running |
+
+HTTP framing, cookies, redirects, and Shipper's release identity header cannot be overridden. Maintenance mode does not stop internal traffic, scheduled tasks, or background jobs.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/domains.png" target="_blank" rel="noreferrer"><img src="/docs/shots/domains.png" alt="Shipper Domains tab with hostname, HTTPS, verification, and route controls" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Domains saves routing without rebuilding the application.</figcaption>
+</figure>
+
+## How certificates are issued
+
+Traefik requests a certificate through the Let's Encrypt HTTP-01 challenge:
+
+1. Shipper writes the route and asks Traefik to serve it.
+2. Let's Encrypt requests `http://<hostname>/.well-known/acme-challenge/<token>`.
+3. Traefik answers from the ACME state in its proxy data volume.
+4. The certificate is stored and renewed before expiry.
+
+ACME state lives in the instance-owned proxy data volume. Keep ports 80 and 443 reachable for renewals. Do not delete `acme.json` or the proxy volume as part of an ordinary upgrade.
+
+`SHIPPER_ACME_CA` can point at a staging or internal ACME directory for testing. Production installs should use the default Let's Encrypt production directory.
+
+## Verify a hostname
+
+Open **Domains → Verify**. It checks:
+
+- DNS resolution.
+- Reachability.
+- The serving release identity.
+- Normal TLS validation.
+- Certificate issuer and expiry.
+
+A successful HTTPS check records the issuer and expiry in the routing options. Results are on-demand observations, not a background expiry monitor.
+
+A `503` is a valid verified response when maintenance mode is deliberate.
+
+From your workstation:
+
+```sh
+dig +short shop.example.com
+dig +short AAAA shop.example.com
+curl -sS -o /dev/null -w '%{http_code}\n' https://shop.example.com
+curl -sS -o /dev/null -w '%{http_code}\n' http://shop.example.com
+```
+
+The HTTP request should return a redirect. If it does not, Traefik is not receiving port 80 traffic.
+
+## Common certificate failures
+
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| DNS does not resolve | Missing or stale record | Create the A record and wait for TTL |
+| DNS resolves to the old host | Cached record or low TTL not applied | Lower TTL before a move, then flush caches |
+| Unreachable AAAA | IPv6 record points somewhere with no listener | Remove the AAAA record |
+| Connection refused on 80 | Firewall or provider rule | Allow inbound TCP 80 and 443 |
+| HTTP 404 on the challenge | Another proxy or CDN is intercepting it | Bypass the CDN during issuance or forward the challenge path |
+| `CAA` error | A CAA record forbids Let's Encrypt | Add `letsencrypt.org` to the CAA policy |
+| Too many certificates | Let's Encrypt rate limit | Wait for the window, use staging while testing |
+| Certificate expired | Renewal blocked by DNS or ports | Restore reachability, then re-verify |
+| Hostname already used | Another application or the old host claims it | Remove the old route or move the hostname |
+
+Check the proxy:
+
+```sh
+docker ps --filter label=io.shipper.infrastructure=proxy
+docker logs --tail 200 shipper-<instance-prefix>-proxy
+```
+
+If the proxy is running and DNS is correct, re-save the domain to re-queue the route. Do not delete the proxy volume to force a new certificate. A controlled ACME reset is a separate operation; take an instance backup first.
+
+## Cloudflare and other CDNs
+
+A CDN can work, but it adds a layer that must forward the original host and the ACME challenge.
+
+- Use **DNS only** (grey cloud) during the first issuance.
+- If you proxy through the CDN, set SSL mode to **Full (strict)**, not Flexible.
+- Confirm the CDN does not cache `/.well-known/acme-challenge/`.
+- Confirm the origin still sees the original Host header.
+- Turn off any CDN feature that rewrites or intercepts HTTP.
+
+A CDN that terminates TLS at its edge still needs a valid origin certificate or a trusted origin connection.
+
+## HTTP-only applications
+
+An application may run without a public route. Local applications use `http://<application-id>.localhost:8780` on the Docker host. Explicit HTTP remains available for internal tools.
+
+Do not expose an HTTP-only application to the public internet with credentials in query strings or cookies. Terminate TLS at Shipper or at a reverse proxy you control.
+
+## Removing a domain
+
+Removing a hostname from **Domains** removes the route. It does not delete the certificate immediately and does not delete application data.
+
+Before removing:
+
+1. Confirm no webhook, OAuth callback, or public link still uses the hostname.
+2. Add the replacement hostname and verify it first.
+3. Keep the old route until the new one has served traffic.
+4. Remove the DNS record only after the route is gone.
+
+If the dashboard domain is removed, the direct 8080 listener remains. Use it to add a new dashboard domain.

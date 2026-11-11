@@ -1,0 +1,129 @@
+---
+title: Shipper instance environment variables
+description: Every SHIPPER_ and Docker variable that configures the control plane, its defaults, precedence, managed-install values, and the settings that require a restart.
+---
+
+These variables configure Shipper itself. Application variables are separate and live in each application's **.env** tab.
+
+On a managed install, the installer writes `/etc/shipper/compose.yaml` and `/etc/shipper/instance.env`. Treat both as installer-owned. The dashboard stores the dashboard domain and authentication settings in SQLite, not in these files.
+
+## Core
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SHIPPER_ADDR` | `127.0.0.1:8080` | HTTP listener. The container image sets `0.0.0.0:8080`. |
+| `SHIPPER_DATA_DIR` | `.shipper` | Private SQLite, encryption key, setup token, and update state. The image sets `/data`. |
+| `SHIPPER_PUBLIC_URL` | Request origin | Canonical external origin for manual installs, for example `https://shipper.example.com`, without a trailing slash. |
+| `SHIPPER_DASHBOARD_UPSTREAM` | unset | `auto` for the packaged dashboard route, or an explicit Docker-reachable HTTP origin. |
+| `SHIPPER_SETUP_TOKEN` | Generated local file | Optional first-run capability of at least 32 characters. |
+| `SHIPPER_MANAGED_INSTALL` | unset | Marks a managed install and enables the host update helper. Set by the installer. |
+| `SHIPPER_UPDATES` | unset | `1` enables managed updates. `0` disables them even on a managed install. |
+
+## Proxy and TLS
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SHIPPER_PROXY_BIND` | `127.0.0.1` | Address on the Docker host for Traefik's published ports. |
+| `SHIPPER_HTTP_PORT` | `8780` | Traefik HTTP port on the Docker host. Managed installs use `80`. |
+| `SHIPPER_HTTPS_PORT` | `8743` | Traefik HTTPS port on the Docker host. Managed installs use `443`. |
+| `SHIPPER_AUTO_HTTPS` | unset | `1` enables automatic HTTPS when ports are 80 and 443 and the bind address is public. Managed installs set it. |
+| `SHIPPER_ACME_EMAIL` | unset | ACME contact. Managed installs use the first administrator email. |
+| `SHIPPER_ACME_CA` | Let's Encrypt production | Optional ACME directory, including a staging directory. |
+
+## Compose
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SHIPPER_PORT` | `8080` | Control-plane host port in the development Compose file. |
+| `DOCKER_GID` | `0` | Supplementary group for the Docker socket in the development Compose file. |
+| `SHIPPER_IMAGE` | unset | Pinned image digest used by the managed installer. |
+| `SHIPPER_DOCKER_GID` | unset | Docker socket group recorded by the managed installer. |
+
+## Docker connection
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DOCKER_HOST` | SDK platform default | Unix socket, Windows named pipe, or TLS-protected TCP |
+| `DOCKER_TLS_VERIFY` | unset | Must be `1` for TCP connections |
+| `DOCKER_CERT_PATH` | SDK default | Docker TLS certificates |
+
+Shipper uses Docker's default socket or `DOCKER_HOST`. It does not automatically read Docker CLI contexts.
+
+On Windows, if Docker Desktop's default named pipe is unavailable:
+
+```powershell
+$env:DOCKER_HOST = 'npipe:////./pipe/dockerDesktopLinuxEngine'
+```
+
+## Advanced
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SHIPPER_RATE_LIMIT` | `10` | Login, setup, and refresh attempts per peer and route |
+| `SHIPPER_UPDATE_INTERVAL` | `5m` | Update check interval for the control plane |
+| `SHIPPER_UPDATE_MAIN_FEED` | Generated `latest` branch | Override the Main feed base URL |
+| `SHIPPER_UPDATE_NIGHTLY_FEED` | Generated `nightly` branch | Override the Nightly feed base URL |
+
+## Precedence
+
+- Explicit environment values take precedence over values recovered from an instance archive.
+- `SHIPPER_PUBLIC_URL` fixes the canonical origin used by OAuth callbacks and origin checks.
+- Forwarded host headers are intentionally not trusted.
+- Session cookies become Secure on HTTPS requests regardless of this setting.
+- The default loopback listener is for local operation. A public listener must sit behind TLS or a trusted reverse proxy.
+- The dashboard domain stored in SQLite is used by managed installs instead of a Compose domain variable.
+
+When putting Shipper behind an HTTPS reverse proxy, set `SHIPPER_PUBLIC_URL` to the exact external origin:
+
+```sh
+SHIPPER_PUBLIC_URL=https://shipper.example.com
+SHIPPER_DASHBOARD_UPSTREAM=http://shipper:8080
+```
+
+A trailing slash changes origin comparisons. Use the exact origin without one.
+
+## Managed install values
+
+The managed installer writes a Compose service with:
+
+```yaml
+environment:
+  SHIPPER_DASHBOARD_UPSTREAM: auto
+  SHIPPER_PROXY_BIND: 0.0.0.0
+  SHIPPER_HTTP_PORT: "80"
+  SHIPPER_HTTPS_PORT: "443"
+  SHIPPER_AUTO_HTTPS: "1"
+  SHIPPER_MANAGED_INSTALL: "1"
+```
+
+The image provides:
+
+```text
+SHIPPER_ADDR=0.0.0.0:8080
+SHIPPER_DATA_DIR=/data
+```
+
+The installer records `SHIPPER_IMAGE` and `SHIPPER_DOCKER_GID` in `/etc/shipper/instance.env`. Those values are used by Compose substitution.
+
+Do not hand-edit the generated Compose file for a permanent change. The installer rewrites it on the next install or update. Use a supported dashboard setting, or a manual install with your own Compose file.
+
+## Restart requirements
+
+| Change | Restart needed |
+| --- | --- |
+| Dashboard domain | No. Save it in Settings. |
+| Application variables | Apply and restart or redeploy the application. |
+| Proxy bind or published ports | Yes. Recreate the proxy in a maintenance window. |
+| ACME email or CA directory | Yes. Restart the control plane. |
+| `SHIPPER_ADDR` | Yes |
+| `SHIPPER_DATA_DIR` | Yes, and the directory must be owned by UID/GID `65532` |
+| `SHIPPER_PUBLIC_URL` | Yes |
+| `DOCKER_HOST` | Yes |
+
+## Security notes
+
+- `instance.env` and any file containing a provider secret must be mode `0600` and owned by root.
+- The control-plane container runs as UID/GID `65532`, with a read-only root filesystem, dropped capabilities, and `no-new-privileges`.
+- The Docker socket mount still grants host-level control even when read-only.
+- Keep the dashboard private. A public dashboard is an administrative surface.
+- A setup token is a one-use capability. Do not paste it into a ticket or shared log.

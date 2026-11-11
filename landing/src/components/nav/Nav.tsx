@@ -15,7 +15,7 @@ const links = [
 ];
 
 const repo = "https://github.com/matyas-toth/shipperkit";
-const docs = "https://github.com/matyas-toth/shipperkit/tree/main/docs";
+const docs = "/docs/";
 
 function Links({ className }: { className?: string }) {
   return (

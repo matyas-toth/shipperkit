@@ -1,0 +1,230 @@
+---
+title: Shipper diagnostics and troubleshooting
+description: Map every Shipper console check to a cause and an action. Docker, runtime, routing, HTTPS, build, readiness, tasks, dependency networks, failed stages, and the commands that produce evidence.
+---
+
+Shipper reports diagnostics in two places. **System → Overview** covers the instance. **Application → Overview → Diagnostics** covers one application and its serving release.
+
+Every check in the console maps to one row here. Read the failed check first, then the failed stage, then the evidence.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/diagnostics.png" target="_blank" rel="noreferrer"><img src="/docs/shots/diagnostics.png" alt="Shipper application diagnostics with Docker, runtime, routing, build, and readiness checks" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Application diagnostics keeps the serving release, check states, and observation times together.</figcaption>
+</figure>
+
+## How to read a diagnostic
+
+| Field | Meaning |
+| --- | --- |
+| Serving release | The release currently receiving traffic |
+| Latest operation | The newest deploy, apply, rollback, or route operation |
+| Check state | `healthy`, `warning`, `failed`, `unknown`, `stopped`, or `stale` |
+| Observed at | When the check last produced evidence |
+| Failed stage | The build or runtime stage that stopped |
+| Changes since serving | Configuration or source changes that are not in the serving release |
+| Unknowns | Facts this vantage cannot measure, such as independent internet reachability |
+
+A running container does not prove the application is correct. A failed latest deployment can coexist with a healthy previous release. Always compare desired state, serving release, and latest operation before acting.
+
+A `stale` check means the observation is older than its freshness window. Recheck before changing anything.
+
+## Instance checks
+
+Open **System → Overview**. The health table shows one row per component.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/system.png" target="_blank" rel="noreferrer"><img src="/docs/shots/system.png" alt="Shipper System overview with daemon, proxy, storage, certificate, and runtime health rows" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>System keeps instance health, runtime versions, and recovery access on one screen.</figcaption>
+</figure>
+
+| Check | What it verifies | Common cause | Action |
+| --- | --- | --- | --- |
+| `daemon` | Docker API is reachable and returns a Linux engine | Docker stopped, socket permission changed, host rebooted without Docker | `systemctl restart docker`, then `systemctl restart shipper` |
+| `proxy` | Traefik container, edge network, and routing configuration are present | Proxy container removed, configuration conflict, port 80 or 443 occupied | **System → Maintenance → Repair proxy** after reviewing the plan |
+| `storage` | Free space on the filesystem that holds Shipper metadata | Disk full or below the warning threshold | `df -h /var/lib`, then **System → Maintenance** cleanup |
+| `certificate` | Certificate presence and expiry for a hostname | DNS changed, ACME challenge blocked, certificate expired | **Domains → Verify**, then inspect proxy logs |
+| `runtime` | Shipper process, version, and heap | Control plane restarting or crash loop | `sudo shipperctl status`, `sudo journalctl -u shipper.service` |
+| `host` | Boot services, reboot required, clock sync, update helper | Host maintenance pending | **System → Maintenance → Host maintenance** |
+
+A storage reading below 512 MiB or 10% warns. Below 128 MiB, new build preparation is blocked. Builds remain serialized. Free space before retrying.
+
+## Application checks
+
+Open the application, then **Overview → Diagnostics**.
+
+| Check | What it verifies | Common cause | Action |
+| --- | --- | --- | --- |
+| Docker | Shipper can inspect the application's containers through its own instance identity | Engine disconnected or ownership mismatch | Fix the instance `daemon` check first |
+| Runtime | The expected container exists and is running and healthy | Crash loop, image entrypoint, missing variable, port conflict | Read runtime logs and inspect the container |
+| Routing | A hostname resolves and the proxy serves the release identity | DNS, wrong hostname, path prefix, maintenance mode, proxy route missing | **Domains → Verify**, then inspect the route |
+| HTTPS | Certificate chain, issuer, expiry, and trusted TLS validation | ACME failed, expired certificate, unreachable port 80/443 | **Domains → Verify**, inspect proxy logs |
+| Build | The latest operation produced an image | Build command, dependency, secret, or Dockerfile error | Open the failed deployment and show the failed step |
+| Readiness | The candidate passed its startup and health check | Wrong health path, non-2xx response, app not listening on `0.0.0.0` | Fix the health path or start command, then redeploy |
+| Task | A lifecycle or saved task completed | Migration, hook, or scheduled command failed | Open the task result and its logs |
+| Dependency network | Compose services share the expected network and running dependencies | A dependency is stopped, crashed, or on another network | Start the dependency, inspect its logs, recheck |
+
+A shared Compose network is a prerequisite, not proof of a successful database transaction. Application protocol health needs a declared readiness check.
+
+## Failed stages
+
+The deployment log groups work into stages. The failed stage points at the layer, not the product area.
+
+| Stage | What ran | First thing to read |
+| --- | --- | --- |
+| `cloning` | Git fetch and checkout | Repository URL, branch, credentials, network |
+| `pulling` | Image pull | Image reference, registry login, tag or digest |
+| `building` | BuildKit or Railpack build | The first error line, not the last |
+| `packaging` | Static Apache image or Compose preparation | Publish directory, build output, Compose file |
+| `starting` | Candidate container start | Entrypoint, command, port, environment |
+| `checking` | Startup deadline and health request | Health path, status code, bind address, startup time |
+| `promoting` | Routing switch and release promotion | Proxy acknowledgement, route conflict |
+| `routing` | Route-only update | Hostname, path prefix, headers, proxy health |
+| `task` | Lifecycle or saved task | Command exit code and stderr |
+
+Restoring a release skips before-deploy and after-deploy commands. Before-start still runs when its foreground container starts. Do not assume every hook runs during a rollback.
+
+## Troubleshooting by symptom
+
+### Build fails
+
+Open the failed deployment and choose **Show failed step**. Read the first error, not the final "exit code 1".
+
+Common causes:
+
+- The Dockerfile expects a file excluded from the build context.
+- A dependency needs a native library not present in the builder.
+- A build argument is missing, or a secret should be a BuildKit mount.
+- Railpack detected the wrong toolchain or the wrong lockfile.
+- The build runs out of memory or disk.
+
+Check the build method in the review. An explicit method overrides automatic selection. For a static site, confirm the publish directory contains the built output, not the source.
+
+### Container exits immediately
+
+```sh
+docker ps -a --filter label=io.shipper.application.id=<application-id>
+docker logs --tail 200 <container-name>
+docker inspect <container-name> --format '{{json .Config.Entrypoint}} {{json .Config.Cmd}}'
+```
+
+Common causes:
+
+- The app binds to `127.0.0.1` instead of `0.0.0.0`.
+- The start command assumes a working directory or file that is not in the image.
+- A required environment variable is missing.
+- The process runs as a user without permission to write its data directory.
+- The image entrypoint is a shell that exits when the command is empty.
+
+Fix the source or configuration, then redeploy. Editing a running container is not a supported fix and will be replaced on the next release.
+
+### Readiness fails
+
+The candidate must answer its health request within the startup deadline. The default is 45 seconds, plus the startup-command timeout when configured.
+
+Check:
+
+- The path returns `200` or the expected success status.
+- The app listens on the port Shipper routes to.
+- The health check does not depend on a database that is still starting.
+- The startup time is not longer than the deadline.
+- The app does not require a hostname or TLS URL during startup.
+
+A health endpoint that returns `301` to HTTPS can fail inside the container. Provide a plain HTTP endpoint for readiness.
+
+### Route returns 502 or 504
+
+The container may be running while the route points at the wrong port or hostname.
+
+1. Open **Domains** and confirm the primary hostname and route target.
+2. Check **Routing** in diagnostics.
+3. Run **Domains → Verify**.
+4. Inspect the service port and the container's listening port.
+5. Inspect the proxy logs if DNS is correct.
+
+```sh
+docker logs --tail 200 shipper-<instance-prefix>-proxy
+```
+
+A `503` can be deliberate maintenance mode. Check the route options before treating it as a failure.
+
+### HTTPS warning or certificate failure
+
+1. DNS resolves to this server.
+2. No unreachable AAAA record.
+3. Ports 80 and 443 are reachable.
+4. The hostname is not claimed by another application or the old host.
+5. The ACME challenge path is not intercepted by another proxy.
+6. The certificate has not hit a rate limit.
+
+**Domains → Verify** records the issuer, expiry, DNS result, and release identity. A successful verification can still show a warning for an expiring certificate. Renewal requires ports 80 and 443 to stay reachable.
+
+### Task or migration failed
+
+Open the task result in the application. Lifecycle stages are:
+
+- **Before deploy**: runs before the new image is built or after checkout, depending on the operation.
+- **Before start**: runs in the foreground container before the main command.
+- **After deploy**: runs after promotion.
+- **Before stop**: runs before the serving container stops.
+
+A failed before-deploy task blocks the release. A failed after-deploy task runs after traffic has moved, so the release may be serving while the task is marked failed. Read the stage before deciding whether to roll back.
+
+### Dependency network is missing
+
+For Compose applications, confirm:
+
+- The dependency service is running and healthy.
+- Both services are on the same Compose network.
+- The dependency name in the app configuration matches the service name.
+- A one-shot dependency completed successfully.
+
+A network connection only proves reachability. A database may still reject the application's credentials or schema.
+
+### Docker is unreachable
+
+If the instance `daemon` check fails, application checks are downstream symptoms. Fix Docker first. Do not restart every application.
+
+```sh
+systemctl status docker --no-pager
+docker info
+sudo systemctl restart docker
+sudo systemctl restart shipper.service
+```
+
+### Everything is slow or stale
+
+- Check `df -h /var/lib` and the storage check.
+- Check `docker system df` for image and build cache pressure.
+- Check host memory and CPU.
+- Recheck the inventory.
+- Look for a stale observation time.
+
+Shipper keeps the last complete inventory visible when Docker disconnects and marks it with a warning. Cached data is not a fresh observation.
+
+## Evidence to collect
+
+Before opening an issue or changing state:
+
+```sh
+sudo shipperctl status
+sudo shipperctl logs
+sudo journalctl -u shipper.service -n 300 --no-pager
+docker ps -a
+docker volume ls
+docker system df
+df -h
+curl -fsS http://127.0.0.1:8080/api/health
+```
+
+Include the Shipper version, the exact application and release ID, the failed check, the failed stage, and the first error line. Report observed facts separately from guesses.
+
+## What not to do
+
+- Do not run `docker system prune`, `docker volume prune`, or delete `/var/lib/shipper` to clear an error.
+- Do not remove application volumes to force a redeploy.
+- Do not run the original and recovered Shipper instances against the same Docker daemon.
+- Do not edit a running container and call it fixed.
+- Do not restore a database over a database that accepted writes after the backup.
+- Do not treat a running container as proof that the route, certificate, or application protocol works.
+
+For a full outage, follow the [Recovery runbook](/docs/recovery/). For a bad release, use [Releases and rollbacks](/docs/releases-rollbacks/). For certificate and DNS work, use [Domains and TLS](/docs/domains-tls/).

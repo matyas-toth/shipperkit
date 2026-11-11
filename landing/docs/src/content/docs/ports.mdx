@@ -1,0 +1,114 @@
+---
+title: Shipper ports and firewall
+description: The inbound and outbound ports Shipper needs, what each one carries, how to verify a firewall rule, and the internal ports used by the proxy and application containers.
+---
+
+Shipper uses a small, fixed port set. Open the inbound ports before installation and keep them open for certificate renewal.
+
+## Inbound
+
+| Port | Protocol | Purpose | Required |
+| --- | --- | --- | --- |
+| `80` | TCP | ACME HTTP-01 challenge and HTTP to HTTPS redirect | Yes for public HTTPS |
+| `443` | TCP | Dashboard and application HTTPS | Yes for public HTTPS |
+| `8080` | TCP | First-run setup and direct recovery path to the control plane | Yes for setup and recovery |
+
+Port 8080 is not a public application port. It is the control-plane listener. Keep it reachable from your own addresses, and do not remove it until the dashboard domain has been verified.
+
+## Outbound
+
+| Destination | Port | Purpose |
+| --- | --- | --- |
+| `ghcr.io` | 443 | Shipper release images |
+| `raw.githubusercontent.com` | 443 | Update channel metadata |
+| `github.com` and `api.github.com` | 443 | Release links, repository checks, GitHub connections |
+| Your Git hosts | 443 or 22 | Source clones |
+| Container registries | 443 | Image pulls |
+| Let's Encrypt ACME endpoints | 443 | Certificate issuance and renewal |
+| Your S3-compatible endpoint | 443 | Off-server backup uploads |
+| SMTP provider | 465 or 587 | Optional notification email |
+| Webhook destinations | 443 | Optional notifications |
+
+Outbound HTTPS is required for updates. A host that cannot reach GHCR and the selected raw GitHub feed cannot use managed updates.
+
+## Internal ports
+
+| Port | Where | Purpose |
+| --- | --- | --- |
+| `8780` | Docker host, default manual install | Traefik HTTP published port |
+| `8743` | Docker host, default manual install | Traefik HTTPS published port |
+| `8080` | Application container, static Apache | Apache inside a static site container |
+| `3000` | Application container, default | Runtime port when nothing else is declared |
+
+A managed install publishes Traefik on 80 and 443. A manual install defaults to 8780 and 8743. `SHIPPER_PROXY_BIND` controls the host address Traefik binds to.
+
+The application's public hostname routes to its container port through Traefik. The container port does not need to be published on the host.
+
+## Open the firewall
+
+On Ubuntu with UFW:
+
+```sh
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 8080/tcp
+sudo ufw status verbose
+```
+
+At the cloud provider, allow the same inbound TCP ports. A host firewall rule does not help when the provider firewall drops the packet first.
+
+Test from outside the server:
+
+```sh
+nc -vz shipper.example.com 80
+nc -vz shipper.example.com 443
+nc -vz shipper.example.com 8080
+```
+
+A successful TCP connection is not proof that the application responds. Follow with:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' http://shipper.example.com
+curl -sS -o /dev/null -w '%{http_code}\n' https://shipper.example.com
+```
+
+## Check listeners on the host
+
+```sh
+ss -ltnp 'sport = :80 or sport = :443 or sport = :8080'
+```
+
+Expected on a managed install:
+
+- Port 8080 belongs to the Shipper control-plane container.
+- Ports 80 and 443 belong to the proxy container.
+
+If a different process owns 80 or 443, the proxy cannot start. Stop the conflicting process or move it to another host.
+
+## Docker socket
+
+The Docker socket is not a network port. On a managed install it is mounted into the control-plane container read-only at `/var/run/docker.sock`.
+
+A Docker socket still grants host-level control even when the mount is read-only. Do not expose it over TCP. Keep the dashboard private.
+
+## Change the published ports
+
+Changing published ports, the proxy bind address, or static ACME settings requires a maintenance window:
+
+1. Remove only the instance's labelled proxy container.
+2. Keep its proxy data volume.
+3. Change the setting.
+4. Restart Shipper so the proxy is recreated.
+
+Do not delete `acme.json` or the proxy volume as part of an ordinary port change. The dashboard domain is a live setting and does not require this maintenance window.
+
+## Common port failures
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Installer refuses a fresh host | Port 80, 443, or 8080 already in use | Stop the conflicting service |
+| Certificate challenge fails | Port 80 blocked | Allow inbound TCP 80 |
+| HTTPS works locally, not publicly | Provider firewall or NAT | Forward 443 to the server |
+| Dashboard unreachable after domain change | DNS or 443 blocked | Use `http://<server-ip>:8080`, fix DNS and firewall |
+| Application unreachable but container healthy | Route target or port mismatch | Check the container port and Domains route |
+| Proxy cannot start | 80 or 443 owned by another process | Stop the other process |

@@ -3,6 +3,7 @@ import DomainOptions, { DomainCertificate } from "./DomainOptions";
 import { createUniqueId, For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api, post } from "../api";
+import { docs } from "../docs";
 import { useAuth } from "../context";
 import type { Application, Domain, ProxyConfig, Service } from "../types";
 import { domainURL } from "../data";
@@ -139,7 +140,7 @@ export default function Domains(props: { application: Application; proxy?: Proxy
         </section>
       </Show>
       </>;
-    }}</For></div>}</For><Show when={!domains().length && canAdd()}><div class="empty-state">No domains</div></Show></div></div>
+    }}</For></div>}</For><Show when={!domains().length && canAdd()}><div class="empty-state">No domains <a class="docs-link" href={docs("domains-tls/")} target="_blank" rel="noreferrer">Domain guide</a></div></Show></div></div>
     <Show when={domains().length || dirty()}><EditorActions docked={dirty()} measure="form" inlineWhenFits><Button variant="primary" type="submit" form={formId} icon="check" disabled={props.busy || !dirty()}>Save domains</Button></EditorActions></Show>
   </form>;
 }

@@ -1,5 +1,6 @@
 import { For, Show, createEffect, onCleanup, createMemo, createSignal, createUniqueId, untrack } from "solid-js";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { docs } from "../docs";
 import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application, Service, StaticConfig } from "../types";
@@ -910,9 +911,9 @@ export default function Backups(props: {
               </For>
               <Show when={!plans().length}>
                 <tr class="empty-row">
-                  <td colspan="3"><div class="empty-backup-state"><span>No scheduled backups</span><Button small variant="ghost" icon="plus" onClick={() => {
+                  <td colspan="3"><div class="empty-backup-state"><span>No scheduled backups</span><div class="toolbar-actions"><Button small variant="ghost" icon="plus" onClick={() => {
                     create(); setEditing(plan => plan ? { ...plan, schedule: "0 3 * * *" } : plan);
-                  }}>Add schedule</Button></div></td>
+                  }}>Add schedule</Button><a class="docs-link" href={docs("backups/")} target="_blank" rel="noreferrer">Backup guide</a></div></div></td>
                 </tr>
               </Show>
             </tbody>

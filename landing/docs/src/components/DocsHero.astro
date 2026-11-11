@@ -1,0 +1,93 @@
+---
+interface DocsHeroData {
+  title?: string;
+  tagline?: string;
+}
+
+const route = (Astro.locals as {
+  starlightRoute?: { entry: { data: { hero?: DocsHeroData } } };
+}).starlightRoute;
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const { title = "Everything you need to run Shipper.", tagline } =
+  route?.entry.data.hero ?? {};
+
+const command = "curl -fsSL https://shipperkit.dev/install.sh | sudo bash";
+---
+<section class="docs-hero">
+  <div class="docs-hero-field" aria-hidden="true"></div>
+  <div class="docs-hero-inner">
+    <div class="docs-hero-copy">
+      <h1 id="_top">{title}</h1>
+      {tagline && <p class="docs-hero-lede">{tagline}</p>}
+      <div class="docs-hero-actions">
+        <a class="docs-button is-primary" href={`${base}/install/`}>
+          Install Shipper
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </a>
+        <a class="docs-button" href={`${base}/recovery/`}>
+          Recovery runbook
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </a>
+      </div>
+      <div class="docs-command" data-docs-copy={command}>
+        <span class="docs-command-prompt" aria-hidden="true">$</span>
+        <code>{command}</code>
+        <button type="button" data-docs-copy-button aria-label="Copy install command">Copy</button>
+      </div>
+    </div>
+    <div class="docs-hero-visual">
+      <div class="docs-window">
+        <div class="docs-window-bar" aria-hidden="true">
+          <span></span><span></span><span></span>
+          <em>shipper.local</em>
+        </div>
+        <img
+          src={`${base}/shots/applications.png`}
+          alt="Shipper applications dashboard with running apps, domains, and release status"
+          width="1440"
+          height="900"
+          loading="eager"
+          decoding="async"
+          fetchpriority="high"
+        />
+      </div>
+      <div class="docs-live-card" aria-hidden="true">
+        <div class="docs-live-status"><span></span> Running</div>
+        <strong>website.local</strong>
+        <small>Release 4f8ac21d</small>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  (() => {
+    document.querySelectorAll("[data-docs-copy]").forEach((trigger) => {
+      const button = trigger.querySelector("[data-docs-copy-button]");
+      if (!button) return;
+      button.addEventListener("click", async () => {
+        const value = trigger.getAttribute("data-docs-copy") || "";
+        try {
+          await navigator.clipboard.writeText(value);
+        } catch {
+          const area = document.createElement("textarea");
+          area.value = value;
+          area.style.position = "fixed";
+          area.style.opacity = "0";
+          document.body.appendChild(area);
+          area.select();
+          document.execCommand("copy");
+          area.remove();
+        }
+        button.textContent = "Copied";
+        window.setTimeout(() => {
+          button.textContent = "Copy";
+        }, 1600);
+      });
+    });
+  })();
+</script>

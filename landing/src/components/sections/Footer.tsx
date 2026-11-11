@@ -3,8 +3,8 @@ import { GithubIcon } from "@hugeicons/core-free-icons";
 import { Container, Logo, Status } from "@/components/primitives";
 
 const repo = "https://github.com/matyas-toth/shipperkit";
-const docs = "https://github.com/matyas-toth/shipperkit/tree/main/docs";
-const doc = (file: string) => `${repo}/blob/main/docs/${file}`;
+const docs = "/docs/";
+const doc = (path: string) => `${docs}${path}`;
 
 const groups = [
   {
@@ -19,10 +19,10 @@ const groups = [
   {
     title: "Docs",
     links: [
-      ["Installation", doc("installation.md")],
-      ["Operations", doc("operations.md")],
-      ["API", doc("api.md")],
-      ["Security", `${repo}/blob/main/SECURITY.md`],
+      ["Installation", doc("install/")],
+      ["Recovery", doc("recovery/")],
+      ["Troubleshooting", doc("diagnostics/")],
+      ["API", doc("api-tokens/")],
     ],
   },
   {
@@ -30,8 +30,8 @@ const groups = [
     links: [
       ["GitHub", repo],
       ["Releases", `${repo}/releases`],
-      ["License", `${repo}/blob/main/LICENSE`],
-      ["Contributing", `${repo}/blob/main/CONTRIBUTING.md`],
+      ["Security", `${repo}/blob/master/SECURITY.md`],
+      ["Contributing", `${repo}/blob/master/CONTRIBUTING.md`],
     ],
   },
 ];
@@ -97,7 +97,7 @@ function Footer2() {
             {[
               ["Docs", docs],
               ["GitHub", repo],
-              ["License", `${repo}/blob/main/LICENSE`],
+              ["License", `${repo}/blob/master/LICENSE`],
               ["Landing lab", "/variants"],
             ].map(([label, href]) => (
               <a key={label} href={href} className="text-[14px] text-[#8d8e88] transition-colors hover:text-white">
@@ -153,7 +153,7 @@ function Footer4() {
             {[
               ["Docs", docs],
               ["GitHub", repo],
-              ["API", doc("api.md")],
+              ["API", doc("api-tokens/")],
               ["Landing lab", "/variants"],
             ].map(([label, href]) => (
               <a key={label} href={href} className="text-[14px] text-[#85867f] transition-colors hover:text-white">
@@ -180,14 +180,14 @@ function Footer5() {
               <div>├── <a href={repo} className="hover:text-white">internal/</a></div>
               <div>├── <a href={repo} className="hover:text-white">web/</a></div>
               <div>├── <a href="/variants" className="hover:text-white">landing/</a></div>
-              <div>└── <a href={`${repo}/blob/main/LICENSE`} className="hover:text-white">LICENSE</a></div>
+              <div>└── <a href={`${repo}/blob/master/LICENSE`} className="hover:text-white">LICENSE</a></div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
             {[
-              ["Read", [["Installation", doc("installation.md")], ["Architecture", doc("architecture.md")], ["Operations", doc("operations.md")], ["API", doc("api.md")]]],
-              ["Operate", [["Compose", doc("compose.md")], ["Backups", doc("backups.md")], ["Tasks", doc("commands.md")], ["Routing", doc("routing-and-releases.md")]]],
-              ["Project", [["GitHub", repo], ["Releases", `${repo}/releases`], ["Security", `${repo}/blob/main/SECURITY.md`], ["Landing lab", "/variants"]]],
+              ["Read", [["Installation", doc("install/")], ["First deploy", doc("first-deploy/")], ["Recovery", doc("recovery/")], ["API", doc("api-tokens/")]]],
+              ["Operate", [["Compose", doc("move-an-app/")], ["Backups", doc("backups/")], ["Updates", doc("updates/")], ["Routing", doc("domains-tls/")]]],
+              ["Project", [["GitHub", repo], ["Releases", `${repo}/releases`], ["Security", `${repo}/blob/master/SECURITY.md`], ["Landing lab", "/variants"]]],
             ].map(([title, links]) => (
               <div key={title as string}>
                 <div className="text-[14px] font-[500] text-[#797a75]">{title as string}</div>

@@ -169,7 +169,7 @@ function Faq4() {
                 which failures still need an operator.
               </p>
               <div className="mt-8">
-                <ActionSecondary href="https://github.com/matyas-toth/shipperkit/blob/main/docs/operations.md" external>
+                <ActionSecondary href="/docs/diagnostics/">
                   Open the operations guide
                 </ActionSecondary>
               </div>

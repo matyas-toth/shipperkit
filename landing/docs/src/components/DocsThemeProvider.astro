@@ -1,0 +1,8 @@
+<script is:inline>
+  // Shipper docs is a dark surface. Keep the theme fixed and provide the
+  // globals Starlight expects without offering a light mode.
+  document.documentElement.dataset.theme = "dark";
+  window.StarlightThemeProvider = {
+    updatePickers() {},
+  };
+</script>

@@ -1,0 +1,402 @@
+---
+title: Shipper recovery runbook
+description: The first five minutes, the scenario table, and the exact commands for a lost dashboard, lost owner account, failed update, Docker outage, corrupted metadata, lost host, or expired certificate.
+---
+
+This page is written for the moment something is already wrong. Start with the first five minutes, then jump to the scenario that matches what you can observe. Preserve evidence before changing state.
+
+:::danger
+Do not delete volumes, run `docker system prune`, or remove `/var/lib/shipper` while diagnosing. Application data and the instance encryption key are not reproducible. A wrong cleanup turns a recoverable outage into data loss.
+:::
+
+## The first five minutes
+
+Run these from the server. Stop at the first failed check.
+
+```sh
+uptime
+df -h /var/lib
+systemctl is-active docker
+docker info --format '{{.ServerVersion}} {{.OSType}}'
+sudo shipperctl status
+curl -fsS http://127.0.0.1:8080/api/health
+docker ps --format 'table {{.Names}}\t{{.Status}}' | head -n 20
+```
+
+What the results mean:
+
+| Observation | Likely layer | Go to |
+| --- | --- | --- |
+| Host unreachable or rebooting | Host or provider | [Host or Docker is down](#host-or-docker-is-down) |
+| `/var/lib` full | Storage | [Disk is full](#disk-is-full) |
+| Docker inactive or unhealthy | Container engine | [Host or Docker is down](#host-or-docker-is-down) |
+| `shipper.service` inactive or failed | Control plane | [Control plane will not start](#control-plane-will-not-start) |
+| Health endpoint fails but service is active | Control plane or port | [Control plane will not start](#control-plane-will-not-start) |
+| Health endpoint works, applications missing | Docker or inventory | [One application is down](#one-application-is-down) |
+| Health endpoint works, browser fails | DNS, TLS, or proxy | [Dashboard domain is broken](#dashboard-domain-is-broken) |
+
+Preserve the current evidence:
+
+```sh
+sudo shipperctl status > /root/shipper-status.txt 2>&1
+sudo shipperctl logs > /root/shipper-logs.txt 2>&1
+sudo journalctl -u shipper.service -n 300 --no-pager > /root/shipper-journal.txt
+docker ps -a > /root/docker-ps.txt
+docker volume ls > /root/docker-volumes.txt
+df -h > /root/disk.txt
+```
+
+## Dashboard domain is broken
+
+Symptom: the dashboard does not open on `https://shipper.example.com`, but `http://<server-ip>:8080` still works.
+
+1. Open the direct listener on 8080 and sign in. This is the designed recovery path.
+2. Check DNS from outside the server:
+
+```sh
+dig +short shipper.example.com
+```
+
+3. Check the certificate and HTTP response:
+
+```sh
+curl -vI https://shipper.example.com 2>&1 | head -n 30
+```
+
+4. Confirm ports 80 and 443 are reachable from outside. A provider firewall change is the most common cause after a working install.
+5. In **Settings → Dashboard**, run **Verify dashboard**. It checks DNS, a trusted certificate, and the instance health route.
+6. If the certificate is pending or failed, inspect the proxy:
+
+```sh
+docker ps --filter label=io.shipper.infrastructure=proxy
+docker logs --tail 200 shipper-<instance-prefix>-proxy
+```
+
+7. If DNS is correct and ports are open, remove and re-save the dashboard domain. This re-queues the route and certificate request. It does not delete application data.
+
+Do not remove `acme.json` or the proxy data volume. A new certificate request does not require erasing the ACME account or existing certificates.
+
+If the domain cannot be recovered, use the direct 8080 listener and continue operating. Fix TLS during a planned window.
+
+## Control plane will not start
+
+Symptom: `shipper.service` is inactive or failed, or `/api/health` does not respond.
+
+```sh
+sudo systemctl status shipper.service --no-pager
+sudo journalctl -u shipper.service -n 200 --no-pager
+sudo shipperctl logs
+```
+
+Check the common causes:
+
+| Cause | Evidence | Fix |
+| --- | --- | --- |
+| Docker not ready | `docker info` fails | Start Docker, then `sudo systemctl restart shipper` |
+| Port 8080 in use | `ss -ltnp 'sport = :8080'` | Stop the conflicting process |
+| Data directory permissions | journal shows permission denied | `sudo chown -R 65532:65532 /var/lib/shipper` |
+| Disk full | `df -h /var/lib` | [Free space](#disk-is-full) |
+| Corrupt SQLite | journal shows database or integrity errors | [Restore the instance](#restore-a-lost-or-corrupt-instance) |
+| Failed update | `cat /var/lib/shipper/update-status.json` | [Update failed or stuck](#update-failed-or-stuck) |
+
+Restart the service after fixing the cause:
+
+```sh
+sudo systemctl restart shipper.service
+curl -fsS http://127.0.0.1:8080/api/health
+```
+
+If the service still fails, do not reinstall over the data directory. Install the same release on a separate path and restore the latest instance archive into an empty directory. The original data directory can be inspected later.
+
+## Host or Docker is down
+
+If the host is reachable but Docker is not:
+
+```sh
+sudo systemctl status docker --no-pager
+sudo journalctl -u docker -n 200 --no-pager
+sudo systemctl restart docker
+docker info
+```
+
+Then restart Shipper:
+
+```sh
+sudo systemctl restart shipper.service
+```
+
+If Docker cannot start, do not reinstall Shipper. Fix the engine first. Common causes are a full disk, a corrupted Docker data root, or a host reboot that left a mount unavailable.
+
+If the host itself is lost, go to [Restore a lost host](#restore-a-lost-host).
+
+## One application is down
+
+Other applications work. Open the application in Shipper and read **Diagnostics** before restarting anything.
+
+| Check | Meaning | First action |
+| --- | --- | --- |
+| Docker | Shipper cannot reach the engine | [Host or Docker is down](#host-or-docker-is-down) |
+| Runtime | The expected container is not running or healthy | Inspect the container, then read runtime logs |
+| Readiness | The app did not pass its health check | Check the health path and port |
+| Routing | DNS or the proxy route does not point at the release | Open **Domains → Verify** |
+| HTTPS | Certificate or TLS validation failed | [Dashboard domain is broken](#dashboard-domain-is-broken) for proxy-wide issues |
+| Build | The latest build failed | Open the failed deployment and **Show failed step** |
+| Task | A lifecycle or scheduled task failed | Open the task result and logs |
+| Dependency network | A Compose dependency is missing | Start the dependency and recheck |
+
+Useful commands:
+
+```sh
+docker ps -a --filter label=io.shipper.application.id=<application-id>
+docker logs --tail 200 <container-name>
+docker inspect <container-name> --format '{{json .State}}'
+```
+
+If the current release is bad, restore the previous successful release from **Deployments**. That is faster and safer than editing a running container.
+
+If the container is gone but the application record remains, **Redeploy** from the recorded source. If the source no longer exists, restore the image or rebuild from a retained release.
+
+## Can't sign in
+
+### Lost the owner password
+
+Run the interactive recovery on the host. It stops the control plane, prompts for the administrator email and a new password, and starts the service again.
+
+```sh
+sudo shipperctl reset-password
+```
+
+The password is not echoed and is not accepted as a command argument. Recovery revokes every existing session. Use the new password to sign in, then review active sessions and tokens.
+
+### Lost the second factor
+
+Try a one-use recovery code first. If none work, use the offline owner recovery:
+
+```sh
+sudo shipperctl reset-factor
+```
+
+This revokes sessions and the owner's operations tokens, keeps the instance policy, and requires enrollment again when 2FA is enforced. It does not disable 2FA for other users.
+
+### No sign-in method works
+
+Check whether the instance still has an enabled method. If password login was disabled and the OAuth provider is misconfigured, claim the instance from the host:
+
+```sh
+sudo shipperctl claim
+```
+
+This creates or restores the owner account from the terminal. It is a host-local capability, not a public endpoint.
+
+## Update failed or stuck
+
+Check the host helper and the request state:
+
+```sh
+cat /var/lib/shipper/update-status.json
+cat /var/lib/shipper/update-request.json
+sudo systemctl status shipper-update.service --no-pager
+sudo journalctl -u shipper-update.service -n 200 --no-pager
+```
+
+A failed update should leave the previous version serving. Confirm:
+
+```sh
+curl -fsS http://127.0.0.1:8080/api/health
+sudo shipperctl status
+```
+
+To recover manually, rerun the installer with the version you want:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --version 1.0.0-rc.25
+```
+
+The installer waits for queued work, checkpoints SQLite, and restores the previous image if the candidate is unhealthy. If an interrupted update left `update-pending`, the installer recovers the recorded checkpoint before starting.
+
+Do not delete `/var/lib/shipper/update-status.json` or `/var/lib/shipper-installer` while an update is running. They are the recovery record.
+
+## Disk is full
+
+```sh
+df -h /var/lib
+docker system df
+sudo du -sh /var/lib/shipper /var/lib/docker /var/log 2>/dev/null
+```
+
+Free space without deleting application data:
+
+1. Open **System → Maintenance** and review eligible cleanup. It can remove abandoned uploads, provably orphaned owned images, and old deployment logs while protecting recorded releases.
+2. Remove old application images only after confirming no recorded release needs them.
+3. Rotate or vacuum host logs outside Shipper.
+
+Do not run `docker system prune --volumes` or `docker volume prune`. They can remove volumes that Shipper protects deliberately.
+
+## Restore a lost or corrupt instance
+
+Use this when the host is gone, the data directory is lost, or SQLite will not start.
+
+You need:
+
+- The encrypted instance archive, for example `instance.age`.
+- Its recovery key file, for example `shipper-recovery-key.txt`.
+- The same or a compatible Shipper release.
+
+If you do not have the recovery key, the archive cannot be decrypted. The key is a separate credential and is not stored in the archive.
+
+### On a managed install
+
+Install the same release on the new host, then stop the control plane:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --version 1.0.0-rc.25
+sudo systemctl stop shipper.service
+```
+
+Prepare private recovery files and an empty target directory:
+
+```sh
+sudo install -d -m 0750 -o 65532 -g 65532 /var/lib/shipper-recovery
+sudo cp instance.age shipper-recovery-key.txt /var/lib/shipper-recovery/
+sudo chown 65532:65532 /var/lib/shipper-recovery/*
+sudo chmod 0600 /var/lib/shipper-recovery/*
+sudo install -d -m 0700 -o 65532 -g 65532 /var/lib/shipper-restored
+```
+
+Run the restore with the installed image:
+
+```sh
+IMAGE=$(sed -n 's/^SHIPPER_IMAGE=//p' /etc/shipper/instance.env)
+sudo docker run --rm \
+  -v /var/lib/shipper-restored:/data \
+  -v /var/lib/shipper-recovery:/recovery:ro \
+  "$IMAGE" restore \
+    --archive /recovery/instance.age \
+    --identity /recovery/shipper-recovery-key.txt \
+    --data-dir /data
+```
+
+Move the restored data into place and start Shipper:
+
+```sh
+sudo mv /var/lib/shipper /var/lib/shipper.pre-restore
+sudo mv /var/lib/shipper-restored /var/lib/shipper
+sudo chown -R 65532:65532 /var/lib/shipper
+sudo systemctl start shipper.service
+```
+
+Remove the recovery files after a successful sign-in:
+
+```sh
+sudo rm -rf /var/lib/shipper-recovery
+```
+
+Sign in with the original administrator credentials. If the password is unknown, run `sudo shipperctl reset-password`.
+
+### What recovery restores
+
+- Applications, release history, tasks, schedules, domains, and instance settings.
+- The original encryption key, so saved secrets and provider credentials remain readable.
+- The instance identity and proxy configuration.
+- ACME state when it was present at backup time.
+
+### What recovery does not restore
+
+- Docker images, BuildKit caches, and Git working copies.
+- Application volumes and database contents that were not protected by their own plans.
+- External secrets, object storage, or DNS records.
+
+After recovery, applications start with desired state **stopped**, schedules are disabled, and push auto-deploy is disabled. Review each application, restore its data, then start or redeploy it and re-enable schedules.
+
+:::caution
+Never run the original and recovered installation against the same Docker daemon or application storage. Two control planes will fight over the same containers and volumes.
+:::
+
+## Restore a lost host
+
+1. Provision a new Ubuntu 24.04 x86-64 server.
+2. Point a temporary hostname at it. Do not move production DNS yet.
+3. Install the same Shipper release.
+4. Restore the instance archive into the empty data directory as above.
+5. Sign in and review applications.
+6. Restore database dumps and volume archives for each application.
+7. Verify each application on the temporary hostname.
+8. Move production DNS back to the new server.
+9. Re-verify certificates and routes.
+10. Keep the old host or its disks until the new host has served real traffic.
+
+## Certificate expired or will not issue
+
+Check in this order:
+
+1. DNS points at this server.
+2. No AAAA record points at an unreachable IPv6 address.
+3. TCP 80 and 443 are reachable from the public internet.
+4. No second reverse proxy is intercepting the challenge.
+5. The ACME contact is set and valid.
+6. The proxy can reach the internet.
+
+```sh
+dig +short shipper.example.com
+dig +short AAAA shipper.example.com
+curl -sI http://shipper.example.com/.well-known/acme-challenge/test
+docker logs --tail 200 shipper-<instance-prefix>-proxy
+```
+
+In **Domains → Verify**, check the recorded certificate issuer and expiry. A valid `503` is a successful verification for deliberate maintenance mode.
+
+Do not delete the proxy data volume. If the ACME account state is damaged, a controlled re-creation is a separate operation. Take an instance backup first.
+
+## Restore application data
+
+### Database
+
+Open the application's **Backups** tab, select a completed backup, and choose **Restore a copy**. Database restores create a new database name. The existing database is never silently replaced.
+
+After the restore:
+
+1. Inspect the restored records.
+2. Test the application against the restored copy.
+3. Switch the connection string through **.env → Review changes**.
+4. Keep the previous database available for the rollback window.
+
+A database restore does not prove every application query works. It proves the dump restored and passed a create, insert, and select check.
+
+### Volume
+
+A volume restore creates a new owned volume and compares file contents, modes, owners, and links against the archive. Choose **Attach**, select the application's logical volume, and review the configuration change. The source volume is preserved.
+
+If an application was deleted but its volume was retained, create the application again, open **Backups**, and attach the retained volume. Ordinary deletion never removes application volumes.
+
+## Accidentally deleted an application
+
+1. Do not delete its retained volume.
+2. Create a new application from the same source or image.
+3. Deploy it once without the old data.
+4. Attach the retained volume, or restore the latest volume archive.
+5. Recreate domains, environment variables, tasks, and schedules from your records or the instance backup.
+
+Application records and release history are gone if the SQLite database was lost. The instance archive is the only complete record of them.
+
+## Compromised instance or token
+
+1. Revoke the affected operations token in **System → Access tokens**.
+2. Revoke sessions by resetting the password or disabling the account.
+3. Reset factors for affected users.
+4. Rotate application secrets, database passwords, OAuth client secrets, and S3 credentials.
+5. Review the account audit trail and recent deployments.
+6. If the host itself is suspect, rebuild it and restore from a known-good instance archive.
+
+Tokens never grant application administration beyond their explicit capabilities and application scope. A token with `deploy` can still run workload code through a build. Treat deployment authority as code execution authority.
+
+## When to stop and ask for help
+
+Stop changing state when:
+
+- The only copy of application data is on a disk that is failing.
+- SQLite integrity checks fail and no instance archive exists.
+- Two hosts may be writing to the same database or volume.
+- A certificate or DNS change is being made during an active incident.
+- You are about to delete a volume to make an error message go away.
+
+Collect the evidence from the first five minutes, the current version, the exact commands and outputs, and the timeline. Open an issue with that record instead of guessing.

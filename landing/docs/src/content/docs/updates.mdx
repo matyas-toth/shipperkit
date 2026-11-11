@@ -1,0 +1,160 @@
+---
+title: "Shipper updates: Main and Nightly"
+description: Choose the Main or Nightly update channel, enable automatic updates, understand the host update helper, recover a failed candidate, and update manually with the installer.
+---
+
+Shipper updates the control plane without taking applications down. The dashboard requests an update. A small host-side helper performs the privileged work.
+
+Updates are available on managed Ubuntu installs. Local development installations keep the controls disabled.
+
+## Before the first update
+
+1. Confirm the instance recovery key is downloaded and stored separately.
+2. Confirm the latest instance archive is off-server.
+3. Read the release notes for the target version.
+4. Check **System** for queued or failed operations.
+5. Choose a low-traffic window even though applications stay online.
+6. Do not run an update while a database migration or restore is in progress.
+
+## Channels
+
+| Channel | Source | Use |
+| --- | --- | --- |
+| Main | Tagged releases published from `master` | Production and normal installations |
+| Nightly | Every successful `master` build | Testing upcoming changes |
+
+Every installation starts on **Main** with automatic updates off.
+
+Nightly builds are published automatically and can contain bugs or breaking changes. Use them to validate a prerelease, not for an installation that needs predictable behavior.
+
+The feeds are generated branches:
+
+- Main reads `version.txt`, `image.txt`, and `release-url.txt` from `https://raw.githubusercontent.com/matyas-toth/shipperkit/latest`.
+- Nightly reads the same files from `https://raw.githubusercontent.com/matyas-toth/shipperkit/nightly`.
+
+The release workflow updates `latest`. The nightly workflow updates `nightly` after every successful `master` CI run. The checker resolves the current branch commit through the GitHub API and reads immutable files at that commit. If the API is unavailable, it falls back to the generated branch path.
+
+Switching from Nightly to Main does not downgrade an installation. It changes which releases are considered next.
+
+## Check for updates
+
+Shipper checks the selected feed every five minutes. A successful check with a newer version stores the available release and shows an **Update** badge on Settings.
+
+Open **Settings → Updates** to:
+
+- Run a forced check.
+- Switch between Main and Nightly.
+- Enable automatic updates.
+- Review the available version, release link, current version, and last check.
+- Start an update or open its progress dialog.
+
+With automatic updates off, an available release shows a banner with an Update button and a link to the release or commit. With automatic updates on, a newer version is installed on the next check.
+
+## What the update does
+
+Pressing Update, or an automatic update, writes a request atomically to `/var/lib/shipper/update-request.json`. A systemd path unit starts `/usr/local/libexec/shipper-update`, which:
+
+1. Validates the request against the Shipper image and version patterns.
+2. Downloads the pinned image digest.
+3. Reads the matching installer from the image itself.
+4. Runs the installer with the pinned image.
+5. Writes progress, errors, and a bounded log to `/var/lib/shipper/update-status.json`.
+
+The installer:
+
+1. Waits for queued work.
+2. Takes a SQLite checkpoint.
+3. Stops only the Shipper control-plane service.
+4. Switches the pinned image.
+5. Starts the new control plane.
+6. Verifies its health.
+
+Application containers, volumes, routes, and the proxy keep running.
+
+If the candidate is unhealthy, the installer restores the previous image and checkpoint.
+
+## During an update
+
+The dashboard keeps a progress dialog open across the control-plane restart and reloads when the new version is ready. Closing the dialog does not cancel the update. The Settings page shows its state.
+
+The dialog steps are **Prepare**, **Download**, **Checkpoint**, **Install**, and **Verify**. A short restart is expected while the control plane comes back. Applications stay online.
+
+If the browser shows a session error during the restart, wait and reload. Do not start a second update.
+
+## If an update fails
+
+A failed update should leave the previous version serving. Confirm:
+
+```sh
+curl -fsS http://127.0.0.1:8080/api/health
+sudo shipperctl status
+cat /var/lib/shipper/update-status.json
+```
+
+Open **Settings → Updates → Details** for the bounded log. Then check the host helper:
+
+```sh
+sudo systemctl status shipper-update.service --no-pager
+sudo journalctl -u shipper-update.service -n 200 --no-pager
+cat /var/lib/shipper-installer/install.log
+```
+
+To return to a known release manually:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --version 1.0.0-rc.25
+```
+
+Replace the version with the release you intend to run. The installer recovers an interrupted candidate from `/var/lib/shipper-installer/update-pending` before starting.
+
+For a full outage, use the [Recovery runbook](/docs/recovery/).
+
+## Manual updates
+
+The installer is the manual path and the recovery path.
+
+```sh
+# Latest Main release
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash
+
+# A pinned release
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --version 1.0.0-rc.25
+```
+
+Review the host checks first:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --check
+```
+
+Manual installs that are not managed by the installer do not have the host update helper. Update them through the same container image and deployment process you used originally. The dashboard's update controls stay disabled.
+
+## Security boundary
+
+- The update image must match `ghcr.io/matyas-toth/shipperkit@sha256:<digest>`.
+- The version embedded in the image must match the request.
+- The installer is read from the verified image, not from the dashboard request.
+- The request file is owned by the control plane. The host helper validates it before running anything.
+- The helper runs as root because it uses systemd and the Docker CLI. The dashboard never receives a shell or an arbitrary command channel.
+- Only the control plane restarts. Application workloads are not part of the control-plane Compose project.
+
+## Requirements and limits
+
+- The host must reach GHCR and the selected raw GitHub feed.
+- Prereleases are normal update targets on Main during the 1.0 preview.
+- Nightly can change behavior without a tagged release.
+- A downgrade is not a channel switch. Use a pinned installer and verify schema compatibility first.
+- Managed updates do not patch the host OS or Docker. Host security updates remain operator-managed.
+- A failed update does not cancel or roll back application deployments.
+
+## Update checklist
+
+- [ ] Recovery key is stored separately.
+- [ ] Latest instance archive is off-server.
+- [ ] Release notes have been read.
+- [ ] No migration or restore is running.
+- [ ] The update helper is healthy.
+- [ ] The target channel is correct.
+- [ ] The update succeeds and `/api/health` responds.
+- [ ] Applications are still serving after the control plane returns.
+- [ ] A new instance archive is taken after the update.

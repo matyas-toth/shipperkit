@@ -1,0 +1,159 @@
+---
+title: Move an existing app to Shipper
+description: Move a Dockerfile, Compose stack, static site, database, and domain from another host or platform to Shipper without a blind cutover. Includes a cutover checklist and rollback plan.
+---
+
+Moving an application is a data migration with a deploy attached. Build the new home first, verify it on a temporary hostname, then move DNS. Keep the old host running until the new one has served real traffic.
+
+Shipper does not adopt containers, volumes, or Compose projects created by another tool. It creates new owned resources and leaves the old host untouched.
+
+## Inventory before you touch anything
+
+| Item | What to record |
+| --- | --- |
+| Source | Git URL and branch, image and digest, local folder, or Compose file |
+| Build | Dockerfile path, build arguments, install and build commands |
+| Runtime | Start command, port, health path, user, resource limits |
+| Configuration | Environment variables, secret values, config files, feature flags |
+| Data | Database engine and version, named volumes, bind mounts, object storage |
+| Network | Domains, aliases, redirects, webhooks, allowed origins, OAuth callbacks |
+| Scheduled work | Cron jobs, workers, queues, one-shot tasks |
+| Access | Users, API keys, tokens, SSH keys, TLS certificates |
+
+Take a restorable backup of the old application before the first change. If the old platform has a tested restore path, use it. If it does not, create one now.
+
+## Choose the Shipper source
+
+- **Git repository** keeps builds repeatable and lets Shipper fetch a branch or commit.
+- **Local files** is for a project that only exists on a workstation. The snapshot is immutable and does not need Git.
+- **Container image** is for an image that is already built and published. Use a digest for a pinned release.
+- **Compose** is for a multi-service stack with its own `compose.yaml`.
+- **Inline Dockerfile** is for a small definition that does not belong in a repository.
+
+A Compose stack remains one Shipper application. Its services keep their own containers and route targets.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/container-drawer.png" target="_blank" rel="noreferrer"><img src="/docs/shots/container-drawer.png" alt="Shipper container inspection drawer with image, state, ports, mounts, and labels" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Inspect the new container before DNS moves. Ownership and mounts are visible without opening a shell.</figcaption>
+</figure>
+
+## Bring the configuration
+
+Create the application, then open **.env**. Add the same variables the old runtime uses, with the correct scope:
+
+- **Build** variables are available while the image is built.
+- **Runtime** variables are injected into the container.
+- **Both** is the default for values needed in each phase.
+
+Mark passwords, tokens, connection strings, and private keys as secrets. Shipper encrypts saved secret values and returns them masked. Review the change list before applying.
+
+If the old host used `.env` files baked into the image, remove them from the build context and pass the values through Shipper instead. A public image layer is not a secret store.
+
+For build-only credentials, use a BuildKit secret mount in the Dockerfile instead of an `ARG`. See [Environment variables and secrets](/docs/environment/).
+
+## Bring the data
+
+### Databases
+
+Use the native dump and restore tools for the engine and version you run. Keep the source and target versions compatible.
+
+```sh
+# PostgreSQL source
+pg_dump --format=custom --no-owner --dbname=app > app.dump
+
+# PostgreSQL target, inside the new database service
+pg_restore --no-owner --dbname=app /tmp/app.dump
+```
+
+```sh
+# MySQL or MariaDB source
+mysqldump --single-transaction --routines --triggers app > app.sql
+
+# MySQL or MariaDB target
+mysql app < app.sql
+```
+
+For a final cutover, freeze writes before the last dump. A dump taken while the application is writing is a point-in-time approximation, not a guaranteed consistent copy.
+
+Shipper application backup plans can also produce native database dumps and restore them as a new copy. They run inside the selected Shipper-owned service and require the current credentials. Use them after the app is on Shipper, not as a substitute for the first migration.
+
+### Volumes
+
+Copy file data with ownership and modes preserved.
+
+```sh
+# Old host
+docker run --rm -v old_uploads:/from -v "$PWD":/backup alpine \
+  tar -C /from -czf /backup/uploads.tar.gz .
+
+# New host, after the target volume exists
+docker run --rm -v new_uploads:/to -v "$PWD":/backup alpine \
+  tar -C /to -xzf /backup/uploads.tar.gz
+```
+
+Replace `new_uploads` with the actual Docker volume name shown in the application's Storage settings. Do not copy a live database directory as a raw volume. Use a native dump or stop every writer first. Shipper's cold-volume backups reject running or paused containers for the same reason.
+
+### Object storage and external services
+
+Keep external object storage external when possible. If you move it, update the endpoint, bucket, region, access key, and signing configuration in the same change review.
+
+## Build the new app beside the old one
+
+1. Create the application in Shipper.
+2. Deploy it on a temporary hostname such as `new-shop.example.com`.
+3. Point that temporary hostname at the new server before saving the domain, so the certificate can be issued.
+4. Restore the data.
+5. Run the same smoke tests you would run after a normal deploy.
+
+```sh
+dig +short new-shop.example.com
+curl -sS -o /dev/null -w '%{http_code}\n' https://new-shop.example.com
+curl -sS https://new-shop.example.com/health
+```
+
+If the app has background workers, start them only after the database restore. A worker that writes to the old database while the new app reads a restored copy creates two sources of truth.
+
+## Cut over DNS
+
+Lower the TTL on the production hostname at least one TTL period before the move. Keep the old host running.
+
+1. Put the old app into a write freeze or maintenance mode.
+2. Take the final database dump and restore it to the new app.
+3. Change the production DNS record to the new server.
+4. Add the production hostname in **Domains** and save.
+5. Verify DNS, TLS, and the serving release in **Domains → Verify**.
+6. Run real read and write tests through the production hostname.
+7. Remove the temporary hostname.
+8. Keep the old host stopped but intact for the rollback window.
+
+```sh
+dig +short shop.example.com
+curl -sS -o /dev/null -w '%{http_code}\n' https://shop.example.com
+curl -sS https://shop.example.com/health
+```
+
+Certificate issuance needs ports 80 and 443 reachable on the new server. If the old host still answers on the production hostname, ACME may validate against the wrong machine. Change DNS first, then save the domain.
+
+## Rollback
+
+Rollback is a DNS change, not a redeploy.
+
+1. Point the production hostname back at the old server.
+2. Re-enable writes on the old app.
+3. Keep the new app stopped while you compare data.
+4. Do not restore the old database over the new one. Decide which copy is authoritative and preserve the other for inspection.
+
+If the new app accepted writes after cutover, the old database is stale. Reconcile deliberately before declaring the rollback complete.
+
+## After the move
+
+- Confirm outbound webhooks, OAuth callbacks, and payment provider URLs use the production hostname.
+- Confirm scheduled tasks run on only one host.
+- Add a Shipper backup plan for the database and every writable volume.
+- Remove the old host only after a full backup and restore test.
+- Delete the temporary DNS record and certificate.
+- Review [Releases and rollbacks](/docs/releases-rollbacks/) and the [Recovery runbook](/docs/recovery/) with the new owner.
+
+:::caution
+Do not run the old and new applications against the same writable database or volume. Two writers are a data corruption incident, not a migration strategy.
+:::

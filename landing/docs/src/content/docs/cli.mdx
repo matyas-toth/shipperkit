@@ -1,0 +1,146 @@
+---
+title: Shipper CLI reference
+description: Build and pair the Shipper CLI, then plan, deploy, inspect, watch, read logs, run tasks, and roll back through the same scoped API as the dashboard.
+---
+
+The CLI is a thin client of the allowlisted `/api/v1` API. It uses the same ownership checks, reviewed plans, and durable worker as the dashboard.
+
+Build it from a Shipper checkout:
+
+```sh
+git clone https://github.com/matyas-toth/shipperkit.git
+cd shipperkit
+go build -o shipper ./cmd/shipper
+```
+
+Requirements: Go 1.26 or newer. The CLI connects to a remote instance over HTTPS. HTTP is accepted only on loopback.
+
+## Pair an instance
+
+Create an access token in **System → Access tokens**. Read the token from stdin:
+
+```sh
+read -rsp "Token: " token; echo
+printf '%s' "$token" | ./shipper connect https://shipper.example.com --token-stdin
+```
+
+Credentials, plans, and project associations are stored under the user's configuration directory in `shipper/`, with private modes where the OS supports them. `SHIPPER_CLIENT_DIR` overrides the location. `SHIPPER_TOKEN` temporarily overrides a saved credential.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `shipper connect URL --token-stdin` | Pair an instance and store a credential |
+| `shipper apps --json` | List visible applications |
+| `shipper inspect APP --json` | Read one application and its releases |
+| `shipper plan PATH` | Inspect a source and produce a reviewed plan |
+| `shipper deploy --plan PLAN_ID --wait` | Apply a saved plan and wait |
+| `shipper deploy .` | Plan and submit in one operation |
+| `shipper doctor APP --json` | Read bounded application diagnostics |
+| `shipper logs APP --operation ID --after 0 --json` | Read deployment logs after a cursor |
+| `shipper logs APP --service SERVICE` | Read runtime logs for a Compose service |
+| `shipper watch APP --operation ID --timeout 10m` | Follow a durable operation |
+| `shipper task APP TASK_ID` | Run a saved task |
+| `shipper rollback APP --operation RELEASE_ID` | Review a recorded release restore |
+| `shipper rollback APP --operation RELEASE_ID --revision REV --apply` | Apply the reviewed rollback |
+
+Flags that modify a plan or deploy:
+
+| Flag | Effect |
+| --- | --- |
+| `--name NAME` | Application name |
+| `--method dockerfile\|railpack\|static\|compose\|image\|inline` | Explicit build method |
+| `--domain HOSTNAME` | Domain for a new application |
+| `--app APP` | Target an existing application by exact name or ID |
+| `--config FILE` | Supply existing application configuration fields as JSON |
+| `--worker` | Use process readiness for a background worker |
+| `--new` | Create another application from the same directory |
+| `--wait` | Wait for the operation after submitting |
+| `--json` | Machine-readable output |
+
+## Local projects
+
+`shipper plan .` packages the working tree as an immutable snapshot. The CLI preserves executable bits. Browser folder uploads use regular `0644` files and portable tar paths.
+
+Default exclusions include Git metadata, dependency directories, `.env` variants, SSH and cloud credential directories, private keys, and PEM files. `.env.example`, `.env.sample`, and `.env.template` remain source files.
+
+Add `.shipperignore` for simple path globs, one per line. It is not full Git or Docker ignore syntax. `.dockerignore` continues to apply at Docker build time.
+
+The first deployment remembers a local project association outside the repository. Use `--new` to create another application from the same directory.
+
+Limits: 64 MiB of content and 10,000 regular files per snapshot. Symlinks, devices, unsafe paths, and duplicate archive entries are rejected.
+
+## Idiomatic flow
+
+```sh
+# Inspect the source and print a reviewable plan.
+shipper plan . --name shop --domain shop.example.com --json
+
+# Apply the exact reviewed plan.
+shipper deploy --plan PLAN_ID --wait
+
+# Read the recorded result and diagnostics.
+shipper doctor shop --json
+
+# Read the deployment log from the beginning.
+shipper logs shop --operation OPERATION_ID --after 0 --json
+
+# Follow a long operation without blocking the original request.
+shipper watch shop --operation OPERATION_ID --timeout 10m
+```
+
+`deploy .` can plan and submit in one operation under the token's prior deployment authority. `plan` followed by `deploy --plan` provides a review boundary.
+
+A repeated identical saved plan uses a stable idempotency key, including after promotion changes the serving revision. Changed inputs and stale reviews fail explicitly.
+
+## Health and diagnostics
+
+`doctor APP --json` returns the same bounded facts as the application diagnostics resource: serving release, latest operation, check states, observations, changes since serving, and unknowns.
+
+```sh
+shipper doctor shop --json | jq '{serving: .servingRelease.id, checks: [.checks[] | {layer, state}]}'
+```
+
+A running container is not proof that the route, certificate, or application protocol works. Read each check.
+
+## Tasks
+
+Saved tasks use the existing queue:
+
+```sh
+shipper task shop TASK_ID
+```
+
+A task runs with the application's image and environment. Command bodies require the `execute` capability.
+
+## Rollback
+
+Rollback is reviewed in two steps:
+
+```sh
+shipper rollback shop --operation RELEASE_ID
+shipper rollback shop --operation RELEASE_ID --revision REVISION --apply
+```
+
+A stale revision fails. The operation does not restore database schema or persistent volume data. See [Releases and rollbacks](/docs/releases-rollbacks/).
+
+## Output and errors
+
+JSON results go to stdout. Structured errors go to stderr and failures exit nonzero.
+
+A timeout or disconnect does not cancel a durable operation. Reconnect with `watch` instead of repeating the command.
+
+## Host commands
+
+On a managed install, `shipperctl` wraps host recovery:
+
+| Command | Purpose |
+| --- | --- |
+| `sudo shipperctl status` | Control-plane service status |
+| `sudo shipperctl logs` | Last 100 control-plane log lines |
+| `sudo shipperctl claim` | Create or restore the owner from the terminal |
+| `sudo shipperctl rotate-claim` | Rotate the setup token |
+| `sudo shipperctl reset-password` | Reset the owner password |
+| `sudo shipperctl reset-factor` | Reset the owner second factor |
+
+These are host-local commands. They do not accept a remote connection and do not use an API token.
