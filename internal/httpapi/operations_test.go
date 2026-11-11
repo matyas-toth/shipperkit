@@ -216,4 +216,45 @@ func TestOperationsCapabilitiesSourcesAndBoundReviews(t *testing.T) {
 	if job.Commit != commit || job.Config.Branch != "main" {
 		t.Fatal("Creation did not preserve the reviewed commit and configured branch", job)
 	}
+
+	code, body = call("POST", "/api/operation-tokens", "", map[string]any{"name": "Full app", "scopes": []string{"full"}, "applications": []string{}, "days": 1})
+	if code != 201 {
+		t.Fatal(code, body)
+	}
+	var full struct {
+		Token string `json:"token"`
+	}
+	json.Unmarshal([]byte(body), &full)
+	if code, body = call("GET", "/api/v1/capabilities", full.Token, nil); code != 200 || !strings.Contains(body, "full") {
+		t.Fatal("Full token could not discover capabilities", code, body)
+	}
+	if code, body = call("POST", "/api/v1/applications/one/name", full.Token, map[string]string{"name": "Renamed"}); code != 200 {
+		t.Fatal("Full token could not edit an application", code, body)
+	}
+	renamed, e := db.Application(ctx, "one")
+	if e != nil || renamed.Name != "Renamed" {
+		t.Fatal("Application was not renamed", renamed.Name, e)
+	}
+	for _, path := range []string{"/api/v1/users", "/api/v1/system"} {
+		if code, body = call("GET", path, full.Token, nil); code != 403 {
+			t.Fatal("Full token reached an administration route", path, code, body)
+		}
+	}
+	if code, body = call("POST", "/api/v1/applications/one/terminal", full.Token, map[string]any{}); code != 403 {
+		t.Fatal("Full token reached a terminal", code, body)
+	}
+	code, body = call("POST", "/api/operation-tokens", "", map[string]any{"name": "Scoped full", "scopes": []string{"full"}, "applications": []string{"one"}, "days": 1})
+	if code != 201 {
+		t.Fatal(code, body)
+	}
+	var scoped struct {
+		Token string `json:"token"`
+	}
+	json.Unmarshal([]byte(body), &scoped)
+	if code, body = call("POST", "/api/v1/applications/two/name", scoped.Token, map[string]string{"name": "Nope"}); code != 403 {
+		t.Fatal("Scoped full token edited another application", code, body)
+	}
+	if code, body = call("POST", "/api/v1/applications/one/name", scoped.Token, map[string]string{"name": "Scoped"}); code != 200 {
+		t.Fatal("Scoped full token could not edit its application", code, body)
+	}
 }

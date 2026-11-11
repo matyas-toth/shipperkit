@@ -14,7 +14,7 @@ import (
 const automationKey contextKey = 1
 const automationAppKey contextKey = 2
 
-var operationScopes = []string{"read", "logs", "deploy", "execute", "secrets", "destructive", "host-admin"}
+var operationScopes = []string{"read", "logs", "deploy", "execute", "secrets", "destructive", "host-admin", "full"}
 
 func principal(r *http.Request) *store.OperationToken {
 	v, _ := r.Context().Value(automationKey).(*store.OperationToken)
@@ -111,16 +111,44 @@ func (s *Server) automation(next http.Handler) http.Handler {
 				}
 			}
 		}
+		// Full app access mirrors the developer application surface. Administration,
+		// terminals and instance recovery stay interactive.
+		if len(parts) >= 2 && parts[0] == "applications" {
+			app = parts[1]
+		}
+		if app != "" && t.Allows("full", app) && !strings.Contains(path, "/terminal") {
+			scope = "full"
+		}
 		// App-scoped tokens can upload only for their chosen application. Creating a
 		// new application, or reading global host evidence, requires instance scope.
 		if path == "/sources" {
 			app = r.URL.Query().Get("application")
+			if t.Allows("full", app) {
+				scope = "full"
+			}
+		}
+		if t.Allows("full", "") {
+			switch {
+			case path == "/applications" && (r.Method == "GET" || r.Method == "POST"),
+				path == "/plan",
+				path == "/compose/preview",
+				path == "/variables/parse",
+				path == "/domain-options",
+				path == "/containers",
+				path == "/refresh",
+				path == "/connections" && r.Method == "GET",
+				path == "/proxy" && r.Method == "GET",
+				path == "/database-resources",
+				strings.HasPrefix(path, "/database-resources/"),
+				strings.HasPrefix(path, "/repositories/"):
+				scope = "full"
+			}
 		}
 		allowed := t.Allows(scope, app)
 		if (path == "/applications" || path == "/capabilities") && r.Method == "GET" {
 			allowed = false
 			for _, v := range t.Scopes {
-				allowed = allowed || v == "read"
+				allowed = allowed || v == "read" || v == "full"
 			}
 		}
 		if scope == "" || !allowed {
@@ -157,7 +185,7 @@ func (s *Server) createOperationToken(w http.ResponseWriter, r *http.Request) {
 	if !s.decode(w, r, &input) {
 		return
 	}
-	if !validName(input.Name) || len(input.Scopes) == 0 || len(input.Scopes) > 7 || len(input.Applications) > 100 {
+	if !validName(input.Name) || len(input.Scopes) == 0 || len(input.Scopes) > len(operationScopes) || len(input.Applications) > 100 {
 		s.problem(w, 422, "invalid_token", "Choose a name, permissions and applications")
 		return
 	}
