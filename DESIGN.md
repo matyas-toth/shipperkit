@@ -410,8 +410,11 @@ the four-stage editor without service tabs.
 
 - Selects use the same 40 px surface, radius and inset shadow as text inputs, and
   draw the chevron inside the control. Never rely on the platform arrow.
-- The option list uses the surface color and `color-scheme: dark`, so the native
-  popup stays dark. Keyboard behavior remains native.
+- On a fine pointer, opening a select renders a portalled menu on the surface with
+  the overlay shadow and a check on the current option. The menu mirrors the native
+  options and writes back through `input` and `change`, so the value, validation and
+  form behavior stay native. Keyboard and assistive technology keep the platform
+  picker, and touch devices use it too.
 - Checkboxes are 16 px squares with a 4 px radius on the input surface. Checked
   is a near-white fill with a dark check, matching the primary action. Hover and
   focus reuse the input ring.

@@ -8,6 +8,7 @@ import type { Session } from "./types";
 import AuthPage from "./pages/Auth";
 import FactorGate from "./pages/FactorGate";
 import Shell from "./components/Shell";
+import SelectMenu from "./components/SelectMenu";
 import Applications from "./pages/Applications";
 import Settings from "./pages/Settings";
 import System from "./pages/System";
@@ -57,6 +58,7 @@ function App() {
       <Show when={!session.error || session.data?.user} fallback={<div class="boot-screen"><ErrorNotice message={session.error?.message ?? "Shipper could not be reached"} retry={() => void session.refetch()} /></div>}>
         <Show when={session.data?.user} fallback={<AuthPage setup={session.data?.setupRequired ?? false} onAuthenticated={accept} refreshSession={() => session.refetch()} />}>
           <Show when={!session.data?.authStep && !session.data?.recoveryCodes?.length} fallback={<FactorGate />}>
+            <SelectMenu />
             <Router root={Shell}><Route path="/" component={Applications} /><Route path="/settings" component={Settings} /><Route path="/system" component={SystemRoute}/>
               <Route path="/new" component={NewApplication} /><Route path="/applications/:id" component={Application} />
               <Route path="*404" component={() => <div class="content content-narrow"><h1>Page not found</h1><Button onClick={() => window.location.assign("/")}>Applications</Button></div>} />
