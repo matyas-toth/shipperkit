@@ -70,7 +70,9 @@ jobs:
             web/package-lock.json
       - run: npm ci
       - run: npm ci --prefix web
-      - run: npx playwright install --with-deps chromium
+      # The runner image already carries the Chromium system libraries. Skip the
+      # optional apt font set so a mirror outage cannot fail the tests.
+      - run: npx playwright install chromium
       - run: npm run test:e2e
 
   image:
