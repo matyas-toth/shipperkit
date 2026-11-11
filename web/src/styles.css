@@ -12080,3 +12080,71 @@ input[type="checkbox"]:disabled {
 .select-menu-option[aria-disabled="true"]:hover {
   background: transparent;
 }
+
+/* Row action menus share the select menu surface and escape their tables. */
+.action-trigger {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--layer-02);
+  box-shadow: var(--neutral);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 90ms ease, color 90ms ease;
+}
+.action-trigger:hover,
+.action-trigger[aria-expanded="true"] {
+  background: #2a2a2a;
+  color: var(--text);
+}
+.action-trigger:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.action-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 80;
+  min-width: 204px;
+  max-height: min(320px, calc(100vh - 24px));
+  padding: 4px;
+  overflow-y: auto;
+  border: 0;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--overlay);
+  scrollbar-width: thin;
+}
+.action-menu button {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--secondary);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.action-menu button:hover,
+.action-menu button:focus-visible {
+  background: var(--layer-02);
+  color: var(--text);
+}
+.action-menu button.danger {
+  color: var(--danger);
+}
+.action-menu button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

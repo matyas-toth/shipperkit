@@ -14,7 +14,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: { "/api": { target: "http://127.0.0.1:8080", changeOrigin: false } },
+    proxy: { "/api": { target: process.env.SHIPPER_DEV_API ?? "http://127.0.0.1:8080", changeOrigin: false } },
   },
 });
 

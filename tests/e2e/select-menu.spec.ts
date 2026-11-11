@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+test.use({ viewport: { width: 1440, height: 900 } });
+
 async function login(page: Page) {
   await page.goto("/");
   const setup = page.getByLabel("Setup token");
@@ -47,4 +49,23 @@ test("select menus mirror the native options and write back", async ({ page }) =
 
   await select.selectOption("static");
   await expect(select).toHaveValue("static");
+});
+
+test("row action menus escape the table and manage focus", async ({ page }) => {
+  await login(page);
+  await page.goto("/settings#users");
+  await expect(page.getByRole("heading", { name: "Users", exact: true })).toBeVisible();
+
+  const trigger = page.locator(".action-trigger").first();
+  await trigger.click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("menuitem").first()).toBeFocused();
+  expect(await menu.evaluate(node => node.closest(".users-tray"))).toBeNull();
+
+  await page.keyboard.press("ArrowDown");
+  await expect(menu.getByRole("menuitem").nth(1)).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 });

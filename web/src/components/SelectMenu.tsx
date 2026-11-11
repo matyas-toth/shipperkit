@@ -1,6 +1,7 @@
 import { For, Show, createSignal, createUniqueId, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Icon } from "./Icon";
+import { settleMenu } from "./menuMotion";
 
 type Entry = {
   label: string;
@@ -20,7 +21,6 @@ type OpenMenu = {
 };
 
 const isFinePointer = () => window.matchMedia("(pointer: fine)").matches;
-const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const usableSelect = (node: EventTarget | null): HTMLSelectElement | null =>
   node instanceof HTMLSelectElement && !node.multiple && !node.disabled && !node.classList.contains("app-section-select") ? node : null;
 
@@ -114,27 +114,7 @@ export default function SelectMenu() {
       const node = element;
       const current = menu();
       if (!node || !current) return;
-      const full = Math.min(node.scrollHeight, current.maxHeight);
-      if (reduceMotion()) {
-        highlight();
-        return;
-      }
-      node.style.overflow = "hidden";
-      node.style.height = "0px";
-      const snap = Math.round(full * 0.75);
-      const animation = node.animate(
-        [
-          { height: "0px", opacity: 0.55 },
-          { height: `${snap}px`, opacity: 1, offset: 0.45 },
-          { height: `${full}px`, opacity: 1 },
-        ],
-        { duration: 220, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
-      );
-      animation.onfinish = () => {
-        node.style.height = "";
-        node.style.overflow = "";
-        highlight();
-      };
+      settleMenu(node, current.maxHeight, highlight);
     });
   };
 
