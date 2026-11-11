@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.0-rc.25](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.24...v1.0.0-rc.25) (2026-11-11)
+
+
+### Features
+
+* lead the landing product section with deploy anything ([#58](https://github.com/matyas-toth/shipperkit/issues/58)) ([8d53cf7](https://github.com/matyas-toth/shipperkit/commit/8d53cf7c6e44e9f5930d7adbc7d3709a980ee4d7))
+* open the landing through the Shipper mark ([#59](https://github.com/matyas-toth/shipperkit/issues/59)) ([8ce4089](https://github.com/matyas-toth/shipperkit/commit/8ce40891203c7a2398404fccc0cf9d1f005af4cb))
+* rework selects, checkboxes and action menus ([#61](https://github.com/matyas-toth/shipperkit/issues/61)) ([b65b02c](https://github.com/matyas-toth/shipperkit/commit/b65b02c1af75c74ddcc1d4bee55123822d66875d))
+
+
+### Bug Fixes
+
+* calm the landing mark reveal ([#60](https://github.com/matyas-toth/shipperkit/issues/60)) ([b24e65a](https://github.com/matyas-toth/shipperkit/commit/b24e65a127c28df829ce4fdc5144b5062e64b025))
+* force the landing installer redirect ([#56](https://github.com/matyas-toth/shipperkit/issues/56)) ([d5e939a](https://github.com/matyas-toth/shipperkit/commit/d5e939ac6cb9966b1ffc903a3b2c9722a7c31b25))
+
 ## [1.0.0-rc.24](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.23...v1.0.0-rc.24) (2026-11-10)
 
 
