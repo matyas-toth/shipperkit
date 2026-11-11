@@ -235,6 +235,9 @@ func TestOperationsCapabilitiesSourcesAndBoundReviews(t *testing.T) {
 	if e != nil || renamed.Name != "Renamed" {
 		t.Fatal("Application was not renamed", renamed.Name, e)
 	}
+	if code, body = call("GET", "/api/v1/applications/one", full.Token, nil); code != 200 || !strings.Contains(body, "private-command-body") {
+		t.Fatal("Full token could not read command bodies", code, body)
+	}
 	for _, path := range []string{"/api/v1/users", "/api/v1/system"} {
 		if code, body = call("GET", path, full.Token, nil); code != 403 {
 			t.Fatal("Full token reached an administration route", path, code, body)

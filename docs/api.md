@@ -79,7 +79,8 @@ handlers, validation, ownership and durable worker. Capabilities are `read`,
 `logs`, `deploy`, `execute`, `secrets`, `destructive`, `host-admin`, and `full`,
 optionally restricted to application IDs. Empty application scope means the whole
 instance. `full` covers the application surface for the selected applications:
-settings, environment, domains, releases, backups, tasks and deletion. It never
+settings, environment, command bodies, secret reveals, domains, releases, backups,
+tasks and deletion. It never
 reaches administration routes, terminals or instance recovery. Tokens expire, can
 be revoked, and are never interchangeable with browser sessions or legacy
 application deploy tokens. Unsupported v1 routes are denied by default.
