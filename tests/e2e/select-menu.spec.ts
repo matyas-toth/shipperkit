@@ -29,8 +29,20 @@ test("select menus mirror the native options and write back", async ({ page }) =
 
   await select.click();
   await expect(page.locator(".select-menu")).toBeVisible();
+  await expect(page.locator(".select-menu")).toHaveAttribute("role", "listbox");
+  await expect(select).toBeFocused();
+  await expect(select).toHaveAttribute("aria-expanded", "true");
+  await expect(select).toHaveAttribute("aria-activedescendant", /select-menu-/);
   await page.locator(".select-menu-option", { hasText: "Dockerfile" }).click();
   await expect(select).toHaveValue("dockerfile");
+  await expect(page.locator(".select-menu")).toHaveCount(0);
+  await expect(select).toHaveAttribute("aria-expanded", "false");
+
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".select-menu")).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await expect(select).toHaveValue("railpack");
+  await page.keyboard.press("Enter");
   await expect(page.locator(".select-menu")).toHaveCount(0);
 
   await select.selectOption("static");
