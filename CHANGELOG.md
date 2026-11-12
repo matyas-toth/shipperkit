@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.28](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.27...v1.0.0-rc.28) (2026-11-12)
+
+
+### Bug Fixes
+
+* refine the landing install command bar ([#68](https://github.com/matyas-toth/shipperkit/issues/68)) ([0311fb9](https://github.com/matyas-toth/shipperkit/commit/0311fb9e637449fdd36cc8e1d501e596749eda8e))
+
 ## [1.0.0-rc.27](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.26...v1.0.0-rc.27) (2026-11-12)
 
 
