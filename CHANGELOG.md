@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.0-rc.27](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.26...v1.0.0-rc.27) (2026-11-12)
+
+
+### Features
+
+* add Shipper documentation site ([#64](https://github.com/matyas-toth/shipperkit/issues/64)) ([ff2bc74](https://github.com/matyas-toth/shipperkit/commit/ff2bc746f299a0017e082a85a593ecd4560e120e))
+* add the Shipper CLI ([#65](https://github.com/matyas-toth/shipperkit/issues/65)) ([0d2d4b0](https://github.com/matyas-toth/shipperkit/commit/0d2d4b08c2053aa4427f770a0537d6d7f2384999))
+
+
+### Bug Fixes
+
+* expand landing footer docs links ([#67](https://github.com/matyas-toth/shipperkit/issues/67)) ([8509d93](https://github.com/matyas-toth/shipperkit/commit/8509d931f742dadea13b61d1a66ba283f144836e))
+
 ## [1.0.0-rc.26](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.25...v1.0.0-rc.26) (2026-11-11)
 
 
