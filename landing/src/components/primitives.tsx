@@ -162,8 +162,8 @@ export function CopyButton({
       aria-label={label === "Copy" ? "Copy install command" : label}
       className={cn(
         primary
-          ? "inline-flex h-[52px] items-center justify-center gap-2.5 rounded-xl border border-white bg-white px-5 text-[15px] font-[550] text-[#070808] transition-colors hover:border-white hover:bg-white/90"
-          : "inline-flex h-11 shrink-0 items-center gap-2.5 rounded-lg border border-white/[0.14] bg-white/[0.05] px-4 text-[14px] font-[500] text-[#e7e7e2] transition-colors hover:border-white/[0.26] hover:bg-white/[0.09]",
+          ? "inline-flex h-[52px] items-center justify-center gap-2.5 rounded-[7px] border border-white bg-white px-5 text-[15px] font-[550] text-[#070808] transition-colors hover:border-white hover:bg-white/90"
+          : "inline-flex h-11 shrink-0 items-center gap-2.5 rounded-[7px] border border-white/[0.14] bg-white/[0.05] px-4 text-[14px] font-[500] text-[#e7e7e2] transition-colors hover:border-white/[0.26] hover:bg-white/[0.09]",
         iconOnly && "w-11 justify-center px-0",
         className,
       )}
@@ -177,12 +177,10 @@ export function CopyButton({
 }
 
 export function CommandBar({
-  command = INSTALL_COMMAND,
   className,
   showCopy = true,
   emphasis = false,
 }: {
-  command?: string;
   className?: string;
   showCopy?: boolean;
   emphasis?: boolean;
@@ -190,30 +188,33 @@ export function CommandBar({
   return (
     <div
       className={cn(
-        "w-full rounded-xl border border-white/[0.09] bg-[#080909] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+        "w-full rounded-[10px] border border-white/[0.09] bg-[#080909] p-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
         className,
       )}
     >
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between gap-2 px-2 py-1">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="mono shrink-0 text-[14px] text-[#85867f]">$</span>
-            <code className="mono min-w-0 overflow-x-auto whitespace-nowrap text-[12px] leading-[1.7] text-[#e1e1db] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:text-[13px]">
-              <span className="sm:hidden">curl -fsSL</span>
-              <span className="hidden sm:inline">{command}</span>
-            </code>
-          </div>
-          {showCopy && (
-            <>
-              <CopyButton variant={emphasis ? "primary" : "default"} className="shrink-0" />
-            </>
-          )}
-        </div>
-        <div className="px-2 pb-1 pl-[30px] sm:hidden">
-          <code className="mono block whitespace-pre text-[12px] leading-[1.7] text-[#e1e1db]">
-            https://shipperkit.dev/install.sh
-            <br />| sudo bash
+      <div className="hidden items-center justify-between gap-2 py-1 pl-[9px] pr-1 text-left sm:flex">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="mono shrink-0 text-[14px] text-[#85867f]">$</span>
+          <code className="mono min-w-0 overflow-x-auto whitespace-nowrap text-[12px] leading-[1.7] text-[#e1e1db] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:text-[13px]">
+            {INSTALL_COMMAND}
           </code>
+        </div>
+        {showCopy && (
+          <CopyButton variant={emphasis ? "primary" : "default"} className="shrink-0" />
+        )}
+      </div>
+      <div className="py-1 pl-[9px] pr-1 text-left sm:hidden">
+        <code className="mono block whitespace-pre text-[12px] leading-[1.7] text-[#e1e1db]">
+          <span className="text-[#85867f]">$ </span>curl -fsSL
+        </code>
+        <code className="mono block whitespace-pre-wrap break-words text-[12px] leading-[1.7] text-[#e1e1db]">https://shipperkit.dev/<wbr />install.sh</code>
+        <div className="flex min-h-9 items-center justify-between gap-3">
+          <code className="mono block whitespace-pre text-[12px] leading-[1.7] text-[#e1e1db]">
+            | sudo bash
+          </code>
+          {showCopy && (
+            <CopyButton variant={emphasis ? "primary" : "default"} className="h-9 shrink-0 px-3 text-[13px]" />
+          )}
         </div>
       </div>
     </div>
