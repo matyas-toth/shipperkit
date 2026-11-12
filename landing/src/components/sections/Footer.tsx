@@ -6,6 +6,18 @@ const repo = "https://github.com/matyas-toth/shipperkit";
 const docs = "/docs/";
 const doc = (path: string) => `${docs}${path}`;
 
+// Public docs are served from /docs. Keep these relative so previews and the
+// production domain both resolve to the docs site instead of the GitHub tree.
+const docsLinks = [
+  ["Install", doc("install/")],
+  ["First deploy", doc("first-deploy/")],
+  ["Domains", doc("domains/")],
+  ["Backups", doc("backups/")],
+  ["Recovery", doc("recovery/")],
+  ["Troubleshooting", doc("troubleshooting/")],
+  ["API", doc("api/")],
+];
+
 const groups = [
   {
     title: "Product",
@@ -18,12 +30,7 @@ const groups = [
   },
   {
     title: "Docs",
-    links: [
-      ["Installation", doc("install/")],
-      ["Recovery", doc("recovery/")],
-      ["Troubleshooting", doc("troubleshooting/")],
-      ["API", doc("api/")],
-    ],
+    links: docsLinks,
   },
   {
     title: "Project",
@@ -38,7 +45,7 @@ const groups = [
 
 function NavColumns() {
   return (
-    <div className="grid grid-cols-3 gap-6 sm:gap-10 md:gap-14">
+    <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 sm:gap-10 md:gap-14">
       {groups.map((group) => (
         <div key={group.title}>
           <div className="text-[14px] font-[500] text-[#797a75]">{group.title}</div>
@@ -185,7 +192,7 @@ function Footer5() {
           </div>
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
             {[
-              ["Read", [["Installation", doc("install/")], ["First deploy", doc("first-deploy/")], ["Recovery", doc("recovery/")], ["API", doc("api/")]]],
+              ["Docs", docsLinks],
               ["Operate", [["Compose", doc("move-an-app/")], ["Backups", doc("backups/")], ["Updates", doc("updates/")], ["Routing", doc("domains/")]]],
               ["Project", [["GitHub", repo], ["Releases", `${repo}/releases`], ["Security", `${repo}/blob/master/SECURITY.md`], ["Landing lab", "/variants"]]],
             ].map(([title, links]) => (
