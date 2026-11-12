@@ -1,0 +1,1 @@
+https://github.com/matyas-toth/shipperkit/releases/tag/v1.0.0-rc.27
