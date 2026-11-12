@@ -1,6 +1,6 @@
 ---
 title: Rollbacks
-description: Restore a recorded release, what rollback does and does not recover, Compose requirements, CLI usage, and how to verify the restored release.
+description: Restore a recorded release, what rollback does and does not recover, Compose requirements, and how to verify the restored release.
 ---
 
 A rollback restores an older recorded release. It is a code and runtime operation, not a data recovery operation.
@@ -49,22 +49,11 @@ If the plan or an image is missing, Shipper rejects the operation. It does not f
 
 Compose uses its own service stop grace and stateful reconciliation. It has no blue-green traffic drain.
 
-## CLI
-
-The CLI uses the same reviewed rollback boundary:
-
-```sh
-shipper rollback shop --operation RELEASE_ID
-shipper rollback shop --operation RELEASE_ID --revision REVISION_ID --apply
-```
-
-`rollback` first returns a review revision. Applying with a stale revision fails. Use `shipper watch` to follow the durable operation.
-
 ## Verify after a rollback
 
 1. The deployment state is **Succeeded**.
 2. The serving release is the restored release.
-3. **Overview → Diagnostics** shows the expected checks.
+3. The application Overview shows no issue alert.
 4. **Domains → Verify** returns a valid response and certificate.
 5. The application log no longer shows the failure that triggered the rollback.
 6. A real read and write through the public hostname succeeds.

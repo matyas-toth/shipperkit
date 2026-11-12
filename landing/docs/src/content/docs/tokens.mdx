@@ -1,9 +1,9 @@
 ---
 title: API and agent tokens
-description: Create scoped, expiring operation tokens for scripts and agents, pair the CLI, use the /api/v1 API, and revoke access.
+description: Create scoped, expiring operation tokens for scripts and agents, use the /api/v1 API, and revoke access.
 ---
 
-Operation tokens are machine credentials for the Shipper API and CLI. They are not browser sessions and they never become an administrator login.
+Operation tokens are machine credentials for the Shipper API. They are not browser sessions and they never become an administrator login.
 
 Use a token when a script, CI job, or agent needs to inspect applications, deploy a reviewed plan, read logs, or run a saved task. Give it the smallest capability set and application scope that does the job.
 
@@ -29,7 +29,7 @@ The token value is shown once, at creation. Shipper stores a hash and cannot sho
 
 | Capability | Grants |
 | --- | --- |
-| `read` | Capabilities, applications, releases, diagnostics, observations, incidents, system facts |
+| `read` | Capabilities, applications, releases, observations, incidents, system facts |
 | `logs` | Deployment and runtime logs in addition to read |
 | `deploy` | Plan, create, change, deploy, route, rollback, cancel, and retry application work |
 | `execute` | Run saved tasks |
@@ -62,42 +62,12 @@ Unsupported v1 routes are denied by default. Session routes under `/api` use coo
 
 See [API](/docs/api/) for the endpoint list, plan and deploy examples, and error shape.
 
-## CLI pairing
-
-Build the CLI from a Shipper checkout:
-
-```sh
-git clone https://github.com/matyas-toth/shipperkit.git
-cd shipperkit
-go build -o shipper ./cmd/shipper
-```
-
-Pair with a token over stdin. Do not put a token in a command argument.
-
-```sh
-read -rsp "Token: " token; echo
-printf '%s' "$token" | ./shipper connect https://shipper.example.com --token-stdin
-```
-
-The CLI stores credentials, plans, and project associations under the user's configuration directory in `shipper/`, with private modes where the OS supports them. `SHIPPER_CLIENT_DIR` overrides the location. `SHIPPER_TOKEN` temporarily overrides a saved credential.
-
-```sh
-./shipper apps --json
-./shipper plan . --name shop --method dockerfile --domain shop.example.com
-./shipper deploy --plan PLAN_ID --wait
-./shipper doctor shop --json
-./shipper logs shop --operation OPERATION_ID --after 0 --json
-./shipper watch shop --operation OPERATION_ID --timeout 10m
-```
-
-See [CLI](/docs/cli/) for the command surface.
-
 ## Agent workflow
 
 A safe agent loop uses the same boundary as a careful human:
 
 1. Call `/api/v1/capabilities` and identify the exact instance, application, and service.
-2. Read `doctor APP --json` or the bounded diagnostics resource.
+2. Read the bounded application facts at `/api/v1/applications/{id}/diagnostics`.
 3. Compare desired state, serving release, and latest operation.
 4. Identify the failed layer: source, build, task, runtime, dependency, route, TLS, daemon, proxy, or storage.
 5. Fetch only the relevant operation logs or runtime tail.

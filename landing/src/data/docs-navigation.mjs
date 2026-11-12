@@ -37,7 +37,6 @@ export const docGroups = [
       { slug: "recovery", label: "Recovery runbook", priority: "1.0", changefreq: "monthly" },
       { slug: "lost-access", label: "Lost access", priority: "0.8", changefreq: "monthly" },
       { slug: "host-recovery", label: "Host recovery", priority: "0.9", changefreq: "monthly" },
-      { slug: "diagnostics", label: "Diagnostics", priority: "0.9", changefreq: "monthly" },
       { slug: "troubleshooting", label: "Troubleshooting", priority: "0.9", changefreq: "monthly" },
       { slug: "maintenance", label: "Maintenance", priority: "0.7", changefreq: "monthly" },
     ],
@@ -55,7 +54,6 @@ export const docGroups = [
   {
     label: "Reference",
     items: [
-      { slug: "cli", label: "CLI", priority: "0.7", changefreq: "monthly" },
       { slug: "api", label: "API", priority: "0.8", changefreq: "monthly" },
       { slug: "ports", label: "Ports", priority: "0.6", changefreq: "yearly" },
       { slug: "instance-variables", label: "Instance variables", priority: "0.6", changefreq: "monthly" },

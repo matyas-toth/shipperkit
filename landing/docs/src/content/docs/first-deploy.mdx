@@ -102,34 +102,6 @@ ghcr.io/acme/store@sha256:6f1c2a9d4e8b7c0a3f5e1d9b2c4a6f8e0d1b3c5a7f9e2d4b6c8a0f
 
 Set the container port and health path. A tag is resolved during deployment. A digest is reviewed and deployed exactly as written.
 
-## Deploy from the terminal
-
-The dashboard is the complete manual workflow. The CLI uses the same reviewed plans and durable worker.
-
-Create an access token in **System → Access tokens** with `read`, `deploy`, and `logs` capabilities. Then pair the CLI:
-
-```sh
-# Build the CLI from a Shipper checkout, on your workstation.
-git clone https://github.com/matyas-toth/shipperkit.git
-cd shipperkit
-go build -o shipper ./cmd/shipper
-
-read -rsp "Token: " token; echo
-printf '%s' "$token" | ./shipper connect https://shipper.example.com --token-stdin
-```
-
-Plan and deploy a local directory:
-
-```sh
-shipper plan . --name shop --domain shop.example.com
-shipper deploy --plan PLAN_ID --wait
-shipper doctor shop --json
-```
-
-`plan` inspects the source and returns a reviewable plan. `deploy --plan` applies that exact plan. A timeout or disconnect does not cancel the operation. Use `shipper watch` to reconnect to an operation that is still running.
-
-The CLI accepts HTTP only on loopback. Use HTTPS for every remote connection. See [API and agent tokens](/docs/tokens/) and the [CLI reference](/docs/cli/).
-
 ## Verify the route
 
 From your workstation:
@@ -159,7 +131,7 @@ Open the failed deployment. **Show failed step** takes you to the exact stage an
 - DNS does not resolve to this server.
 - Port 80 or 443 is blocked.
 
-Use [Diagnostics](/docs/diagnostics/) and [troubleshooting](/docs/troubleshooting/) for the console check that matches the failure.
+Use [troubleshooting](/docs/troubleshooting/) for the console check that matches the failure.
 
 ## Next
 

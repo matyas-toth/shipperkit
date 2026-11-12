@@ -45,7 +45,7 @@ Choose **Local files** to upload an immutable snapshot of a folder from the brow
 
 Limits: 64 MiB of content and 10,000 regular files per upload. Symlinks, devices, unsafe paths, and duplicate archive entries are rejected. Review the selected file list before uploading.
 
-The CLI can package a working tree with `shipper plan .` and preserves executable bits. Use `.shipperignore` for simple path globs. `.dockerignore` still applies at Docker build time.
+The local files source is an immutable snapshot. Editing the folder afterward does not change an existing release. Browser uploads apply the built-in exclusions and display the selected file list.
 
 ## Container image
 

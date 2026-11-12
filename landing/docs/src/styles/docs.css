@@ -152,7 +152,7 @@ body::before {
 
 /* Header */
 
-.header {
+header.header {
   border-bottom: 1px solid var(--docs-line);
   background: rgba(5, 6, 6, 0.88);
   backdrop-filter: blur(16px);

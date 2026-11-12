@@ -1,6 +1,6 @@
 ---
 title: API
-description: The Shipper /api/v1 contract for applications, diagnostics, plans, deployments, logs, tasks, rollback, and system operations.
+description: The Shipper /api/v1 contract for applications, application facts, plans, deployments, logs, tasks, rollback, and system operations.
 ---
 
 Automation uses the explicitly allowlisted subset under `/api/v1` with `Authorization: Bearer TOKEN`. Session routes under `/api` use cookies and CSRF and are not interchangeable with bearer tokens.
@@ -22,7 +22,7 @@ A timeout or disconnect does not cancel a durable operation. Read the operation 
 | GET | `/capabilities` | read | API version, features, and limits |
 | GET | `/applications` | read | Masked applications in token scope |
 | GET | `/applications/{id}` | read | One application and release history |
-| GET | `/applications/{id}/diagnostics` | read | Bounded checks, serving and latest state, unknowns |
+| GET | `/applications/{id}/diagnostics` | read | Bounded application facts, serving and latest state, unknowns |
 | GET | `/applications/{id}/observations` | read | Current samples and stale flags |
 | GET | `/applications/{id}/incidents` | read | Latest incidents, with `after` cursor |
 | POST | `/plan` | deploy | Review a new application or source |
@@ -88,4 +88,4 @@ A timeout or disconnect does not cancel the operation. Do not automatically repe
 
 Tokens are created through the dashboard in **System → Access tokens**, or by an admin session at `POST /api/operation-tokens`. Session-only administration is intentionally not exposed to bearer tokens.
 
-See [API and agent tokens](/docs/tokens/) for capabilities, scopes, CLI pairing, and hygiene.
+See [API and agent tokens](/docs/tokens/) for capabilities, scopes, API usage, and hygiene.

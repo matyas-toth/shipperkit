@@ -3,7 +3,12 @@ title: Troubleshooting
 description: Fix failed builds, containers that exit, readiness failures, 502 routes, certificate warnings, failed tasks, missing Compose dependencies, and stale data.
 ---
 
-Use [Diagnostics](/docs/diagnostics/) to identify the failed layer. This page maps each symptom to the next action.
+Use the application's Overview issue alert, deployment logs, runtime logs, and **System → Overview** health cards to identify the failed layer. This page maps each symptom to the next action.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/application-issue.png" target="_blank" rel="noreferrer"><img src="/docs/shots/application-issue.png" alt="Shipper application overview issue alert with the failing runtime and a link to the next action" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>The Overview issue alert names the failing layer and links to the next useful action.</figcaption>
+</figure>
 
 ## Build fails
 
@@ -56,7 +61,7 @@ A health endpoint that redirects to HTTPS can fail inside the container. Provide
 The container may be running while the route points at the wrong port or hostname.
 
 1. Open **Domains** and confirm the primary hostname and route target.
-2. Check **Routing** in diagnostics.
+2. Check the Overview issue alert or open **Domains** directly.
 3. Run **Domains → Verify**.
 4. Inspect the service port and the container's listening port.
 5. Inspect the proxy logs if DNS is correct.

@@ -169,7 +169,7 @@ function Faq4() {
                 which failures still need an operator.
               </p>
               <div className="mt-8">
-                <ActionSecondary href="/docs/diagnostics/">
+                <ActionSecondary href="/docs/troubleshooting/">
                   Open the operations guide
                 </ActionSecondary>
               </div>

@@ -68,7 +68,7 @@ The candidate container must answer its health request within the startup deadli
 - A health check should not depend on a database that is still starting.
 - A health endpoint that redirects to HTTPS can fail inside the container. Use a plain HTTP endpoint.
 
-`--worker` in the CLI uses process readiness for background workers. Compose services can use their own health checks.
+Compose services can use their own health checks. A background worker should not expose an HTTP port, so configure it for process readiness rather than an HTTP probe.
 
 ## Failed builds
 

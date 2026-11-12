@@ -42,6 +42,11 @@ HTTPS is enabled per hostname in **Domains**. It requires:
 
 If an application must stay HTTP-only, use it only on a private network or behind a reverse proxy you control. Do not expose credentials over plain HTTP.
 
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/domain-editor.png" target="_blank" rel="noreferrer"><img src="/docs/shots/domain-editor.png" alt="Shipper domain editor with HTTPS enabled, certificate issuer, and certificate expiry" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>A verified domain records its certificate issuer and expiry in the route editor.</figcaption>
+</figure>
+
 ## How issuance works
 
 1. Shipper writes the route and asks Traefik to serve it.
