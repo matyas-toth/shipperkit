@@ -1,0 +1,122 @@
+---
+title: Restore
+description: Restore a Shipper instance archive on a managed install, restore an application database or volume as a copy, import an archive, and test the result.
+---
+
+Restore is a deliberate operation. Shipper never overwrites a populated instance data directory, an existing database, or an attached volume.
+
+## Restore an instance
+
+Use this when the host is gone, the data directory is lost, or SQLite will not start.
+
+You need:
+
+- The encrypted instance archive, for example `instance.age`.
+- Its recovery key file, for example `shipper-recovery-key.txt`.
+- The same or a compatible Shipper release.
+
+If you do not have the recovery key, the archive cannot be decrypted. The key is a separate credential and is not stored in the archive.
+
+### On a managed install
+
+Install the same release on the new host, then stop the control plane:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --version 1.0.0-rc.25
+sudo systemctl stop shipper.service
+```
+
+Prepare private recovery files and an empty target directory:
+
+```sh
+sudo install -d -m 0750 -o 65532 -g 65532 /var/lib/shipper-recovery
+sudo cp instance.age shipper-recovery-key.txt /var/lib/shipper-recovery/
+sudo chown 65532:65532 /var/lib/shipper-recovery/*
+sudo chmod 0600 /var/lib/shipper-recovery/*
+sudo install -d -m 0700 -o 65532 -g 65532 /var/lib/shipper-restored
+```
+
+Run the restore with the installed image:
+
+```sh
+IMAGE=$(sed -n 's/^SHIPPER_IMAGE=//p' /etc/shipper/instance.env)
+sudo docker run --rm \
+  -v /var/lib/shipper-restored:/data \
+  -v /var/lib/shipper-recovery:/recovery:ro \
+  "$IMAGE" restore \
+    --archive /recovery/instance.age \
+    --identity /recovery/shipper-recovery-key.txt \
+    --data-dir /data
+```
+
+Move the restored data into place and start Shipper:
+
+```sh
+sudo mv /var/lib/shipper /var/lib/shipper.pre-restore
+sudo mv /var/lib/shipper-restored /var/lib/shipper
+sudo chown -R 65532:65532 /var/lib/shipper
+sudo systemctl start shipper.service
+```
+
+Remove the recovery files after a successful sign-in:
+
+```sh
+sudo rm -rf /var/lib/shipper-recovery
+```
+
+Sign in with the original administrator credentials. If the password is unknown, run `sudo shipperctl reset-password`.
+
+### After recovery
+
+Applications start with desired state **stopped**, schedules are disabled, and push auto-deploy is disabled. Review each application, restore its data, then start or redeploy it and re-enable schedules.
+
+Never run the original and recovered installation against the same Docker daemon or application storage. Two control planes will fight over the same containers and volumes.
+
+## Restore application data
+
+### Database
+
+Select a completed backup in **History → Restore a copy**. Database restores require a new database name. An existing database is never silently replaced. The engine and native tool version must match the archive.
+
+1. Restore the copy.
+2. Inspect the restored records.
+3. Test the application against the restored database.
+4. Switch the connection string through **.env → Review changes**.
+5. Keep the previous database available for the rollback window.
+
+A database restore runs a create, insert, and select check in the restored copy. That is a database check, not proof that every application query works.
+
+### Volume
+
+A volume restore creates a new owned retained volume and compares its file contents, modes, owners, and links against the archive.
+
+1. Choose **Attach**.
+2. Select the application's logical volume.
+3. Review the configuration change.
+4. Deploy or restart so the application mounts the restored volume.
+
+The source volume is preserved. Ownership mismatches are rejected. Retained volumes left by deleted applications are discoverable in **Settings → Recovery**.
+
+## Import an archive
+
+**Import backup** accepts the encrypted Shipper `.age` format, including archives downloaded from S3. Supply its recovery key if it differs from the current instance's key. The archive's application identity must match. General cloning or cross-application import is later parity.
+
+Imported archives never provide trusted connection credentials. Use the matching local plan or explicit restore inputs. Restore only archives from a trusted source.
+
+## Test the restore
+
+A backup that has never been restored is a hypothesis.
+
+1. Create a disposable application or database with the same engine version.
+2. Restore the latest archive as a copy.
+3. Run a query or file check that proves the data is present.
+4. Destroy only the disposable copy after the check.
+5. Record the date, archive, size, and result.
+
+Repeat this after a database engine upgrade and after any change to `encryption.key` or the recovery key.
+
+## Related
+
+- [Backups](/docs/backups/)
+- [Off-server storage](/docs/off-server-storage/)
+- [Host recovery](/docs/host-recovery/)

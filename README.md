@@ -287,7 +287,8 @@ Production data and generated builds are ignored by Git.
 See [architecture](docs/architecture.md), the [API contract](docs/api.md),
 [releases and staging](docs/releases.md), [updates](docs/updates.md),
 [contributing](CONTRIBUTING.md), [security](SECURITY.md), and
-[phase status](docs/roadmap.md). The interface is based on the measured
+[phase status](docs/roadmap.md). The public documentation site is built from
+`landing/docs` with Astro Starlight and served at `/docs`. The interface is based on the measured
 [design reference](DESIGN.md), with the concise-copy rules in
 [AGENTS.md](AGENTS.md).
 

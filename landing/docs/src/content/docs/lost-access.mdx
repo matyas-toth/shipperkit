@@ -1,0 +1,62 @@
+---
+title: Lost access
+description: Recover an owner password, reset a second factor, use recovery codes, and restore a sign-in method from the host.
+---
+
+Use this page when the instance is healthy but you cannot sign in.
+
+## Lost the owner password
+
+Run the interactive recovery on the host. It stops the control plane, prompts for the administrator email and a new password, and starts the service again.
+
+```sh
+sudo shipperctl reset-password
+```
+
+The password is not echoed and is not accepted as a command argument. Recovery revokes every existing session. Use the new password to sign in, then review active sessions and tokens.
+
+## Lost the second factor
+
+Try a one-use recovery code first. If none work, use the offline owner recovery:
+
+```sh
+sudo shipperctl reset-factor
+```
+
+This revokes sessions and the owner's operations tokens, keeps the instance policy, and requires enrollment again when 2FA is enforced. It does not disable 2FA for other users.
+
+## No sign-in method works
+
+Check whether the instance still has an enabled method. If password login was disabled and the OAuth provider is misconfigured, claim the instance from the host:
+
+```sh
+sudo shipperctl claim
+```
+
+This creates or restores the owner account from the terminal. It is a host-local capability, not a public endpoint.
+
+## A user cannot sign in
+
+An admin can open **Settings → Users** and:
+
+- Reset the password and share the temporary password separately.
+- Reset the factor.
+- Re-enable a disabled account.
+- Open the user's audit trail to see recent account events.
+
+A disabled account denies every login method and revokes sessions and personal access credentials. Enabling it does not automatically restore a removed password or factor.
+
+## Sessions and tokens
+
+`reset-password` and `reset-factor` revoke existing sessions. After recovery:
+
+1. Sign in with the new credential.
+2. Review **Settings → Users** for unexpected changes.
+3. Revoke operations tokens that are no longer needed in **System → Access tokens**.
+4. Rotate any application secret that may have been exposed.
+
+## Related
+
+- [Two-factor authentication](/docs/two-factor/)
+- [Users and roles](/docs/users/)
+- [Recovery runbook](/docs/recovery/)

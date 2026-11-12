@@ -1,0 +1,181 @@
+---
+title: Uninstall
+description: Stop the Shipper control plane, remove its metadata, or delete every owned application and volume. Three levels of removal with the exact commands and the data each one preserves.
+---
+
+Uninstall is not one action. Decide which of these you actually want:
+
+| Level | What it removes | What it keeps |
+| --- | --- | --- |
+| Stop the control plane | Shipper service and boot units | Applications, proxy, certificates, volumes, Shipper metadata |
+| Remove Shipper | Control plane, metadata, host units and helpers | Application containers and volumes |
+| Remove everything | Every Shipper-owned application, volume, certificate and metadata | Docker and unrelated workloads |
+
+The installer's uninstall command performs the first level. The other two are deliberate follow-up actions.
+
+## Before you remove anything
+
+1. Download an instance recovery archive and its recovery key from **Settings → Recovery**.
+2. Create a backup plan for every application database and writable volume.
+3. Download the latest archives and verify one restore.
+4. Record the dashboard hostname, application domains, and DNS records.
+5. Export any values that only exist in Shipper, including secret environment variables.
+6. Confirm no scheduled task or webhook still depends on the instance.
+
+An uninstall that removes `/var/lib/shipper` without the recovery key cannot decrypt the instance archives. Treat the key as a separate credential.
+
+## Level 1: stop the control plane
+
+Preview:
+
+```sh
+sudo bash install.sh --uninstall
+```
+
+Apply:
+
+```sh
+sudo bash install.sh --uninstall --apply
+```
+
+This runs:
+
+```text
+systemctl disable --now shipper.service
+systemctl disable --now shipper-host-status.timer
+systemctl disable --now shipper-update.path shipper-update.timer
+docker compose ... rm --force shipper
+```
+
+The proxy, application containers, volumes, certificates, application data, Shipper metadata, and Docker are preserved. Rerunning the installer attaches the preserved state again.
+
+Check what is still running:
+
+```sh
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+sudo systemctl status shipper.service --no-pager
+```
+
+The Shipper service should be inactive. Application containers should still be running, because they are not part of the Shipper control-plane project.
+
+## Level 2: remove Shipper itself
+
+Do this only after the recovery archive and application backups are verified.
+
+### Remove the owned applications first
+
+While the dashboard is still available, delete each application through **Settings → Danger zone → Delete application**. The confirmation requires the application name. This removes the application's containers and routing, and preserves its volumes unless you explicitly delete data.
+
+If the control plane is already stopped, start it again:
+
+```sh
+sudo systemctl start shipper.service
+```
+
+Then sign in and remove the applications through the UI. This is safer than removing containers by label because application deletion also removes routes and release records.
+
+### Remove host integration
+
+```sh
+sudo systemctl disable --now shipper.service
+sudo systemctl disable --now shipper-host-status.timer
+sudo systemctl disable --now shipper-update.path shipper-update.timer
+sudo rm -f /etc/systemd/system/shipper.service
+sudo rm -f /etc/systemd/system/shipper-host-status.service
+sudo rm -f /etc/systemd/system/shipper-host-status.timer
+sudo rm -f /etc/systemd/system/shipper-update.service
+sudo rm -f /etc/systemd/system/shipper-update.path
+sudo rm -f /etc/systemd/system/shipper-update.timer
+sudo systemctl daemon-reload
+sudo rm -f /usr/local/bin/shipperctl
+sudo rm -f /usr/local/libexec/shipper-update
+sudo rm -f /usr/local/libexec/shipper-host-status
+```
+
+### Remove Shipper metadata
+
+```sh
+sudo rm -rf /etc/shipper
+sudo rm -rf /var/lib/shipper
+sudo rm -rf /var/lib/shipper-installer
+```
+
+Removing `/var/lib/shipper` deletes the SQLite database, the encryption key, the setup token, and the local recovery state. The applications keep running, but Shipper can no longer manage them. There is no ordinary undo.
+
+### Remove the owned proxy
+
+The proxy and its certificate data are owned by Shipper but are not part of the control-plane container. Remove the proxy container by its ownership label, then remove the proxy data volume only if you are certain no other Shipper installation needs it:
+
+```sh
+docker ps -aq --filter label=io.shipper.infrastructure=proxy | xargs -r docker rm -f
+docker volume ls -q --filter label=io.shipper.infrastructure=proxy
+```
+
+Review the volume name before deleting it. Certificate data is the only copy of an issued certificate until it is reissued.
+
+## Level 3: remove everything
+
+Only do this when the server will be rebuilt or handed over without any Shipper workload.
+
+1. Delete every application through the dashboard and choose the named data deletion for each retained volume.
+2. Remove the control plane and metadata as in Level 2.
+3. Remove remaining Shipper-owned containers and volumes by label.
+4. Remove the Docker packages only if Docker is not used by anything else.
+
+Inspect before deleting:
+
+```sh
+docker ps -a --filter label=io.shipper.managed=true
+docker volume ls --filter label=io.shipper.managed=true
+```
+
+Delete only the resources you recognize:
+
+```sh
+docker ps -aq --filter label=io.shipper.managed=true | xargs -r docker rm -f
+docker volume ls -q --filter label=io.shipper.managed=true
+# After reviewing the list:
+docker volume rm VOLUME_NAME
+```
+
+Shipper never removes application volumes during ordinary cleanup or application deletion. A volume that is still referenced by a live application's recorded release is protected from deletion. Do not bypass that protection with a broad `docker volume prune`.
+
+### Docker packages
+
+If the installer added Docker and nothing else uses it:
+
+```sh
+sudo systemctl disable --now docker.service docker.socket
+sudo apt-get remove --purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo rm -f /etc/apt/keyrings/shipper-docker.asc
+sudo rm -f /etc/apt/sources.list.d/shipper-docker.sources
+sudo rm -rf /var/lib/docker
+```
+
+`/var/lib/docker` contains every image, container layer, and volume on the host. Removing it is irreversible. Confirm the host has no other workloads first.
+
+## Reattach a preserved installation
+
+If you only ran the Level 1 uninstall, rerun the same installer. It detects the managed install, reuses the data directory, and restores the service:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash
+```
+
+Sign in with the existing administrator. The applications, releases, routes, and volumes remain associated with the instance.
+
+If the data directory is gone, follow the [Recovery runbook](/docs/recovery/) and restore an instance archive into an empty installation.
+
+## Verify removal
+
+```sh
+systemctl status shipper.service --no-pager
+docker ps --filter label=io.shipper.managed=true
+ss -ltn 'sport = :8080'
+```
+
+Expected after a full removal: no Shipper service, no Shipper-managed containers, and nothing listening on port 8080.
+
+:::danger
+`docker compose down -v` against the Shipper project removes the metadata volume, including the administrator account and encryption key. Use it only when you intend to erase the instance.
+:::

@@ -71,7 +71,7 @@ function Deploy2() {
               <Check>Five minutes before the first release.</Check>
             </div>
             <div className="mt-9">
-              <ActionSecondary href="https://github.com/matyas-toth/shipperkit/tree/main/docs/installation.md" external>
+              <ActionSecondary href="/docs/install/">
                 Read the installation guide
               </ActionSecondary>
             </div>

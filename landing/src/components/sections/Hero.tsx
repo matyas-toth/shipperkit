@@ -18,13 +18,13 @@ import {
 } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 
-const docs = "https://github.com/matyas-toth/shipperkit/tree/main/docs";
+const docs = "/docs/";
 
 function Actions({ secondary = "See how it works" }: { secondary?: string }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <ActionPrimary href="#get-shipper" />
-      <ActionSecondary href={secondary === "Read the docs" ? docs : "#how-it-works"} external={secondary === "Read the docs"}>
+      <ActionSecondary href={secondary === "Read the docs" ? docs : "#how-it-works"} external={false}>
         {secondary}
       </ActionSecondary>
     </div>

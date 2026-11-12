@@ -28,7 +28,10 @@
     "landing:build": "npm run build --prefix landing",
     "landing:check": "npm run check --prefix landing",
     "cli:build": "npm run build --prefix cli",
-    "cli:check": "npm run check --prefix cli"
+    "cli:check": "npm run check --prefix cli",
+    "docs:dev": "npm run dev:docs --prefix landing",
+    "docs:build": "npm run build:docs --prefix landing",
+    "docs:check": "npm run check:docs --prefix landing"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0"

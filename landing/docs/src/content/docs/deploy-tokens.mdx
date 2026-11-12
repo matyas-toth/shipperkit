@@ -1,0 +1,44 @@
+---
+title: Deploy tokens
+description: Create an application-scoped deploy token, call the deploy endpoint, and revoke the token without granting dashboard access.
+---
+
+A deploy token is an application-scoped credential for triggering a deployment from a script or webhook. It is narrower than an [operation token](/docs/tokens/).
+
+## Create a token
+
+Open the application, then **Settings → Deploy token**. Create or rotate the token.
+
+The value is displayed once. Shipper stores only its hash. Revoking the token invalidates it immediately.
+
+## Deploy
+
+Use the token as a Bearer credential with the application-scoped deploy endpoint:
+
+```sh
+curl -fsS -X POST \
+  "https://shipper.example.com/api/v1/applications/APPLICATION_ID/deploy" \
+  -H "Authorization: Bearer $DEPLOY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+An optional revision pins the deployment to a full commit SHA:
+
+```json
+{"revision":"4f8ac21d9e7712ba3c5d9086f4a2b1e3d5c7a9f0"}
+```
+
+An optional `Idempotency-Key` header prevents duplicate requests.
+
+## Limits
+
+A deploy token cannot read secrets, change configuration, execute commands, or deploy another application. It does not grant dashboard access.
+
+Keep tokens out of URLs. Revoke a token when its consumer is retired or the value may have been exposed.
+
+## Related
+
+- [API and agent tokens](/docs/tokens/)
+- [API](/docs/api/)
+- [Releases](/docs/releases/)

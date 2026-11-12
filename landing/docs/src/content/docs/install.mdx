@@ -1,0 +1,125 @@
+---
+title: Install
+description: Run the Shipper installer on Ubuntu 24.04, claim the first administrator, add the dashboard domain, and verify the control plane.
+---
+
+This page assumes the host, Docker, ports, and DNS checks in [Prerequisites](/docs/prerequisites/) are complete.
+
+## Run the installer
+
+The published one-liner installs the newest release on the Main channel:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash
+```
+
+Run the host checks without changing anything:
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash -s -- --check
+```
+
+Pin a release when you need a repeatable install:
+
+```sh
+version=1.0.0-rc.25
+origin="https://github.com/matyas-toth/shipperkit/releases/download/v$version"
+curl -fsSLO "$origin/install.sh"
+curl -fsSLO "$origin/image.txt"
+curl -fsSLO "$origin/version.txt"
+curl -fsSLO "$origin/release-url.txt"
+curl -fsSLO "$origin/SHA256SUMS"
+sha256sum -c SHA256SUMS
+sudo bash install.sh --version "$version" --check
+sudo bash install.sh --version "$version"
+```
+
+Replace the version with the current release from GitHub Releases. The image is pulled by its release digest. An interrupted update is recovered by rerunning the installer.
+
+## Claim the first administrator
+
+The installer prints the address and a one-time setup token:
+
+```text
+Shipper is ready.
+
+  Open       http://203.0.113.10:8080
+  Token      8d0f...64 characters...
+```
+
+Open the address, paste the token, and create the administrator. The token expires 30 minutes after it is issued.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/auth-setup.png" target="_blank" rel="noreferrer"><img src="/docs/shots/auth-setup.png" alt="Shipper first-run administrator screen with setup token, email, and password fields" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>The first-run form claims the instance. The token is a local capability, not a public signup.</figcaption>
+</figure>
+
+If the token expired or the window closed, rotate it from the host:
+
+```sh
+sudo shipperctl rotate-claim
+```
+
+To create the administrator entirely in the terminal instead:
+
+```sh
+sudo shipperctl claim
+```
+
+The setup token is a host-local capability. It is stored in `/var/lib/shipper/setup-token` and is never returned by the API.
+
+## Add the dashboard domain
+
+After signing in, open **Settings → Dashboard**, enter the hostname, and save.
+
+Shipper validates the hostname, reserves it from application assignment, adds the dashboard route to the global proxy, and requests a trusted certificate. The first administrator email is stored as the ACME contact. The direct `http://<server-ip>:8080` listener remains available as the recovery path.
+
+Use **Settings → Dashboard → Verify dashboard** after DNS resolves. It checks DNS, a trusted certificate, and this instance's health route.
+
+If the dashboard domain is not ready, keep using the direct 8080 listener. See [HTTPS and certificates](/docs/tls/) for certificate failures.
+
+## Verify the install
+
+From the server:
+
+```sh
+sudo shipperctl status
+sudo shipperctl logs
+curl -fsS http://127.0.0.1:8080/api/health
+```
+
+From your workstation:
+
+```sh
+curl -fsS https://shipper.example.com/api/health
+```
+
+A healthy control plane returns a JSON body with `"status":"ok"`. If the service does not start, read the journal:
+
+```sh
+sudo journalctl -u shipper.service -n 100 --no-pager
+```
+
+## What the installer changed
+
+The installer owns a small set of paths, services, and containers. See [What the installer changes](/docs/installer/) before editing host files or adding a second proxy.
+
+## Update and uninstall
+
+The managed installer enables the host update helper. Open **Settings → Updates** to choose Main or Nightly, turn on automatic updates, or install an available release.
+
+Preview a control-plane uninstall:
+
+```sh
+sudo bash install.sh --uninstall
+```
+
+Apply it:
+
+```sh
+sudo bash install.sh --uninstall --apply
+```
+
+Uninstall stops and removes the Shipper control plane and disables its boot services. The proxy, application containers, certificates, application data, Shipper metadata, and Docker are preserved. Rerunning the installer attaches the preserved state again.
+
+For a deliberate full removal, follow [Uninstall](/docs/uninstall/). Never run `docker compose down -v` against the Shipper project unless you intend to erase the administrator, metadata, and encryption key.

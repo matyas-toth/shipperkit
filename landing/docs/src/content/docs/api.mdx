@@ -1,0 +1,91 @@
+---
+title: API
+description: The Shipper /api/v1 contract for applications, application facts, plans, deployments, logs, tasks, rollback, and system operations.
+---
+
+Automation uses the explicitly allowlisted subset under `/api/v1` with `Authorization: Bearer TOKEN`. Session routes under `/api` use cookies and CSRF and are not interchangeable with bearer tokens.
+
+Unsupported v1 routes are denied by default.
+
+## Errors
+
+```json
+{"error":{"code":"unauthenticated","message":"Sign in to continue"}}
+```
+
+A timeout or disconnect does not cancel a durable operation. Read the operation state before repeating a request.
+
+## Endpoints
+
+| Method | Route | Capability | Result |
+| --- | --- | --- | --- |
+| GET | `/capabilities` | read | API version, features, and limits |
+| GET | `/applications` | read | Masked applications in token scope |
+| GET | `/applications/{id}` | read | One application and release history |
+| GET | `/applications/{id}/diagnostics` | read | Bounded application facts, serving and latest state, unknowns |
+| GET | `/applications/{id}/observations` | read | Current samples and stale flags |
+| GET | `/applications/{id}/incidents` | read | Latest incidents, with `after` cursor |
+| POST | `/plan` | deploy | Review a new application or source |
+| POST | `/applications` | deploy | Apply a reviewed plan |
+| POST | `/applications/{id}/changes` | deploy | Review and apply a configuration change |
+| POST | `/applications/{id}/deployments` | deploy | Deploy the current source |
+| GET | `/applications/{id}/deployments/{deployment}` | read | Watch or poll an operation |
+| POST | `/applications/{id}/tasks/{task}/run` | execute | Run a saved task |
+| POST | `/applications/{id}/variables/reveal` | secrets | Reveal one saved secret |
+| POST | `/applications/{id}/delete` | destructive | Delete with the named confirmation |
+| GET | `/system/operations` | read | System facts and delivery state |
+| GET | `/system/retention` | read | Cleanup preview and history |
+| POST | `/system/recheck` | host-admin | Reconcile inventory |
+| POST | `/system/repair` | host-admin | Review and queue proxy repair |
+
+## Plan and deploy
+
+```sh
+curl -fsS https://shipper.example.com/api/v1/plan \
+  -H "Authorization: Bearer $SHIPPER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "shop",
+    "config": {
+      "repository": "https://github.com/acme/shop.git",
+      "branch": "main",
+      "method": "dockerfile",
+      "domain": "shop.example.com"
+    }
+  }'
+```
+
+The plan returns an application ID, a normalized name, the reviewed commit, a revision, and the effects. Apply with the same inputs:
+
+```sh
+curl -fsS https://shipper.example.com/api/v1/applications \
+  -H "Authorization: Bearer $SHIPPER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "APPLICATION_ID",
+    "revision": "REVISION",
+    "name": "shop",
+    "config": { "...": "same reviewed config" }
+  }'
+```
+
+A repeated identical saved plan returns its original operation even after promotion. Changed bodies conflict. A stale review fails explicitly.
+
+An inspected Git source must include the full commit in both plan and apply. The revision binds that commit to the proposed configuration.
+
+## Watch an operation
+
+Deployments return an operation ID immediately. Poll or follow the durable operation:
+
+```sh
+curl -fsS https://shipper.example.com/api/v1/applications/shop/deployments/OPERATION_ID \
+  -H "Authorization: Bearer $SHIPPER_TOKEN"
+```
+
+A timeout or disconnect does not cancel the operation. Do not automatically repeat a task with an uncertain outcome.
+
+## Create and revoke tokens
+
+Tokens are created through the dashboard in **System → Access tokens**, or by an admin session at `POST /api/operation-tokens`. Session-only administration is intentionally not exposed to bearer tokens.
+
+See [API and agent tokens](/docs/tokens/) for capabilities, scopes, API usage, and hygiene.

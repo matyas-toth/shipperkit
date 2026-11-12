@@ -1,0 +1,57 @@
+---
+title: What the installer changes
+description: The files, systemd units, containers, and Docker repository entries created by the Shipper installer on Ubuntu 24.04.
+---
+
+The installer writes only the paths it owns. Application containers and unrelated Docker resources are not adopted or reconfigured.
+
+## Paths
+
+| Path | What it contains |
+| --- | --- |
+| `/etc/shipper/` | Ownership marker, pinned image, Docker socket group, and the control-plane Compose file |
+| `/etc/shipper/instance.env` | `SHIPPER_IMAGE`, `SHIPPER_DOCKER_GID`, and any instance environment you add |
+| `/var/lib/shipper/` | SQLite database, encryption key, setup token, dashboard domain, update request and update status |
+| `/var/lib/shipper-installer/` | Install log, host status, previous image record, and interrupted-update state |
+| `/etc/systemd/system/shipper.service` | Starts the control plane after Docker and waits for health |
+| `/etc/systemd/system/shipper-host-status.timer` | Records boot service, reboot, security update, clock sync, and update helper readiness |
+| `/etc/systemd/system/shipper-update.path` and `.timer` | Watches for update requests and runs the host updater |
+| `/usr/local/bin/shipperctl` | `claim`, `rotate-claim`, `reset-password`, `reset-factor`, `status`, and `logs` |
+| `/usr/local/libexec/shipper-update` | Privileged update helper used by Settings → Updates |
+| `/usr/local/libexec/shipper-host-status` | Host status collector used by the dashboard |
+
+When Docker must be installed, the installer also writes the signed Docker package repository configuration to `/etc/apt/keyrings/shipper-docker.asc` and `/etc/apt/sources.list.d/shipper-docker.sources`.
+
+## Control-plane container
+
+The control-plane container:
+
+- Runs as UID and GID `65532`.
+- Keeps a read-only root filesystem.
+- Drops Linux capabilities.
+- Mounts `/var/lib/shipper` at `/data`.
+- Mounts the Docker socket read-only at `/var/run/docker.sock`.
+- Publishes the control plane on port 8080.
+- Uses `unless-stopped` restart policy and bounded JSON logs.
+
+The Docker socket still grants host-level control. Treat the dashboard as a privileged operations surface.
+
+## Services
+
+`shipper.service` is a systemd oneshot service that runs Docker Compose and waits for the control plane to become healthy. It depends on Docker and starts after the network is online.
+
+The host status timer writes a small JSON file used by the dashboard. The update path unit watches `/var/lib/shipper/update-request.json` and starts the privileged update helper. The update service is separate from application workloads.
+
+## What the installer does not touch
+
+The installer does not remove, adopt, or reconfigure unrelated containers, volumes, images, or Compose projects. Application data is never removed by an ordinary install, update, or uninstall.
+
+## Uninstall preview
+
+```sh
+sudo bash install.sh --uninstall
+```
+
+This prints what would be removed and stops without changing the host. Add `--apply` to remove the control plane and disable its boot services. The proxy, application containers, certificates, application data, Shipper metadata, and Docker are preserved.
+
+For a full removal, see [Uninstall](/docs/uninstall/).

@@ -1,6 +1,7 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import type { UpdateStatus } from "../types";
 import { Button, IconButton } from "./Controls";
+import { docs } from "../docs";
 import { Icon } from "./Icon";
 
 const idle: UpdateStatus = { state: "queued", message: "Preparing the update", fromVersion: "", toVersion: "", startedAt: 0, finishedAt: 0, requestId: "", log: "" };
@@ -96,6 +97,9 @@ function DialogPanel(props: { close: () => void; done: () => void; initial: Upda
       </Show>
       <div class="update-status-line" role="status"><span classList={{ "status-dot": true, "is-running": busy() }} /><span>{message()}</span></div>
       <Show when={status().log}><details class="update-log"><summary>Update log</summary><pre>{status().log}</pre></details></Show>
+      <Show when={status().state === "failed"}>
+        <a class="docs-link update-dialog-docs" href={docs("updates/")} target="_blank" rel="noreferrer">Update troubleshooting</a>
+      </Show>
       <div class="form-actions">
         <Button variant="ghost" onClick={props.close}>{busy() ? "Hide" : "Close"}</Button>
         <Show when={status().state === "succeeded"}><Button variant="primary" icon="refresh" onClick={() => location.reload()}>Reload Shipper</Button></Show>

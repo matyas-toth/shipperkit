@@ -1,0 +1,85 @@
+---
+title: Builds and checks
+description: How Shipper selects a build method, infers the container port, runs readiness checks, and builds Dockerfile, Railpack, static, and Compose applications.
+---
+
+Shipper records a build method for every application. Automatic selection inspects the source and prefers a root `Dockerfile`, then a supported language manifest through Railpack, then a plain `index.html` through Apache.
+
+An explicit method overrides automatic selection. The review screen shows the resolved method before the first deployment.
+
+## Methods
+
+| Method | Use when |
+| --- | --- |
+| Dockerfile | The repository owns its build and runtime |
+| Railpack | A Node, Python, Go, Ruby, PHP, or similar app has standard manifests |
+| Static site | The output is plain files, or a Node build produces a publish directory |
+| Compose | The repository is a multi-service stack |
+| Container image | The image is already built and published |
+| Local files | The source lives on your workstation and should be uploaded as a snapshot |
+
+## Dockerfile
+
+A root `Dockerfile` is used as written. Install and build steps belong in the Dockerfile. Set the container port in the configuration when the image does not expose one.
+
+Build arguments are visible in image history. Use a BuildKit secret mount for credentials:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+RUN --mount=type=secret,id=npm_token \
+    NPM_TOKEN="$(cat /run/secrets/npm_token)" npm run build
+```
+
+The secret id must match the variable name configured with **Build** scope and marked as a secret.
+
+## Railpack
+
+Railpack detects the toolchain and installs dependencies. Command overrides are available when the detected install, build, or start command is wrong.
+
+The runtime must listen on `0.0.0.0`. Shipper can infer the port from an explicit setting, the runtime `PORT` variable, a sole image `EXPOSE` declaration, or the default `3000`.
+
+## Static sites
+
+A static deployment can serve an existing publish directory directly or run an optional Node build before Apache packaging. Apache listens on `8080` inside the container.
+
+Set the publish directory to the folder that contains `index.html` after the build, not the project root. `.htaccess` support is optional.
+
+## Compose
+
+A Compose stack keeps its services as one application. Each service has its own port, health path, volumes, and route target. Compose builds finish before updates begin.
+
+## Ports
+
+Shipper routes to the container port, not a host-published port. The resolution order is:
+
+1. Explicit container port.
+2. Runtime `PORT` variable.
+3. A sole image `EXPOSE` declaration.
+4. Default `3000`.
+
+Apache static sites use `8080` internally. A local application gets `http://<application-id>.localhost:8780` on the Docker host.
+
+## Readiness
+
+The candidate container must answer its health request within the startup deadline. The default is 45 seconds, plus the startup-command timeout when configured.
+
+- The health path should return `200` or the expected success status.
+- The app must listen on the port Shipper routes to.
+- A health check should not depend on a database that is still starting.
+- A health endpoint that redirects to HTTPS can fail inside the container. Use a plain HTTP endpoint.
+
+Compose services can use their own health checks. A background worker should not expose an HTTP port, so configure it for process readiness rather than an HTTP probe.
+
+## Failed builds
+
+Open the failed deployment and choose **Show failed step**. Read the first error, not the final exit code.
+
+Common causes:
+
+- A file is excluded from the build context.
+- A dependency needs a native library not present in the builder.
+- A build argument or secret is missing.
+- Railpack detected the wrong toolchain or lockfile.
+- The build runs out of memory or disk.
+
+See [Troubleshooting](/docs/troubleshooting/) for build, runtime, and readiness failures.

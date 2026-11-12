@@ -1,0 +1,78 @@
+---
+title: Backups
+description: Encrypted instance recovery archives, the recovery key, application database and volume plans, and what a Shipper backup does not include.
+---
+
+Shipper separates two kinds of protection:
+
+- **Instance recovery** protects Shipper itself: the database, applications, releases, settings, credentials, and instance identity.
+- **Application data plans** protect databases and writable volumes owned by one application or Compose service.
+
+A local-only backup cannot survive loss of the VPS. Every production instance needs an off-server copy and a tested restore.
+
+## Start with the recovery key
+
+Open **Settings → Recovery** and choose **Download recovery key**. Save that file in a password manager or another location separate from both the VPS and its backup bucket.
+
+The key is an age X25519 recovery identity. It decrypts instance archives without depending on a key on the lost host. Anyone with both the archive and the key can read the installation's credentials.
+
+Shipper stores an encrypted copy of the recovery identity on the instance for convenience. That copy is not a substitute for the downloaded file. If the host and the downloaded key are both lost, the archive cannot be decrypted.
+
+## Create an instance recovery plan
+
+1. Open **Settings → Recovery**.
+2. Choose **New backup** or **Add schedule**.
+3. Select the instance as the source.
+4. Choose a schedule if the plan should run automatically.
+5. Open **Storage and retention**.
+6. Choose **Local disk** or **Local + S3 destination**.
+7. Set how many completed copies to keep, from 1 to 100. The default is 7.
+8. Run the plan once and download an archive, or confirm the object exists in the bucket.
+
+An instance archive contains:
+
+- An online SQLite snapshot.
+- The original `encryption.key`.
+- Encrypted source, registry, and database credentials.
+- Applications, releases, tasks, schedules, and domains.
+- Instance identity, proxy configuration, and ACME state when present.
+- Referenced immutable local source snapshots.
+
+An instance archive does **not** contain Docker images, BuildKit caches, Git working copies, every application volume, or a database dump. Protect workload data with separate plans.
+
+## Protect application data
+
+Open an application and choose **Backups**, or open a single Compose service. Each plan has one source, one destination, and a retention count.
+
+| Source | Format and consistency |
+| --- | --- |
+| PostgreSQL | Native `pg_dump` custom archive of one database, consistent snapshot, no ownership or ACL replay |
+| MySQL | Native SQL dump of one database, global read lock with routines, events, triggers, and binary data |
+| MariaDB | Native `mariadb-dump`, same explicit global-read-lock boundary |
+| MongoDB | Native `mongodump` gzip archive of one database, restored under a new namespace |
+| ClickHouse, SQLite, Redis | Cold archive of the engine data volume, including numeric ownership and modes |
+| Named volume | Cold archive of regular files, directories, and internal relative symlinks, including numeric ownership and modes |
+
+Database tools run inside the selected Shipper-owned service against its loopback endpoint. Default credentials can come from the service's `POSTGRES_*`, `MYSQL_*`, `MARIADB_*`, or `MONGO_INITDB_*` environment. Explicit overrides are encrypted at rest.
+
+Initialization variables are not proof that a password is still current. Supply the current credential if it changed. `_FILE` secrets and custom images may require explicit credentials. The selected engine must match the native tools in that image.
+
+MySQL and MariaDB dumps can briefly block writes. Pause schema changes during a native dump. Live raw archives of database directories are not supported.
+
+For a cold volume backup, stop every mounted writer through Shipper first so normal shutdown hooks run. Shared or foreign mounts, running or paused containers, escaping links, devices, and hard links are rejected.
+
+## Schedules and retention
+
+The shared picker covers minute intervals, hourly, daily, selected weekdays, and monthly schedules. It shows a copyable cron expression and the next three runs in the selected IANA timezone.
+
+- **Custom cron** preserves patterns the picker does not support.
+- Five-field cron uses UTC-minute iteration. Missing daylight-saving times are skipped and repeated times occur twice.
+- A restricted day-of-month and day-of-week use cron OR semantics.
+- Backup schedules collapse missed runs into one attempt and skip occurrences while the application is busy.
+
+Expiration runs only after a new successful backup and removes only recorded objects beneath this instance's prefix. Failed or interrupted attempts remain in history.
+
+<div class="docs-next">
+  <a href="/docs/off-server-storage/">Off-server storage</a>
+  <a href="/docs/restore/">Restore</a>
+</div>

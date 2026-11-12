@@ -1,0 +1,141 @@
+---
+title: First deploy in five minutes
+description: Go from a fresh Shipper install to a live HTTPS application. Deploy from a Git repository, a local folder, or a container image, then verify the release and its route.
+---
+
+This is the shortest supported path from a running control plane to a live application. The installer usually finishes in two to four minutes. The first deploy takes about one more.
+
+## What you need
+
+- A finished [install](/docs/install/) and a signed-in administrator.
+- A project with a `Dockerfile`, a supported language manifest, or a static `index.html`.
+- A hostname with an A record pointing at the server, if you want public HTTPS.
+
+The application must listen on `0.0.0.0`, not `127.0.0.1`. Shipper can infer the port from an explicit setting, the runtime `PORT` variable, a sole image `EXPOSE`, or the default `3000`. Static Apache sites listen on `8080` inside the container.
+
+## Deploy from a Git repository
+
+Open **New application** and choose **Git repository**.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/new-application.png" target="_blank" rel="noreferrer"><img src="/docs/shots/new-application.png" alt="Shipper new application screen with source, repository URL, branch, and name fields" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>The source step records one repository and one branch or commit.</figcaption>
+</figure>
+
+1. Paste the HTTPS repository URL. A public repository needs no connection. For a private repository, connect GitHub in **Settings → Connections** first.
+2. Leave the branch empty to use the remote default, or select a branch or commit.
+3. Name the application.
+4. Continue to configuration.
+
+Automatic build selection inspects the source and prefers a root `Dockerfile`, then a supported language manifest through Railpack, then a plain `index.html` through Apache. The review records the resolved method.
+
+If your app needs a non-default setup, choose the method explicitly:
+
+| Source | Use when |
+| --- | --- |
+| Dockerfile | The repository already owns its build and runtime |
+| Railpack | A Node, Python, Go, Ruby, PHP, or similar app has standard manifests |
+| Static site | The output is plain files, or a Node build produces a publish directory |
+| Compose | The repository is a multi-service stack |
+| Container image | The image is already built and published |
+| Local files | The source lives on your workstation and should be uploaded as an immutable snapshot |
+
+## Configure the route
+
+Open the configuration step and set:
+
+- **Port** when the runtime does not expose one or you need to override it.
+- **Health path** when the app has a readiness endpoint, for example `/health`.
+- **Domain** for the public hostname.
+- **Environment variables** for values the app needs before its first start.
+
+The default route is `http://<application-id>.localhost:8780` on the Docker host. A public domain requests HTTPS when an ACME contact is available.
+
+:::note
+Secrets belong in the `.env` step, not in a command. Shipper encrypts saved secret values and never returns them in ordinary reads.
+:::
+
+## Review and deploy
+
+The review shows the source, resolved method, runtime settings, route, and every change from the defaults. **Deploy** creates a durable operation and streams the build log.
+
+```text
+Cloning https://github.com/acme/store.git
+Checked out 4f8ac21d on main
+Using BuildKit
+Installing dependencies
+Build completed
+Starting candidate container
+Candidate HTTP check passed
+Traefik acknowledged the routing update
+Serving shop.example.com
+```
+
+The release is successful when the deployment state is **Succeeded**, the application state is **Running**, and the route check reports the serving release.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/overview.png" target="_blank" rel="noreferrer"><img src="/docs/shots/overview.png" alt="Shipper application overview showing the domain, repository, method, commit, and running container" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Overview keeps the serving release, route, repository, and runtime facts together.</figcaption>
+</figure>
+
+## Deploy a local folder
+
+Choose **Local files** in **New application** and select the project folder. The browser uploads a bounded, immutable snapshot. Git metadata, dependency directories, `.env` variants, SSH and cloud credential directories, private keys, and PEM files are excluded by default.
+
+Use a Dockerfile in the snapshot when the project needs a custom build. Otherwise Shipper detects the language and packages it with Railpack, or serves a static directory.
+
+Limits: 64 MiB of content and 10,000 regular files per upload. Symlinks, devices, unsafe paths, and duplicate archive entries are rejected. Review the selected file list before uploading.
+
+## Deploy a container image
+
+Choose **Container image** and enter a full image reference:
+
+```text
+ghcr.io/acme/store:2026.11.1
+```
+
+Use a digest for a pinned release:
+
+```text
+ghcr.io/acme/store@sha256:6f1c2a9d4e8b7c0a3f5e1d9b2c4a6f8e0d1b3c5a7f9e2d4b6c8a0f1e3d5b7c9a
+```
+
+Set the container port and health path. A tag is resolved during deployment. A digest is reviewed and deployed exactly as written.
+
+## Verify the route
+
+From your workstation:
+
+```sh
+dig +short shop.example.com
+curl -sS -o /dev/null -w '%{http_code}\n' https://shop.example.com
+curl -sS https://shop.example.com/health
+```
+
+Replace `/health` with the health path configured for the application. Expected:
+
+- DNS returns the server's public address.
+- The first request returns `200`, `301`, or `302`.
+- Your application health endpoint returns its normal payload.
+
+If the container is running but the route is not serving, open **Domains → Verify**. It checks DNS, reachability, the release identity header, and TLS, and records the certificate issuer and expiry.
+
+## If the first deploy fails
+
+Open the failed deployment. **Show failed step** takes you to the exact stage and log line. The common first failures are:
+
+- The app listens on `127.0.0.1` instead of `0.0.0.0`.
+- The container port is wrong.
+- The health path returns a non-2xx response.
+- A required environment variable is missing at build time.
+- DNS does not resolve to this server.
+- Port 80 or 443 is blocked.
+
+Use [troubleshooting](/docs/troubleshooting/) for the console check that matches the failure.
+
+## Next
+
+- Add a second domain or an alias in [Domains](/docs/domains/).
+- Protect the instance and application data in [Backups](/docs/backups/) and [off-server storage](/docs/off-server-storage/).
+- Read [Releases](/docs/releases/) and [rollbacks](/docs/rollbacks/) before the first bad release.
+- Add people and roles in [Users and roles](/docs/users/).

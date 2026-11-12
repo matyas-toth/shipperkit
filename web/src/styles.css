@@ -11707,6 +11707,39 @@ body:has(.confirm-dialog) .page-actions {
   font-size: 12px;
   text-align: center;
 }
+.auth-docs-link {
+  display: block;
+  margin-top: 16px;
+  color: #9f9f9a;
+  font-size: 12px;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.auth-docs-link:hover {
+  color: var(--text);
+}
+.docs-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--secondary) 45%, transparent);
+  text-underline-offset: 3px;
+}
+.docs-link:hover {
+  color: var(--text);
+  text-decoration-color: var(--text);
+}
+.application-issue-link {
+  margin-top: 2px;
+  justify-self: start;
+}
+.update-dialog-docs {
+  margin-top: 12px;
+}
 .auth-card .factor-form {
   max-width: none;
   margin-top: 0;

@@ -1,10 +1,12 @@
 # Third-party notices
 
-The landing workspace uses the following open-source projects.
+The landing and documentation workspace uses the following open-source projects.
 
 | Project | License | Source |
 | --- | --- | --- |
 | Astro | MIT | https://github.com/withastro/astro |
+| Astro Starlight | MIT | https://github.com/withastro/starlight |
+| Pagefind | MIT | https://github.com/Pagefind/pagefind |
 | React | MIT | https://github.com/facebook/react |
 | coss UI | MIT | https://github.com/cosscom/ui |
 | Base UI | MIT | https://github.com/mui/base-ui |

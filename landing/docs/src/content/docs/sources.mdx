@@ -1,0 +1,82 @@
+---
+title: Sources
+description: Deploy from a public or private Git repository, a local folder, a container image, a Compose file, or an inline Dockerfile.
+---
+
+Every application has one source. Shipper records the source and the commit or image digest used for each release.
+
+## Git repository
+
+Paste an HTTPS repository URL in **New application**. A public repository needs no connection. For a private repository, connect GitHub in **Settings → Connections** first.
+
+- Leave the branch empty to use the remote default.
+- Select a branch, tag, or full commit SHA.
+- A connected GitHub account can pick an organization, repository, and branch from the source picker.
+- Shipper inspects the source and proposes a build method before showing manual controls.
+
+Repository credentials are encrypted in SQLite and omitted from ordinary API responses. Disconnecting a connection that is still used by an application is blocked.
+
+## Private GitHub
+
+Open **Settings → Connections → Connect GitHub**. Shipper creates a private GitHub App through GitHub's manifest flow. Install it on the account or organization and select the repositories Shipper may read.
+
+The GitHub App requests read access to contents and metadata and receives push events. A public HTTPS dashboard origin is required for inbound webhooks. Managed installs get it from **Settings → Dashboard**. For manual installs, set `SHIPPER_PUBLIC_URL`.
+
+An existing GitHub App or a repository-scoped token can be added with **Add connection**. Fine-grained tokens should select the organization as resource owner and grant repository Contents read access.
+
+GitHub sign-in and GitHub repository access are separate. Settings → Authentication controls dashboard sign-in. Settings → Connections controls source access.
+
+## Automatic deployments
+
+Enable **Deploy on push** under Automatic deployments. The configured branch must match the push. Optional watch paths support slash-separated globs such as `apps/web/**`.
+
+- Deleted branches and mismatched repositories are ignored.
+- Commits containing `[skip shipper]` are ignored.
+- HMAC-SHA256 delivery validation runs before an event is accepted.
+- Delivery identifiers are deduplicated for 90 days.
+- Accepted revisions persist and coalesce while an application is busy.
+- A current-head check suppresses out-of-order stale pushes.
+
+Cancel is available while a deployment is queued, cloning, pulling, or building. Once application updates or lifecycle commands begin, cancellation is rejected. A cancelled build leaves the serving release intact.
+
+## Local files
+
+Choose **Local files** to upload an immutable snapshot of a folder from the browser. Git metadata, dependency directories, `.env` variants, SSH and cloud credential directories, private keys, and PEM files are excluded by default.
+
+Limits: 64 MiB of content and 10,000 regular files per upload. Symlinks, devices, unsafe paths, and duplicate archive entries are rejected. Review the selected file list before uploading.
+
+The local files source is an immutable snapshot. Editing the folder afterward does not change an existing release. Browser uploads apply the built-in exclusions and display the selected file list.
+
+## Container image
+
+Choose **Container image** and enter a full image reference:
+
+```text
+ghcr.io/acme/store:2026.11.1
+```
+
+Use a digest for a pinned release:
+
+```text
+ghcr.io/acme/store@sha256:6f1c2a9d4e8b7c0a3f5e1d9b2c4a6f8e0d1b3c5a7f9e2d4b6c8a0f1e3d5b7c9a
+```
+
+Docker Hub, GHCR, and Quay are supported as public registries. Add a registry connection for authentication or another host. Set the container port and health path. A tag is resolved during deployment. A digest is deployed exactly as written.
+
+Private registry addresses require explicit opt-in. The image must support the host architecture.
+
+## Compose
+
+Choose a repository or paste a Compose file. Shipper keeps the stack as one application while each service keeps its own container, port, health path, and route target.
+
+Compose service images can be built or pulled. The deployment waits for the resolved plan before updating services.
+
+## Inline Dockerfile
+
+Paste a Dockerfile directly when the definition is small and does not need a repository context. It uses the same isolated BuildKit build path as a Git Dockerfile.
+
+## Related
+
+- [Builds and checks](/docs/builds/)
+- [Releases](/docs/releases/)
+- [Environment variables](/docs/environment/)

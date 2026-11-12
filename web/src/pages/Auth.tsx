@@ -4,6 +4,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { Button, ErrorNotice, IconButton } from "../components/Controls";
 import { Icon, type IconName } from "../components/Icon";
 import { api, post, APIError } from "../api";
+import { docs } from "../docs";
 import type { AuthMethods, Session } from "../types";
 
 const providerNames: { id: keyof AuthMethods; label: string; icon: IconName }[] = [
@@ -220,6 +221,9 @@ export default function AuthPage(props: { setup: boolean; onAuthenticated: (sess
         </div>
       </Show>
       <Show when={!props.setup}><p class="auth-foot">Need access? Ask your Shipper administrator.</p></Show>
+      <Show when={props.setup}>
+        <a class="auth-docs-link" href={docs("install/")} target="_blank" rel="noreferrer">Installation guide</a>
+      </Show>
     </form>
   </AuthShell>;
 }

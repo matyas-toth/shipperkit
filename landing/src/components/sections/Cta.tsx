@@ -35,7 +35,7 @@ function Cta1() {
             <CommandBar />
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <ActionSecondary href="https://github.com/matyas-toth/shipperkit/tree/main/docs" external>
+            <ActionSecondary href="/docs/">
               Read the docs
             </ActionSecondary>
           </div>

@@ -1,0 +1,71 @@
+---
+title: Rollbacks
+description: Restore a recorded release, what rollback does and does not recover, Compose requirements, and how to verify the restored release.
+---
+
+A rollback restores an older recorded release. It is a code and runtime operation, not a data recovery operation.
+
+## Restore a release
+
+1. Open **Deployments**.
+2. Select a previous successful release.
+3. Choose **Restore release**.
+4. Review the comparison of runtime configuration, retained domains and data, and skipped deployment migrations.
+5. Confirm.
+
+Shipper rejects stale state before enqueueing. The target must belong to this application, and every recorded local image artifact must still exist.
+
+Restoration creates a new deployment with a `rollbackId`. It reuses the target's recorded code and runtime settings and keeps current domains and push policy where the restored source supports GitHub triggers.
+
+Image, inline, and unconnected sources disable push deployment after a rollback. Before-deploy and after-deploy commands are skipped. Before-start still runs when its foreground container actually starts. The serving release's before-stop hook and graceful stop apply during replacement.
+
+A failed single-container readiness check or promotion preserves the previous serving release. Compose attempts to restore the previous pinned stack and its stopped or running intent if reconciliation fails.
+
+## What rollback does not restore
+
+Persistent volume data and database schema are **not** rolled back.
+
+A historical runtime can be incompatible with newer data. If a migration added a column that the old code does not know about, the old code may run while the database is ahead. Review migration compatibility before restoring.
+
+Rollback also does not restore:
+
+- Deleted domains or certificates.
+- Environment variables changed after the release.
+- Application data deleted by a migration.
+- An image that an external Docker cleanup removed.
+- A source branch that no longer contains the recorded commit.
+
+Application data recovery is a separate operation. Use [Restore](/docs/restore/) for database and volume restore.
+
+## Compose rollback
+
+A Compose rollback additionally needs:
+
+- The encrypted resolved plan for the target release.
+- Every named volume referenced by the plan.
+- The recorded image artifacts for each service.
+
+If the plan or an image is missing, Shipper rejects the operation. It does not fetch a changed branch or tag and call that a rollback.
+
+Compose uses its own service stop grace and stateful reconciliation. It has no blue-green traffic drain.
+
+## Verify after a rollback
+
+1. The deployment state is **Succeeded**.
+2. The serving release is the restored release.
+3. The application Overview shows no issue alert.
+4. **Domains → Verify** returns a valid response and certificate.
+5. The application log no longer shows the failure that triggered the rollback.
+6. A real read and write through the public hostname succeeds.
+
+If the application starts but reads the wrong data, rollback is not the fix. Stop and reconcile the data first.
+
+## When not to roll back
+
+- A migration already changed the schema in a way the old code cannot read.
+- The old image is gone.
+- The failure is DNS, TLS, or a proxy route, not the application.
+- The failure is a dependency that both releases use.
+- The data was corrupted before the release.
+
+In those cases, fix the layer that failed or restore data deliberately.

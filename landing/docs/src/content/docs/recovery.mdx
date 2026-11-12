@@ -1,0 +1,69 @@
+---
+title: Recovery runbook
+description: The first five minutes of a Shipper incident, a scenario table, the evidence to preserve, and the pages for lost access, host recovery, and data restore.
+---
+
+This page is written for the moment something is already wrong. Start with the first five minutes, then jump to the page that matches what you can observe. Preserve evidence before changing state.
+
+:::danger
+Do not delete volumes, run `docker system prune`, or remove `/var/lib/shipper` while diagnosing. Application data and the instance encryption key are not reproducible. A wrong cleanup turns a recoverable outage into data loss.
+:::
+
+## The first five minutes
+
+Run these from the server. Stop at the first failed check.
+
+```sh
+uptime
+df -h /var/lib
+systemctl is-active docker
+docker info --format '{{.ServerVersion}} {{.OSType}}'
+sudo shipperctl status
+curl -fsS http://127.0.0.1:8080/api/health
+docker ps --format 'table {{.Names}}\t{{.Status}}' | head -n 20
+```
+
+| Observation | Likely layer | Go to |
+| --- | --- | --- |
+| Host unreachable or rebooting | Host or provider | [Host recovery](/docs/host-recovery/) |
+| `/var/lib` full | Storage | [Maintenance](/docs/maintenance/) |
+| Docker inactive or unhealthy | Container engine | [Host recovery](/docs/host-recovery/) |
+| `shipper.service` inactive or failed | Control plane | [Host recovery](/docs/host-recovery/) |
+| Health endpoint fails but service is active | Control plane or port | [Host recovery](/docs/host-recovery/) |
+| Health endpoint works, applications missing | Docker or inventory | [Troubleshooting](/docs/troubleshooting/) |
+| Health endpoint works, browser fails | DNS, TLS, or proxy | [HTTPS and certificates](/docs/tls/) |
+| Can't sign in | Account or factor | [Lost access](/docs/lost-access/) |
+| Data is gone or corrupt | Backup or volume | [Restore](/docs/restore/) |
+
+## Preserve the current evidence
+
+```sh
+sudo shipperctl status > /root/shipper-status.txt 2>&1
+sudo shipperctl logs > /root/shipper-logs.txt 2>&1
+sudo journalctl -u shipper.service -n 300 --no-pager > /root/shipper-journal.txt
+docker ps -a > /root/docker-ps.txt
+docker volume ls > /root/docker-volumes.txt
+df -h > /root/disk.txt
+```
+
+Include the Shipper version, the exact application and release ID, the failed check, and the first error line when you ask for help.
+
+## The recovery pages
+
+- [Lost access](/docs/lost-access/) for a lost owner password, second factor, or sign-in method.
+- [Host recovery](/docs/host-recovery/) for a broken dashboard, control plane, Docker, or lost server.
+- [Restore](/docs/restore/) for an instance archive, database copy, or volume.
+- [Backups](/docs/backups/) for the plan and recovery key that make restore possible.
+- [Troubleshooting](/docs/troubleshooting/) for build, runtime, route, TLS, task, and dependency failures.
+
+## When to stop and ask for help
+
+Stop changing state when:
+
+- The only copy of application data is on a disk that is failing.
+- SQLite integrity checks fail and no instance archive exists.
+- Two hosts may be writing to the same database or volume.
+- A certificate or DNS change is being made during an active incident.
+- You are about to delete a volume to make an error message go away.
+
+Collect the evidence from the first five minutes, the exact commands and outputs, and the timeline. Open an issue with that record instead of guessing.

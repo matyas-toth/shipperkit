@@ -1,0 +1,61 @@
+---
+title: Two-factor authentication
+description: Enroll TOTP, store recovery codes, require 2FA for the instance, and reset a factor offline.
+---
+
+Shipper supports personal TOTP and an instance-wide enforcement policy. No external authenticator service or client registration is required.
+
+## Enroll a factor
+
+A user selects **Set up 2FA** under **Settings → Account**.
+
+Shipper generates a random per-user secret and an authenticator QR and manual setup value. The issuer is `Shipper`; the account label includes the email and instance hostname so entries from different servers are distinguishable.
+
+Enrollment remains pending until a correct code is submitted. Only then is the factor active and the recovery codes issued.
+
+- Recovery codes are one-use and consumed atomically.
+- After every password or provider sign-in, enrolled users complete Shipper's own second-factor screen.
+- A provider's own MFA claim does not skip Shipper's factor.
+- There is no remembered-device bypass.
+- With enforcement off, a user can disable personal 2FA after recent first- and second-factor verification.
+- Replacing a factor or recovery codes requires equivalent protection and invalidates stale challenges.
+
+Store recovery codes offline. Do not keep them in the same password manager entry as the password.
+
+## Require 2FA for the instance
+
+An admin enables **Require 2FA** in **Settings → Access policy**. The policy includes the admin, existing signed-in users without a factor, fresh password accounts, and fresh OAuth-only accounts.
+
+| State | Allowed next action |
+| --- | --- |
+| Not authenticated | Perform an enabled first-factor flow |
+| Temporary password outstanding | Change it in a restricted onboarding session |
+| 2FA required without a confirmed factor | Set up and confirm 2FA, sign out, or use defined recovery |
+| Confirmed factor needs verification | Submit TOTP or a recovery code |
+| All requirements satisfied | Full application access under the account's role |
+
+These are server-side assurance states. Incomplete sessions cannot reach application, configuration, secret, terminal, administration APIs, or ordinary event streams.
+
+Enabling enforcement re-evaluates existing sessions on their next request, so an old cookie or open tab cannot bypass enrollment. Successful enrollment confirmation satisfies the factor for that login.
+
+Personal API tokens cannot bypass required onboarding or enrollment. A token never becomes a human session or an authentication-administration capability.
+
+## Recover access
+
+Try a recovery code first. If none work:
+
+```sh
+sudo shipperctl reset-factor
+```
+
+This revokes sessions and the owner's operations tokens, keeps the instance policy, and requires enrollment again when 2FA is enforced. It does not disable 2FA for other users.
+
+## Admin reset
+
+An admin can reset a user's factor from **Settings → Users**. The reset revokes affected credentials and requires enrollment again. It never grants full access.
+
+## Related
+
+- [Lost access](/docs/lost-access/)
+- [Users and roles](/docs/users/)
+- [OAuth](/docs/oauth/)

@@ -25,14 +25,36 @@ npm run build
 npm run preview
 ```
 
-From the repository root, `npm run landing:dev`, `npm run landing:build`, and
-`npm run landing:check` are available.
+From the repository root, `npm run landing:dev`, `npm run landing:build`, and `npm run landing:check` are available.
+
+## Documentation site
+
+The Starlight documentation site lives in `docs/` and is served at `/docs`.
+The landing build runs the docs build first, then merges the static output into
+`dist/docs`.
+
+```sh
+npm run dev:docs      # http://127.0.0.1:4322/docs/
+npm run build:docs
+npm run check:docs
+```
+
+- `docs/src/content/docs/` holds the MDX pages, grouped as Get started, Deploy, Operate, Access, and Reference.
+- `src/data/docs-navigation.mjs` is the shared sidebar and sitemap source.
+- `docs/src/components/` holds the SEO head and site title.
+- `docs/src/styles/docs.css` holds the documentation design tokens.
+- `docs/public/shots/` holds the live product screenshots.
+
+`npm run build` from this directory builds both surfaces. The landing sitemap
+imports the same navigation source, so a new page is added to the sitemap when
+it is added to the sidebar.
 
 ## Deployment
 
 The site is static Astro output and assumes the canonical production origin
 `https://shipperkit.dev`. That origin powers canonical tags, Open Graph URLs and
-the sitemap.
+the sitemap. Use `npm run build` as the build command and `dist` as the output
+directory so the documentation site is included at `/docs`.
 
 `/install.sh` must resolve to the generated installer channel. The project ships:
 
@@ -172,6 +194,8 @@ landing/
 
 The product shots come from the repository gallery at
 `.shipper/ui-gallery/round-16`. To refresh them, run the app gallery capture and
-copy the relevant PNGs into `landing/public/shots` under the same names.
+copy the relevant PNGs into `landing/public/shots` under the same names. The
+documentation site keeps its own copies in `landing/docs/public/shots` from the
+same gallery so the two surfaces can change independently.
 
 Third-party licenses are listed in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

@@ -5,12 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev --host 127.0.0.1",
-    "build": "astro build",
+    "dev:docs": "astro dev --config docs.astro.config.mjs --host 127.0.0.1",
+    "build": "npm run build:docs && astro build && node scripts/merge-docs.mjs",
+    "build:docs": "astro build --config docs.astro.config.mjs",
     "preview": "astro preview",
-    "check": "astro check"
+    "preview:docs": "astro preview --config docs.astro.config.mjs",
+    "check": "astro check",
+    "check:docs": "astro check --config docs.astro.config.mjs"
   },
   "dependencies": {
+    "@astrojs/markdown-remark": "^7.3.8",
     "@astrojs/react": "^7.1.4",
+    "@astrojs/starlight": "^0.42.10",
     "@base-ui/react": "^1.9.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.2.8",

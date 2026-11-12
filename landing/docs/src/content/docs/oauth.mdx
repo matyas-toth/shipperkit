@@ -1,0 +1,66 @@
+---
+title: OAuth
+description: Configure Google, GitHub, or Discord sign-in, register the exact callbacks, and link one identity to a provisioned Shipper account.
+---
+
+Google, GitHub, and Discord are independent instance toggles. A method must be enabled and usable by the account.
+
+Open **Settings → Authentication**, choose a provider, and enter its client ID and secret. The card shows the exact callback, scopes, setup steps, and a **Test sign-in** action.
+
+## Callbacks
+
+For a dashboard at `https://shipper.example.com`, register the exact displayed URL.
+
+| Provider | Callback | Identity scopes |
+| --- | --- | --- |
+| Google | `https://shipper.example.com/auth/oauth/google/callback` | `openid email profile` |
+| GitHub | `https://shipper.example.com/auth/oauth/github/callback` | `read:user user:email` |
+| Discord | `https://shipper.example.com/auth/oauth/discord/callback` | `identify email` |
+
+The callback is derived from the canonical HTTPS dashboard origin. If the dashboard domain changes, update every provider callback.
+
+## Google
+
+Create a Web application OAuth client in Google Auth Platform or the Cloud Console. Add the displayed callback to Authorized redirect URIs. Copy the client ID and secret to Shipper.
+
+Shipper validates signature, issuer, audience, expiry, nonce, and verified-email policy server-side.
+
+A Google address can remain marked verified when Google is not its current mailbox authority. If proof is uncertain, establish fresh mailbox control or use an explicit administrator binding.
+
+## GitHub
+
+Create an OAuth App under **Settings → Developer settings → OAuth apps**. Use the dashboard origin as the homepage and the displayed GitHub callback as the authorization callback URL.
+
+Request identity and email access only. Repository permissions are unnecessary for sign-in. GitHub repository access is a separate connection under **Settings → Connections**.
+
+Read verified and private addresses through the authenticated email endpoint, not the public profile email alone.
+
+## Discord
+
+Create or select an application in the Discord Developer Portal, add the displayed callback under OAuth2 Redirects, and copy the client ID and secret.
+
+Use the authorization code flow with `identify email`. Sign-in needs no bot installation, guild, or messaging permissions.
+
+## One identity across providers
+
+A verified provisioned email can link a new provider without creating a duplicate user.
+
+1. Validate the authorization flow and retrieve identity server-side.
+2. Resolve an already linked provider's stable user or subject ID.
+3. For a new identity, require a verified matching email and exactly one active provisioned account.
+4. Complete password-change, enrollment, and 2FA gates before linking.
+5. Persist a unique provider and subject binding. Reject collisions and ambiguous mappings without a silent merge.
+
+Changing an email or identity link requires recent authentication, applicable 2FA, and an audit entry.
+
+## Provider failure
+
+If a provider is misconfigured, the sign-in screen returns an inline error. Check the callback URL, client ID, client secret, and provider status.
+
+If no sign-in method works, see [Lost access](/docs/lost-access/).
+
+## Related
+
+- [Users and roles](/docs/users/)
+- [Two-factor authentication](/docs/two-factor/)
+- [Instance variables](/docs/instance-variables/)
