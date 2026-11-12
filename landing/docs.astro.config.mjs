@@ -15,19 +15,15 @@ export default defineConfig({
     starlight({
       title: "Shipper Docs",
       description:
-        "Install, deploy, back up, recover, and troubleshoot Shipper on a server you own. The operational documentation for the self-hosted deployment console.",
+        "Documentation for Shipper, the self-hosted deployment console. Install, deploy, operate, secure, and recover your server.",
       logo: {
         src: "./docs/src/assets/shipper.svg",
         alt: "Shipper",
       },
       favicon: "/favicon.svg",
-      customCss: ["./docs/src/styles/docs.css"],
       components: {
         Head: "./docs/src/components/DocsHead.astro",
-        Header: "./docs/src/components/DocsHeader.astro",
         SiteTitle: "./docs/src/components/DocsSiteTitle.astro",
-        Hero: "./docs/src/components/DocsHero.astro",
-        Footer: "./docs/src/components/DocsFooter.astro",
         ThemeProvider: "./docs/src/components/DocsThemeProvider.astro",
         ThemeSelect: "./docs/src/components/DocsThemeSelect.astro",
       },
@@ -46,6 +42,9 @@ export default defineConfig({
       lastUpdated: false,
       pagination: true,
       credits: false,
+      expressiveCode: {
+        defaultProps: { frame: "code" },
+      },
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       head: [
         {

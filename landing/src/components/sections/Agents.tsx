@@ -73,7 +73,7 @@ function Agents1() {
             </div>
             <div className="mt-9 flex flex-wrap gap-3">
               <ActionPrimary href="#get-shipper" />
-              <ActionSecondary href="/docs/api-tokens/">
+              <ActionSecondary href="/docs/api/">
                 Read the API docs
               </ActionSecondary>
             </div>

@@ -1,5 +1,5 @@
 ---
-title: Move an existing app to Shipper
+title: Move an existing app
 description: Move a Dockerfile, Compose stack, static site, database, and domain from another host or platform to Shipper without a blind cutover. Includes a cutover checklist and rollback plan.
 ---
 
@@ -152,7 +152,7 @@ If the new app accepted writes after cutover, the old database is stale. Reconci
 - Add a Shipper backup plan for the database and every writable volume.
 - Remove the old host only after a full backup and restore test.
 - Delete the temporary DNS record and certificate.
-- Review [Releases and rollbacks](/docs/releases-rollbacks/) and the [Recovery runbook](/docs/recovery/) with the new owner.
+- Review [Releases](/docs/releases/) and [rollbacks](/docs/rollbacks/) with the new owner, and keep the [Recovery runbook](/docs/recovery/) close.
 
 :::caution
 Do not run the old and new applications against the same writable database or volume. Two writers are a data corruption incident, not a migration strategy.

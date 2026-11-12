@@ -1,121 +1,85 @@
 ---
-title: Shipper documentation
-description: Install Shipper on a server you own, deploy your first app in five minutes, and keep a tested recovery path. Documentation for the self-hosted deployment console.
-template: splash
-hero:
-  title: Everything you need to run Shipper.
-  tagline: Install it on the server you already own, deploy in minutes, and keep the recovery path written down before you need it.
+title: Documentation
+description: Shipper documentation for installation, deployment, domains, releases, backups, recovery, access, diagnostics, and the CLI and API reference.
+tableOfContents: false
 ---
 
-<div class="docs-home">
-  <section class="docs-home-section">
-    <div class="docs-section-head">
-      <h2>Start here</h2>
-      <a href="/docs/first-deploy/">First deploy in five minutes →</a>
-    </div>
-    <div class="docs-card-grid">
-      <a class="docs-card" href="/docs/install/">
-        <span class="docs-card-number">01</span>
-        <h3>Install and prerequisites</h3>
-        <p>Ubuntu 24.04, the ports to open, DNS, and every path the root installer creates.</p>
-        <span class="docs-card-arrow">Read installation →</span>
-      </a>
-      <a class="docs-card" href="/docs/first-deploy/">
-        <span class="docs-card-number">02</span>
-        <h3>First deploy</h3>
-        <p>From a Git repository or a local folder to a live HTTPS URL with real commands.</p>
-        <span class="docs-card-arrow">Deploy an app →</span>
-      </a>
-      <a class="docs-card" href="/docs/move-an-app/">
-        <span class="docs-card-number">03</span>
-        <h3>Move an existing app</h3>
-        <p>Bring a Dockerfile, Compose stack, database, volume, and domain without a blind cutover.</p>
-        <span class="docs-card-arrow">Plan the move →</span>
-      </a>
-      <a class="docs-card" href="/docs/uninstall/">
-        <span class="docs-card-number">04</span>
-        <h3>Uninstall</h3>
-        <p>Stop the control plane, keep workload data, or remove everything with a named confirmation.</p>
-        <span class="docs-card-arrow">Review removal →</span>
-      </a>
-    </div>
-  </section>
+[Shipper](/) is a self-hosted deployment console for the server you own. These docs cover installing it, shipping an application, running it day to day, and recovering when something breaks.
 
-  <section class="docs-home-section">
-    <div class="docs-section-head">
-      <h2>When something breaks</h2>
-      <a href="/docs/recovery/">Open the recovery runbook →</a>
-    </div>
-    <div class="docs-priority-grid">
-      <a class="docs-priority-card is-danger" href="/docs/recovery/">
-        <span class="docs-pill is-danger">Runbook</span>
-        <h3>Recovery runbook</h3>
-        <p>Lost the dashboard, the owner password, the second factor, the host, or a certificate. Start with the first five minutes and follow the scenario table.</p>
-        <span>Open recovery →</span>
-      </a>
-      <a class="docs-priority-card" href="/docs/diagnostics/">
-        <span class="docs-pill is-caution">Diagnostics</span>
-        <h3>Diagnostics and troubleshooting</h3>
-        <p>One page per console check: Docker, runtime, routing, HTTPS, build, readiness, tasks, and dependency networks.</p>
-        <span>Open troubleshooting →</span>
-      </a>
-    </div>
-  </section>
+New to Shipper? Start with [Prerequisites](/docs/prerequisites/), [Install](/docs/install/), and [First deploy](/docs/first-deploy/). If you are already down, open the [Recovery runbook](/docs/recovery/).
 
-  <section class="docs-home-section">
-    <div class="docs-section-head">
+<div class="docs-index">
+  <div class="docs-index-grid">
+    <section class="docs-index-section">
+      <h2>Get started</h2>
+      <ul>
+        <li><a href="/docs/prerequisites/">Prerequisites</a><p>Supported hosts, resources, Docker, ports, and DNS.</p></li>
+        <li><a href="/docs/install/">Install</a><p>Run the installer, claim the instance, and add the dashboard domain.</p></li>
+        <li><a href="/docs/installer/">What the installer changes</a><p>Files, services, containers, and the uninstall path.</p></li>
+        <li><a href="/docs/first-deploy/">First deploy</a><p>From a Git repository, local folder, or image to a live URL.</p></li>
+        <li><a href="/docs/move-an-app/">Move an existing app</a><p>Bring a Dockerfile, Compose stack, data, and domain.</p></li>
+        <li><a href="/docs/uninstall/">Uninstall</a><p>Stop Shipper, keep data, or remove everything deliberately.</p></li>
+      </ul>
+    </section>
+
+    <section class="docs-index-section">
+      <h2>Deploy</h2>
+      <ul>
+        <li><a href="/docs/sources/">Sources</a><p>Git, local files, images, Compose, and inline Dockerfiles.</p></li>
+        <li><a href="/docs/builds/">Builds and checks</a><p>Build methods, ports, health paths, and readiness.</p></li>
+        <li><a href="/docs/domains/">Domains</a><p>Hostnames, aliases, routing, and maintenance mode.</p></li>
+        <li><a href="/docs/tls/">HTTPS and certificates</a><p>Automatic certificates, verification, and renewal.</p></li>
+        <li><a href="/docs/environment/">Environment variables</a><p>Build and runtime scopes, Compose, and rotation.</p></li>
+        <li><a href="/docs/secrets/">Secrets</a><p>Encrypted values, masking, and build secret mounts.</p></li>
+        <li><a href="/docs/releases/">Releases</a><p>Release records, deploy and apply, logs, and retention.</p></li>
+        <li><a href="/docs/rollbacks/">Rollbacks</a><p>Restore a release and understand what data does not roll back.</p></li>
+        <li><a href="/docs/updates/">Updates</a><p>Main and Nightly, automatic updates, and failed candidates.</p></li>
+      </ul>
+    </section>
+
+    <section class="docs-index-section">
       <h2>Operate</h2>
-      <a href="/docs/backups/">Protect the instance →</a>
-    </div>
-    <div class="docs-card-grid">
-      <a class="docs-card" href="/docs/backups/">
-        <h3>Backups and off-server storage</h3>
-        <p>Encrypted instance archives, S3-compatible destinations, application data plans, and test restores.</p>
-        <span class="docs-card-arrow">Read backups →</span>
-      </a>
-      <a class="docs-card" href="/docs/domains-tls/">
-        <h3>Domains and TLS</h3>
-        <p>DNS records, HTTP-01, the dashboard hostname, aliases, and certificate failures.</p>
-        <span class="docs-card-arrow">Read domains →</span>
-      </a>
-      <a class="docs-card" href="/docs/releases-rollbacks/">
-        <h3>Releases and rollbacks</h3>
-        <p>What each release records, what restore does, and the data it never rolls back.</p>
-        <span class="docs-card-arrow">Read releases →</span>
-      </a>
-      <a class="docs-card" href="/docs/updates/">
-        <h3>Updates and channels</h3>
-        <p>Main versus Nightly, automatic updates, failed candidates, and manual recovery.</p>
-        <span class="docs-card-arrow">Read updates →</span>
-      </a>
-      <a class="docs-card" href="/docs/environment/">
-        <h3>Environment variables and secrets</h3>
-        <p>Build and runtime scopes, encrypted values, rotation, and build-time secret mounts.</p>
-        <span class="docs-card-arrow">Read variables →</span>
-      </a>
-      <a class="docs-card" href="/docs/access/">
-        <h3>Users, roles, OAuth and TOTP</h3>
-        <p>Provisioning, the three roles, Google, GitHub and Discord sign-in, and second factors.</p>
-        <span class="docs-card-arrow">Read access →</span>
-      </a>
-      <a class="docs-card" href="/docs/api-tokens/">
-        <h3>API and agent tokens</h3>
-        <p>Scoped operation tokens for scripts and agents, CLI pairing, and revocation.</p>
-        <span class="docs-card-arrow">Read tokens →</span>
-      </a>
-    </div>
-  </section>
+      <ul>
+        <li><a href="/docs/backups/">Backups</a><p>Instance recovery plans, application data, and schedules.</p></li>
+        <li><a href="/docs/off-server-storage/">Off-server storage</a><p>S3 destinations, retention, and a practical 3-2-1 setup.</p></li>
+        <li><a href="/docs/restore/">Restore</a><p>Instance archives, database copies, and volume attach.</p></li>
+        <li><a href="/docs/recovery/">Recovery runbook</a><p>The first five minutes and the scenario table.</p></li>
+        <li><a href="/docs/lost-access/">Lost access</a><p>Owner password, second factor, and no sign-in method.</p></li>
+        <li><a href="/docs/host-recovery/">Host recovery</a><p>Control plane, Docker, dashboard, and a lost server.</p></li>
+        <li><a href="/docs/diagnostics/">Diagnostics</a><p>Every console check and failed stage in one map.</p></li>
+        <li><a href="/docs/troubleshooting/">Troubleshooting</a><p>Build, runtime, route, TLS, task, and dependency failures.</p></li>
+        <li><a href="/docs/maintenance/">Maintenance</a><p>Disk, cleanup, proxy repair, and host status.</p></li>
+      </ul>
+    </section>
 
-  <section class="docs-home-section">
-    <div class="docs-section-head">
+    <section class="docs-index-section">
+      <h2>Access</h2>
+      <ul>
+        <li><a href="/docs/users/">Users and roles</a><p>Provisioning, roles, sessions, and audit.</p></li>
+        <li><a href="/docs/oauth/">OAuth</a><p>Google, GitHub, and Discord sign-in.</p></li>
+        <li><a href="/docs/two-factor/">Two-factor authentication</a><p>TOTP, recovery codes, and instance policy.</p></li>
+        <li><a href="/docs/tokens/">API and agent tokens</a><p>Scoped operation tokens, CLI pairing, and revocation.</p></li>
+        <li><a href="/docs/deploy-tokens/">Deploy tokens</a><p>Application-scoped tokens for deploy endpoints.</p></li>
+      </ul>
+    </section>
+
+    <section class="docs-index-section">
       <h2>Reference</h2>
-      <a href="/docs/cli/">CLI reference →</a>
-    </div>
-    <div class="docs-compact-links">
-      <a href="/docs/cli/"><span>CLI reference</span><span>shipper</span></a>
-      <a href="/docs/ports/"><span>Ports and firewall</span><span>80 · 443 · 8080</span></a>
-      <a href="/docs/instance-variables/"><span>Instance environment variables</span><span>SHIPPER_*</span></a>
-      <a href="https://github.com/matyas-toth/shipperkit"><span>Source on GitHub</span><span>MIT</span></a>
-    </div>
-  </section>
+      <ul>
+        <li><a href="/docs/cli/">CLI</a><p>Plan, deploy, inspect, watch, and roll back.</p></li>
+        <li><a href="/docs/api/">API</a><p>The <code>/api/v1</code> contract and examples.</p></li>
+        <li><a href="/docs/ports/">Ports</a><p>Inbound, outbound, and internal ports.</p></li>
+        <li><a href="/docs/instance-variables/">Instance variables</a><p>Every <code>SHIPPER_*</code> and Docker setting.</p></li>
+      </ul>
+    </section>
+
+    <section class="docs-index-section">
+      <h2>Help</h2>
+      <ul>
+        <li><a href="https://github.com/matyas-toth/shipperkit/issues">GitHub issues</a><p>Report a bug or ask for a capability.</p></li>
+        <li><a href="https://github.com/matyas-toth/shipperkit/releases">Release notes</a><p>What changed in each Shipper release.</p></li>
+        <li><a href="https://github.com/matyas-toth/shipperkit/blob/master/SECURITY.md">Security</a><p>Report a vulnerability privately.</p></li>
+      </ul>
+    </section>
+  </div>
 </div>

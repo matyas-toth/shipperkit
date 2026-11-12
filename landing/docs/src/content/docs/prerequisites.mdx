@@ -1,0 +1,61 @@
+---
+title: Prerequisites
+description: Supported hosts, resources, Docker requirements, ports, DNS, and base tools for a Shipper installation.
+---
+
+Shipper runs on one dedicated Ubuntu 24.04 x86-64 server with systemd. The installer prepares that host, starts the control plane, and leaves application workloads alone.
+
+## Supported host
+
+| Item | Requirement |
+| --- | --- |
+| Operating system | Ubuntu 24.04, x86-64, systemd |
+| Access | Root shell, or `sudo` |
+| Memory | At least 1 GiB RAM |
+| Disk | At least 8 GiB free in `/var/lib` |
+| Container engine | Docker Engine API 1.48 or newer, with Compose and Buildx |
+| Base tools | `flock` from util-linux and `ss` from iproute2 |
+| Network | Public IPv4, TCP 80, 443 and 8080 reachable |
+| DNS | One hostname with an A record pointing at the server |
+
+These are bootstrap thresholds, not workload sizing. Application images, build caches, and database volumes need their own capacity planning.
+
+The managed installer supports Ubuntu 24.04 on x86-64 only. Other distributions and ARM hosts need a manual installation and are not covered by the installer's repair or update path.
+
+## Docker
+
+The installer reuses a compatible existing Docker engine. It refuses to continue when Docker is installed but unavailable, when only `dockerd`, `containerd`, or Podman is present without a compatible Docker CLI, or when ports 80, 443, or 8080 are already in use on a fresh host.
+
+If Docker is missing, the installer adds it from the signed Docker package repository. The host must be able to reach that repository.
+
+## Ports
+
+| Port | Purpose |
+| --- | --- |
+| `80` | ACME HTTP-01 challenges and HTTP to HTTPS redirects |
+| `443` | Dashboard and application HTTPS |
+| `8080` | First-run setup and the direct recovery path to the control plane |
+
+Allow all three inbound TCP ports at the provider firewall and in the host firewall. Port 8080 stays reachable after setup. It is the way back in when DNS or a certificate is broken.
+
+Do not place a second reverse proxy in front of Shipper during installation. Traefik is provisioned by Shipper and needs to own ports 80 and 443. See [Ports](/docs/ports/) for the complete inbound and outbound list.
+
+## DNS
+
+Create an A record for the dashboard hostname, for example `shipper.example.com`, pointing at the server's public IPv4 address.
+
+If you publish an AAAA record, it must point to a reachable IPv6 listener. An unreachable AAAA record breaks certificate issuance even when the A record is correct. Remove the AAAA record until IPv6 is configured.
+
+Use a low TTL while moving an existing hostname. Wait for the record to resolve from outside your network before saving the dashboard domain.
+
+```sh
+dig +short shipper.example.com
+```
+
+The answer must be the server's public address. If it is empty or points somewhere else, fix DNS before continuing.
+
+## Next
+
+- [Install Shipper](/docs/install/)
+- [What the installer changes](/docs/installer/)
+- [Ports](/docs/ports/)

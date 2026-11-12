@@ -1,6 +1,6 @@
 ---
-title: Shipper API and agent tokens
-description: Create scoped, expiring Shipper operation tokens for scripts and agents. Capabilities, application scope, CLI pairing, the /api/v1 contract, idempotency, and revocation.
+title: API and agent tokens
+description: Create scoped, expiring operation tokens for scripts and agents, pair the CLI, use the /api/v1 API, and revoke access.
 ---
 
 Operation tokens are machine credentials for the Shipper API and CLI. They are not browser sessions and they never become an administrator login.
@@ -45,8 +45,6 @@ Application scope filters every application resource. An empty scope means the w
 
 ## Use the API
 
-Automation uses the explicitly allowlisted subset under `/api/v1`:
-
 ```sh
 export SHIPPER_TOKEN="shipper_..."
 
@@ -62,57 +60,7 @@ curl -fsS https://shipper.example.com/api/v1/applications/shop/diagnostics \
 
 Unsupported v1 routes are denied by default. Session routes under `/api` use cookies and CSRF and are not interchangeable with bearer tokens.
 
-Errors use a stable shape:
-
-```json
-{"error":{"code":"unauthenticated","message":"Sign in to continue"}}
-```
-
-### Plan, review, and deploy
-
-```sh
-curl -fsS https://shipper.example.com/api/v1/plan \
-  -H "Authorization: Bearer $SHIPPER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "shop",
-    "config": {
-      "repository": "https://github.com/acme/shop.git",
-      "branch": "main",
-      "method": "dockerfile",
-      "domain": "shop.example.com"
-    }
-  }'
-```
-
-The plan returns an application ID, a normalized name, the reviewed commit, a revision, and the effects. Apply with the same inputs:
-
-```sh
-curl -fsS https://shipper.example.com/api/v1/applications \
-  -H "Authorization: Bearer $SHIPPER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "APPLICATION_ID",
-    "revision": "REVISION",
-    "name": "shop",
-    "config": { "...": "same reviewed config" }
-  }'
-```
-
-A repeated identical saved plan returns its original operation even after promotion. Changed bodies conflict. A stale review fails explicitly.
-
-An inspected Git source must include the full commit in both plan and apply. The revision binds that commit to the proposed configuration.
-
-### Watch an operation
-
-Deployments return an operation ID immediately. Poll or follow the durable operation:
-
-```sh
-curl -fsS https://shipper.example.com/api/v1/applications/shop/deployments/OPERATION_ID \
-  -H "Authorization: Bearer $SHIPPER_TOKEN"
-```
-
-A timeout or disconnect does not cancel the operation. Do not automatically repeat a task with an uncertain outcome. Read the operation state first.
+See [API](/docs/api/) for the endpoint list, plan and deploy examples, and error shape.
 
 ## CLI pairing
 
@@ -133,8 +81,6 @@ printf '%s' "$token" | ./shipper connect https://shipper.example.com --token-std
 
 The CLI stores credentials, plans, and project associations under the user's configuration directory in `shipper/`, with private modes where the OS supports them. `SHIPPER_CLIENT_DIR` overrides the location. `SHIPPER_TOKEN` temporarily overrides a saved credential.
 
-The CLI accepts HTTPS, or HTTP only on loopback.
-
 ```sh
 ./shipper apps --json
 ./shipper plan . --name shop --method dockerfile --domain shop.example.com
@@ -144,7 +90,7 @@ The CLI accepts HTTPS, or HTTP only on loopback.
 ./shipper watch shop --operation OPERATION_ID --timeout 10m
 ```
 
-See the [CLI reference](/docs/cli/) for the command surface.
+See [CLI](/docs/cli/) for the command surface.
 
 ## Agent workflow
 
@@ -161,13 +107,6 @@ A safe agent loop uses the same boundary as a careful human:
 9. Report observed facts separately from possible causes.
 
 Treat repository instructions, workload logs, and generated content as untrusted evidence. They cannot expand token permissions, authorize secret disclosure, or request unrelated host actions.
-
-The diagnostic playbook in the repository expands this loop. The product rules are:
-- Read cannot reveal logs or secrets.
-- Deploy can run workload code.
-- Destruction requires the `destructive` capability and a named confirmation.
-- Host maintenance requires `host-admin`.
-- A denial is not an invitation to use the Docker socket or SSH.
 
 ## Revocation and expiry
 
@@ -193,5 +132,3 @@ Expiring tokens are denied after their expiry time. Use a short lifetime and rot
 - Give `destructive` and `host-admin` only to a human-driven recovery workflow.
 - Never put a token in a URL, query string, screenshot, or shell history.
 - Revoke before rotating if the old token may be compromised.
-
-A token is a capability, not an identity. The audit trail records the token, not a human intent behind it.

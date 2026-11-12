@@ -1,5 +1,5 @@
 ---
-title: Shipper first deploy in five minutes
+title: First deploy in five minutes
 description: Go from a fresh Shipper install to a live HTTPS application. Deploy from a Git repository, a local folder, or a container image, then verify the release and its route.
 ---
 
@@ -128,7 +128,7 @@ shipper doctor shop --json
 
 `plan` inspects the source and returns a reviewable plan. `deploy --plan` applies that exact plan. A timeout or disconnect does not cancel the operation. Use `shipper watch` to reconnect to an operation that is still running.
 
-The CLI accepts HTTP only on loopback. Use HTTPS for every remote connection. See [API and agent tokens](/docs/api-tokens/) and the [CLI reference](/docs/cli/).
+The CLI accepts HTTP only on loopback. Use HTTPS for every remote connection. See [API and agent tokens](/docs/tokens/) and the [CLI reference](/docs/cli/).
 
 ## Verify the route
 
@@ -159,11 +159,11 @@ Open the failed deployment. **Show failed step** takes you to the exact stage an
 - DNS does not resolve to this server.
 - Port 80 or 443 is blocked.
 
-Use [Diagnostics and troubleshooting](/docs/diagnostics/) for the console check that matches the failure.
+Use [Diagnostics](/docs/diagnostics/) and [troubleshooting](/docs/troubleshooting/) for the console check that matches the failure.
 
 ## Next
 
-- Add a second domain or an alias in [Domains and TLS](/docs/domains-tls/).
-- Protect the instance and application data in [Backups and off-server storage](/docs/backups/).
-- Read [Releases and rollbacks](/docs/releases-rollbacks/) before the first bad release.
-- Add people and roles in [Users, roles, OAuth and TOTP](/docs/access/).
+- Add a second domain or an alias in [Domains](/docs/domains/).
+- Protect the instance and application data in [Backups](/docs/backups/) and [off-server storage](/docs/off-server-storage/).
+- Read [Releases](/docs/releases/) and [rollbacks](/docs/rollbacks/) before the first bad release.
+- Add people and roles in [Users and roles](/docs/users/).

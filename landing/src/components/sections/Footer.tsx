@@ -21,8 +21,8 @@ const groups = [
     links: [
       ["Installation", doc("install/")],
       ["Recovery", doc("recovery/")],
-      ["Troubleshooting", doc("diagnostics/")],
-      ["API", doc("api-tokens/")],
+      ["Troubleshooting", doc("troubleshooting/")],
+      ["API", doc("api/")],
     ],
   },
   {
@@ -153,7 +153,7 @@ function Footer4() {
             {[
               ["Docs", docs],
               ["GitHub", repo],
-              ["API", doc("api-tokens/")],
+              ["API", doc("api/")],
               ["Landing lab", "/variants"],
             ].map(([label, href]) => (
               <a key={label} href={href} className="text-[14px] text-[#85867f] transition-colors hover:text-white">
@@ -185,8 +185,8 @@ function Footer5() {
           </div>
           <div className="grid grid-cols-2 gap-10 sm:grid-cols-3">
             {[
-              ["Read", [["Installation", doc("install/")], ["First deploy", doc("first-deploy/")], ["Recovery", doc("recovery/")], ["API", doc("api-tokens/")]]],
-              ["Operate", [["Compose", doc("move-an-app/")], ["Backups", doc("backups/")], ["Updates", doc("updates/")], ["Routing", doc("domains-tls/")]]],
+              ["Read", [["Installation", doc("install/")], ["First deploy", doc("first-deploy/")], ["Recovery", doc("recovery/")], ["API", doc("api/")]]],
+              ["Operate", [["Compose", doc("move-an-app/")], ["Backups", doc("backups/")], ["Updates", doc("updates/")], ["Routing", doc("domains/")]]],
               ["Project", [["GitHub", repo], ["Releases", `${repo}/releases`], ["Security", `${repo}/blob/master/SECURITY.md`], ["Landing lab", "/variants"]]],
             ].map(([title, links]) => (
               <div key={title as string}>

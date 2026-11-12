@@ -1,0 +1,103 @@
+---
+title: Host recovery
+description: Recover the dashboard domain, a stopped control plane, an unavailable Docker engine, or a lost server.
+---
+
+Use this page when the instance itself is unhealthy. If you cannot sign in but the instance is healthy, see [Lost access](/docs/lost-access/).
+
+## Dashboard domain is broken
+
+Symptom: the dashboard does not open on `https://shipper.example.com`, but `http://<server-ip>:8080` still works.
+
+1. Open the direct listener on 8080 and sign in. This is the designed recovery path.
+2. Check DNS from outside the server:
+
+```sh
+dig +short shipper.example.com
+```
+
+3. Check the certificate and HTTP response:
+
+```sh
+curl -vI https://shipper.example.com 2>&1 | head -n 30
+```
+
+4. Confirm ports 80 and 443 are reachable from outside. A provider firewall change is the most common cause after a working install.
+5. In **Settings → Dashboard**, run **Verify dashboard**.
+6. If the certificate is pending or failed, inspect the proxy:
+
+```sh
+docker ps --filter label=io.shipper.infrastructure=proxy
+docker logs --tail 200 shipper-<instance-prefix>-proxy
+```
+
+7. If DNS is correct and ports are open, remove and re-save the dashboard domain. This re-queues the route and certificate request. It does not delete application data.
+
+Do not remove `acme.json` or the proxy data volume. A new certificate request does not require erasing the ACME account or existing certificates.
+
+## Control plane will not start
+
+Symptom: `shipper.service` is inactive or failed, or `/api/health` does not respond.
+
+```sh
+sudo systemctl status shipper.service --no-pager
+sudo journalctl -u shipper.service -n 200 --no-pager
+sudo shipperctl logs
+```
+
+| Cause | Evidence | Fix |
+| --- | --- | --- |
+| Docker not ready | `docker info` fails | Start Docker, then `sudo systemctl restart shipper` |
+| Port 8080 in use | `ss -ltnp 'sport = :8080'` | Stop the conflicting process |
+| Data directory permissions | Journal shows permission denied | `sudo chown -R 65532:65532 /var/lib/shipper` |
+| Disk full | `df -h /var/lib` | [Free space](/docs/maintenance/) |
+| Corrupt SQLite | Journal shows database or integrity errors | [Restore the instance](/docs/restore/) |
+| Failed update | `cat /var/lib/shipper/update-status.json` | [Updates](/docs/updates/) |
+
+Restart the service after fixing the cause:
+
+```sh
+sudo systemctl restart shipper.service
+curl -fsS http://127.0.0.1:8080/api/health
+```
+
+If the service still fails, do not reinstall over the data directory. Restore the latest instance archive into an empty directory. The original data directory can be inspected later.
+
+## Docker is down
+
+If the host is reachable but Docker is not:
+
+```sh
+sudo systemctl status docker --no-pager
+sudo journalctl -u docker -n 200 --no-pager
+sudo systemctl restart docker
+docker info
+```
+
+Then restart Shipper:
+
+```sh
+sudo systemctl restart shipper.service
+```
+
+If Docker cannot start, fix the engine first. Common causes are a full disk, a corrupted Docker data root, or a host reboot that left a mount unavailable.
+
+## The host is lost
+
+1. Provision a new Ubuntu 24.04 x86-64 server.
+2. Point a temporary hostname at it. Do not move production DNS yet.
+3. Install the same Shipper release.
+4. Restore the instance archive into the empty data directory. See [Restore](/docs/restore/).
+5. Sign in and review applications.
+6. Restore database dumps and volume archives for each application.
+7. Verify each application on the temporary hostname.
+8. Move production DNS back to the new server.
+9. Re-verify certificates and routes.
+10. Keep the old host or its disks until the new host has served real traffic.
+
+## Related
+
+- [Recovery runbook](/docs/recovery/)
+- [Restore](/docs/restore/)
+- [HTTPS and certificates](/docs/tls/)
+- [Diagnostics](/docs/diagnostics/)

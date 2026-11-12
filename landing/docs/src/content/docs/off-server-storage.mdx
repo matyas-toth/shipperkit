@@ -1,0 +1,73 @@
+---
+title: Off-server storage
+description: Configure an S3-compatible destination, control retention and schedules, and keep an off-server copy that survives loss of the VPS.
+---
+
+An off-server copy is the difference between a backup and a second local copy. Shipper uploads encrypted archives to an S3-compatible destination you control.
+
+## Add a destination
+
+Open **Settings → Recovery → Off-server storage → Add S3 destination**.
+
+| Field | What to enter |
+| --- | --- |
+| Endpoint | S3-compatible endpoint, for example `https://s3.eu-central-1.amazonaws.com` or your provider's endpoint |
+| Region | Bucket region, for example `eu-central-1` |
+| Bucket | Bucket name |
+| Prefix | A dedicated prefix for this Shipper instance |
+| Access key | Key with access only to that prefix |
+| Secret key | Secret for the access key |
+| Private endpoint | Opt in only for a private address or plain HTTP endpoint |
+
+S3 uses AWS Signature Version 4, HTTPS by default, and no redirects. Private endpoints and HTTP require explicit opt-in. ETags are never treated as content checksums.
+
+Give the credential access only to the chosen prefix. Bucket policies, provider-side encryption, object locking, and lifecycle rules remain under your control.
+
+## Use the destination in a plan
+
+Open **Settings → Recovery** and edit the instance plan's **Storage and retention**. Choose **Local + S3 destination** and select the destination.
+
+Application backup plans choose a destination per plan. A local-only plan is still useful for quick restores, but it does not survive loss of the host.
+
+## Retention
+
+Plans retain 1 to 100 completed copies. The default is 7.
+
+- Expiration runs only after a new successful backup.
+- Only objects beneath this instance's prefix are removed.
+- Failed or interrupted attempts are retained as history.
+- A failed upload removes its new local artifact so scheduled failures cannot fill the disk with unretained archives.
+- Previous completed recovery points are preserved.
+
+Deleting a plan preserves its existing archives. Destination targets are captured per run, so changing a bucket or prefix does not redirect deletion of historical objects. Rotating credentials for the same endpoint and bucket updates access to those objects.
+
+## Limits
+
+Archives have a 2 GiB plaintext inventory limit and a 30-minute operation deadline. Temporary files are private, streaming bounds avoid loading whole dumps into RAM, and interrupted staging is cleaned when the worker reacquires the job.
+
+The archive format is versioned, authenticated with age, and validates hashes, inventory, entry types, and paths before restoring.
+
+## A practical 3-2-1 setup
+
+- **3 copies**: the live database or volume, the local Shipper archive, and the off-server S3 object.
+- **2 media**: the VPS disk and the object store.
+- **1 off-site**: a bucket in a different provider or region with credentials held outside the VPS.
+- Keep the recovery key somewhere that is neither the VPS nor the bucket.
+- Alert on backup failure and overdue protection. Shipper records both in application history and **System → Notifications**.
+- Keep enough retention to survive a slow discovery, not just the last nightly run.
+
+## What off-server storage does not cover
+
+- Container images that the registry no longer serves.
+- BuildKit caches or Git working copies.
+- External object storage, DNS records, and provider accounts.
+- Secrets that only exist in a developer's environment.
+- A certificate authority decision to revoke a certificate.
+
+Retain pinned image digests and source revisions alongside the archive. A metadata backup cannot recreate an image that no registry still has.
+
+## Related
+
+- [Backups](/docs/backups/)
+- [Restore](/docs/restore/)
+- [Recovery runbook](/docs/recovery/)

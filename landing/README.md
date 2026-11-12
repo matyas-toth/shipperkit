@@ -39,9 +39,9 @@ npm run build:docs
 npm run check:docs
 ```
 
-- `docs/src/content/docs/` holds the MDX pages.
+- `docs/src/content/docs/` holds the MDX pages, grouped as Get started, Deploy, Operate, Access, and Reference.
 - `src/data/docs-navigation.mjs` is the shared sidebar and sitemap source.
-- `docs/src/components/` holds the branded header, hero, footer and SEO head.
+- `docs/src/components/` holds the SEO head and site title.
 - `docs/src/styles/docs.css` holds the documentation design tokens.
 - `docs/public/shots/` holds the live product screenshots.
 

@@ -1,14 +1,9 @@
 ---
-title: Shipper environment variables and secrets
-description: Build and runtime scopes, encrypted secret values, build-time secret mounts, Compose service variables, rotation, and the instance environment that configures Shipper itself.
+title: Environment variables
+description: Build and runtime scopes, adding variables, Compose service variables, review and apply, and rotating values.
 ---
 
-Application configuration lives with the application. Shipper stores variable names and scopes, encrypts secret values, and applies changes through the same review flow as every other configuration edit.
-
-<figure class="docs-shot">
-  <a class="docs-shot-link" href="/docs/shots/env.png" target="_blank" rel="noreferrer"><img src="/docs/shots/env.png" alt="Shipper application .env tab with variable names, scopes, secret markers, and review action" width="1440" height="900" loading="lazy" decoding="async" /></a>
-  <figcaption>The .env tab keeps variable scope visible. Secret values stay masked.</figcaption>
-</figure>
+Application configuration lives with the application. Shipper stores variable names and scopes, applies changes through review, and restarts or redeploys as needed.
 
 ## Scopes
 
@@ -18,9 +13,9 @@ Application configuration lives with the application. Shipper stores variable na
 | Runtime | No | Yes | No, apply and restart |
 | Both | Yes | Yes | Yes |
 
-Use **Runtime** for database URLs, API keys, and feature flags that the running process reads. Use **Build** for values a Dockerfile or Railpack step needs. Use **Both** only when both phases need the same value.
+Use **Runtime** for database URLs, API keys, and feature flags the running process reads. Use **Build** for values a Dockerfile or Railpack step needs. Use **Both** only when both phases need the value.
 
-A build variable can be baked into an image layer. Treat it as public if the image is ever pushed. A secret that must not appear in a layer belongs in a BuildKit secret mount, not an `ARG`.
+A build variable can be baked into an image layer. Treat it as public if the image is ever pushed. A secret that must not appear in a layer belongs in a [secret mount](/docs/secrets/), not an `ARG`.
 
 ## Add variables
 
@@ -37,57 +32,20 @@ You can also paste a `.env` file and add detected values. Review the detected li
 
 Variable names should be valid environment names. A blank value is not a valid secret. Remove the variable instead of leaving an empty secret in place.
 
-## How secrets are stored
-
-- Secret values are encrypted at rest with the instance encryption key.
-- Ordinary reads return masked values and a `hasValue` marker.
-- The review list names the variable and its effect without repeating the value.
-- Release logs and deployment history do not contain secret values.
-- Revealing a saved value is an explicit action and requires the `secrets` capability for an API token.
-- Viewers cannot reveal secrets, open a terminal, or download backups.
-
-The instance encryption key lives in `/var/lib/shipper/encryption.key`. An instance recovery archive includes the original key so existing values remain readable after recovery. Losing both the key and a valid archive makes encrypted values unrecoverable.
-
-## Build-time secrets
-
-For Dockerfile builds, use a BuildKit secret mount:
-
-```dockerfile
-# syntax=docker/dockerfile:1
-FROM node:24-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN --mount=type=secret,id=npm_token \
-    NPM_TOKEN="$(cat /run/secrets/npm_token)" npm run build
-```
-
-Configure a variable named `npm_token` with **Build** scope and mark it as a secret. The secret id must match the variable name. The value is available to the build step but is not stored in the image layer.
-
-Do not do this:
-
-```dockerfile
-ARG NPM_TOKEN
-RUN npm config set //registry.npmjs.org/:_authToken=$NPM_TOKEN
-```
-
-The `ARG` value is visible in image history and build cache metadata.
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/env.png" target="_blank" rel="noreferrer"><img src="/docs/shots/env.png" alt="Shipper application .env tab with variable names, scopes, secret markers, and review action" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>The .env tab keeps variable scope visible. Secret values stay masked.</figcaption>
+</figure>
 
 ## Compose variables
 
-A Compose application can have:
-
-- Application-level variables shared by the stack.
-- Service-level variables scoped to one service.
+A Compose application can have application-level variables shared by the stack and service-level variables scoped to one service.
 
 A service-level variable overrides the application-level value for that service. Compose initialization variables such as `POSTGRES_PASSWORD` can be inherited from the service's actual environment, but initialization values are not proof that the password is still current.
 
 For a database password that changed after initialization, set the current credential explicitly. A `_FILE` secret or a custom image may need an explicit value.
 
-## Review, apply, and restart
-
-Changing a runtime variable creates a configuration change. Shipper reviews the effect, applies the new environment, and restarts or redeploys as needed.
+## Review and apply
 
 - A runtime-only change can reuse the pinned image.
 - A build-scope change requires a new build.
@@ -95,7 +53,7 @@ Changing a runtime variable creates a configuration change. Shipper reviews the 
 
 If the application reads configuration only at startup, a restart is required even for a runtime value. If it watches its environment, the process still needs the new environment from the container runtime.
 
-## Rotate a secret
+## Rotate a value
 
 1. Create the new credential at the provider.
 2. Add or update it in **.env** and apply the change.
@@ -104,28 +62,10 @@ If the application reads configuration only at startup, a restart is required ev
 5. Revoke the old credential at the provider.
 6. Remove the old value from any local `.env` file.
 
-For a database password, coordinate the order with the database:
-
-1. Create the new password or user.
-2. Update the application secret.
-3. Apply and restart.
-4. Verify connections.
-5. Remove the old password.
-
-Do not change the database password before the application has the new value unless the database accepts both during the transition.
+For a database password, create the new password or user first, update the application secret, apply and restart, verify connections, then remove the old password.
 
 ## Instance environment
 
-Shipper itself reads `SHIPPER_*` and Docker variables from its process environment. On a managed install, the control-plane Compose file and `/etc/shipper/instance.env` define the image and Docker socket group. Manual installs commonly use `compose.yaml` or a systemd environment file.
+Shipper itself reads `SHIPPER_*` and Docker variables from its process environment. On a managed install, the control-plane Compose file and `/etc/shipper/instance.env` define the image and Docker socket group.
 
-See [Instance environment variables](/docs/instance-variables/) for the complete reference, precedence, and the values that require a restart.
-
-## Common mistakes
-
-- Marking a build secret as **Runtime** and expecting it during `docker build`.
-- Using `ARG` for a password and pushing the image.
-- Changing a runtime variable but not restarting a process that reads it once.
-- Leaving a blank secret in place instead of removing the variable.
-- Pasting a `.env` file without reviewing detected values.
-- Storing the same secret in three applications and rotating only one.
-- Assuming a masked value in the UI is absent from the container. Masking is a display boundary, not a runtime boundary.
+See [Instance variables](/docs/instance-variables/) for the complete reference.

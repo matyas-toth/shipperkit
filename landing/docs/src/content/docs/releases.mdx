@@ -1,0 +1,66 @@
+---
+title: Releases
+description: What a Shipper release records, how deploy and apply differ, where deployment logs live, and how image retention affects rollback.
+---
+
+A release records more than an image. Shipper keeps the source commit, build method, runtime configuration, routes, and the image that served traffic.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/deployments.png" target="_blank" rel="noreferrer"><img src="/docs/shots/deployments.png" alt="Shipper Deployments view with release history, status, commit, and live deployment log" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Release history stays beside the deployment log, including the serving and failed releases.</figcaption>
+</figure>
+
+## What a release records
+
+| Field | Meaning |
+| --- | --- |
+| Operation | `deploy`, `apply`, `rollback`, `restart`, or another lifecycle action |
+| State | `queued`, `building`, `starting`, `checking`, `promoting`, `succeeded`, `failed`, or `cancelled` |
+| Commit | The Git commit or local source identity used for the build |
+| Method | Dockerfile, Railpack, static, Compose, or image |
+| Image | The local image ID that served the release |
+| Config snapshot | Runtime settings, variables metadata, health path, port, and limits |
+| Services | Compose services and their route targets |
+| Duration | From start to the final state |
+| Error | The failed stage and message, when the release failed |
+
+Secrets are not stored in the release log. The config snapshot retains variable metadata and encrypted values, not readable secret text.
+
+## Deploy is not apply
+
+- **Redeploy** fetches the source again and builds a new image. Use it for a new commit or an uncached rebuild.
+- **Review changes → Apply** saves configuration and reuses the active image when the saved model can represent the change safely.
+- **Restart** restarts the current workload without rebuilding.
+- **Restore release** creates a new durable deployment from an older recorded release.
+
+Runtime-only edits such as a health path, memory limit, or environment value can reuse the pinned image. A source, Dockerfile, or build-method change requires a new build.
+
+## Deployment logs
+
+Open **Deployments** and select a release. The log is grouped by stage and can be searched, wrapped, copied, and downloaded.
+
+A failed release names the failed stage and the first useful error. The serving release can remain healthy while the latest release is failed.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/failed.png" target="_blank" rel="noreferrer"><img src="/docs/shots/failed.png" alt="Shipper failed deployment with the failed stage, build error, and log lines" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>A failed release names the stage and the first useful error. The serving release can remain healthy.</figcaption>
+</figure>
+
+## Image retention
+
+There is no automatic image pruning yet. That is deliberate: a rollback needs the image it recorded.
+
+External cleanup can make an older release unavailable:
+
+```sh
+docker image prune -a
+docker system prune
+```
+
+Neither is a supported maintenance command for a Shipper host. Use **System → Maintenance** and review what is protected by recorded releases. If you remove an image manually, verify that no release record points at it.
+
+## Related
+
+- [Rollbacks](/docs/rollbacks/)
+- [Updates](/docs/updates/)
+- [Troubleshooting](/docs/troubleshooting/)
