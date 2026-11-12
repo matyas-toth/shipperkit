@@ -13,6 +13,7 @@ import Applications from "./pages/Applications";
 import Settings from "./pages/Settings";
 import System from "./pages/System";
 import Application from "./pages/Application";
+import CliAuthorize from "./pages/CliAuthorize";
 import { Button, ErrorNotice } from "./components/Controls";
 import {clearVolatileDrafts} from "./drafts";
 import "./styles.css";
@@ -60,7 +61,7 @@ function App() {
           <Show when={!session.data?.authStep && !session.data?.recoveryCodes?.length} fallback={<FactorGate />}>
             <SelectMenu />
             <Router root={Shell}><Route path="/" component={Applications} /><Route path="/settings" component={Settings} /><Route path="/system" component={SystemRoute}/>
-              <Route path="/new" component={NewApplication} /><Route path="/applications/:id" component={Application} />
+              <Route path="/new" component={NewApplication} /><Route path="/applications/:id" component={Application} /><Route path="/cli/authorize" component={CliAuthorize} />
               <Route path="*404" component={() => <div class="content content-narrow"><h1>Page not found</h1><Button onClick={() => window.location.assign("/")}>Applications</Button></div>} />
             </Router>
           </Show>

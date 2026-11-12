@@ -26,7 +26,9 @@
     "test:database": "node scripts/test-database.mjs",
     "landing:dev": "npm run dev --prefix landing",
     "landing:build": "npm run build --prefix landing",
-    "landing:check": "npm run check --prefix landing"
+    "landing:check": "npm run check --prefix landing",
+    "cli:build": "npm run build --prefix cli",
+    "cli:check": "npm run check --prefix cli"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0"

@@ -31,12 +31,15 @@ jobs:
             package-lock.json
             web/package-lock.json
             landing/package-lock.json
+            cli/package-lock.json
       - run: npm ci
       - run: npm ci --prefix web
       - run: npm ci --prefix landing
+      - run: npm ci --prefix cli
       - name: Typecheck and frontend unit tests
         run: |
           npm run check
+          npm run check --prefix cli
           npm run test --prefix web
       - name: Go vet and race tests
         env:
@@ -49,6 +52,7 @@ jobs:
           npm run build
           npm run check --prefix landing
           npm run build --prefix landing
+          npm run build --prefix cli
           bash -n install.sh
 
   browser:
