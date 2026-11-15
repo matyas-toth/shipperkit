@@ -1,4 +1,6 @@
 import type { Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 type Json = Record<string, any>;
 
@@ -20,6 +22,24 @@ export async function installFixtures(page: Page) {
   const baseConfig = web.application.config;
   const t = now();
   const session = await (await page.request.get("/api/auth/session")).json();
+  const catalogRaw: Json = JSON.parse(await readFile(join(process.cwd(), "internal", "catalog", "catalog.json"), "utf8"));
+  const catalogByID = new Map<string, Json>(catalogRaw.services.map((item: Json) => [item.id, item]));
+  const catalogItems = catalogRaw.services.map((item: Json) => ({
+    id: item.id, name: item.name, description: item.description, category: item.category, tags: item.tags,
+    logomark: item.logomark, website: item.website, documentation: item.documentation, source: item.source,
+    featured: item.featured, mainService: item.mainService, port: item.port, support: item.support, supportNote: item.supportNote,
+    services: item.services.length, fields: item.fields.length, domain: (item.domains ?? []).length > 0,
+  }));
+  const categoryCounts = new Map<string, number>();
+  const featuredItems = catalogItems.filter((item: Json) => item.featured);
+  if (featuredItems.length) categoryCounts.set("Featured", featuredItems.length);
+  for (const item of catalogItems) categoryCounts.set(item.category, (categoryCounts.get(item.category) ?? 0) + 1);
+  const catalogIndex = {
+    version: catalogRaw.version, source: catalogRaw.source, generated: catalogRaw.generated,
+    updatedAt: t - 3600, checkedAt: t - 1800, fromCache: true, error: "",
+    categories: [...categoryCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+    items: catalogItems,
+  };
   const schedules = ["0 */6 * * *", "0 3 * * 0", "0 2 * * *", "0 4 * * *"];
   const nextRuns = await Promise.all(schedules.map(async schedule => {
     const response = await page.request.post("/api/protection/schedule-preview", {
@@ -188,8 +208,51 @@ export async function installFixtures(page: Page) {
     activeDeployment: null,
   };
 
+  const workflowsCatalog = catalogByID.get("n8n")!;
+  const workflowsVariables = [
+    { name: "GENERIC_TIMEZONE", value: "Europe/Budapest", secret: false, scope: "runtime", hasValue: true },
+    { name: "SERVICE_PASSWORD_N8N", value: "", secret: true, scope: "runtime", keep: true, hasValue: true },
+    { name: "SERVICE_FQDN_N8N", value: "https://workflows.example.com", secret: false, scope: "runtime", hasValue: true },
+    { name: "SERVICE_FQDN_N8N_5678", value: "https://workflows.example.com", secret: false, scope: "runtime", hasValue: true },
+    { name: "N8N_PROTOCOL", value: "https", secret: false, scope: "runtime", hasValue: true },
+    { name: "N8N_RUNNERS_ENABLED", value: "true", secret: false, scope: "runtime", hasValue: true },
+    { name: "TZ", value: "Europe/Budapest", secret: false, scope: "runtime", hasValue: true },
+  ];
+  const workflowsServices = workflowsCatalog.services.map((part: Json) => ({
+    name: part.name, image: part.image, port: part.port ?? (part.name === "n8n" ? 5678 : 0),
+    healthPath: "/", volumes: part.name === "n8n" ? [{ name: "data-n8n-0", path: "/home/node/.n8n" }] : [],
+    variables: workflowsVariables.map(variable => ({ ...variable, value: variable.secret ? "" : variable.value })),
+  }));
+  const workflowsConfig: Json = {
+    ...atlasConfig, method: "compose", composeSource: "paste", composeFile: "compose.yaml", composeHasValue: true,
+    repository: "", branch: "", domain: "workflows.example.com", https: true, port: 0, healthPath: "/",
+    domains: [{ ...domain, id: "catalog-n8n", hostname: "workflows.example.com", https: true, service: "n8n" }],
+    variables: workflowsVariables, catalogService: "n8n", catalogVersion: catalogRaw.version,
+    services: workflowsServices.map((part: Json) => ({ name: part.name, port: part.port, healthPath: "/", memoryMB: 0, variables: [] })),
+  };
+  const workflowsContainers = workflowsServices.map((part: Json, index: number) => ({
+    id: String(index + 6).repeat(64), name: "shipper-workflows-" + part.name + "-1", image: part.image,
+    state: "running", status: "Up 3 hours (healthy)", health: "healthy", createdAt: t - 10_800,
+    ports: [], managed: true, applicationId: "application-workflows", project: "shipper-workflows", service: part.name,
+  }));
+  const workflowsDeployments = deployments.slice(0, 3).map((d, index) => ({
+    ...d, id: "deployment-workflows-" + (3 - index), applicationId: "application-workflows", applicationName: "Workflows",
+    operation: index === 2 ? "deploy" : "apply", commit: "", createdAt: t - 900 - index * 86_400,
+    finishedAt: t - 875 - index * 86_400, resolvedMethod: "compose", services: workflowsServices, config: workflowsConfig,
+  }));
+  const workflowsDetail = {
+    application: {
+      ...atlasDetail.application, id: "application-workflows", name: "Workflows", method: "compose", sourceKind: "compose",
+      sourceRef: "", activeMethod: "compose", config: workflowsConfig, domains: workflowsConfig.domains,
+      containers: workflowsContainers, activeDeploymentId: "deployment-workflows-3", latestDeployment: workflowsDeployments[0],
+    },
+    deployments: workflowsDeployments,
+    activeDeployment: workflowsDeployments[0],
+  };
+
   const inventoryApps = [
     websiteDetail.application,
+    workflowsDetail.application,
     atlasDetail.application,
     apiDetail.application,
     {
@@ -335,6 +398,10 @@ export async function installFixtures(page: Page) {
   const json = (body: unknown) => async (r: any) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 
   await route("**/api/applications", json(inventory));
+  await route("**/api/catalog", json(catalogIndex));
+  await route("**/api/catalog/n8n", json(workflowsCatalog));
+  await route("**/api/applications/application-workflows", json(workflowsDetail));
+  await route("**/api/applications/application-workflows/variables/reveal", async r => r.fulfill({ json: { value: "n8n_runner_9f4c2a6e8b1d" } }));
   await route("**/api/applications/application-web", json(websiteDetail));
   await route("**/api/applications/application-atlas", json(atlasDetail));
   await route("**/api/applications/application-api", json(apiDetail));
@@ -357,7 +424,10 @@ export async function installFixtures(page: Page) {
   await route("**/api/connections", json(connections));
   await route("**/api/proxy", json(proxy));
   await route("**/api/repositories/inspect", json({ method: "railpack", commit: "4e8b2d6f0a1c3e5g7i9k1m3o5q7s9u1w3y5a7c9e1", variables: ["DATABASE_URL", "PUBLIC_ORIGIN", "NODE_ENV"], installCommand: "npm ci", buildCommand: "npm run build", startCommand: "npm start" }));
-  await route("**/api/plan", json({ applicationId: "application-portfolio", revision: "creation-gallery", name: "Portfolio", commit: "4e8b2d6f0a1c3e5g7i9k1m3o5q7s9u1w3y5a7c9e1", config: { ...atlasConfig, method: "railpack", repository: "https://github.com/acme/portfolio.git", domain: "portfolio.localhost" } }));
+  await route("**/api/plan", async r => {
+    const input = r.request().postDataJSON();
+    return r.fulfill({ json: { applicationId: "application-" + (input.name || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-"), revision: "creation-gallery", name: input.name, commit: input.commit, config: input.config } });
+  });
   await route("**/api/applications/*/changes", json({ operation: "recreate", changes: ["Environment variables"], revision: "browser-gallery-change", downtime: "About 20 seconds" }));
 
   await route("**/api/applications/*/diagnostics", async r => {

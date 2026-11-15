@@ -281,6 +281,11 @@ func (s *Server) createApplication(w http.ResponseWriter, r *http.Request) {
 	if a.Name == "" && a.Config.LocalSource != "" {
 		a.Name = "Local application"
 	}
+	if a.Name == "" && a.Config.CatalogService != "" {
+		if service, ok := s.catalog.Current().Get(a.Config.CatalogService); ok {
+			a.Name = service.Name
+		}
+	}
 	if a.Name == "" && a.Config.Method == "compose" && a.Config.ComposeSource == "paste" {
 		a.Name = "Compose application"
 	}

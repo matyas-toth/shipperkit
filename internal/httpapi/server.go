@@ -23,6 +23,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"shipper/internal/auth"
+	"shipper/internal/catalog"
 	"shipper/internal/deploy"
 	"shipper/internal/events"
 	"shipper/internal/gitprovider"
@@ -47,6 +48,7 @@ type Config struct {
 	SetupClaim     func() (string, error)
 	Operations     *operations.Service
 	Updates        *updates.Service
+	Catalog        *catalog.Manager
 	OAuth          *OAuthEndpoints
 	DataDir        string
 	Restart        func()
@@ -59,6 +61,7 @@ type Server struct {
 	monitor         *inventory.Monitor
 	hub             *events.Hub
 	cfg             Config
+	catalog         *catalog.Manager
 	limiter         *limiter
 	limitMax        int
 	dummyHash       string
@@ -101,6 +104,10 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 		}
 	}
 	s := &Server{github: cfg.GitHub, db: db, monitor: monitor, hub: hub, cfg: cfg, limiter: &limiter{entries: map[string]attempt{}}, limitMax: limitMax, dummyHash: dummy, authSlots: make(chan struct{}, 2), logSlots: make(chan struct{}, 8), protectionSlots: make(chan struct{}, 1), publicURLValue: publicURL, dashboardValue: dashboard}
+	if cfg.Catalog == nil {
+		cfg.Catalog = catalog.NewManager("")
+	}
+	s.catalog = cfg.Catalog
 	s.authChanged = make(chan struct{})
 	s.oauth = cfg.OAuth
 	if s.oauth == nil {
@@ -137,6 +144,8 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 			r.Get("/applications/{id}/tasks", s.tasks)
 			r.Get("/proxy", s.proxyInfo)
 			r.Get("/domain-options", s.domainOptions)
+			r.Get("/catalog", s.catalogIndex)
+			r.Get("/catalog/{service}", s.catalogService)
 			r.Get("/updates", s.updateState)
 			r.Get("/updates/status", s.updateStatus)
 			r.Get("/events", s.stream)
@@ -189,6 +198,7 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 				r.With(s.csrf, s.limit).Post("/proxy", s.saveProxy)
 				r.Get("/system", s.system)
 				r.With(s.csrf, s.limit).Post("/updates/check", s.checkUpdates)
+				r.With(s.csrf, s.limit).Post("/catalog/refresh", s.refreshCatalog)
 				r.With(s.csrf, s.limit).Post("/updates/settings", s.saveUpdateSettings)
 				r.With(s.csrf, s.limit).Post("/updates/apply", s.applyUpdate)
 			})

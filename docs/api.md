@@ -162,6 +162,9 @@ shape:
 | GET | /containers | Cookie | Shipper-owned container projection and Docker connection health |
 | GET | /applications | Cookie | Persistent owned application records and their containers |
 | GET | /system | Cookie | Curated engine, database, and process information |
+| GET | /catalog | Cookie | Service Library summaries, categories and manifest version |
+| GET | /catalog/{service} | Cookie | One service template, Compose definition, fields and domains |
+| POST | /catalog/refresh | Cookie + CSRF + admin | Fetch and cache the published catalog manifest |
 | GET | /events | Cookie | SSE inventory invalidations |
 | POST | /refresh | Cookie + CSRF | Queue coalesced reconciliation; return 202 |
 | GET | /applications/{id} | Cookie | `application` and newest 100 `deployments` |

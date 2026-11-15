@@ -126,6 +126,7 @@ administrator and metadata.
 | `SHIPPER_HTTPS_PORT` | `8743` | Traefik HTTPS port on the Docker host |
 | `SHIPPER_ACME_EMAIL` | unset | Enable the Let's Encrypt resolver for custom domains |
 | `SHIPPER_ACME_CA` | Let's Encrypt production | Optional ACME directory, including staging |
+| `SHIPPER_CATALOG_URL` | Repository manifest | Service Library manifest URL, or `off` to disable remote updates |
 
 When putting Shipper behind an HTTPS reverse proxy, set `SHIPPER_PUBLIC_URL` to
 its exact external origin. This fixes the canonical origin used by OAuth callbacks
@@ -186,6 +187,11 @@ The deployment records the resolved method. Explicit method selection overrides
 this choice. Configuration supports a repository subdirectory, commands, health
 path, memory limit, and container port. Variables can be supplied before the first
 deployment and later through the .env tab.
+
+The [Service Library](docs/service-library.md) deploys a maintained template
+without a repository. Choose a service, fill its generated fields and continue
+through the same review. The application keeps its own Compose snapshot, so a
+later catalog update never changes a running service.
 
 Static sites can deploy an existing publish directory directly or run an optional
 Node build before Apache packaging. Dockerfile install/build steps belong in the

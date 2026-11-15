@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"shipper/internal/auth"
+	"shipper/internal/catalog"
 	"shipper/internal/deploy"
 	"shipper/internal/engine"
 	"shipper/internal/events"
@@ -112,6 +113,46 @@ func TestAuthenticationCSRFAndReadOnlyAPI(t *testing.T) {
 	}
 	if strings.Contains(string(mustJSON(body)), "password") {
 		t.Fatal("password hash leaked")
+	}
+	resp, body = request("GET", "/api/catalog", nil, "", "")
+	if resp.StatusCode != 200 {
+		t.Fatal("catalog list", resp.StatusCode, body)
+	}
+	items, _ := body["items"].([]any)
+	categories, _ := body["categories"].([]any)
+	if len(items) < 360 || len(categories) < 10 {
+		t.Fatalf("catalog is incomplete: %d items, %d categories", len(items), len(categories))
+	}
+	resp, body = request("GET", "/api/catalog/n8n", nil, "", "")
+	if resp.StatusCode != 200 || body["name"] != "n8n" {
+		t.Fatal("catalog detail", resp.StatusCode, body)
+	}
+	resp, _ = request("GET", "/api/catalog/not-a-service", nil, "", "")
+	if resp.StatusCode != 404 {
+		t.Fatal("unknown catalog service was not rejected")
+	}
+	library, ok := catalog.Embedded().Get("n8n")
+	if !ok {
+		t.Fatal("n8n is missing from the catalog")
+	}
+	port := 5678
+	planInput := map[string]any{
+		"name": "Workflows",
+		"config": store.StaticConfig{
+			Method: "compose", ComposeSource: "paste", ComposeFile: "compose.yaml", ComposeYAML: library.Compose,
+			CatalogService: library.ID, StartupPolicy: "http", HealthPath: "/", MemoryMB: 512,
+			Variables: []store.Variable{
+				{Name: "SERVICE_PASSWORD_N8N", Value: "generated-test-password", Secret: true, Scope: "runtime"},
+				{Name: "SERVICE_FQDN_N8N", Value: "http://workflows.localhost", Scope: "runtime"},
+				{Name: "SERVICE_FQDN_N8N_5678", Value: "http://workflows.localhost", Scope: "runtime"},
+			},
+			Domains:  []store.Domain{{ID: "catalog-n8n", Hostname: "workflows.localhost", Service: "n8n", Primary: true}},
+			Services: []store.ServiceConfig{{Name: "n8n", Port: &port, HealthPath: "/", Variables: []store.Variable{}}},
+		},
+	}
+	resp, body = request("POST", "/api/plan", planInput, csrf, "")
+	if resp.StatusCode != 200 || body["applicationId"] == "" {
+		t.Fatal("service library plan", resp.StatusCode, body)
 	}
 	resp, _ = request("POST", "/api/auth/setup", input, "", "")
 	if resp.StatusCode != 409 {

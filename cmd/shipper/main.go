@@ -22,6 +22,7 @@ import (
 
 	"golang.org/x/term"
 	"shipper/internal/auth"
+	"shipper/internal/catalog"
 	"shipper/internal/cli"
 	"shipper/internal/deploy"
 	"shipper/internal/engine"
@@ -92,7 +93,7 @@ func run() error {
 		case "healthcheck":
 			return healthcheck()
 		case "help", "--help", "-h":
-			fmt.Println("Usage: shipper [bootstrap|connect|apps|inspect|doctor|plan|deploy|watch|logs|rollback|task|version|healthcheck|claim|rotate-claim|reset-password|reset-factor|restore]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, DOCKER_HOST")
+			fmt.Println("Usage: shipper [bootstrap|connect|apps|inspect|doctor|plan|deploy|watch|logs|rollback|task|version|healthcheck|claim|rotate-claim|reset-password|reset-factor|restore]\n\nConfiguration: SHIPPER_ADDR, SHIPPER_DATA_DIR, SHIPPER_PUBLIC_URL, SHIPPER_CATALOG_URL, DOCKER_HOST")
 			return nil
 		case "reset-password", "reset-factor", "claim", "rotate-claim", "update-ready", "checkpoint", "restore-checkpoint":
 		default:
@@ -322,6 +323,8 @@ func run() error {
 	operator.ConfigIdentity = string(proxyIdentity)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	serviceCatalog := catalog.NewManager(dataDir)
+	serviceCatalog.Start(ctx, env("SHIPPER_CATALOG_URL", catalog.DefaultRemote), catalog.RefreshInterval)
 	monitorDone := make(chan struct{})
 	go func() { defer close(monitorDone); monitor.Run(ctx) }()
 	updatesDone := make(chan struct{})
@@ -348,7 +351,7 @@ func run() error {
 		worker.Run(ctx)
 	}()
 	addr := env("SHIPPER_ADDR", "127.0.0.1:8080")
-	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator, Updates: updateService, DataDir: dataDir, Restart: cancel}
+	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator, Updates: updateService, Catalog: serviceCatalog, DataDir: dataDir, Restart: cancel}
 	if !configured && os.Getenv("SHIPPER_SETUP_TOKEN") == "" {
 		apiConfig.SetupClaim = func() (string, error) { return auth.ReadSetupClaim(dataDir) }
 	}

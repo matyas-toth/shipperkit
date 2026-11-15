@@ -26,8 +26,9 @@ import { emptyConfig } from "../components/StaticFields";
 import DatabaseResource from "../components/DatabaseResource";
 import Variables from "../components/Variables";
 import Volumes from "../components/Volumes";
+import ServiceLibrary, { ServiceLibraryEntry } from "../components/ServiceLibrary";
 
-type Source = "git" | "image" | "local" | "inline" | "compose";
+type Source = "git" | "image" | "local" | "inline" | "compose" | "library";
 type Step = "source" | "configure" | "review";
 type Inspection = {
   method: "dockerfile" | "railpack" | "static";
@@ -49,6 +50,7 @@ const sources: readonly Choice<Source>[] = [
   { value: "compose", label: "Inline Docker Compose", icon: "layers" },
 ];
 const steps = [{ value: "source", label: "Source" }, { value: "configure", label: "Configure" }, { value: "review", label: "Review" }] as const;
+const libraryChoice: Choice<Source> = { value: "library", label: "Service Library", icon: "layers", detail: "360+ ready-made services" };
 
 function draftSource(draft?: Draft): Source {
   const config = draft?.config;
@@ -85,6 +87,7 @@ export default function NewApplication() {
   const [databaseOpen, setDatabaseOpen] = createSignal(false);
   const [manual, setManual] = createSignal(false);
   const [sourcePanel, setSourcePanel] = createSignal(false);
+  const [libraryOpen, setLibraryOpen] = createSignal(false);
   const connections = useConnections();
   const githubAccounts = createMemo(() => connections.data?.items.filter(c => c.kind === "github_app" || c.kind === "github_token") ?? []);
   const [step, setStep] = createSignal<Step>("source");
@@ -187,6 +190,7 @@ export default function NewApplication() {
     });
   }
   function chooseSource(next: Source) {
+    if (next === "library") { setLibraryOpen(true); return; }
     if (next === source()) return;
     batch(() => {
       sourceDrafts.set(source(), JSON.parse(JSON.stringify(config)));
@@ -267,8 +271,8 @@ export default function NewApplication() {
     try { await inspectStack(); } catch (e) { if (!disposed) setError((e as Error).message); }
     finally { if (!disposed) setPreviewing(false); }
   }
-  async function plan() {
-    if (pending() || previewing()) return;
+  async function plan(): Promise<boolean> {
+    if (pending() || previewing()) return false;
     setPending(true); setError("");
     try {
       if (fileBuild() && config.method === "auto" && (!manual() || !inspectionError())) await inspect();
@@ -284,8 +288,19 @@ export default function NewApplication() {
         setReview({ plan: result, inputs, commit, requestKey });
         go("review");
       }
-    } catch (e) { if (!disposed) setError((e as Error).message); }
+      return true;
+    } catch (e) { if (!disposed) setError((e as Error).message); return false; }
     finally { if (!disposed) setPending(false); }
+  }
+  async function useLibrary(request: { name: string; config: StaticConfig }) {
+    batch(() => {
+      setSource("compose");
+      setName(request.name);
+      setConfig(reconcile(request.config));
+      setInspectionError("");
+      setError("");
+    });
+    if (!await plan()) throw Error(error() || "The service could not be prepared");
   }
   async function deploy() {
     const approved = review();
@@ -368,13 +383,16 @@ export default function NewApplication() {
           </div></Show>
         </fieldset>
       </form>
-      <div class="source-manual"><Button variant="ghost" disabled={pending()} onClick={enterManual}>Configure manually<Icon name="chevron" /></Button></div>
+      <div class="source-secondary">
+        <ServiceLibraryEntry open={() => setLibraryOpen(true)} />
+        <Button variant="ghost" disabled={pending()} onClick={enterManual}>Configure manually<Icon name="chevron" /></Button>
+      </div>
     </Show>
     <Show when={manual() && step() === "source"}>
       <form onSubmit={e => { e.preventDefault(); go("configure"); if (!compose()) void inspect(); }}>
         <h2 ref={heading} class="sr-only" tabindex="-1">Source</h2>
         <fieldset class="creation-fields" disabled={pending()}>
-          <ChoiceCards<Source> label="Source type" value={source()} choices={sources.slice(0, 3)} change={chooseSource} />
+          <ChoiceCards<Source> label="Source type" value={source()} choices={[...sources.slice(0, 3), libraryChoice]} change={chooseSource} />
           <details class="configuration source-more" open={source() === "inline" || source() === "compose"}>
             <summary>Inline sources<Icon name="down" /></summary>
             <ChoiceCards<Source> label="Inline source type" value={source()} choices={sources.slice(3)} change={chooseSource} />
@@ -504,7 +522,11 @@ export default function NewApplication() {
       <section class="deployment-proposal" classList={{ "database-proposal": !!config.database }} aria-label="Proposed deployment">
         <dl>
           <ReviewFact label={config.database ? "Database" : "Application"}>{approved().plan.name}</ReviewFact>
-          <Show when={!config.database}><ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact></Show>
+          <Show when={!config.database}>
+            <Show when={config.catalogService} fallback={<ReviewFact label="Source">{git() ? repositoryLabel(config.repository) : local() ? "Local files" : source() === "image" ? config.image : inlineCompose() ? "Inline Compose" : "Inline Dockerfile"}<Show when={git()}><span>{config.branch || "Default branch"}</span></Show></ReviewFact>}>
+              <ReviewFact label="Source"><span>Service Library</span><span class="mono">{config.catalogService}</span></ReviewFact>
+            </Show>
+          </Show>
           <ReviewFact label={config.database ? "Engine" : "Build"}>{config.database ? ({postgresql:"PostgreSQL",mysql:"MySQL",mariadb:"MariaDB",mongodb:"MongoDB",clickhouse:"ClickHouse",redis:"Redis",sqlite:"SQLite"}[config.database.engine]) + " " + config.database.version : methodLabel(method())}</ReviewFact>
           <Show when={config.database}><ReviewFact label="Storage">Persistent volume</ReviewFact><ReviewFact label="Backups">{config.database!.engine === "clickhouse" || config.database!.engine === "sqlite" ? "Nightly volume" : "Nightly, 7 days"}</ReviewFact><ReviewFact label="Access">{config.database!.engine === "sqlite" ? "Local volume" : "Private network"}</ReviewFact><ReviewFact label="Credentials">{config.database!.engine === "sqlite" ? "None" : "Shown after deploy"}</ReviewFact></Show>
           <Show when={!compose() && !config.database}><ReviewFact label="Domain">{worker() ? "Worker" : approved().plan.config.domain || "No public domain"}</ReviewFact></Show>
@@ -526,7 +548,7 @@ export default function NewApplication() {
           <dl>
             <ReviewFact label="Application">{approved().plan.name}</ReviewFact>
             <ReviewFact label={git() ? "Repository" : source() === "image" ? "Image" : "Source"}>
-              <Show when={git()} fallback={<span class="mono">{local() ? "Snapshot " + config.localSource : source() === "image" ? config.image : compose() ? "Pasted Compose YAML" : "Inline Dockerfile"}</span>}>
+              <Show when={git()} fallback={<span class="mono">{config.catalogService ? "Service Library · " + config.catalogService : local() ? "Snapshot " + config.localSource : source() === "image" ? config.image : compose() ? "Pasted Compose YAML" : "Inline Dockerfile"}</span>}>
                 <a class="mono repository-reference" href={approved().plan.config.repository} title={approved().plan.config.repository} target="_blank" rel="noreferrer">{repositoryLabel(approved().plan.config.repository)}</a>
               </Show>
             </ReviewFact>
@@ -581,5 +603,6 @@ export default function NewApplication() {
         <Button variant="primary" disabled={pending()} onClick={() => void deploy()}>{pending() ? "Creating application" : "Deploy"}</Button>
       </div>
     </>}</Show>
+    <ServiceLibrary open={libraryOpen()} close={() => setLibraryOpen(false)} use={useLibrary} acme={acme()} />
   </div>;
 }

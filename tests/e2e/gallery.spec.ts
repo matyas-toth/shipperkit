@@ -69,6 +69,19 @@ test("capture product surfaces", async ({ page }) => {
   await page.waitForTimeout(400);
   await shot(page, "atlas-service");
 
+  await page.goto("/applications/application-workflows");
+  await expect(page.getByRole("heading", { name: "Workflows", exact: true })).toBeVisible();
+  await page.waitForTimeout(600);
+  await shot(page, "catalog-service-overview");
+  await page.getByRole("navigation", { name: "Application navigation" }).getByRole("button", { name: "n8n", exact: true }).click();
+  await page.waitForTimeout(500);
+  await shot(page, "catalog-service-console");
+  await page.getByRole("button", { name: /^Reveal / }).first().click();
+  await page.waitForTimeout(200);
+  await page.locator(".catalog-settings").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(250);
+  await shot(page, "catalog-service-settings", { scroll: false });
+
   await page.goto("/applications/application-api");
   await page.waitForTimeout(500);
   await page.getByRole("button", { name: "Inspect api", exact: true }).click();
@@ -163,9 +176,32 @@ test("capture product surfaces", async ({ page }) => {
 
   await page.goto("/new");
   await page.getByRole("textbox", { name: "Repository URL", exact: true }).fill("https://github.com/acme/atlas-api");
+  await expect(page.getByRole("heading", { name: "Deploy an application", exact: true })).toBeVisible();
   await shot(page, "new-quick");
+  await page.getByRole("button", { name: /Service Library/ }).first().click();
+  await expect(page.getByRole("dialog", { name: "Service Library", exact: true })).toBeVisible();
+  await page.waitForTimeout(400);
+  await shot(page, "service-library-browse");
+  await page.getByLabel("Search services", { exact: true }).fill("n8n");
+  await page.waitForTimeout(250);
+  await shot(page, "service-library-search");
+  await page.locator(".library-tile").filter({ hasText: "n8n" }).first().click();
+  await expect(page.locator(".library-service-title").getByText("n8n", { exact: true })).toBeVisible();
+  await page.waitForTimeout(400);
+  await shot(page, "service-library-configure");
+  await page.locator(".library-config").scrollIntoViewIfNeeded();
+  await page.waitForTimeout(250);
+  await shot(page, "service-library-settings", { scroll: false });
+  await page.getByRole("button", { name: "Review deployment", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Ready to deploy", exact: true })).toBeVisible();
+  await page.waitForTimeout(300);
+  await shot(page, "service-library-review");
+  await page.getByRole("button", { name: "Back", exact: true }).click();
   await page.getByRole("button", { name: "Configure manually", exact: true }).click();
   await expect(page.getByRole("heading", { name: "New application", exact: true })).toBeVisible();
+  await page.getByRole("radio", { name: "Git repository", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("");
+  await page.waitForTimeout(200);
   await shot(page, "new-source");
   await page.getByLabel("Name", { exact: true }).fill("Portfolio");
   await page.getByRole("textbox", { name: "Repository URL", exact: true }).fill("https://github.com/acme/portfolio.git");
@@ -254,6 +290,16 @@ test("capture product surfaces", async ({ page }) => {
     })).toBe(true);
   }
   await shot(page, "mobile-deployments");
+
+  await page.goto("/new");
+  await page.getByRole("button", { name: /Service Library/ }).first().click();
+  await expect(page.getByRole("dialog", { name: "Service Library", exact: true })).toBeVisible();
+  await page.waitForTimeout(300);
+  await shot(page, "mobile-service-library");
+  await page.locator(".library-tile").first().click();
+  await page.waitForTimeout(300);
+  await shot(page, "mobile-service-library-configure");
+  await page.getByRole("button", { name: "Close Service Library", exact: true }).click();
 
   await copyFile(join(process.cwd(), ".shipper", "ui-gallery", "references-src", "t3code.png"), join(references, "t3code.png")).catch(() => {});
 });

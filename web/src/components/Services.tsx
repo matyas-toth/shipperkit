@@ -2,7 +2,7 @@ import ServiceTerminal from "./ServiceTerminal";
 import Backups from "./Backups";
 import RuntimeFields from "./RuntimeFields";
 import { For, Show, createMemo, createSignal } from "solid-js";
-import type { Application, Domain, ProxyConfig, Service, ServiceConfig, StaticConfig, RuntimePolicy } from "../types";
+import type { Application, CatalogService, Domain, ProxyConfig, Service, ServiceConfig, StaticConfig, RuntimePolicy } from "../types";
 import { ActionMenu, Button, ErrorNotice, Status } from "./Controls";
 import { Icon } from "./Icon";
 import { statusOf } from "../data";
@@ -11,7 +11,7 @@ import RuntimeLogs from "./RuntimeLogs";
 import Domains from "./Domains";
 import ServiceSummary from "./ServiceSummary";
 
-export function ServiceList(props: { application: Application; services: Service[]; stats?: (service: string) => { cpuPercent?: number; memoryBytes?: number } | undefined; select: (name: string) => void }) {
+export function ServiceList(props: { application: Application; services: Service[]; stats?: (service: string) => { cpuPercent?: number; memoryBytes?: number } | undefined; select: (name: string) => void; catalog?: CatalogService }) {
   const byService = createMemo(() => {
     const groups = new Map<string, Application["containers"]>();
     for (const container of props.application.containers) {
@@ -22,6 +22,10 @@ export function ServiceList(props: { application: Application; services: Service
     }
     return groups;
   });
+  const meta = (service: Service) => {
+    const part = props.catalog?.services.find(item => item.name === service.name);
+    return part ? { role: part.role, mark: part.name === props.catalog?.mainService ? props.catalog?.logomark : undefined } : undefined;
+  };
   function status(service: Service) {
     const containers = byService().get(service.name) ?? [];
     if (service.oneShot && containers[0]?.state === "exited" && containers[0].status.startsWith("Exited (0)")) return "completed";
@@ -30,14 +34,15 @@ export function ServiceList(props: { application: Application; services: Service
   }
   return <section class="containers-section"><h2>Services</h2>
     <Show when={props.services.length} fallback={<div class="empty-state">Not deployed</div>}>
-      <ServiceSummary services={props.services} stats={props.stats} open={props.select} status={status} />
+      <ServiceSummary services={props.services} stats={props.stats} open={props.select} status={status} meta={props.catalog ? meta : undefined} />
     </Show>
   </section>;
 }
 
-export function ServicePanel(props: { application: Application; services: Service[]; name: string; proxy?: ProxyConfig; busy: boolean; save: (config: StaticConfig) => Promise<boolean | void>; saveDomains: (domains: Domain[]) => Promise<void>; close: () => void; lifecycle:(action:string)=>Promise<void>; editCompose: () => void }) {
+export function ServicePanel(props: { application: Application; services: Service[]; name: string; proxy?: ProxyConfig; busy: boolean; save: (config: StaticConfig) => Promise<boolean | void>; saveDomains: (domains: Domain[]) => Promise<void>; close: () => void; lifecycle:(action:string)=>Promise<void>; editCompose: () => void; catalog?: CatalogService }) {
   const [tab, setTab] = createSignal("logs"), [error, setError] = createSignal("");
   const service = () => props.services.find(s => s.name === props.name);
+  const part = () => props.catalog?.services.find(item => item.name === props.name);
   const override = () => props.application.config.services?.find(s => s.name === props.name);
   const [port, setPort] = createSignal(override()?.port ?? service()?.port ?? 0), [health, setHealth] = createSignal(override()?.healthPath || service()?.healthPath || "/"), [memory, setMemory] = createSignal(override()?.memoryMB || 0);
   const [runtime,setRuntime]=createSignal<RuntimePolicy>(override()?.runtime??{});
@@ -48,7 +53,7 @@ export function ServicePanel(props: { application: Application; services: Servic
     return props.save({ ...config, services: [...(config.services ?? []).filter(s => s.name !== props.name), { ...current, ...value, name: props.name }] });
   }
   async function settings(e: SubmitEvent) { e.preventDefault();setError("");try { await save({ port: port(), healthPath: health(), memoryMB: memory(),runtime:runtime() }); }catch (e) { setError((e as Error).message); } }
-  return <section class="service-detail"><div class="app-context"><header class="service-heading"><Button icon="back" variant="ghost" class="service-parent" onClick={props.close}>{props.application.name}</Button><Icon name="chevron" /><h1><Icon name="box" />{props.name}</h1><ActionMenu label="Service actions" icon="more" class="service-actions" scope={tab()}><For each={["start","stop","restart"]}>{action=><button disabled={props.busy} onClick={()=>void props.lifecycle(action)}>{action[0].toUpperCase()+action.slice(1)} service</button>}</For></ActionMenu></header>
+  return <section class="service-detail"><div class="app-context"><header class="service-heading"><Button icon="back" variant="ghost" class="service-parent" onClick={props.close}>{props.application.name}</Button><Icon name="chevron" /><h1><Show when={part()?.role} fallback={<Icon name="box" />}>{part()!.role}</Show>{props.name}</h1><Show when={props.catalog?.documentation}><a class="service-docs" href={props.catalog!.documentation} target="_blank" rel="noreferrer">Documentation<Icon name="external" /></a></Show><ActionMenu label="Service actions" icon="more" class="service-actions" scope={tab()}><For each={["start","stop","restart"]}>{action=><button disabled={props.busy} onClick={()=>void props.lifecycle(action)}>{action[0].toUpperCase()+action.slice(1)} service</button>}</For></ActionMenu></header>
     <nav class="service-tabs" aria-label="Service navigation"><For each={["logs", "terminal", "env", "domains", "backups", "settings"]}>{value => <button classList={{ active: tab() === value }} aria-current={tab() === value ? "page" : undefined} onClick={() => setTab(value)}>{value === "env" ? ".env" : value[0].toUpperCase() + value.slice(1)}</button>}</For></nav>
     </div><Show when={error()}><ErrorNotice message={error()} /></Show>
     <Show when={tab() === "backups"}><Backups application={props.application} services={props.services} service={props.name} save={props.save}/></Show>

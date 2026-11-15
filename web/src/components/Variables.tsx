@@ -76,11 +76,11 @@ export default function Variables(props: { application: Application; busy: boole
     closeOptions();setItems(rows => [...variablesForSave(rows.filter((_, i) => i !== index)), emptyVariable()]);setVisible({});
     queueMicrotask(() => root.querySelectorAll<HTMLInputElement>(".env-name")[Math.min(index, items().length - 1)]?.focus());
   }
-  async function findMissing(){setSaving(true);setError("");try{const result=await post<{variables:string[]}>("/repositories/inspect",{config:props.application.config},auth.session()?.csrfToken);const names=new Set(items().map(v=>v.name).filter(Boolean));const found=result.variables.filter(name=>!names.has(name)).slice(0,Math.max(0,128-names.size)).map(name=>({...emptyVariable(),name}));setItems([...variablesForSave(items()),...found,emptyVariable()]);}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
+  async function findMissing(){setSaving(true);setError("");try{const result=await post<{variables:string[]}>("/repositories/inspect",{config:props.application.config},auth.session()?.csrfToken);const names=new Set(items().map(v=>v.name).filter(Boolean));const found=result.variables.filter(name=>!names.has(name)).slice(0,Math.max(0,256-names.size)).map(name=>({...emptyVariable(),name}));setItems([...variablesForSave(items()),...found,emptyVariable()]);}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
   async function save(event: SubmitEvent) {
     event.preventDefault();if (props.busy || saving() || !dirty()) return;setError("");
     const variables = variablesForSave(items()), names = new Set<string>();
-    if (variables.length > 128) { setError("Applications support up to 128 variables");return; }
+    if (variables.length > 256) { setError("Applications support up to 256 variables");return; }
     for (const variable of variables) {
       if (names.has(variable.name)) { setError(`Variable ${variable.name} appears more than once`);return; }
       names.add(variable.name);

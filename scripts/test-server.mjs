@@ -98,7 +98,7 @@ const child = spawn(binary, [], {
   stdio: "inherit",
   env: { ...process.env, SHIPPER_ADDR: "127.0.0.1:9081", SHIPPER_DATA_DIR: directory, SHIPPER_SETUP_TOKEN: token, SHIPPER_RATE_LIMIT: "100",
     SHIPPER_PUBLIC_URL: process.env.SHIPPER_GALLERY_ROUND ? "https://shipper.example.test" : "", DOCKER_HOST: process.platform === "win32" ? "npipe://" + socket.replaceAll("\\", "/") : "unix://" + socket,
-    DOCKER_TLS_VERIFY: "", DOCKER_CERT_PATH: "" },
+    SHIPPER_CATALOG_URL: "off", DOCKER_TLS_VERIFY: "", DOCKER_CERT_PATH: "" },
 });
 let closing = false;
 async function close() {

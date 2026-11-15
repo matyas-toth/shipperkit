@@ -177,6 +177,8 @@ type StaticConfig struct {
 	ComposeYAML      string          `json:"composeYAML"`
 	ComposeKeep      bool            `json:"composeKeep,omitempty"`
 	ComposeHasValue  bool            `json:"composeHasValue,omitempty"`
+	CatalogService   string          `json:"catalogService,omitempty"`
+	CatalogVersion   string          `json:"catalogVersion,omitempty"`
 	Services         []ServiceConfig `json:"services"`
 }
 type DatabaseResource struct {

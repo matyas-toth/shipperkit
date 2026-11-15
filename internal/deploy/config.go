@@ -64,6 +64,14 @@ func ValidateBuild(c *store.Config) error {
 	if e := ValidateDatabaseResource(*c); e != nil {
 		return e
 	}
+	if c.CatalogService != "" {
+		if !regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,79}$`).MatchString(c.CatalogService) {
+			return errors.New("Choose a valid service from the Service Library")
+		}
+		if c.Method != "compose" {
+			return errors.New("Service Library deployments must use Docker Compose")
+		}
+	}
 	if len(c.VolumeSources) > 32 {
 		return errors.New("Use at most 32 retained volume mappings")
 	}
@@ -190,8 +198,8 @@ func ValidateBuild(c *store.Config) error {
 	if c.MemoryMB < 64 || c.MemoryMB > 8192 {
 		return errors.New("Memory must be between 64 and 8192 MiB")
 	}
-	if len(c.Variables) > 128 {
-		return errors.New("Applications support up to 128 variables")
+	if len(c.Variables) > 256 {
+		return errors.New("Applications support up to 256 variables")
 	}
 	names := map[string]bool{}
 	for i := range c.Variables {

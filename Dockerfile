@@ -24,6 +24,7 @@ COPY --from=backend /shipper /usr/local/bin/shipper
 COPY install.sh /usr/share/shipper/install.sh
 RUN chmod 0755 /usr/share/shipper/install.sh
 COPY LICENSE THIRD_PARTY_NOTICES.md /usr/share/licenses/shipper/
+COPY internal/catalog/ATTRIBUTION.md internal/catalog/licenses/Apache-2.0.txt /usr/share/licenses/shipper/
 USER 65532:65532
 ENV SHIPPER_ADDR=0.0.0.0:8080 SHIPPER_DATA_DIR=/data
 EXPOSE 8080
