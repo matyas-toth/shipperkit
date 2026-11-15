@@ -17,6 +17,7 @@ test('source selection honors nested gitignore and shipperignore and excludes cr
   fs.mkdirSync(join(root, 'nested'));
   for (const name of ['.npmrc', '.netrc', '.pypirc', '.git-credentials', '.env.local', 'private.key']) fs.writeFileSync(join(root, name), 'DUMMY_SECRET');
   fs.writeFileSync(join(root, '.env.example'), 'TOKEN=');
+  fs.writeFileSync(join(root, '.yarnrc.yml'), 'nodeLinker: node-modules\n');
   fs.writeFileSync(join(root, '.gitignore'), '*.log\n!keep.log\n');
   fs.writeFileSync(join(root, '.shipperignore'), 'output/\n');
   fs.writeFileSync(join(root, 'debug.log'), 'private log');
@@ -31,6 +32,7 @@ test('source selection honors nested gitignore and shipperignore and excludes cr
   await new Promise((resolve, reject) => tar.t({ onReadEntry: entry => names.push(entry.path) }).on('end', resolve).on('error', reject).end(source.body));
   assert.ok(names.includes('index.html'));
   assert.ok(names.includes('.env.example'));
+  assert.ok(names.includes('.yarnrc.yml'), 'ordinary package-manager build settings remain available');
   assert.ok(names.includes('keep.log'));
   assert.ok(names.includes('nested/public.txt'));
   for (const name of ['.npmrc', '.netrc', '.pypirc', '.git-credentials', '.env.local', 'private.key', 'debug.log', 'nested/private.txt', 'output/bundle.js']) assert.ok(!names.includes(name), name);

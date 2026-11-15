@@ -13,7 +13,7 @@ func TestLocalSourceRejectsCredentialFilesAtTheAPIBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	for _, name := range []string{".npmrc", "nested/.netrc", ".pypirc", ".yarnrc.yml", ".docker/config.json", ".git-credentials"} {
+	for _, name := range []string{".npmrc", "nested/.netrc", ".pypirc", ".docker/config.json", ".git-credentials"} {
 		var buf bytes.Buffer
 		w := tar.NewWriter(&buf)
 		w.WriteHeader(&tar.Header{Name: name, Size: 6, Mode: 0600})
@@ -22,5 +22,8 @@ func TestLocalSourceRejectsCredentialFilesAtTheAPIBoundary(t *testing.T) {
 		if _, err := db.AcceptSource(context.Background(), bytes.NewReader(buf.Bytes()), "owner", "", "test"); err == nil {
 			t.Fatalf("accepted credential file %s", name)
 		}
+	}
+	if SourceExcluded(".yarnrc.yml") {
+		t.Fatal("ordinary package-manager build settings were excluded")
 	}
 }

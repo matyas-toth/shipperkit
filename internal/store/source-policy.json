@@ -1,5 +1,5 @@
 {
-  "names": [".git", "node_modules", ".shipper", ".ssh", ".aws", ".azure", ".gcloud", ".kube", ".gnupg", ".docker", ".vpsenv", ".env", "id_rsa", "id_ed25519", ".npmrc", ".pypirc", ".netrc", "_netrc", ".yarnrc", ".yarnrc.yml", ".git-credentials"],
+  "names": [".git", "node_modules", ".shipper", ".ssh", ".aws", ".azure", ".gcloud", ".kube", ".gnupg", ".docker", ".vpsenv", ".env", "id_rsa", "id_ed25519", ".npmrc", ".pypirc", ".netrc", "_netrc", ".git-credentials"],
   "suffixes": [".pem", ".key"],
   "envExamples": [".env.example", ".env.sample", ".env.template"]
 }
