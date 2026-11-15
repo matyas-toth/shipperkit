@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
 	"shipper/internal/auth"
@@ -477,6 +478,9 @@ func TestDockerStaticPipeline(t *testing.T) {
 	}
 	if _, e = db.Application(ctx, app.ID); e == nil {
 		t.Fatal("deleted application still listed")
+	}
+	if _, e = runtime.Client.NetworkInspect(ctx, runtime.applicationNetwork(app.ID), client.NetworkInspectOptions{}); !errdefs.IsNotFound(e) {
+		t.Fatal("deleted application retained its unused private network", e)
 	}
 	if _, e = runtime.Client.ContainerInspect(ctx, sentinel.ID, client.ContainerInspectOptions{}); e != nil {
 		t.Fatal("application deletion touched an unrelated container", e)

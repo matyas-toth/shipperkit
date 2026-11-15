@@ -920,7 +920,7 @@ func (r *DockerRuntime) RemoveApplication(ctx context.Context, app string) error
 			return e
 		}
 	}
-	return nil
+	return r.removeApplicationNetwork(ctx, app)
 }
 
 func (r *DockerRuntime) probeHTTP(ctx context.Context, target string, port int, host, requestPath string) ([]byte, error) {

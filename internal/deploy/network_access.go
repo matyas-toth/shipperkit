@@ -135,6 +135,45 @@ func (r *DockerRuntime) ValidatePublishedPorts(ctx context.Context, application 
 }
 
 func (r *DockerRuntime) applicationNetwork(app string) string { return r.prefix() + "-app-" + app }
+
+func (r *DockerRuntime) removeApplicationNetwork(ctx context.Context, app string) error {
+	name := r.applicationNetwork(app)
+	info, err := r.Client.NetworkInspect(ctx, name, client.NetworkInspectOptions{})
+	if errdefs.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !owned(info.Network.Labels, r.Instance, app) {
+		return errors.New("Application network ownership check failed")
+	}
+	if len(info.Network.Containers) > 0 {
+		proxy, err := r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{})
+		if errdefs.IsNotFound(err) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if !owned(proxy.Container.Config.Labels, r.Instance, "") || proxy.Container.Config.Labels["io.shipper.infrastructure"] != "proxy" {
+			return errors.New("Proxy ownership check failed")
+		}
+		// Other applications may still have a reviewed connection to this network.
+		// Their endpoints must survive deletion of the target application's runtime.
+		for id := range info.Network.Containers {
+			if id != proxy.Container.ID {
+				return nil
+			}
+		}
+		if _, err = r.Client.NetworkDisconnect(ctx, name, client.NetworkDisconnectOptions{Container: proxy.Container.ID}); err != nil {
+			return err
+		}
+	}
+	_, err = r.Client.NetworkRemove(ctx, name, client.NetworkRemoveOptions{})
+	return err
+}
+
 func (r *DockerRuntime) ensureApplicationNetwork(ctx context.Context, app string) error {
 	name := r.applicationNetwork(app)
 	info, err := r.Client.NetworkInspect(ctx, name, client.NetworkInspectOptions{})

@@ -52,9 +52,16 @@ func TestDockerDatabaseConnectionBetweenApplications(t *testing.T) {
 				}
 			}
 		}
-		if n, err := r.Client.NetworkInspect(clean, r.network(), client.NetworkInspectOptions{}); err == nil && owned(n.Network.Labels, r.Instance, "") {
-			if _, err = r.Client.NetworkRemove(clean, n.Network.ID, client.NetworkRemoveOptions{}); err != nil {
-				t.Error(err)
+		networks, err := r.Client.NetworkList(clean, client.NetworkListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance)})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		for _, n := range networks.Items {
+			if owned(n.Labels, r.Instance, "") {
+				if _, err = r.Client.NetworkRemove(clean, n.ID, client.NetworkRemoveOptions{}); err != nil {
+					t.Error(err)
+				}
 			}
 		}
 	})

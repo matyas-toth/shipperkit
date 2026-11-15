@@ -94,7 +94,14 @@ func TestDockerFullApplications(t *testing.T) {
 				runtime.Client.VolumeRemove(cleanup, v.Name, client.VolumeRemoveOptions{})
 			}
 		}
-		runtime.Client.NetworkRemove(cleanup, runtime.network(), client.NetworkRemoveOptions{})
+		networks, _ := runtime.Client.NetworkList(cleanup, client.NetworkListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+instance)})
+		for _, network := range networks.Items {
+			if owned(network.Labels, instance, "") {
+				if _, err := runtime.Client.NetworkRemove(cleanup, network.ID, client.NetworkRemoveOptions{}); err != nil {
+					t.Error(err)
+				}
+			}
+		}
 		images, _ := runtime.Client.ImageList(cleanup, client.ImageListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+instance)})
 		for _, image := range images.Items {
 			runtime.Client.ImageRemove(cleanup, image.ID, client.ImageRemoveOptions{})
