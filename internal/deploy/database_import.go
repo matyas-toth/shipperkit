@@ -1,7 +1,6 @@
 package deploy
 
 import (
-	"archive/tar"
 	"context"
 	"errors"
 	"io"
@@ -111,14 +110,7 @@ func (w *Worker) ImportDatabaseDump(ctx context.Context, app, target string, src
 		if e != nil {
 			return empty, e
 		}
-		tw := tar.NewWriter(out)
-		e = tw.WriteHeader(&tar.Header{Name: "dump.rdb", Mode: 0600, Size: n, Uid: 999, Gid: 999})
-		if e == nil {
-			_, e = io.Copy(tw, f)
-		}
-		if ce := tw.Close(); e == nil {
-			e = ce
-		}
+		e = redisRestoreArchive(out, f, n)
 		if ce := out.Close(); e == nil {
 			e = ce
 		}

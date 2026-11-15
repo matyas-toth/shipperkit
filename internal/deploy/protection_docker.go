@@ -347,6 +347,10 @@ func (r *DockerRuntime) verifyVolume(ctx context.Context, helper, file string) e
 
 // Binary output is streamed to disk, while stdin and stdout are pumped concurrently.
 func (r *DockerRuntime) protectionExec(ctx context.Context, id string, args, env []string, input io.Reader, output io.Writer) error {
+	return r.protectionExecDiagnostics(ctx, id, args, env, input, output, nil)
+}
+
+func (r *DockerRuntime) protectionExecDiagnostics(ctx context.Context, id string, args, env []string, input io.Reader, output, diagnostics io.Writer) error {
 	ex, e := r.Client.ExecCreate(ctx, id, client.ExecCreateOptions{Cmd: args, Env: env, AttachStdin: input != nil, AttachStdout: true, AttachStderr: true})
 	if e != nil {
 		return e
@@ -378,7 +382,11 @@ func (r *DockerRuntime) protectionExec(ctx context.Context, id string, args, env
 		sent <- nil
 	}
 	var stderr cappedBuffer
-	_, e = stdcopy.StdCopy(output, &stderr, stream.Reader)
+	var errorOutput io.Writer = &stderr
+	if diagnostics != nil {
+		errorOutput = io.MultiWriter(&stderr, diagnostics)
+	}
+	_, e = stdcopy.StdCopy(output, errorOutput, stream.Reader)
 	if e != nil {
 		return e
 	}

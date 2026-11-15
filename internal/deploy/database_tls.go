@@ -143,7 +143,7 @@ func (r *DockerRuntime) configureDatabaseTLS(ctx context.Context, d store.Deploy
 		}
 		c.Cmd = []string{binary, "--ssl-ca=/shipper-tls/ca.crt", "--ssl-cert=/shipper-tls/server.crt", "--ssl-key=/shipper-tls/server.key", "--require-secure-transport=ON"}
 	case "redis":
-		health = `REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --tls --cacert /shipper-tls/ca.crt --host 127.0.0.1 PING | grep -qx PONG`
+		health = `REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --tls --cacert /shipper-tls/ca.crt -h 127.0.0.1 PING | grep -qx PONG`
 		c.Cmd = []string{"redis-server", "--appendonly", "yes", "--port", "0", "--tls-port", "6379", "--tls-cert-file", "/shipper-tls/server.crt", "--tls-key-file", "/shipper-tls/server.key", "--tls-ca-cert-file", "/shipper-tls/ca.crt", "--tls-auth-clients", "no", "--requirepass", databaseEnvironment(d.Config)["REDIS_PASSWORD"]}
 	}
 	c.Healthcheck = &container.HealthConfig{Test: []string{"CMD-SHELL", health}, Interval: 2 * time.Second, Timeout: 5 * time.Second, Retries: 3, StartPeriod: 240 * time.Second}

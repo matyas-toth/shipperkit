@@ -85,7 +85,9 @@ func TestDatabaseCapabilityScope(t *testing.T) {
 		want          int
 	}{
 		{"image", "postgres:17", false, 5},
-		{"image", "redis:7-alpine", false, 5},
+		{"image", "redis:7-alpine", false, 6},
+		{"image", "redis:8", false, 6},
+		{"image", "valkey/valkey:8", false, 5},
 		{"image", "redis:7-alpine", true, 0},
 		{"image", "custom/redis:7", false, 0},
 		{"dockerfile", "postgres:17", false, 0},

@@ -16,6 +16,54 @@ import (
 	"shipper/internal/store"
 )
 
+func TestNetworkCutoverKeepsUnpublishedServingReleaseRunning(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		published uint16
+		database  bool
+		stops     int
+	}{
+		{name: "image exposes a private HTTP port"},
+		{name: "release publishes a host port", published: 19001, stops: 1},
+		{name: "database must release its data volume", database: true, stops: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			instance, app := strings.Repeat("a", 64), strings.Repeat("b", 24)
+			var stops atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/containers/json"):
+					json.NewEncoder(w).Encode([]map[string]any{{"Id": "previous", "State": "running", "Labels": map[string]string{"io.shipper.instance": instance, "io.shipper.application.id": app}, "Ports": []map[string]any{{"PrivatePort": 8080, "PublicPort": test.published, "Type": "tcp"}}}})
+				case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/containers/previous/stop"):
+					stops.Add(1)
+					w.WriteHeader(204)
+				default:
+					t.Errorf("Unexpected Docker request: %s %s", r.Method, r.URL.Path)
+					w.WriteHeader(404)
+				}
+			}))
+			defer server.Close()
+			cli, err := client.New(client.WithHost(server.URL), client.WithAPIVersion("1.48"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cli.Close()
+			runtime := &DockerRuntime{Client: cli, Instance: instance}
+			d := store.Deployment{ApplicationID: app, PreviousID: "previous"}
+			if test.database {
+				d.Config.Database = &store.DatabaseResource{Engine: "redis"}
+			}
+			if err = runtime.PrepareNetworkCutover(context.Background(), d); err != nil {
+				t.Fatal(err)
+			}
+			if int(stops.Load()) != test.stops {
+				t.Fatalf("Serving release stopped %d times, expected %d", stops.Load(), test.stops)
+			}
+		})
+	}
+}
+
 func TestPublishedPortsAreDeclaredToOlderDockerAPIs(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

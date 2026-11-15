@@ -227,7 +227,11 @@ func (r *DockerRuntime) PrepareNetworkCutover(ctx context.Context, d store.Deplo
 		if c.State != "running" || !owned(c.Labels, r.Instance, d.ApplicationID) {
 			continue
 		}
-		if len(c.Ports) == 0 && d.Config.Database == nil {
+		published := false
+		for _, port := range c.Ports {
+			published = published || port.PublicPort != 0
+		}
+		if !published && d.Config.Database == nil {
 			continue
 		}
 		if _, err = r.Client.ContainerStop(ctx, c.ID, client.ContainerStopOptions{Timeout: ptr(StopSeconds(d.Config.Runtime))}); err != nil {

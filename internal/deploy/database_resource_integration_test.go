@@ -60,8 +60,8 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			}
 		}
 	})
-	for _, fixture := range []struct{ engine, version string }{{"postgresql", "18"}, {"mysql", "8.4"}, {"mariadb", "11.8"}, {"redis", "8"}} {
-		t.Run(fixture.engine, func(t *testing.T) {
+	for _, fixture := range []struct{ engine, version string }{{"postgresql", "18"}, {"mysql", "8.4"}, {"mariadb", "11.8"}, {"redis", "7"}, {"redis", "8"}} {
+		t.Run(fixture.engine+"/"+fixture.version, func(t *testing.T) {
 			c, e := DatabaseResourceConfig(fixture.engine, fixture.version)
 			if e != nil {
 				t.Fatal(e)
@@ -155,6 +155,8 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			env := databaseEnvironment(c)
 			host := "db-" + app.ID
 			query := func(database, sql string, tls bool) (string, error) {
+				queryContext, stop := context.WithTimeout(ctx, 10*time.Second)
+				defer stop()
 				var args, vars []string
 				if fixture.engine == "redis" {
 					args = []string{"redis-cli", "-h", host, "--no-auth-warning", "--raw"}
@@ -205,7 +207,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 						args = append([]string{tool, "--batch", "--skip-column-names"}, append(args, database, "--execute="+sql)...)
 					}
 				}
-				out, e := r.execEnv(ctx, consumer.ContainerID, args, vars)
+				out, e := r.execEnv(queryContext, consumer.ContainerID, args, vars)
 				return strings.TrimSpace(string(out)), e
 			}
 			ping := "SELECT 1"
@@ -231,7 +233,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			}
 			publicArgs, publicEnv := []string{}, []string{}
 			if fixture.engine == "redis" {
-				publicArgs = []string{"redis-cli", "--tls", "--cacert", "/ca.crt", "--sni", publicHost, "--host", publicHost, "--port", strconv.Itoa(publicPort), "--raw", "PING"}
+				publicArgs = []string{"redis-cli", "--tls", "--cacert", "/ca.crt", "--sni", publicHost, "-h", publicHost, "-p", strconv.Itoa(publicPort), "--raw", "PING"}
 				publicEnv = []string{"REDISCLI_AUTH=" + env["REDIS_PASSWORD"]}
 			} else {
 				spec, _ := DatabaseBackupSpec(d)
@@ -360,6 +362,33 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 					t.Fatal("original changed", out, e)
 				}
 			} else {
+				checkCopy := func(volume string) {
+					t.Helper()
+					copy := d
+					copy.ID = auth.Token()[:24]
+					copy.ContainerID = ""
+					copy.Config.Networking.Ports = nil
+					copy.Config.VolumeSources = map[string]string{"data": volume}
+					copy.ContainerID, e = r.Start(ctx, copy)
+					if e != nil {
+						t.Fatal("Start restored Redis copy", e)
+					}
+					t.Cleanup(func() { _ = r.removeOwned(context.Background(), copy.ContainerID, app.ID) })
+					if e = r.Healthy(ctx, copy); e != nil {
+						t.Fatal("Restored Redis readiness", e)
+					}
+					copyOutput, err := r.execEnv(ctx, copy.ContainerID, []string{"redis-cli", "--tls", "--cacert", "/shipper-tls/ca.crt", "-h", "127.0.0.1", "--raw", "GET", "shipper_key"}, []string{"REDISCLI_AUTH=" + env["REDIS_PASSWORD"]})
+					if err != nil || strings.TrimSpace(string(copyOutput)) != "persisted" {
+						t.Fatal("Restored Redis data", err)
+					}
+					if out, err := query("", "GET shipper_key", true); err != nil || out != "persisted" {
+						t.Fatal("Original Redis data changed", err)
+					}
+					if e = r.removeOwned(ctx, copy.ContainerID, app.ID); e != nil {
+						t.Fatal(e)
+					}
+				}
+				checkCopy(restore.Result)
 				out, e := r.Client.CopyFromContainer(ctx, d.ContainerID, client.CopyFromContainerOptions{SourcePath: "/data/dump.rdb"})
 				if e != nil {
 					t.Fatal(e)
@@ -382,6 +411,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 				if run.State != "succeeded" {
 					t.Fatal("RDB import", run.Error)
 				}
+				checkCopy(run.Result)
 			}
 		})
 	}

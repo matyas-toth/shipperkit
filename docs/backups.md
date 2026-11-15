@@ -81,7 +81,8 @@ collapsed; commands/passwords do not appear in history responses.
 | MySQL | Native SQL dump of one database, global read lock with routines/events/triggers and binary data |
 | MariaDB | Native `mariadb-dump`, with the same explicit global-read-lock boundary |
 | MongoDB | Native `mongodump` gzip archive of one database, restored under a new namespace |
-| ClickHouse, SQLite, Redis | Cold archive of the engine data volume, including numeric ownership and modes |
+| Managed Redis | Native RDB replication snapshot over TLS without stopping Redis; restore creates a retained data volume |
+| ClickHouse, SQLite | Cold archive of the engine data volume, including numeric ownership and modes |
 | Named volume | Cold archive of regular files, directories and internal relative symlinks, including numeric ownership and modes |
 
 Database tools execute **inside the one selected Shipper-owned service** against
@@ -191,6 +192,12 @@ encrypted credential storage, worker exclusion, offline recovery and signed S3
 round trips/tampering/redirect rejection. Browser tests cover real metadata backup
 and downloads, schedule editing, S3 configuration, mobile layout and existing Tasks.
 Fixtures only remove resources with their own random instance identity.
+
+The CI database-resource suite also checks PostgreSQL 18, MySQL 8.4, MariaDB
+11.8, and Redis 7 and 8 over verified TLS. Redis backup and native-import tests
+start a new container from the restored volume and read the saved value while
+the original remains available. Restored Redis volumes include an append-only
+base snapshot and manifest so normal persistent startup loads the recovered data.
 
 Cloud-provider interoperability, real domain recovery after a host rebuild, and
 the planned Contabo distribution matrix still require the real-system acceptance

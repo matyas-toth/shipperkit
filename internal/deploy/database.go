@@ -71,7 +71,14 @@ func databaseCapabilities(d store.Deployment) []string {
 	}
 	// Official database entrypoints initialize owned data directories and drop
 	// from root to their service user. Keep all other capabilities dropped.
-	return []string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"}
+	caps := []string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"}
+	ref, _ := ImageReference(d.Config.Image)
+	if ref.Name() == "docker.io/library/redis" {
+		// The official Redis entrypoint uses setpriv to reduce its bounding set
+		// while changing to the Redis user, which itself requires SETPCAP.
+		caps = append(caps, "SETPCAP")
+	}
+	return caps
 }
 
 func DatabaseURI(d store.Deployment) (string, error) {

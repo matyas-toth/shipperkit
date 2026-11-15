@@ -399,7 +399,11 @@ func TestDockerStaticPipeline(t *testing.T) {
 	if _, e = runtime.Client.ContainerStart(ctx, dashboard.ID, client.ContainerStartOptions{}); e != nil {
 		t.Fatal(e)
 	}
-	runtime.dashboardRoute(config)
+	// Render the dashboard with an explicit ACME contact, then replace the
+	// resolver below with this test's trust anchor. The loopback proxy has no ACME.
+	dashboardRuntime := *runtime
+	dashboardRuntime.Config.ACMEEmail = "owner@example.test"
+	dashboardRuntime.dashboardRoute(config)
 	for _, v := range config["http"].(map[string]any)["routers"].(map[string]any) {
 		router := v.(map[string]any)
 		if router["tls"] != nil {
