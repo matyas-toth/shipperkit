@@ -9,7 +9,7 @@ export function goCommand() {
   if (spawnSync("go", ["version"], { stdio: "ignore" }).status === 0) return "go";
   const cached = join(homedir(), ".cache", "shipper-tools", "go", "bin", process.platform === "win32" ? "go.exe" : "go");
   if (existsSync(cached)) return cached;
-  throw new Error("Go 1.26 or newer is required. Install Go or set SHIPPER_GO to its executable.");
+  throw new Error("Go 1.27.4 or newer is required. Install Go or set SHIPPER_GO to its executable.");
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const command = goCommand();

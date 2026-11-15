@@ -28,6 +28,7 @@
     "landing:build": "npm run build --prefix landing",
     "landing:check": "npm run check --prefix landing",
     "cli:build": "npm run build --prefix cli",
+    "cli:package": "node scripts/package-cli.mjs",
     "cli:check": "npm run check --prefix cli",
     "docs:dev": "npm run dev:docs --prefix landing",
     "docs:build": "npm run build:docs --prefix landing",

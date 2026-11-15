@@ -85,6 +85,17 @@ reaches administration routes, terminals or instance recovery. Tokens expire, ca
 be revoked, and are never interchangeable with browser sessions or legacy
 application deploy tokens. Unsupported v1 routes are denied by default.
 
+Role downgrades revoke browser sessions, operation tokens and terminals.
+Automation also checks the owner's current role: application automation requires
+Developer or Admin, and `host-admin` requires Admin. Host maintenance accepts
+only the three explicitly listed maintenance routes; account and authentication
+administration remain interactive.
+
+Runtime logs use `GET /applications/{id}/logs?tail=N&follow=false` for a finite
+snapshot, with an SSE `end` event even when the history is empty. Omitting
+`follow=false` keeps the existing live stream behavior. Both modes use the same
+ownership checks, secret redaction and bounded log delivery.
+
 | Session path | Contract | Automation capability |
 | --- | --- | --- |
 | `GET /capabilities` | API version, feature and limit discovery | read |

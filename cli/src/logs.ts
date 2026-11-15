@@ -13,22 +13,28 @@ export async function logs(
   client: Client,
   reference: string,
   options: { tail?: number; lines?: number; follow?: boolean },
+  json = false,
+  write: (value: string) => void = value => { process.stdout.write(value); },
 ) {
+  const lines = options.lines ?? options.tail ?? 100;
+  const follow = Boolean(options.follow);
+  const tail = follow ? options.tail ?? lines : lines;
+  if (![lines, options.tail ?? lines].every(value => Number.isInteger(value) && value >= 1 && value <= 500)) throw new CliError("Choose between 1 and 500 log lines");
   const app = await resolveApplication(client, reference);
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once("SIGINT", stop);
-  const lines = options.lines ?? 100;
-  const follow = Boolean(options.follow);
-  let seen = 0;
-  const stream = await client.stream(`/applications/${app.id}/logs?tail=${Math.max(1, options.tail ?? 200)}`, controller.signal);
-  const reader = stream.getReader();
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  const history: string[] = [];
+  let complete = false;
   const decoder = new TextDecoder();
   let buffer = "";
   try {
+    const stream = await client.stream(`/applications/${app.id}/logs?tail=${tail}&follow=${follow}`, controller.signal);
+    reader = stream.getReader();
     while (true) {
       const chunk = await reader.read();
-      if (chunk.done) break;
+      if (chunk.done) { complete = true; break; }
       buffer += decoder.decode(chunk.value, { stream: true });
       let boundary = buffer.indexOf("\n\n");
       while (boundary >= 0) {
@@ -42,15 +48,13 @@ export async function logs(
         }
         if (event === "log") {
           const payload = JSON.parse(data) as { line: string };
-          process.stdout.write(colorLine(payload.line) + "\n");
-          seen += 1;
-          if (!follow && seen >= lines) {
-            stop();
-            return;
-          }
+          if (json && follow) write(JSON.stringify({ line: payload.line }) + "\n");
+          else if (json) history.push(payload.line);
+          else write(colorLine(payload.line) + "\n");
         } else if (event === "failure") {
           throw new CliError((JSON.parse(data) as { message: string }).message);
         } else if (event === "end") {
+          complete = true;
           return;
         }
         boundary = buffer.indexOf("\n\n");
@@ -61,6 +65,9 @@ export async function logs(
     throw error;
   } finally {
     process.off("SIGINT", stop);
-    try { await reader.cancel(); } catch { /* the stream already ended */ }
+    controller.abort();
+    try { await reader?.cancel(); } catch { /* the stream already ended */ }
+    reader?.releaseLock();
+    if (json && !follow && complete) write(JSON.stringify({ lines: history }, null, 2) + "\n");
   }
 }

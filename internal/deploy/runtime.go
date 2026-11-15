@@ -84,6 +84,10 @@ func (r *DockerRuntime) Lifecycle(ctx context.Context, d store.Deployment, actio
 type RuntimeLogSource interface {
 	Logs(context.Context, string, string, int, func(string) error) error
 }
+
+type RuntimeLogSnapshotSource interface {
+	LogSnapshot(context.Context, string, string, int, func(string) error) error
+}
 type logWriter struct {
 	pending string
 	discard bool
@@ -115,6 +119,14 @@ func (w *logWriter) Write(data []byte) (int, error) {
 	return n, nil
 }
 func (r *DockerRuntime) Logs(ctx context.Context, appID, containerID string, tail int, emit func(string) error) error {
+	return r.runtimeLogs(ctx, appID, containerID, tail, true, emit)
+}
+
+func (r *DockerRuntime) LogSnapshot(ctx context.Context, appID, containerID string, tail int, emit func(string) error) error {
+	return r.runtimeLogs(ctx, appID, containerID, tail, false, emit)
+}
+
+func (r *DockerRuntime) runtimeLogs(ctx context.Context, appID, containerID string, tail int, follow bool, emit func(string) error) error {
 	info, e := r.Client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 	if e != nil {
 		return e
@@ -125,7 +137,7 @@ func (r *DockerRuntime) Logs(ctx context.Context, appID, containerID string, tai
 	if tail < 1 || tail > 500 {
 		tail = 200
 	}
-	logs, e := r.Client.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: info.Container.State != nil && info.Container.State.Running, Tail: strconv.Itoa(tail), Timestamps: true})
+	logs, e := r.Client.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: follow && info.Container.State != nil && info.Container.State.Running, Tail: strconv.Itoa(tail), Timestamps: true})
 	if e != nil {
 		return e
 	}

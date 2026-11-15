@@ -105,26 +105,28 @@ program
   .description("Deploy a local folder, or deploy an application again")
   .option("--no-cache", "Rebuild without the Docker cache")
   .option("--name <name>", "Application name for a local folder")
+  .option("--app <name-or-id>", "Upload local changes to an existing application")
   .option("--domain <domain>", "Public domain for a local folder")
   .option("--method <method>", "Build method for a local folder")
   .action(async (name, options, command) => {
     configure(command);
     if (existsSync(name) && statSync(name).isDirectory()) {
-      await deployLocal(client(command), name, { name: options.name, domain: options.domain, method: options.method }, json(command));
+      await deployLocal(client(command), name, { name: options.name, domain: options.domain, method: options.method, app: options.app, noCache: options.cache === false }, json(command));
     } else {
+      if (options.app) throw new Error("Use --app with a local folder");
       await deploy(client(command), name, options.cache === false, json(command));
     }
   });
 
 program
   .command("logs <app>")
-  .description("Stream runtime logs")
-  .option("--tail <lines>", "Historical lines requested from the container", value => parseInt(value, 10), 200)
-  .option("--lines <lines>", "Lines to print before stopping", value => parseInt(value, 10), 100)
+  .description("Read runtime logs")
+  .option("--tail <lines>", "Historical lines requested from the container", value => parseInt(value, 10))
+  .option("--lines <lines>", "Latest lines to print, defaults to 100", value => parseInt(value, 10))
   .option("--follow", "Keep streaming")
   .action(async (name, options, command) => {
     configure(command);
-    await logs(client(command), name, { tail: options.tail, lines: options.lines, follow: options.follow });
+    await logs(client(command), name, { tail: options.tail, lines: options.lines, follow: options.follow }, json(command));
   });
 
 program

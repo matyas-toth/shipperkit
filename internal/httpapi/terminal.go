@@ -59,7 +59,7 @@ func (s *Server) terminalBrowser(w http.ResponseWriter, r *http.Request) (store.
 }
 func (s *Server) terminalOwned(ctx context.Context, v store.TerminalSession) error {
 	session, err := s.db.Session(ctx, v.AuthHash)
-	if err != nil || session.User.ID != v.UserID || session.AuthStep() != "" {
+	if err != nil || session.User.ID != v.UserID || session.AuthStep() != "" || roleRank(session.User.Role) < roleRank(store.RoleDeveloper) {
 		return errors.New("authentication_revoked")
 	}
 	current, err := s.db.Terminal(ctx, v.ID)

@@ -18,3 +18,4 @@ playwright-report/
 
 internal/startup/assets/*.gz
 cli/dist/
+/shipper-cli.tgz

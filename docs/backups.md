@@ -17,11 +17,17 @@ service.
 
 An instance archive contains an online SQLite snapshot, the **original**
 `encryption.key`, encrypted source/registry/database credentials, applications,
-release/task/schedule definitions, instance identity, proxy configuration and ACME
+release/task/schedule definitions, immutable local-source snapshots, managed
+database CA certificates and private keys, instance identity, proxy configuration and ACME
 state when present. The original key allows existing encrypted values to be read
 after recovery. The separate age X25519 recovery identity decrypts the archive
 without depending on a key on the lost host. Anyone with both can access the
 installation's credentials.
+
+Database trust identities are validated and restored before databases are
+started, preserving existing client CA bundles. Archives made before this
+support was added do not contain those keys; retain a separate copy of
+`database-tls/` when recovering an older archive.
 
 Instance archives do **not** contain Docker images, BuildKit caches, Git working
 copies, every volume or a database dump. Protect workload data with separate plans.

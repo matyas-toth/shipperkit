@@ -18,8 +18,14 @@ env:
   GH_TOKEN: ${{ github.token }}
 
 jobs:
+  acceptance:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   publish:
     name: publish
+    needs: acceptance
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -35,6 +41,17 @@ jobs:
           package_version=$(node -p "require('./package.json').version")
           test "$version" = "$package_version" || { echo "package.json is $package_version, tag is $version"; exit 1; }
           echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: cli/package-lock.json
+      - name: Package the CLI
+        run: |
+          npm ci --prefix cli
+          npm run build --prefix cli
+          npm run cli:package
 
       - uses: docker/setup-buildx-action@v3
 
@@ -69,7 +86,7 @@ jobs:
           printf 'ghcr.io/%s@%s\n' "$GITHUB_REPOSITORY" "${{ steps.build.outputs.digest }}" > image.txt
           printf '%s\n' "$VERSION" > version.txt
           printf 'https://github.com/%s/releases/tag/%s\n' "$GITHUB_REPOSITORY" "$TAG" > release-url.txt
-          sha256sum install.sh image.txt version.txt release-url.txt > SHA256SUMS
+          sha256sum install.sh image.txt version.txt release-url.txt shipper-cli.tgz > SHA256SUMS
           test -s image.txt
           cat image.txt
           cat SHA256SUMS
@@ -84,7 +101,7 @@ jobs:
             [[ "$VERSION" == *-* ]] && args+=(--prerelease)
             gh release create "$TAG" "${args[@]}"
           fi
-          gh release upload "$TAG" install.sh image.txt version.txt release-url.txt SHA256SUMS --clobber
+          gh release upload "$TAG" install.sh image.txt version.txt release-url.txt shipper-cli.tgz SHA256SUMS --clobber
 
       - name: Update the latest installer channel
         run: |
@@ -92,6 +109,7 @@ jobs:
           tmp=$(mktemp -d)
           cp install.sh image.txt version.txt release-url.txt SHA256SUMS "$tmp"/
           cd "$tmp"
+          sha256sum install.sh image.txt version.txt release-url.txt > SHA256SUMS
           git init -q
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

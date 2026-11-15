@@ -153,6 +153,13 @@ func (s *Store) UpdateUserRole(ctx context.Context, id, role, actor string, now 
 	if _, err = tx.ExecContext(ctx, "UPDATE administrators SET role=?,updated_at=? WHERE id=?", role, now.Unix(), id); err != nil {
 		return err
 	}
+	// A downgrade must revoke credentials minted under the previous authority,
+	// including sessions behind long-lived streams and interactive terminals.
+	if previous != role && (previous == RoleAdmin || previous == RoleDeveloper && role == RoleViewer) {
+		if err = revokeUserCredentials(ctx, tx, id); err != nil {
+			return err
+		}
+	}
 	if err = auditAccountDetail(ctx, tx, id, actor, "role_changed", previous+" to "+role, now); err != nil {
 		return err
 	}

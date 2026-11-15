@@ -295,6 +295,11 @@ func (w *Worker) protect(ctx context.Context, v *store.BackupRun) error {
 			return e
 		}
 		files["encryption.key"] = keyfile
+		trust := filepath.Join(work, "database-tls.json")
+		if e = bundleDatabaseTrust(w.DataDir, trust); e != nil {
+			return e
+		}
+		files["database-tls.json"] = trust
 		proxy, e := runtime.EffectiveProxy(ctx)
 		if e != nil {
 			return e
@@ -518,7 +523,7 @@ func RecoverInstance(ctx context.Context, archive, keyfile, target string) error
 		return errors.New("Choose an instance recovery archive")
 	}
 	for _, v := range m.Files {
-		if v.Name != "shipper.db" && v.Name != "encryption.key" && v.Name != "acme.json" && v.Name != "proxy.json" && v.Name != "sources.tar" {
+		if v.Name != "shipper.db" && v.Name != "encryption.key" && v.Name != "acme.json" && v.Name != "proxy.json" && v.Name != "sources.tar" && v.Name != "database-tls.json" {
 			return errors.New("Unexpected instance recovery file")
 		}
 	}
@@ -536,6 +541,9 @@ func RecoverInstance(ctx context.Context, archive, keyfile, target string) error
 		return e
 	}
 	if e = store.RestoreSourceBundle(stage); e != nil {
+		return e
+	}
+	if e = restoreDatabaseTrust(stage); e != nil {
 		return e
 	}
 	db, e := store.Open(stage)
@@ -573,7 +581,17 @@ func installRecovery(stage, target string) error {
 		return e
 	}
 	for _, v := range entries {
-		if !v.IsDir() {
+		if v.Type()&os.ModeSymlink != 0 {
+			return errors.New("Recovery files cannot be symbolic links")
+		}
+		if v.IsDir() {
+			if v.Name() != "sources" && v.Name() != "database-tls" {
+				return errors.New("Unexpected recovery directory")
+			}
+			if e = copyRecoveryDirectory(filepath.Join(stage, v.Name()), filepath.Join(target, v.Name())); e != nil {
+				return e
+			}
+		} else {
 			if e = copyPrivate(filepath.Join(stage, v.Name()), filepath.Join(target, v.Name())); e != nil {
 				return e
 			}

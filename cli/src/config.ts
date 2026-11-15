@@ -75,16 +75,19 @@ export function deleteConfig() {
 export function resolveAuth(options: { url?: string; token?: string } = {}): Auth {
   const config = loadConfig();
   const url = options.url || process.env.SHIPPER_URL || config?.url;
-  const token = options.token || process.env.SHIPPER_TOKEN || config?.token;
   if (!url) throw new Error("No Shipper instance configured. Run shipper auth login, or set SHIPPER_URL.");
+  const normalized = normalizeUrl(url);
+  const explicitToken = options.token || process.env.SHIPPER_TOKEN;
+  const savedMatches = config && new URL(normalized).origin === new URL(config.url).origin;
+  if (!explicitToken && config && !savedMatches) {
+    throw new Error("This instance needs its own credentials. Run shipper auth login --url " + normalized);
+  }
+  const token = explicitToken || (savedMatches ? config.token : undefined);
   if (!token) throw new Error("No Shipper token configured. Run shipper auth login, or set SHIPPER_TOKEN.");
   if (!/^[a-f0-9]{64}$/i.test(token)) throw new Error("The Shipper token is not valid");
   return {
-    url: normalizeUrl(url),
+    url: normalized,
     token,
-    tokenId: config?.tokenId,
-    expiresAt: config?.expiresAt,
-    email: config?.email,
-    name: config?.name,
+    ...(savedMatches && !explicitToken ? { tokenId: config.tokenId, expiresAt: config.expiresAt, email: config.email, name: config.name } : {}),
   };
 }

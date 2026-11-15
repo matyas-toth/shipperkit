@@ -26,15 +26,19 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-source-policy.mjs",
+    "test": "npm run build && node --test test/*.test.cjs",
     "check": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "commander": "^14.0.0",
+    "ignore": "^7.0.14",
     "picocolors": "^1.1.1",
     "tar": "^7.5.23"
   },
+  "bundleDependencies": ["commander", "ignore", "picocolors", "tar"],
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0"

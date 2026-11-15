@@ -4,7 +4,9 @@ import (
 	"archive/tar"
 	"context"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -19,11 +21,37 @@ import (
 
 var sourceID = regexp.MustCompile(`^[a-f0-9]{24}$`)
 
+//go:embed source-policy.json
+var sourcePolicyJSON []byte
+
+var sourcePolicy = func() (v struct{ Names, Suffixes, EnvExamples []string }) {
+	if err := json.Unmarshal(sourcePolicyJSON, &v); err != nil {
+		panic(err)
+	}
+	return
+}()
+
 func SourceExcluded(name string) bool {
 	for _, part := range strings.Split(filepath.ToSlash(name), "/") {
 		lower := strings.ToLower(part)
-		if lower == ".git" || lower == "node_modules" || lower == ".shipper" || lower == ".ssh" || lower == ".aws" || lower == ".vpsenv" || lower == ".env" || strings.HasPrefix(lower, ".env.") && lower != ".env.example" && lower != ".env.sample" && lower != ".env.template" || lower == "id_rsa" || lower == "id_ed25519" || strings.HasSuffix(lower, ".pem") || strings.HasSuffix(lower, ".key") {
-			return true
+		for _, blocked := range sourcePolicy.Names {
+			if lower == blocked {
+				return true
+			}
+		}
+		for _, suffix := range sourcePolicy.Suffixes {
+			if strings.HasSuffix(lower, suffix) {
+				return true
+			}
+		}
+		if strings.HasPrefix(lower, ".env.") {
+			example := false
+			for _, allowed := range sourcePolicy.EnvExamples {
+				example = example || lower == allowed
+			}
+			if !example {
+				return true
+			}
 		}
 	}
 	return false

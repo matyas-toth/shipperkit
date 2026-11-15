@@ -4,9 +4,10 @@ WORKDIR /src
 COPY web/package*.json ./web/
 RUN --mount=type=cache,target=/root/.npm cd web && npm ci --no-audit --no-fund
 COPY web ./web
+COPY internal/store/source-policy.json ./internal/store/source-policy.json
 RUN cd web && npm run build
 
-FROM golang:1.27.3-alpine AS backend
+FROM golang:1.27.4-alpine AS backend
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download

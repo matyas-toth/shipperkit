@@ -30,7 +30,8 @@ export type Application = {
   method?: string;
   sourceKind?: string;
   sourceRef?: string;
-  config?: {
+  config?: Record<string, unknown> & {
+    localSource?: string;
     domain?: string;
     repository?: string;
     branch?: string;

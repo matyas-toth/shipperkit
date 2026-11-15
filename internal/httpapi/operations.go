@@ -34,10 +34,26 @@ func (s *Server) operationsRoutes(r chi.Router) {
 		r.With(s.csrf, s.limit).Post("/notifications/test", s.testNotification)
 		r.Get("/notifications/deliveries", s.failedNotifications)
 		r.With(s.csrf, s.limit).Post("/notifications/deliveries/{sequence}/retry", s.retryNotification)
-		r.With(s.csrf, s.limit).Post("/system/recheck", s.recheckSystem)
 		r.Get("/system/retention", s.retention)
+	})
+	r.Group(func(r chi.Router) {
+		r.Use(s.requireHostMaintenance)
+		r.With(s.csrf, s.limit).Post("/system/recheck", s.recheckSystem)
 		r.With(s.csrf, s.limit).Post("/system/retention", s.saveRetention)
 		r.With(s.csrf, s.limit).Post("/system/repair", s.repairProxy)
+	})
+}
+
+// Only these narrow maintenance routes accept automation. Account settings,
+// authentication, updates and all other administrative routes stay interactive.
+func (s *Server) requireHostMaintenance(next http.Handler) http.Handler {
+	interactive := s.requireRole(store.RoleAdmin)(next)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := principal(r); p != nil && p.Allows("host-admin", "") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		interactive.ServeHTTP(w, r)
 	})
 }
 func (s *Server) failedNotifications(w http.ResponseWriter, r *http.Request) {

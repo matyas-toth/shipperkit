@@ -45,7 +45,7 @@ has been verified and what remains before the stable release.
 
 ## Run locally
 
-Requirements: Go 1.26+, Node.js 22.12+ (24 LTS recommended), and a running Docker
+Requirements: Go 1.27.4+, Node.js 22.12+ (24 LTS recommended), and a running Docker
 Engine or Docker Desktop using Linux containers. Native development also needs
 Git 2.36+ and Docker CLI with Buildx and Compose; the production image includes them.
 

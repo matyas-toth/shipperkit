@@ -116,7 +116,8 @@ export class Client {
         },
         signal,
       });
-    } catch {
+    } catch (error) {
+      if (signal.aborted) throw error;
       throw new CliError(`Could not reach ${this.auth.url}`);
     }
     if (!response.ok) {

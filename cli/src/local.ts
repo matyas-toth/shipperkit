@@ -3,36 +3,31 @@ import { existsSync, readFileSync } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { c as createTar } from "tar";
+import ignore, { type Ignore } from "ignore";
 import { Client, CliError } from "./client";
 import { applications, waitForDeployment, type Deployment } from "./apps";
 import { heading, muted } from "./output";
+import { excludedSource } from "./source-policy";
 
 const limitFiles = 10_000;
 const limitBytes = 64 << 20;
 
-function excluded(relative: string) {
-  for (const part of relative.split("/")) {
-    const lower = part.toLowerCase();
-    if ([".git", "node_modules", ".shipper", ".ssh", ".aws", ".vpsenv", ".env", "id_rsa", "id_ed25519"].includes(lower)) return true;
-    if (lower.startsWith(".env.") && ![".env.example", ".env.sample", ".env.template"].includes(lower)) return true;
-    if (lower.endsWith(".pem") || lower.endsWith(".key")) return true;
+type Exclusion = { base: string; rules: Ignore };
+
+async function collect(root: string, relative: string, files: string[], inherited: Exclusion[], state: { bytes: number }) {
+  const exclusions = [...inherited];
+  for (const name of [".gitignore", ".shipperignore"]) {
+    const file = join(root, relative, name);
+    if (existsSync(file)) exclusions.push({ base: relative ? relative + "/" : "", rules: ignore().add(readFileSync(file, "utf8")) });
   }
-  return false;
-}
-
-function globMatch(value: string, pattern: string) {
-  const source = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".");
-  return new RegExp("^" + source + "$").test(value);
-}
-
-async function collect(root: string, relative: string, files: string[], ignore: string[], state: { bytes: number }) {
   const entries = await readdir(join(root, relative), { withFileTypes: true });
   for (const entry of entries) {
     const path = relative ? `${relative}/${entry.name}` : entry.name;
-    if (excluded(path) || ignore.some(pattern => globMatch(path, pattern))) continue;
+    const candidate = path + (entry.isDirectory() ? "/" : "");
+    if (excludedSource(path) || exclusions.some(({ base, rules }) => rules.ignores(candidate.slice(base.length)))) continue;
     if (entry.isSymbolicLink()) throw new CliError(`Source symlinks are unsupported: ${path}`);
     if (entry.isDirectory()) {
-      await collect(root, path, files, ignore, state);
+      await collect(root, path, files, exclusions, state);
       continue;
     }
     if (!entry.isFile()) throw new CliError("Only regular source files are supported");
@@ -45,13 +40,10 @@ async function collect(root: string, relative: string, files: string[], ignore: 
   }
 }
 
-async function archive(root: string) {
-  const ignore = existsSync(join(root, ".shipperignore"))
-    ? readFileSync(join(root, ".shipperignore"), "utf8").split("\n").map(line => line.trim()).filter(line => line && !line.startsWith("#"))
-    : [];
+export async function archive(root: string) {
   const files: string[] = [];
   const state = { bytes: 0 };
-  await collect(root, "", files, ignore, state);
+  await collect(root, "", files, [], state);
   if (!files.length) throw new CliError("This folder has no files to deploy");
   const stream = createTar({ cwd: root, portable: true, follow: false }, files);
   const chunks: Buffer[] = [];
@@ -86,19 +78,24 @@ function provenance(root: string) {
 export async function deployLocal(
   client: Client,
   target: string,
-  options: { name?: string; domain?: string; method?: string },
+  options: { name?: string; domain?: string; method?: string; app?: string; noCache?: boolean },
   json = false,
 ) {
   const root = resolve(target);
   const info = await stat(root).catch(() => undefined);
   if (!info?.isDirectory()) throw new CliError(`Folder not found: ${target}`);
   const name = (options.name || basename(root) || "Local application").trim();
-  if (!name || name.length > 80) throw new CliError("Use an application name of up to 80 characters");
+  if (!options.app && (!name || name.length > 80)) throw new CliError("Use an application name of up to 80 characters");
   const existing = await applications(client);
-  if (existing.items.some(app => app.name.toLowerCase() === name.toLowerCase())) {
-    throw new CliError(`Application "${name}" already exists. Redeploy it with shipper deploy "${name}".`);
+  const bound = options.app ? existing.items.find(app => app.id === options.app || app.name.toLowerCase() === options.app!.toLowerCase()) : undefined;
+  if (options.app && !bound) throw new CliError(`Application not found: ${options.app}`);
+  if (bound && (options.name || options.domain)) throw new CliError("Change the application name or domains separately before deploying local files");
+  if (!bound && existing.items.some(app => app.name.toLowerCase() === name.toLowerCase())) {
+    throw new CliError(`Application "${name}" already exists. Upload changes with shipper deploy . --app "${name}".`);
   }
-  const method = options.method || detectMethod(root);
+  const current = bound ? (await client.get<{ application: import("./apps").Application }>(`/applications/${bound.id}`)).application : undefined;
+  if (current && !current.config?.localSource) throw new CliError("Choose an application created from local files");
+  const method = options.method || current?.method || detectMethod(root);
   const source = await archive(root);
   if (!json) {
     const size = source.bytes >= 1 << 20 ? `${(source.bytes / (1 << 20)).toFixed(1)} MiB` : `${Math.max(1, Math.round(source.bytes / 1024))} KiB`;
@@ -106,15 +103,21 @@ export async function deployLocal(
     process.stdout.write(muted(`${size} from ${root}`) + "\n");
   }
   const snapshot = await client.upload<{ id: string }>(
-    `/sources?provenance=${encodeURIComponent(provenance(root))}`,
+    `/sources?provenance=${encodeURIComponent(provenance(root))}${bound ? "&application=" + encodeURIComponent(bound.id) : ""}`,
     source.body,
     "application/x-tar",
   );
-  const config: Record<string, unknown> = {
+  const config: Record<string, unknown> = current ? { ...current.config, method, localSource: snapshot.id } : {
     method,
     localSource: snapshot.id,
     publishDirectory: ".",
   };
+  if (bound) {
+    const plan = await client.post<{ revision: string }>(`/applications/${bound.id}/changes`, { config });
+    if (!json) process.stdout.write(heading(`Deploying ${bound.name}\n`));
+    const deployment = await client.post<Deployment>(`/applications/${bound.id}/deployments`, { config, revision: plan.revision, noCache: options.noCache ?? false });
+    return waitForDeployment(client, bound.id, deployment, json);
+  }
   if (options.domain) config.domain = options.domain;
   const plan = await client.post<{ applicationId: string; revision: string; name: string; commit: string }>("/plan", { name, config });
   if (!json) process.stdout.write(heading(`Starting ${plan.name}\n`));

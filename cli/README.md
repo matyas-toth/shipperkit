@@ -7,10 +7,22 @@ command has a stable `--json` form, and `shipper api` exposes any application ro
 ## Install
 
 ```sh
-npm install -g @shipperkit/cli
+git clone https://github.com/matyas-toth/shipperkit.git
+cd shipperkit
+npm ci --prefix cli
+npm run build --prefix cli
+npm run cli:package
+npm install -g --offline ./shipper-cli.tgz
 ```
 
 Node 20 or newer.
+
+New application releases also attach `shipper-cli.tgz` and its checksum to the
+GitHub release. Download both from the same tagged release, verify the archive
+against `SHA256SUMS`, then run `npm install -g --offline ./shipper-cli.tgz`. Older releases
+may not include this asset; the source installation above works without an npm
+registry publication. Runtime dependencies are bundled from the locked build,
+so installing the tarball does not need a registry connection.
 
 ## Sign in
 
@@ -42,6 +54,7 @@ shipper apps
 shipper app Website
 shipper deploy .
 shipper deploy . --name atlas --domain atlas.example.com
+shipper deploy . --app atlas
 shipper deploy Website
 shipper deploy Website --no-cache
 shipper logs Website --lines 50
@@ -52,10 +65,28 @@ shipper open Website
 ```
 
 `shipper deploy .` packages the current folder and creates an application. It skips
-`.git`, `node_modules`, `.env` files, private keys and other secrets; extend the
-exclusions with a `.shipperignore` file. Local uploads are limited to 64 MiB and
+`.git`, `node_modules`, `.env` files, private keys and credential files such as
+`.npmrc` and `.netrc`. Directory-specific `.gitignore` and `.shipperignore` files
+use Git ignore patterns; excluded directories are not traversed. Credential
+exclusions always apply, including to explicitly unignored files. Local uploads are limited to 64 MiB and
 10000 files. Local Compose uploads are not included yet; connect the repository
 instead.
+
+Use `shipper deploy . --app atlas` to update an existing local application by
+exact name or ID. It uploads a new immutable snapshot, reviews the configuration
+revision and applies that revision, preserving environment, storage, domains and
+previous release snapshots. A name collision never overwrites an application
+automatically. `shipper deploy atlas` redeploys its already stored source.
+
+`shipper logs atlas --lines 50` returns the latest available lines and exits,
+including when there are fewer than 50. Add `--follow` to wait for future output.
+Finite `--json` logs return `{ "lines": [...] }`; following returns one JSON
+object per log line. Both line limits are bounded to 500.
+
+Saved tokens are bound to their instance origin. Changing `--url` or
+`SHIPPER_URL` to a different host, scheme or port requires a new login or an
+explicitly supplied token. Disabling or demoting an account revokes its saved
+credentials; CLI logout removes only the local copy.
 
 Create an application from a Git repository:
 

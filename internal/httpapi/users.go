@@ -135,6 +135,7 @@ func (s *Server) updateUserRole(w http.ResponseWriter, r *http.Request) {
 		s.userError(w, err)
 		return
 	}
+	s.revokeStreams()
 	s.json(w, 200, map[string]bool{"ok": true})
 }
 

@@ -287,15 +287,33 @@ func (s *Server) runtimeLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tail, _ := strconv.Atoi(r.URL.Query().Get("tail"))
+	finite := r.URL.Query().Get("follow") == "false"
+	readLogs := source.Logs
+	if finite {
+		snapshot, ok := source.(deploy.RuntimeLogSnapshotSource)
+		if !ok {
+			s.problem(w, 503, "snapshot_unavailable", "Finite runtime logs are unavailable")
+			return
+		}
+		readLogs = snapshot.LogSnapshot
+	}
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	lines := make(chan string, 128)
 	finished := make(chan error, 1)
 	go func() {
-		finished <- source.Logs(ctx, a.ID, containerID, tail, func(line string) error {
+		finished <- readLogs(ctx, a.ID, containerID, tail, func(line string) error {
 			line = deploy.Redact(configuration, line)
 			if len(line) > 4096 {
 				line = line[:4096] + " [truncated]"
+			}
+			if finite {
+				select {
+				case lines <- line:
+					return nil
+				case <-ctx.Done():
+					return ctx.Err()
+				}
 			}
 			select {
 			case lines <- line:
