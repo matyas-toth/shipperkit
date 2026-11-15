@@ -72,7 +72,8 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			}
 			publicPort := listener.Addr().(*net.TCPAddr).Port
 			listener.Close()
-			c.Database.TLSHostname = "host.docker.internal"
+			const publicHost = "database-public.test"
+			c.Database.TLSHostname = publicHost
 			c.Networking.Ports = []store.PublishedPort{{Protocol: "tcp", BindIP: "0.0.0.0", HostPort: publicPort, ContainerPort: c.Port}}
 			if e = ValidateBuild(&c); e != nil {
 				t.Fatal(e)
@@ -92,6 +93,9 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
+			if e = r.Healthy(ctx, d); e != nil {
+				t.Fatal("Database did not become ready before promotion", e)
+			}
 			d.State = "succeeded"
 			if e = db.SaveDeployment(ctx, d); e != nil {
 				t.Fatal(e)
@@ -107,6 +111,20 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			consumer := store.Deployment{ID: auth.Token()[:24], ApplicationID: auth.Token()[:24], Config: clientConfig, ImageID: c.Image, ResolvedMethod: "image"}
 			consumer.ContainerID, e = r.Start(ctx, consumer)
 			if e != nil {
+				t.Fatal(e)
+			}
+			// The bridge gateway reaches host-published ports on Linux as well as
+			// Docker Desktop. Only this disposable client receives the test alias.
+			consumerInfo, e := r.Client.ContainerInspect(ctx, consumer.ContainerID, client.ContainerInspectOptions{})
+			if e != nil {
+				t.Fatal(e)
+			}
+			endpoint := consumerInfo.Container.NetworkSettings.Networks[r.applicationNetwork(consumer.ApplicationID)]
+			if endpoint == nil || !endpoint.Gateway.IsValid() {
+				t.Fatal("Client bridge gateway is unavailable")
+			}
+			hosts := strings.NewReader(endpoint.Gateway.String() + " " + publicHost + "\n")
+			if _, e = r.execInput(ctx, consumer.ContainerID, []string{"sh", "-c", "cat >> /etc/hosts"}, nil, hosts); e != nil {
 				t.Fatal(e)
 			}
 			defer func() {
@@ -213,7 +231,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			}
 			publicArgs, publicEnv := []string{}, []string{}
 			if fixture.engine == "redis" {
-				publicArgs = []string{"redis-cli", "--tls", "--cacert", "/ca.crt", "--sni", "host.docker.internal", "--host", "host.docker.internal", "--port", strconv.Itoa(publicPort), "--raw", "PING"}
+				publicArgs = []string{"redis-cli", "--tls", "--cacert", "/ca.crt", "--sni", publicHost, "--host", publicHost, "--port", strconv.Itoa(publicPort), "--raw", "PING"}
 				publicEnv = []string{"REDISCLI_AUTH=" + env["REDIS_PASSWORD"]}
 			} else {
 				spec, _ := DatabaseBackupSpec(d)
@@ -221,7 +239,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 				publicArgs, publicEnv = dbArgs(spec)
 				for i, v := range publicArgs {
 					if strings.HasPrefix(v, "--host=") {
-						publicArgs[i] = "--host=host.docker.internal"
+						publicArgs[i] = "--host=" + publicHost
 					}
 				}
 				if fixture.engine == "postgresql" {

@@ -201,7 +201,7 @@ func (r *DockerRuntime) ensureProxy(ctx context.Context) error {
 		return e
 	}
 	bindings := network.PortMap{network.MustParsePort("8080/tcp"): []network.PortBinding{{HostIP: ip, HostPort: strconv.Itoa(r.Config.HTTPPort)}}, network.MustParsePort("8443/tcp"): []network.PortBinding{{HostIP: ip, HostPort: strconv.Itoa(r.Config.HTTPSPort)}}}
-	created, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: r.proxy(), Config: &container.Config{Image: TraefikImage, Cmd: args, User: "65532:65532", Labels: r.labels("", "")}, HostConfig: &container.HostConfig{PortBindings: bindings, ReadonlyRootfs: true, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, Mounts: []mount.Mount{{Type: mount.TypeVolume, Source: volume, Target: "/data"}}, RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: container.Resources{Memory: 128 << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(128))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {}}}})
+	created, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: r.proxy(), Config: &container.Config{Image: TraefikImage, Cmd: args, User: "65532:65532", Labels: r.labels("", ""), ExposedPorts: exposedPorts(bindings)}, HostConfig: &container.HostConfig{PortBindings: bindings, ReadonlyRootfs: true, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, Mounts: []mount.Mount{{Type: mount.TypeVolume, Source: volume, Target: "/data"}}, RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: container.Resources{Memory: 128 << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(128))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {}}}})
 	if e != nil {
 		return e
 	}
@@ -430,6 +430,7 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 		restart = container.RestartPolicy{Name: "no"}
 	}
 	configuration.StopTimeout = ptr(StopSeconds(d.Config.Runtime))
+	configuration.ExposedPorts = exposedPorts(publishedBindings(ports))
 	c, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: name, Config: configuration, HostConfig: &container.HostConfig{PortBindings: publishedBindings(ports), Mounts: mounts, ReadonlyRootfs: ReleaseMethod(d) == "static", Tmpfs: map[string]string{"/tmp": temporary}, CapDrop: []string{"ALL"}, CapAdd: databaseCapabilities(d), SecurityOpt: []string{"no-new-privileges:true"}, RestartPolicy: restart, Resources: container.Resources{Memory: memory << 20, NanoCPUs: cpus, PidsLimit: ptr(pids)}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: endpoints}})
 	if e != nil {
 		return "", e

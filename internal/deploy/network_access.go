@@ -197,6 +197,19 @@ func publishedBindings(ports []store.PublishedPort) network.PortMap {
 	return bindings
 }
 
+// Engines predating implicit exposure require every published port in Config
+// as well as HostConfig. Declaring a port does not publish an unbound port.
+func exposedPorts(bindings network.PortMap) network.PortSet {
+	if len(bindings) == 0 {
+		return nil
+	}
+	ports := make(network.PortSet, len(bindings))
+	for port := range bindings {
+		ports[port] = struct{}{}
+	}
+	return ports
+}
+
 // PrepareNetworkCutover releases fixed host ports before replacement. The
 // deployment journal retains PreviousID so rollback can restart it after failure.
 func (r *DockerRuntime) PrepareNetworkCutover(ctx context.Context, d store.Deployment) error {
