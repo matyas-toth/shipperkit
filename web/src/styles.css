@@ -12734,3 +12734,9 @@ input[type="checkbox"]:disabled {
   font-size: 11.5px;
   line-height: 1.2;
 }
+
+/* Keep the four source cards on one shared row height. */
+.creation-page fieldset.choice-grid[aria-label="Source type"] .choice-card {
+  height: auto;
+  min-height: 88px;
+}
