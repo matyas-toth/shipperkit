@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.0-rc.28](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.27...v1.0.0-rc.28) (2026-11-16)
+
+
+### Features
+
+* add the one-click Service Library ([#72](https://github.com/matyas-toth/shipperkit/issues/72)) ([f95b9b1](https://github.com/matyas-toth/shipperkit/commit/f95b9b1a6ed0a2d171168f4eed94ec2fb324f1bc))
+
+
+### Bug Fixes
+
+* harden permissions, recovery and CLI release workflows ([#71](https://github.com/matyas-toth/shipperkit/issues/71)) ([870b3e8](https://github.com/matyas-toth/shipperkit/commit/870b3e831dd5c7552abb8b17bc39e76085b9625c))
+* honor application URL protocols and installer preview ([#73](https://github.com/matyas-toth/shipperkit/issues/73)) ([acc27e6](https://github.com/matyas-toth/shipperkit/commit/acc27e680d80dd1f5260d654af5f737f1006ded5))
+* refine the landing install command bar ([#68](https://github.com/matyas-toth/shipperkit/issues/68)) ([0311fb9](https://github.com/matyas-toth/shipperkit/commit/0311fb9e637449fdd36cc8e1d501e596749eda8e))
+* update the landing page title ([#70](https://github.com/matyas-toth/shipperkit/issues/70)) ([4ec2061](https://github.com/matyas-toth/shipperkit/commit/4ec20613a0f720a9060706233c78df6f3e3b291c))
+
 ## [1.0.0-rc.27](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.26...v1.0.0-rc.27) (2026-11-12)
 
 
