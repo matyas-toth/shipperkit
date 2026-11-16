@@ -58,6 +58,34 @@ const control = http.createServer(async (request, response) => {
     for(let index=0;index<1500;index++) insert.run("Build output line " + index,1793531000);
     db.exec("COMMIT");db.close();for(const stream of streams)stream.write(JSON.stringify({Type:"container",Action:"start",Actor:{ID:containers[0].Id}})+"\n");response.end("{}");return;
   }
+  if (request.method === "POST" && request.url === "/metrics") {
+    const db = new DatabaseSync(join(directory,"shipper.db"));db.exec("PRAGMA busy_timeout=5000");
+    db.exec("DELETE FROM metric_samples");
+    const insert = db.prepare("INSERT INTO metric_samples(sampled_at,cpu_percent,memory_used,memory_total,disk_used,disk_total,load1,containers_running,containers_total) VALUES (?,?,?,?,?,?,?,?,?)");
+    const now = Math.floor(Date.now()/1000);
+    for (let index=144;index>=0;index--) {
+      const at = now-index*600, progress=144-index;
+      const cpu = Math.max(4,Math.min(92,26+Math.sin(progress/12)*12+(progress%9===0?18:0)));
+      const memory = Math.round(4.2e9+Math.sin(progress/18)*0.9e9);
+      const disk = Math.round(42e9+progress*0.018e9);
+      insert.run(at,cpu,memory,8000000000,disk,100000000000,0.42,3,4);
+    }
+    db.close();response.end("{}");return;
+  }
+  if (request.method === "POST" && request.url === "/failure") {
+    const db = new DatabaseSync(join(directory,"shipper.db"));db.exec("PRAGMA busy_timeout=5000");
+    const config = JSON.stringify({repository:"https://github.com/mdn/beginner-html-site.git",branch:"main",publishDirectory:".",routing:"files",htaccess:true,domain:"website.localhost",https:false,method:"compose"});
+    db.prepare("DELETE FROM deployment_logs WHERE deployment_id='deployment-web-failed'").run();
+    db.prepare("INSERT OR REPLACE INTO deployments(id,application_id,operation,state,config_json,created_at,started_at,finished_at,error) VALUES (?,?,?,?,?,?,?,?,?)").run("deployment-web-failed","application-web","deploy","failed",config,1793533000,1793533000,1793533010,"Compose operation failed; check the deployment output");
+    const insert = db.prepare("INSERT INTO deployment_logs(deployment_id,step,line,created_at) VALUES ('deployment-web-failed',?,?,?)");
+    for (const [step,line] of [["building","Preparing Compose images before updating services"],["starting","Container shp-garage-1 Creating"],["starting","Container shp-garage-1 Started"],["starting","Container shp-garage-1 is unhealthy"],["failed","Compose operation failed; check the deployment output"]]) insert.run(step,line,1793533000);
+    const instance = db.prepare("SELECT value FROM settings WHERE key='instance_id'").get().value;
+    containers = containers.filter(c => c.Id !== "f".repeat(64));
+    containers.push({ Id:"f".repeat(64), Names:["/shp-garage-1"], Image:"dxflrs/garage:v2.3.0", State:"running", Status:"Up 10 seconds (unhealthy)", Created:1793533000, Ports:[], Labels:{"io.shipper.managed":"true","io.shipper.application.id":"application-web","io.shipper.deployment.id":"deployment-web-failed","io.shipper.instance":instance,"com.docker.compose.service":"garage"} });
+    db.close();
+    for (const stream of streams) stream.write(JSON.stringify({Type:"container",Action:"start",Actor:{ID:"f".repeat(64)}})+"\n");
+    response.end("{}");return;
+  }
   if (request.method === "POST" && request.url === "/seed") {
     const db = new DatabaseSync(join(directory, "shipper.db"));
     db.exec("PRAGMA busy_timeout=5000");
@@ -98,7 +126,7 @@ const child = spawn(binary, [], {
   stdio: "inherit",
   env: { ...process.env, SHIPPER_ADDR: "127.0.0.1:9081", SHIPPER_DATA_DIR: directory, SHIPPER_SETUP_TOKEN: token, SHIPPER_RATE_LIMIT: "100",
     SHIPPER_PUBLIC_URL: process.env.SHIPPER_GALLERY_ROUND ? "https://shipper.example.test" : "", DOCKER_HOST: process.platform === "win32" ? "npipe://" + socket.replaceAll("\\", "/") : "unix://" + socket,
-    SHIPPER_CATALOG_URL: "off", DOCKER_TLS_VERIFY: "", DOCKER_CERT_PATH: "" },
+    SHIPPER_CATALOG_URL: "off", SHIPPER_DISABLE_HOST_METRICS: "1", DOCKER_TLS_VERIFY: "", DOCKER_CERT_PATH: "" },
 });
 let closing = false;
 async function close() {

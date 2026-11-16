@@ -29,6 +29,7 @@ type Service struct {
 	certificates      map[string]certificateSchedule
 	offset            int
 	previous          map[string]container.CPUStats
+	metrics           hostMetrics
 }
 
 func (s *Service) dashboardURL(ctx context.Context) string {
@@ -43,11 +44,16 @@ func (s *Service) dashboardURL(ctx context.Context) string {
 func (s *Service) Run(ctx context.Context) {
 	tick := time.NewTicker(15 * time.Second)
 	defer tick.Stop()
+	lastMetric := time.Time{}
 	for ctx.Err() == nil {
 		work, cancel := context.WithTimeout(ctx, 12*time.Second)
 		s.Collect(work)
 		s.Deliver(work)
 		s.AutomaticRetention(work)
+		if lastMetric.IsZero() || time.Since(lastMetric) >= time.Minute {
+			s.SampleMetrics(work)
+			lastMetric = time.Now()
+		}
 		cancel()
 		select {
 		case <-ctx.Done():

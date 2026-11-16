@@ -73,14 +73,17 @@ func (s *Server) automation(next http.Handler) http.Handler {
 			if path == "/applications" {
 				scope = "read"
 			}
-			if (path == "/system/operations" || path == "/system/retention") && len(t.Applications) == 0 {
+			if (path == "/system/operations" || path == "/system/retention" || path == "/system/overview") && len(t.Applications) == 0 {
 				scope = "read"
 			}
 			if len(parts) >= 2 && parts[0] == "applications" {
 				app = parts[1]
 				switch {
-				case len(parts) == 2, len(parts) == 3 && (parts[2] == "diagnostics" || parts[2] == "observations" || parts[2] == "incidents"), len(parts) == 4 && parts[2] == "deployments":
+				case len(parts) == 2, len(parts) == 3 && (parts[2] == "diagnostics" || parts[2] == "observations" || parts[2] == "incidents"), len(parts) == 4 && parts[2] == "deployments", len(parts) == 5 && parts[2] == "deployments" && (parts[4] == "diagnosis" || parts[4] == "logs"):
 					scope = "read"
+					if len(parts) == 5 && parts[4] == "logs" {
+						scope = "logs"
+					}
 				case len(parts) == 3 && parts[2] == "logs", len(parts) == 5 && parts[2] == "deployments" && parts[4] == "logs":
 					scope = "logs"
 				case len(parts) == 3 && parts[2] == "tasks":

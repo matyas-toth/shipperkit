@@ -1,11 +1,10 @@
 import { For, Show } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
-import { docs } from "../docs";
 import { Button, Status } from "./Controls";
 import { Icon } from "./Icon";
 import { createdDate, statusLabel } from "../data";
-import type { Deployment } from "../types";
+import type { Deployment, DiagnosisAction, DiagnosisCause } from "../types";
 
 export interface Observation {
   stale?:boolean; applicationId?: string; id: string; kind: string; state: string; summary: string; reference: string; observedAt: number;
@@ -15,6 +14,7 @@ export interface Diagnostic {
   servingRelease?: Deployment; latestOperation?: Deployment; failedStage: string; durationSeconds: number;
   checks: { layer: string; state: string; summary: string; observedAt: number }[];
   observations: Observation[]; changesSinceServing: string[]; unknowns: string[];
+  cause?: DiagnosisCause; nextActions?: DiagnosisAction[];
 }
 const checkNames: Record<string, string> = {
   daemon: "Docker", runtime: "Runtime", route: "Routing", certificate: "HTTPS",
@@ -43,8 +43,7 @@ export function ApplicationIssue(props: { diagnostic?: Diagnostic; domains: (hos
       <Icon name="warning" />
       <div class="application-issue-body">
         <strong>{issue() ? issueTitle() : "Deployment failed"}</strong>
-        <span>{issue()?.summary || failed()?.error || props.diagnostic?.failedStage}</span>
-        <a class="docs-link application-issue-link" href={docs("troubleshooting/")} target="_blank" rel="noreferrer">Troubleshooting</a>
+        <span>{issue()?.summary || props.diagnostic?.cause?.summary || failed()?.error || props.diagnostic?.failedStage}</span>
       </div>
       <Button small onClick={() => route() ? props.domains(issue()!.summary) : !issue() && failed() ? props.view(failed()!.id) : props.deployments()}>
         {route() ? "Inspect route" : !issue() && failed() ? "View deployment" : "View deployments"}

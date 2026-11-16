@@ -7,6 +7,8 @@ import { Icon } from "./Icon";
 import { downloadLogs } from "../logs";
 import { Button, ErrorNotice, IconButton, Status } from "./Controls";
 import LogViewport, { logPresentation } from "./LogViewport";
+import DiagnosisDrawer from "./DiagnosisDrawer";
+import type { DeploymentDiagnosis } from "../types";
 
 export default function LogViewer(props: {
   deployment: Deployment;
@@ -19,6 +21,7 @@ export default function LogViewer(props: {
   const [lines, setLines] = createSignal<LogLine[]>([]), [cursor, setCursor] = createSignal(0);
   const [search, setSearch] = createSignal(""), [copied, setCopied] = createSignal(false), [copyError, setCopyError] = createSignal("");
   const [paused, setPaused] = createSignal(false);
+  const [diagnose, setDiagnose] = createSignal(false);
   const presentation = logPresentation();
   let viewport!: HTMLDivElement, follow = true;
   const query = createQuery(() => ({
@@ -43,6 +46,12 @@ export default function LogViewer(props: {
     if (log && operationPending(props.deployment.state)) props.onTerminalLog?.(log);
   });
   const state = () => operationPending(props.deployment.state) ? terminal()?.step ?? props.deployment.state : props.deployment.state;
+  const failureDiagnosis = createQuery(() => ({
+    queryKey: ["applications", props.deployment.applicationId, "deployments", props.deployment.id, "diagnosis"],
+    queryFn: () => api<DeploymentDiagnosis>(`/applications/${props.deployment.applicationId}/deployments/${props.deployment.id}/diagnosis`),
+    enabled: state() === "failed",
+    staleTime: 15000,
+  }));
   const message = () => props.deployment.error || (terminal()?.step === state() ? terminal()?.line : "");
   const failedStep = createMemo(() => [...lines()].reverse().find(line => !["failed", "cancelled", "interrupted"].includes(line.step))?.step);
   const filtered = createMemo(() => {
@@ -93,7 +102,7 @@ export default function LogViewer(props: {
       <section class="deployment-error deployment-result" role="alert">
         <div class="deployment-result-body">
           <div class="deployment-result-title"><Icon name="warning" /><strong>{state() === "failed" ? "Deployment failed" : deploymentLabel({ ...props.deployment, state: state() })}</strong></div>
-          <p>{message()}</p>
+          <p>{failureDiagnosis.data?.cause.summary || message()}</p>
           <Show when={state() === "failed"}>
             <dl class="deployment-result-facts">
               <Show when={failedStep()}>{step => <div><dt>Last stage</dt><dd>{step().replaceAll("_", " ")}</dd></div>}</Show>
@@ -102,6 +111,7 @@ export default function LogViewer(props: {
           </Show>
         </div>
         <div class="deployment-result-actions">
+          <Show when={state() === "failed"}><Button small variant="primary" onClick={() => setDiagnose(true)}>Diagnose</Button></Show>
           <Show when={failedStep()}><Button small variant="ghost" onClick={() => filter(failedStep()!)}>Show failed step</Button></Show>
         </div>
       </section>
@@ -126,5 +136,8 @@ export default function LogViewer(props: {
         empty={!lines().length ? query.isPending ? "Loading logs" : operationPending(state()) ? "Waiting for deployment" : "No deployment logs" : !filtered().length ? "No matching logs" : undefined}
         ref={node => viewport = node} onFollow={value => follow = value} />
     </div>
+    <Show when={diagnose()}>
+      <DiagnosisDrawer applicationId={props.deployment.applicationId} deploymentId={props.deployment.id} close={() => setDiagnose(false)} />
+    </Show>
   </div>;
 }

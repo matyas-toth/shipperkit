@@ -47,6 +47,27 @@ export interface SystemInfo {
   database: { engine: string; journal: string; counts: Record<string, number> };
   runtime: { go: string; heapBytes: number; goroutines: number };
 }
+export interface OverviewValue { percent: number | null; used?: number; total?: number }
+export interface OverviewSeries { from: number; to: number; step: number; cpu: Array<number | null>; memory: Array<number | null>; disk: Array<number | null> }
+export interface SystemOverview {
+  sampledAt: number; stale: boolean; vantage: string;
+  cpu: OverviewValue; memory: OverviewValue; disk: OverviewValue;
+  load1: number; containers: { running: number; total: number };
+  series: OverviewSeries; thresholds: { cpu: string; memory: string; disk: string };
+  measuring: boolean; unavailableCpu: boolean;
+}
+export interface DiagnosisCause { code: string; summary: string; detail: string; confidence: "high" | "medium" | "low" | string; evidence: string[] }
+export interface DiagnosisCheck { layer: string; state: string; summary: string; observedAt: number }
+export interface DiagnosisService { name: string; image?: string; state: string; health: string; exitCode: number; restarts: number; oomKilled: boolean; cpuPercent?: number; memoryBytes?: number; memoryLimit?: number; runtimePort?: number; healthPath?: string }
+export interface DiagnosisLog { service: string; lines: string[] }
+export interface DiagnosisAction { id: string; label: string; kind: "navigate" | "retry" | "copy" | "docs" | string; target: string }
+export interface DeploymentDiagnosis {
+  schemaVersion: number; generatedAt: number; vantage: string;
+  application: { id: string; name: string; method: string };
+  deployment: { id: string; operation: string; state: string; stage: string; durationSeconds: number; createdAt: number; error?: string };
+  cause: DiagnosisCause; checks: DiagnosisCheck[]; services: DiagnosisService[];
+  logs: DiagnosisLog[]; changesSinceServing: string[]; unknowns: string[]; nextActions: DiagnosisAction[];
+}
 
 export type UpdateChannel = "main" | "nightly";
 export interface UpdateAvailable { version: string; image: string; releaseUrl: string; channel: UpdateChannel; checkedAt: number }

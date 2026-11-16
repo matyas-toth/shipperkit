@@ -9,12 +9,15 @@ import { Button, ErrorNotice, IconButton, Status } from "../components/Controls"
 import { mediaQuery } from "../media";
 import { docs } from "../docs";
 import HighlightedText from "../components/HighlightedText";
+import SystemPulse, { type PulseMetric } from "../components/SystemPulse";
+import SystemDrawer from "../components/SystemDrawer";
 
 const WINDOW_ROWS = 32;
 export default function Applications() {
   const inventory = useInventory(), navigate = useNavigate();
   const auth = useAuth();
   const [search, setSearch] = createSignal(""), [status, setStatus] = createSignal("all"), [scrollTop, setScrollTop] = createSignal(0);
+  const [pulse, setPulse] = createSignal<PulseMetric>();
   let viewport!: HTMLDivElement;
   const compact = mediaQuery("(width < 48rem)");
   // Keep the virtualization stride in sync with the desktop and compact rows.
@@ -34,6 +37,7 @@ export default function Applications() {
     <header class="page-heading"><h1>Applications</h1></header>
     <Show when={inventory.error()}><ErrorNotice message={inventory.error()!.message} retry={() => void inventory.refresh()} /></Show>
     <Show when={inventory.data() && !inventory.data()!.docker.connected}><ErrorNotice message={inventory.data()!.docker.error || "Docker is unavailable"} retry={() => void inventory.refresh()} /></Show>
+    <SystemPulse open={metric => setPulse(metric)} />
     <div class="table-toolbar app-toolbar">
       <div class="search-field"><Icon name="search" /><input id="application-search" aria-label="Search applications" placeholder="Search applications" autocomplete="off" value={search()} onInput={e => { setSearch(e.currentTarget.value); resetScroll(); }} />
         <Show when={search()}><IconButton icon="close" label="Clear search" ghost onClick={() => { setSearch(""); resetScroll(); }} /></Show>
@@ -56,5 +60,6 @@ export default function Applications() {
         <tr class="table-footer"><td colspan="6">{items().length} {items().length === 1 ? "application" : "applications"}</td></tr>
       </tbody></table>
     </div>
+    <Show when={pulse()}>{metric => <SystemDrawer metric={metric()} close={() => setPulse(undefined)} />}</Show>
   </div>;
 }

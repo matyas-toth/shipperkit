@@ -9,13 +9,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"shipper/internal/auth"
 	"shipper/internal/deploy"
+	"shipper/internal/diagnosis"
 	"shipper/internal/operations"
 	"shipper/internal/store"
 )
 
 func (s *Server) operationsRoutes(r chi.Router) {
 	r.Get("/capabilities", s.capabilities)
+	r.Get("/system/overview", s.systemOverview)
 	r.Get("/applications/{id}/diagnostics", s.diagnostics)
+	r.Get("/applications/{id}/deployments/{deployment}/diagnosis", s.deploymentDiagnosis)
 	r.Get("/applications/{id}/observations", s.observations)
 	r.Get("/applications/{id}/incidents", s.incidents)
 	r.Group(func(r chi.Router) {
@@ -365,12 +368,20 @@ func (s *Server) diagnostics(w http.ResponseWriter, r *http.Request) {
 		}
 		duration = max(0, end-latest.CreatedAt)
 	}
+	var cause any
+	actions := []diagnosis.DiagnosisAction{}
+	if latest != nil && latest.State == "failed" {
+		if result, e := diagnosis.DiagnoseDeployment(r.Context(), s.db, id, latest.ID, health); e == nil {
+			cause = result.Cause
+			actions = result.NextActions
+		}
+	}
 	s.json(w, 200, map[string]any{"schemaVersion": "1", "observedAt": time.Now().Unix(), "applicationId": id, "name": a.Name, "desiredState": a.DesiredState, "servingRelease": serving, "latestOperation": func() any {
 		if latest == nil {
 			return nil
 		}
 		return publicDeployment(r, *latest)
-	}(), "failedStage": stage, "durationSeconds": duration, "checks": checks, "observations": facts, "changesSinceServing": changes, "taskResults": runs, "logs": logs, "logReference": "/api/v1/applications/" + id + "/deployments/", "vantage": "Shipper control plane", "unknowns": []string{"Independent external reachability is not measured", "Boot service readiness is not measured", "Application-level dependency protocols need declared health checks"}})
+	}(), "failedStage": stage, "durationSeconds": duration, "checks": checks, "observations": facts, "changesSinceServing": changes, "taskResults": runs, "logs": logs, "cause": cause, "nextActions": actions, "logReference": "/api/v1/applications/" + id + "/deployments/", "vantage": "Shipper control plane", "unknowns": []string{"Independent external reachability is not measured", "Boot service readiness is not measured", "Application-level dependency protocols need declared health checks"}})
 }
 func (s *Server) notificationSettings(w http.ResponseWriter, r *http.Request) {
 	c, e := operations.LoadNotifications(r.Context(), s.db)

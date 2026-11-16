@@ -10,7 +10,8 @@ import { SegmentedChoice } from "../components/Choices";
 import { bytes, createdDate, operationTime } from "../data";
 import Retention from "../components/Retention";
 import ChangeReview from "../components/ChangeReview";
-import type {ChangePlan,SystemInfo} from "../types";
+import { DiskDonut, MetricChart } from "../components/MetricChart";
+import type {ChangePlan,SystemInfo,SystemOverview} from "../types";
 
 interface HostStatus { observedAt: number; stale: boolean; dockerAtBoot: boolean; shipperAtBoot: boolean; rebootRequired: boolean; securityServiceEnabled: boolean; clockSynchronized: boolean }
 interface Credential { id: string; name: string; scopes: string[]; applications: string[]; expiresAt: number }
@@ -25,6 +26,7 @@ export default function System() {
   const section = () => sections.find(s => s.id === location.hash.slice(1))?.id ?? "overview";
  const [repair,setRepair]=createSignal<ChangePlan>();
  const system=createQuery(()=>({queryKey:["system"],queryFn:()=>api<SystemInfo>("/system")}));
+  const overview=createQuery(()=>({queryKey:["system","overview"],queryFn:()=>api<SystemOverview>("/system/overview"),refetchInterval:30000}));
   const [error, setError] = createSignal(""), [busy, setBusy] = createSignal(false), [token, setToken] = createSignal("");
   const [name, setName] = createSignal(""), [scope, setScope] = createSignal(["read"]), [app, setApp] = createSignal(""), [days, setDays] = createSignal(30), [creating, setCreating] = createSignal(false);
   const [notification, setNotification] = createSignal<Notifications>(), [result, setResult] = createSignal("");
@@ -70,6 +72,16 @@ export default function System() {
         </div>
       </section>}</Show>
       <For each={query.data?.items.filter(v => v.kind === "storage")}>{fact => <dl class="settings-group"><div class="setting-row"><dt>{fact.details.scope}</dt><dd>{bytes(fact.details.free ?? 0)} free / {bytes(fact.details.total ?? 0)}</dd></div></dl>}</For>
+    </section>
+    <section class="settings-section"><h2>Capacity</h2>
+      <Show when={overview.data} fallback={<span class="loading-line" aria-label="Loading host capacity" />}>{data => <>
+        <div class="capacity-charts">
+          <MetricChart label="CPU" value={data().measuring ? "Measuring" : data().cpu.percent == null ? "—" : Math.round(data().cpu.percent!) + "%"} state={data().thresholds.cpu} values={data().series.cpu} />
+          <MetricChart label="Memory" value={data().memory.percent == null ? "—" : Math.round(data().memory.percent!) + "%"} state={data().thresholds.memory} values={data().series.memory} detail={data().memory.total ? `${bytes(data().memory.used ?? 0)} of ${bytes(data().memory.total!)}` : undefined} />
+          <MetricChart label="Disk" value={data().disk.percent == null ? "—" : Math.round(data().disk.percent!) + "%"} state={data().thresholds.disk} values={data().series.disk} detail={data().disk.total ? `${bytes(data().disk.used ?? 0)} of ${bytes(data().disk.total!)}` : undefined} />
+        </div>
+        <DiskDonut percent={data().disk.percent ?? null} used={bytes(data().disk.used ?? 0)} total={bytes(data().disk.total ?? 0)} free={bytes(Math.max(0, (data().disk.total ?? 0) - (data().disk.used ?? 0)))} />
+      </>}</Show>
     </section>
     <section class="settings-section"><h2>Runtime</h2><dl class="settings-group"><div class="setting-row"><dt>Shipper</dt><dd>{system.data?.version||"Loading"}</dd></div><div class="setting-row"><dt>Docker Engine</dt><dd>{system.data?.docker.engine.version||"Unavailable"}</dd></div><div class="setting-row"><dt>Docker host</dt><dd>{system.data?.docker.engine.os||"Unavailable"}</dd></div><div class="setting-row"><dt>Shipper heap</dt><dd>{bytes(system.data?.runtime.heapBytes||0)}</dd></div><div class="setting-row"><dt>Recovery</dt><dd><A class="button neutral small" href="/settings#recovery">Open recovery</A></dd></div></dl></section>
     </div></Show>
