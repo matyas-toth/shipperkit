@@ -22,3 +22,9 @@ Shipper modifications:
 
 The manifests are snapshots. A deployed application keeps its own Compose file
 and never reads the catalog at runtime.
+
+Service names and logos are trademarks of their respective projects. Most logo
+assets are copied from Coolify's `public/svgs` directory under the same
+Apache-2.0 license. Curated-service logos use [Simple Icons](https://simpleicons.org),
+which is CC0. Logos are used only to identify the service in the library and are
+not part of Shipper's own marks.

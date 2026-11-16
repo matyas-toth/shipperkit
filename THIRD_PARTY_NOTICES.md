@@ -26,6 +26,11 @@ are in `internal/catalog/ATTRIBUTION.md`; the full license is in
 `internal/catalog/licenses/Apache-2.0.txt`. See
 [Coolify](https://github.com/coollabsio/coolify).
 
+Service Library logo assets under `web/public/service-logos` are trademarks of
+their respective projects. Most are copied from Coolify's `public/svgs` assets;
+curated-service logos use Simple Icons (CC0). They identify the service and do
+not imply endorsement.
+
 The runtime image includes unmodified Git from Alpine Linux (GPLv2), along with
 its system dependencies. Source and package metadata are available from
 [Git](https://github.com/git/git) and [Alpine's package sources](https://gitlab.alpinelinux.org/alpine/aports).

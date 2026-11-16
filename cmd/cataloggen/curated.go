@@ -468,7 +468,7 @@ volumes:
 		name := displayName(item.ID)
 		out = append(out, service{
 			ID: item.ID, Name: item.Name, Description: item.Description, Category: item.Category,
-			Tags: item.Tags, Logomark: logomark(item.Name), Documentation: item.Docs,
+			Tags: item.Tags, Logomark: logomark(item.Name), Logo: "/service-logos/" + item.ID + ".svg", Documentation: item.Docs,
 			Source: "shipper", Featured: true, MainService: item.Main, Port: item.Port, HealthPath: "/",
 			Support: item.Support, SupportNote: item.SupportNote, Compose: strings.TrimSpace(item.Compose),
 			Services: serviceInfos(doc, item.Main), Fields: item.Fields, Domains: item.Domains,

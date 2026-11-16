@@ -26,7 +26,7 @@ export async function installFixtures(page: Page) {
   const catalogByID = new Map<string, Json>(catalogRaw.services.map((item: Json) => [item.id, item]));
   const catalogItems = catalogRaw.services.map((item: Json) => ({
     id: item.id, name: item.name, description: item.description, category: item.category, tags: item.tags,
-    logomark: item.logomark, website: item.website, documentation: item.documentation, source: item.source,
+    logomark: item.logomark, logo: item.logo, website: item.website, documentation: item.documentation, source: item.source,
     featured: item.featured, mainService: item.mainService, port: item.port, support: item.support, supportNote: item.supportNote,
     services: item.services.length, fields: item.fields.length, domain: (item.domains ?? []).length > 0,
   }));

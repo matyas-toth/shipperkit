@@ -3,6 +3,7 @@ import type { Service } from "../types";
 import { bytes } from "../data";
 import { Status } from "./Controls";
 import { Icon } from "./Icon";
+import ServiceLogo from "./ServiceLogo";
 
 export default function ServiceSummary(props: {
   services: Service[];
@@ -10,14 +11,14 @@ export default function ServiceSummary(props: {
   stats?: (service: string) => { cpuPercent?: number; memoryBytes?: number } | undefined;
   open?: (name: string) => void;
   routes?: (service: Service) => JSX.Element;
-  meta?: (service: Service) => { role?: string; mark?: string } | undefined;
+  meta?: (service: Service) => { role?: string; mark?: string; logo?: string } | undefined;
 }) {
   return <div class="service-grid" role="list">
     <For each={props.services}>{service => {
       const stats = () => props.stats?.(service.name);
       const meta = () => props.meta?.(service);
       const facts = () => <>
-        <span class="service-card-heading"><span class="service-card-mark"><Show when={meta()?.mark} fallback={<Icon name="box" />}>{meta()!.mark}</Show></span><strong>{service.name}</strong>
+        <span class="service-card-heading"><ServiceLogo logo={meta()?.logo} mark={meta()?.mark ?? ""} class="service-card-mark" /><strong>{service.name}</strong>
           <Show when={props.status}><Status value={props.status!(service)} /></Show>
           <Show when={props.open}><Icon name="chevron" /></Show>
         </span>

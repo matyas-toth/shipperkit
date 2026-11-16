@@ -14,3 +14,15 @@ HTTP port, and marks templates that still need host resources as advanced.
 
 See [Service Library](../../docs/service-library.md) and
 [attribution](../../internal/catalog/ATTRIBUTION.md).
+
+Service logos are local assets. After regenerating the manifest, refresh them
+with the same Coolify bundle:
+
+```sh
+node scripts/fetch-service-logos.mjs --source service-templates.json
+```
+
+The script writes `web/public/service-logos` and falls back to a monogram in the
+UI when an upstream logo is unavailable. PNG assets are committed downscaled to
+at most 160 px; use ffmpeg or an image optimizer before committing refreshed
+assets.

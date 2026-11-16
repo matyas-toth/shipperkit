@@ -5,6 +5,7 @@ import { api } from "../api";
 import type { CatalogDomain, CatalogField, CatalogIndex, CatalogService, CatalogServiceSummary, Domain, StaticConfig, Variable } from "../types";
 import { Button } from "./Controls";
 import { Icon, type IconName } from "./Icon";
+import ServiceLogo from "./ServiceLogo";
 import { emptyConfig } from "./StaticFields";
 
 type Props = {
@@ -334,7 +335,7 @@ export default function ServiceLibrary(props: Props) {
           <div class="library-detail-scroll">
             <button ref={backButton} type="button" class="library-back" disabled={using()} onClick={closeService}><Icon name="back" />Service Library</button>
             <header class="library-service-heading">
-              <span class="library-mark large">{item().logomark}</span>
+              <ServiceLogo logo={item().logo} mark={item().logomark} class="library-mark large" />
               <div class="library-service-copy">
                 <div class="library-service-title"><h3>{item().name}</h3><span class={"library-support " + item().support}>{item().support === "ready" ? "Ready" : "Advanced"}</span></div>
                 <p>{item().description}</p>
@@ -403,7 +404,7 @@ export default function ServiceLibrary(props: Props) {
               <Show when={!index.isPending && !filtered().length}><div class="library-empty"><Icon name="search" /><strong>No matching services</strong><span>Try a different category or search.</span></div></Show>
               <div class="library-grid" role="list">
                 <For each={filtered()}>{item => <button type="button" class="library-tile" role="listitem" onClick={() => openService(item.id)}>
-                  <span class="library-mark">{item.logomark}</span>
+                  <ServiceLogo logo={item.logo} mark={item.logomark} class="library-mark" />
                   <span class="library-tile-copy"><strong>{item.name}</strong><small>{item.description}</small></span>
                   <span class="library-tile-meta"><span><Icon name={iconFor(item.category)} />{item.category}</span><Show when={item.support === "advanced"}><span class="library-support advanced">Advanced</span></Show><Show when={item.services > 1}><span>{item.services} services</span></Show></span>
                 </button>}</For>

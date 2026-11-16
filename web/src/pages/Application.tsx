@@ -24,6 +24,7 @@ import RuntimeLogs from "../components/RuntimeLogs";
 import { ApplicationActivity, ApplicationIssue, applicationDiagnostics } from "../components/Diagnostics";
 import { ServiceList, ServicePanel } from "../components/Services";
 import { CatalogServiceConsole, CatalogSummary } from "../components/CatalogServiceConsole";
+import ServiceLogo from "../components/ServiceLogo";
 
 const appTabs = [
   { id: "overview", label: "Overview" }, { id: "deployments", label: "Deployments" }, { id: "logs", label: "Logs" },
@@ -131,7 +132,7 @@ export default function ApplicationPage() {
     <Show when={app()} fallback={<span class="loading-line" aria-label="Loading application" />}>{a => <>
       <Show when={!serviceView()}>
       <div class="app-context" classList={{ "has-editor-scope": !!editorScope() }}>
-      <header class="page-heading app-heading"><div class="application-title"><Show when={a().config.catalogService} fallback={<Icon name={a().config.database ? "database" : a().method === "static" ? "code" : "box"} />}><Show when={catalogService()} fallback={<span class="catalog-mark app"><Icon name="box" /></span>}>{item => <span class="catalog-mark app">{item().logomark}</span>}</Show></Show><h1>{a().name}</h1><span class="application-title-states">
+      <header class="page-heading app-heading"><div class="application-title"><Show when={a().config.catalogService} fallback={<Icon name={a().config.database ? "database" : a().method === "static" ? "code" : "box"} />}><Show when={catalogService()} fallback={<span class="catalog-mark app"><Icon name="box" /></span>}>{item => <ServiceLogo logo={item().logo} mark={item().logomark} class="catalog-mark app" />}</Show></Show><h1>{a().name}</h1><span class="application-title-states">
           <Status value={displayApplicationState(a())} label={routingIssue() && ["running", "serving"].includes(displayApplicationState(a())) ? "Runtime running" : undefined} />
         </span>
         <Show when={editorScope()}><span class="app-editor-scope"><Icon name="chevron" />{editorScope()}</span></Show></div>

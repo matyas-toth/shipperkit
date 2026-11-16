@@ -42,6 +42,7 @@ type Service struct {
 	Category      string        `json:"category"`
 	Tags          []string      `json:"tags,omitempty"`
 	Logomark      string        `json:"logomark"`
+	Logo          string        `json:"logo,omitempty"`
 	Website       string        `json:"website,omitempty"`
 	Documentation string        `json:"documentation,omitempty"`
 	Source        string        `json:"source"`
@@ -97,6 +98,7 @@ type Summary struct {
 	Category      string   `json:"category"`
 	Tags          []string `json:"tags,omitempty"`
 	Logomark      string   `json:"logomark"`
+	Logo          string   `json:"logo,omitempty"`
 	Website       string   `json:"website,omitempty"`
 	Documentation string   `json:"documentation,omitempty"`
 	Source        string   `json:"source"`
@@ -195,7 +197,7 @@ func (c *Catalog) Index(updatedAt int64, cached bool) Index {
 		}
 		index.Items = append(index.Items, Summary{
 			ID: service.ID, Name: service.Name, Description: service.Description, Category: service.Category,
-			Tags: service.Tags, Logomark: service.Logomark, Website: service.Website,
+			Tags: service.Tags, Logomark: service.Logomark, Logo: service.Logo, Website: service.Website,
 			Documentation: service.Documentation, Source: service.Source, Featured: service.Featured,
 			MainService: service.MainService,
 			Port:        service.Port, Support: service.Support, SupportNote: service.SupportNote,

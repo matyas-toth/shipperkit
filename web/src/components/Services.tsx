@@ -24,7 +24,7 @@ export function ServiceList(props: { application: Application; services: Service
   });
   const meta = (service: Service) => {
     const part = props.catalog?.services.find(item => item.name === service.name);
-    return part ? { role: part.role, mark: part.name === props.catalog?.mainService ? props.catalog?.logomark : undefined } : undefined;
+    return part ? { role: part.role, mark: part.name === props.catalog?.mainService ? props.catalog?.logomark : undefined, logo: part.name === props.catalog?.mainService ? props.catalog?.logo : undefined } : undefined;
   };
   function status(service: Service) {
     const containers = byService().get(service.name) ?? [];

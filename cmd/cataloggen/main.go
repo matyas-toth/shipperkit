@@ -16,6 +16,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -50,6 +51,7 @@ type service struct {
 	Category      string        `json:"category"`
 	Tags          []string      `json:"tags,omitempty"`
 	Logomark      string        `json:"logomark"`
+	Logo          string        `json:"logo,omitempty"`
 	Website       string        `json:"website,omitempty"`
 	Documentation string        `json:"documentation,omitempty"`
 	Source        string        `json:"source"`
@@ -250,6 +252,7 @@ func convert(id string, t sourceTemplate) (service, error) {
 		Category:      category,
 		Tags:          tags,
 		Logomark:      logomark(name),
+		Logo:          serviceLogoPath(id, t.Logo),
 		Documentation: cleanURL(t.Documentation),
 		Source:        "coolify",
 		Updated:       t.UpdatedAt,
@@ -1189,6 +1192,16 @@ func isNumeric(value string) bool {
 	}
 	_, err := strconv.Atoi(value)
 	return err == nil
+}
+
+func serviceLogoPath(id, source string) string {
+	extension := strings.ToLower(path.Ext(source))
+	switch extension {
+	case ".png", ".svg", ".webp", ".jpg", ".jpeg", ".gif":
+	default:
+		extension = ".svg"
+	}
+	return "/service-logos/" + id + extension
 }
 
 func displayName(id string) string {

@@ -17,6 +17,7 @@
         "low"
       ],
       "logomark": "N8",
+      "logo": "/service-logos/n8n.png",
       "documentation": "https://n8n.io",
       "source": "coolify",
       "updated": "2026-03-30T20:40:07+02:00",
@@ -217,6 +218,7 @@
         "dashboard"
       ],
       "logomark": "GR",
+      "logo": "/service-logos/grafana.svg",
       "documentation": "https://grafana.com",
       "source": "coolify",
       "updated": "2026-03-22T22:04:22+07:00",
@@ -289,6 +291,7 @@
         "storage"
       ],
       "logomark": "IM",
+      "logo": "/service-logos/immich.svg",
       "documentation": "https://immich.app/docs/overview/introduction",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -396,6 +399,7 @@
         "open-source"
       ],
       "logomark": "SU",
+      "logo": "/service-logos/supabase.svg",
       "documentation": "https://supabase.io",
       "source": "coolify",
       "updated": "2026-11-03T18:30:43+01:00",
@@ -1065,6 +1069,7 @@
         "sqlite"
       ],
       "logomark": "NO",
+      "logo": "/service-logos/nocodb.svg",
       "documentation": "https://nocodb.com/",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -1115,6 +1120,7 @@
         "applications"
       ],
       "logomark": "UK",
+      "logo": "/service-logos/uptime-kuma.svg",
       "documentation": "https://github.com/louislam/uptime-kuma?tab=readme-ov-file",
       "source": "coolify",
       "updated": "2026-01-08T21:10:17+01:00",
@@ -1161,6 +1167,7 @@
         "security"
       ],
       "logomark": "VA",
+      "logo": "/service-logos/vaultwarden.svg",
       "documentation": "https://github.com/dani-garcia/vaultwarden",
       "source": "coolify",
       "updated": "2026-08-24T19:50:37+02:00",
@@ -1260,6 +1267,7 @@
         "system"
       ],
       "logomark": "GH",
+      "logo": "/service-logos/ghost.svg",
       "documentation": "https://ghost.org",
       "source": "coolify",
       "updated": "2025-11-14T23:33:47+05:30",
@@ -1403,6 +1411,7 @@
         "integration"
       ],
       "logomark": "OW",
+      "logo": "/service-logos/open-webui.svg",
       "documentation": "https://docs.openwebui.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -1450,6 +1459,7 @@
         "platform"
       ],
       "logomark": "AP",
+      "logo": "/service-logos/appwrite.svg",
       "documentation": "https://appwrite.io/docs",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -2989,6 +2999,7 @@
         "api"
       ],
       "logomark": "PL",
+      "logo": "/service-logos/plane.svg",
       "documentation": "https://docs.plane.so/self-hosting/methods/docker-compose",
       "source": "coolify",
       "updated": "2026-10-15T23:32:06+02:00",
@@ -3295,6 +3306,7 @@
         "notion"
       ],
       "logomark": "DO",
+      "logo": "/service-logos/docmost.png",
       "documentation": "https://docmost.com/docs/",
       "source": "coolify",
       "updated": "2026-05-15T13:36:02+02:00",
@@ -3438,6 +3450,7 @@
         "lightweight"
       ],
       "logomark": "GI",
+      "logo": "/service-logos/gitea.svg",
       "documentation": "https://docs.gitea.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -3487,6 +3500,7 @@
         "lightweight"
       ],
       "logomark": "FO",
+      "logo": "/service-logos/forgejo.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -3559,6 +3573,7 @@
         "homepage"
       ],
       "logomark": "HO",
+      "logo": "/service-logos/homepage.png",
       "documentation": "https://gethomepage.dev/latest/",
       "source": "coolify",
       "updated": "2026-10-19T21:18:41+02:00",
@@ -3620,6 +3635,7 @@
         "ui"
       ],
       "logomark": "PO",
+      "logo": "/service-logos/portainer.png",
       "documentation": "https://docs.portainer.io",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -3669,6 +3685,7 @@
         "collaboration"
       ],
       "logomark": "CS",
+      "logo": "/service-logos/code-server.svg",
       "documentation": "https://coder.com/docs/code-server/latest",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -3736,6 +3753,7 @@
         "music"
       ],
       "logomark": "JE",
+      "logo": "/service-logos/jellyfin.svg",
       "documentation": "https://jellyfin.org",
       "source": "coolify",
       "updated": "2026-05-12T08:58:05+02:00",
@@ -3798,6 +3816,7 @@
         "data"
       ],
       "logomark": "NE",
+      "logo": "/service-logos/nextcloud.svg",
       "documentation": "https://docs.nextcloud.com",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -3847,6 +3866,7 @@
       "description": "Paperless-ngx is a community-supported open-source document management system that transforms your physical documents into a searchable online archive so you can keep, well, less paper.",
       "category": "Productivity",
       "logomark": "PN",
+      "logo": "/service-logos/paperless.svg",
       "documentation": "https://docs.paperless-ngx.com/configuration/",
       "source": "coolify",
       "updated": "2025-12-02T12:07:14+01:00",
@@ -3943,6 +3963,7 @@
         "expenses"
       ],
       "logomark": "AB",
+      "logo": "/service-logos/actualbudget.png",
       "documentation": "https://actualbudget.org/docs/install/docker",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -3991,6 +4012,7 @@
         "open source"
       ],
       "logomark": "AC",
+      "logo": "/service-logos/activepieces.png",
       "documentation": "https://www.activepieces.com/docs/getting-started/introduction",
       "source": "coolify",
       "updated": "2026-02-03T22:32:03+01:00",
@@ -4199,6 +4221,7 @@
         "wordpress"
       ],
       "logomark": "WO",
+      "logo": "/service-logos/wordpress.svg",
       "documentation": "https://wordpress.org/documentation/",
       "source": "shipper",
       "featured": true,
@@ -4259,6 +4282,7 @@
         "database"
       ],
       "logomark": "PO",
+      "logo": "/service-logos/postgresql.svg",
       "documentation": "https://www.postgresql.org/docs/",
       "source": "shipper",
       "featured": true,
@@ -4313,6 +4337,7 @@
         "database"
       ],
       "logomark": "MY",
+      "logo": "/service-logos/mysql.svg",
       "documentation": "https://dev.mysql.com/doc/",
       "source": "shipper",
       "featured": true,
@@ -4376,6 +4401,7 @@
         "queue"
       ],
       "logomark": "RE",
+      "logo": "/service-logos/redis.svg",
       "documentation": "https://redis.io/docs/latest/",
       "source": "shipper",
       "featured": true,
@@ -4415,6 +4441,7 @@
         "knowledge"
       ],
       "logomark": "OU",
+      "logo": "/service-logos/outline.svg",
       "documentation": "https://docs.getoutline.com/s/hosting",
       "source": "shipper",
       "featured": true,
@@ -4538,6 +4565,7 @@
         "meetings"
       ],
       "logomark": "CC",
+      "logo": "/service-logos/calcom.svg",
       "documentation": "https://cal.com/docs",
       "source": "shipper",
       "featured": true,
@@ -4607,6 +4635,7 @@
         "sql"
       ],
       "logomark": "CL",
+      "logo": "/service-logos/clickhouse.svg",
       "documentation": "https://clickhouse.com/docs",
       "source": "shipper",
       "featured": true,
@@ -4668,6 +4697,7 @@
         "loki"
       ],
       "logomark": "LO",
+      "logo": "/service-logos/loki.svg",
       "documentation": "https://grafana.com/docs/loki/latest/",
       "source": "shipper",
       "featured": true,
@@ -4703,6 +4733,7 @@
         "database"
       ],
       "logomark": "MA",
+      "logo": "/service-logos/mariadb.svg",
       "documentation": "https://mariadb.com/kb/en/documentation/",
       "source": "shipper",
       "featured": true,
@@ -4766,6 +4797,7 @@
         "objects"
       ],
       "logomark": "MI",
+      "logo": "/service-logos/minio.svg",
       "documentation": "https://min.io/docs/minio/container/index.html",
       "source": "shipper",
       "featured": true,
@@ -4819,6 +4851,7 @@
         "database"
       ],
       "logomark": "MO",
+      "logo": "/service-logos/mongodb.svg",
       "documentation": "https://www.mongodb.com/docs/",
       "source": "shipper",
       "featured": true,
@@ -4873,6 +4906,7 @@
         "prometheus"
       ],
       "logomark": "PR",
+      "logo": "/service-logos/prometheus.svg",
       "documentation": "https://prometheus.io/docs/",
       "source": "shipper",
       "featured": true,
@@ -4911,6 +4945,7 @@
         "providers"
       ],
       "logomark": "9R",
+      "logo": "/service-logos/9router.svg",
       "documentation": "https://github.com/decolua/9router",
       "source": "coolify",
       "updated": "2026-10-05T11:08:52+02:00",
@@ -4995,6 +5030,7 @@
         "workspace"
       ],
       "logomark": "AF",
+      "logo": "/service-logos/affine.svg",
       "documentation": "https://docs.affine.pro/docs/self-host-affine",
       "source": "coolify",
       "updated": "2026-08-10T17:53:50+02:00",
@@ -5152,6 +5188,7 @@
         "productivity"
       ],
       "logomark": "AL",
+      "logo": "/service-logos/alexandrie.svg",
       "documentation": "https://github.com/Smaug6739/Alexandrie/tree/main/docs",
       "source": "coolify",
       "updated": "2026-07-07T13:24:35+02:00",
@@ -5437,6 +5474,7 @@
         "machine-learning"
       ],
       "logomark": "AN",
+      "logo": "/service-logos/anythingllm.svg",
       "documentation": "https://docs.anythingllm.com/installation-docker/overview",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -5611,6 +5649,7 @@
         "ai"
       ],
       "logomark": "AP",
+      "logo": "/service-logos/appflowy.svg",
       "documentation": "https://docs.appflowy.io/docs/documentation/appflowy-cloud",
       "source": "coolify",
       "updated": "2026-11-03T18:29:35+01:00",
@@ -5921,6 +5960,7 @@
         "apprise"
       ],
       "logomark": "AA",
+      "logo": "/service-logos/apprise-api.png",
       "documentation": "https://docs.linuxserver.io/images/docker-apprise-api/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -5970,6 +6010,7 @@
         "platform"
       ],
       "logomark": "AP",
+      "logo": "/service-logos/appsmith.svg",
       "documentation": "https://appsmith.com",
       "source": "coolify",
       "updated": "2026-09-02T19:39:19+02:00",
@@ -6064,6 +6105,7 @@
         "ai"
       ],
       "logomark": "AR",
+      "logo": "/service-logos/argilla.png",
       "documentation": "https://docs.argilla.io/latest/",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -6287,6 +6329,7 @@
         "self-hosted"
       ],
       "logomark": "AU",
+      "logo": "/service-logos/audiobookshelf.svg",
       "documentation": "https://www.audiobookshelf.org/",
       "source": "coolify",
       "updated": "2026-05-12T09:09:36+02:00",
@@ -6343,6 +6386,7 @@
         "oidc"
       ],
       "logomark": "AU",
+      "logo": "/service-logos/authentik.png",
       "documentation": "https://docs.goauthentik.io/docs/installation/docker-compose",
       "source": "coolify",
       "updated": "2026-08-10T19:44:44+02:00",
@@ -6510,6 +6554,7 @@
         "dbaas"
       ],
       "logomark": "AU",
+      "logo": "/service-logos/autobase.svg",
       "documentation": "https://autobase.tech/docs/",
       "source": "coolify",
       "updated": "2026-09-27T23:49:51+02:00",
@@ -6616,6 +6661,7 @@
         "activities"
       ],
       "logomark": "BA",
+      "logo": "/service-logos/babybuddy.png",
       "documentation": "https://docs.baby-buddy.net",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -6663,6 +6709,7 @@
         "tool"
       ],
       "logomark": "BE",
+      "logo": "/service-logos/bento-pdf.png",
       "documentation": "https://bentopdf.com/docs",
       "source": "coolify",
       "updated": "2026-02-03T22:27:36+01:00",
@@ -6711,6 +6758,7 @@
         "alerts"
       ],
       "logomark": "BE",
+      "logo": "/service-logos/beszel.svg",
       "documentation": "https://github.com/henrygd/beszel?tab=readme-ov-file#getting-started",
       "source": "coolify",
       "updated": "2026-04-24T02:21:33+05:30",
@@ -6847,6 +6895,7 @@
         "alerts"
       ],
       "logomark": "BA",
+      "logo": "/service-logos/beszel-agent.svg",
       "documentation": "https://www.beszel.dev/guide/agent-installation",
       "source": "coolify",
       "updated": "2026-09-08T13:14:17+02:00",
@@ -6939,6 +6988,7 @@
         "bitcoin"
       ],
       "logomark": "BC",
+      "logo": "/service-logos/bitcoin-core.svg",
       "documentation": "https://hub.docker.com/r/ruimarinho/bitcoin-core/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -7005,6 +7055,7 @@
         "platform"
       ],
       "logomark": "BP",
+      "logo": "/service-logos/bluesky-pds.svg",
       "documentation": "https://github.com/bluesky-social/pds",
       "source": "coolify",
       "updated": "2026-05-09T19:19:48+05:30",
@@ -7181,6 +7232,7 @@
         "simple-interface"
       ],
       "logomark": "BO",
+      "logo": "/service-logos/bookstack.png",
       "documentation": "https://www.bookstackapp.com/docs/",
       "source": "coolify",
       "updated": "2026-10-23T09:53:25+02:00",
@@ -7369,6 +7421,7 @@
         "service"
       ],
       "logomark": "BR",
+      "logo": "/service-logos/browserless.svg",
       "documentation": "https://docs.browserless.io/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -7427,6 +7480,7 @@
         "postgresql"
       ],
       "logomark": "BU",
+      "logo": "/service-logos/budibase.svg",
       "documentation": "https://docs.budibase.com/docs/docker-compose",
       "source": "coolify",
       "updated": "2026-10-15T23:32:06+02:00",
@@ -7602,6 +7656,7 @@
         "postgresql"
       ],
       "logomark": "BU",
+      "logo": "/service-logos/bugsink.svg",
       "documentation": "https://www.bugsink.com/docs/",
       "source": "coolify",
       "updated": "2026-11-03T18:28:46+01:00",
@@ -7797,6 +7852,7 @@
         "messaging"
       ],
       "logomark": "BU",
+      "logo": "/service-logos/bulwark.svg",
       "documentation": "https://bulwarkmail.org/docs",
       "source": "coolify",
       "updated": "2026-10-01T20:31:00+02:00",
@@ -7863,6 +7919,7 @@
         "collaboration"
       ],
       "logomark": "BU",
+      "logo": "/service-logos/buzz.svg",
       "documentation": "https://github.com/block/buzz",
       "source": "coolify",
       "updated": "2026-10-15T23:32:06+02:00",
@@ -8099,6 +8156,7 @@
         "ereader"
       ],
       "logomark": "CW",
+      "logo": "/service-logos/calibre-web.svg",
       "documentation": "https://github.com/linuxserver/docker-calibre-web",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -8162,6 +8220,7 @@
         "ereader"
       ],
       "logomark": "CW",
+      "logo": "/service-logos/calibre-web-automated-book-downloader.png",
       "documentation": "https://github.com/calibrain/calibre-web-automated-book-downloader",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -8272,7 +8331,7 @@
           "label": "Tz",
           "kind": "text",
           "group": "configuration",
-          "default": "America/New_York"
+          "default": "UTC"
         },
         {
           "key": "UID",
@@ -8321,6 +8380,7 @@
         "code"
       ],
       "logomark": "CA",
+      "logo": "/service-logos/cap.svg",
       "documentation": "https://cap.so",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -8508,6 +8568,7 @@
         "proof-of-work"
       ],
       "logomark": "CC",
+      "logo": "/service-logos/cap-captcha.png",
       "documentation": "https://capjs.js.org/guide/",
       "source": "coolify",
       "updated": "2026-04-23T01:07:14+05:30",
@@ -8571,6 +8632,7 @@
         "hosting"
       ],
       "logomark": "CA",
+      "logo": "/service-logos/castopod.svg",
       "documentation": "https://docs.castopod.org/main/en/",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -8686,6 +8748,7 @@
         "backend"
       ],
       "logomark": "CE",
+      "logo": "/service-logos/celld.svg",
       "documentation": "https://celld.dev/docs",
       "source": "coolify",
       "updated": "2026-08-07T18:17:33+02:00",
@@ -8788,6 +8851,7 @@
         "monitor"
       ],
       "logomark": "CH",
+      "logo": "/service-logos/changedetection.png",
       "documentation": "https://github.com/dgtlmoon/changedetection.io/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -8962,6 +9026,7 @@
         "rails"
       ],
       "logomark": "CH",
+      "logo": "/service-logos/chatwoot.svg",
       "documentation": "https://www.chatwoot.com/docs/self-hosted/",
       "source": "coolify",
       "updated": "2026-08-12T14:06:12+02:00",
@@ -9218,6 +9283,7 @@
         "healthcheck"
       ],
       "logomark": "CH",
+      "logo": "/service-logos/checkmate.png",
       "documentation": "https://docs.checkmate.so/",
       "source": "coolify",
       "updated": "2026-01-19T18:28:33+01:00",
@@ -9292,6 +9358,7 @@
         "sharing"
       ],
       "logomark": "CH",
+      "logo": "/service-logos/chibisafe.svg",
       "documentation": "https://chibisafe.app/docs/intro",
       "source": "coolify",
       "updated": "2026-09-27T23:59:10+02:00",
@@ -9351,6 +9418,7 @@
         "embeddings"
       ],
       "logomark": "CH",
+      "logo": "/service-logos/chroma.svg",
       "documentation": "https://cookbook.chromadb.dev/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -9398,6 +9466,7 @@
         "management"
       ],
       "logomark": "CW",
+      "logo": "/service-logos/classicpress-with-mariadb.svg",
       "documentation": "https://www.classicpress.net/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -9477,6 +9546,7 @@
         "management"
       ],
       "logomark": "CW",
+      "logo": "/service-logos/classicpress-with-mysql.svg",
       "documentation": "https://www.classicpress.net/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -9556,6 +9626,7 @@
         "management"
       ],
       "logomark": "CW",
+      "logo": "/service-logos/classicpress-without-database.svg",
       "documentation": "https://www.classicpress.net/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -9605,6 +9676,7 @@
         "postgres"
       ],
       "logomark": "CL",
+      "logo": "/service-logos/cloudbeaver.svg",
       "documentation": "https://dbeaver.com/docs/cloudbeaver/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -9650,6 +9722,7 @@
         "ddns"
       ],
       "logomark": "CD",
+      "logo": "/service-logos/cloudflare-ddns.svg",
       "documentation": "https://github.com/favonia/cloudflare-ddns",
       "source": "coolify",
       "updated": "2026-05-18T15:42:31+10:00",
@@ -9709,6 +9782,7 @@
       "description": "Client for Cloudflare Tunnel, a daemon that exposes private services through the Cloudflare edge.",
       "category": "Proxy",
       "logomark": "CL",
+      "logo": "/service-logos/cloudflared.svg",
       "documentation": "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -9746,6 +9820,7 @@
         "open-source"
       ],
       "logomark": "CL",
+      "logo": "/service-logos/cloudreve.svg",
       "documentation": "https://docs.cloudreve.org/",
       "source": "coolify",
       "updated": "2026-03-03T11:20:40+05:30",
@@ -9838,6 +9913,7 @@
         "nosql"
       ],
       "logomark": "CO",
+      "logo": "/service-logos/cockpit.svg",
       "documentation": "https://getcockpit.com/documentation/",
       "source": "coolify",
       "updated": "2026-10-23T09:53:25+02:00",
@@ -9887,6 +9963,7 @@
         "realtime-collaboration"
       ],
       "logomark": "CO",
+      "logo": "/service-logos/codimd.png",
       "documentation": "https://hackmd.io/c/codimd-documentation",
       "source": "coolify",
       "updated": "2025-11-03T21:29:53+08:00",
@@ -10031,6 +10108,7 @@
         "directories"
       ],
       "logomark": "CO",
+      "logo": "/service-logos/convertx.png",
       "documentation": "https://github.com/C4illin/ConvertX",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -10129,6 +10207,7 @@
         "api"
       ],
       "logomark": "CO",
+      "logo": "/service-logos/convex.svg",
       "documentation": "https://github.com/convex/convex-backend/blob/main/self-hosted/README.md",
       "source": "coolify",
       "updated": "2026-11-03T20:47:51+01:00",
@@ -10398,6 +10477,7 @@
         "file"
       ],
       "logomark": "CR",
+      "logo": "/service-logos/cryptgeon.png",
       "documentation": "https://github.com/cupcakearmy/cryptgeon",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -10495,6 +10575,7 @@
         "development"
       ],
       "logomark": "CY",
+      "logo": "/service-logos/cyberchef.jpeg",
       "documentation": "https://github.com/gchq/CyberChef",
       "source": "coolify",
       "updated": "2026-08-10T22:57:25+02:00",
@@ -10541,6 +10622,7 @@
         "self-hostable"
       ],
       "logomark": "DA",
+      "logo": "/service-logos/dashy.png",
       "documentation": "https://dashy.to/docs",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -10596,6 +10678,7 @@
         "backup"
       ],
       "logomark": "DA",
+      "logo": "/service-logos/databasus.svg",
       "documentation": "https://databasus.com/installation",
       "source": "coolify",
       "updated": "2026-02-24T11:25:17+08:00",
@@ -10643,6 +10726,7 @@
         "database"
       ],
       "logomark": "DK",
+      "logo": "/service-logos/deno-kv.svg",
       "documentation": "https://docs.deno.com/deploy/kv/manual/",
       "source": "coolify",
       "updated": "2026-08-12T14:25:14+02:00",
@@ -10699,6 +10783,7 @@
         "sql"
       ],
       "logomark": "DI",
+      "logo": "/service-logos/directus.svg",
       "documentation": "https://directus.io",
       "source": "coolify",
       "updated": "2026-04-03T19:26:06+05:30",
@@ -10824,6 +10909,7 @@
         "sql"
       ],
       "logomark": "DW",
+      "logo": "/service-logos/directus-with-postgresql.svg",
       "documentation": "https://directus.io",
       "source": "coolify",
       "updated": "2026-04-03T19:25:51+05:30",
@@ -10983,6 +11069,7 @@
         "slack"
       ],
       "logomark": "DI",
+      "logo": "/service-logos/diun.svg",
       "documentation": "https://crazymax.dev/diun/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -11087,6 +11174,7 @@
         "docker"
       ],
       "logomark": "DR",
+      "logo": "/service-logos/docker-registry.png",
       "documentation": "https://distribution.github.io/distribution/",
       "source": "coolify",
       "updated": "2026-01-05T14:13:42+01:00",
@@ -11155,6 +11243,7 @@
         "extraction"
       ],
       "logomark": "DO",
+      "logo": "/service-logos/docling.png",
       "documentation": "https://github.com/DS4SD/docling-serve",
       "source": "coolify",
       "updated": "2026-08-10T17:44:28+02:00",
@@ -11229,6 +11318,7 @@
         "digital-signature"
       ],
       "logomark": "DO",
+      "logo": "/service-logos/documenso.png",
       "documentation": "https://docs.documenso.com/",
       "source": "coolify",
       "updated": "2025-11-07T17:08:01+05:30",
@@ -11464,6 +11554,7 @@
         "documentation"
       ],
       "logomark": "DO",
+      "logo": "/service-logos/docuseal.png",
       "documentation": "https://www.docuseal.co/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -11521,6 +11612,7 @@
         "documentation"
       ],
       "logomark": "DW",
+      "logo": "/service-logos/docuseal-with-postgres.png",
       "documentation": "https://www.docuseal.co/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -11611,6 +11703,7 @@
         "base"
       ],
       "logomark": "DO",
+      "logo": "/service-logos/dokuwiki.png",
       "documentation": "https://www.dokuwiki.org/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -11656,6 +11749,7 @@
         "erp"
       ],
       "logomark": "DO",
+      "logo": "/service-logos/dolibarr.png",
       "documentation": "https://www.dolibarr.org/documentation-home.php",
       "source": "coolify",
       "updated": "2026-10-23T09:53:25+02:00",
@@ -11807,6 +11901,7 @@
         "web-ui"
       ],
       "logomark": "DO",
+      "logo": "/service-logos/dozzle.svg",
       "documentation": "https://dozzle.dev/guide/getting-started#running-with-docker",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -11855,6 +11950,7 @@
         "web-ui"
       ],
       "logomark": "DW",
+      "logo": "/service-logos/dozzle-with-auth.svg",
       "documentation": "https://dozzle.dev/",
       "source": "coolify",
       "updated": "2026-10-26T00:01:07+01:00",
@@ -11904,6 +12000,7 @@
         "low-code"
       ],
       "logomark": "DG",
+      "logo": "/service-logos/drizzle-gateway.jpeg",
       "documentation": "https://gateway.drizzle.team/",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -11961,6 +12058,7 @@
         "postgresql"
       ],
       "logomark": "DW",
+      "logo": "/service-logos/drupal-with-postgresql.svg",
       "documentation": "https://www.drupal.org/about",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -12020,6 +12118,7 @@
         "encryption"
       ],
       "logomark": "DU",
+      "logo": "/service-logos/duplicati.webp",
       "documentation": "https://duplicati.readthedocs.io",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -12091,6 +12190,7 @@
         "database"
       ],
       "logomark": "EA",
+      "logo": "/service-logos/easyappointments.png",
       "documentation": "https://easyappointments.org/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -12167,6 +12267,7 @@
         "elasticsearch"
       ],
       "logomark": "EL",
+      "logo": "/service-logos/elasticsearch.svg",
       "documentation": "https://www.elastic.co/products/elasticsearch",
       "source": "coolify",
       "updated": "2025-08-18T18:30:06+02:00",
@@ -12225,6 +12326,7 @@
         "logging"
       ],
       "logomark": "EW",
+      "logo": "/service-logos/elasticsearch-with-kibana.svg",
       "documentation": "https://www.elastic.co/docs/deploy-manage/deploy/self-managed/install-kibana-with-docker",
       "source": "coolify",
       "updated": "2026-04-09T00:43:59-05:00",
@@ -12358,6 +12460,7 @@
         "postgresql"
       ],
       "logomark": "EL",
+      "logo": "/service-logos/electricsql.svg",
       "documentation": "https://electric-sql.com/docs/guides/deployment",
       "source": "coolify",
       "updated": "2026-02-07T20:35:51+01:00",
@@ -12433,6 +12536,7 @@
         "music"
       ],
       "logomark": "EM",
+      "logo": "/service-logos/emby.png",
       "documentation": "https://emby.media/support/articles/Home.html",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -12481,6 +12585,7 @@
         "traffic"
       ],
       "logomark": "EM",
+      "logo": "/service-logos/embystat.webp",
       "documentation": "https://github.com/mregni/EmbyStat",
       "source": "coolify",
       "updated": "2025-11-07T13:50:19+01:00",
@@ -12530,6 +12635,7 @@
         "iiot"
       ],
       "logomark": "EE",
+      "logo": "/service-logos/emqx-enterprise.svg",
       "documentation": "https://www.emqx.io/docs/en/latest/deploy/install-docker.html",
       "source": "coolify",
       "updated": "2026-08-10T18:12:09+02:00",
@@ -12588,6 +12694,7 @@
         "postgres"
       ],
       "logomark": "EN",
+      "logo": "/service-logos/engram.png",
       "documentation": "https://github.com/Gentleman-Programming/engram",
       "source": "coolify",
       "updated": "2026-08-10T23:30:32+02:00",
@@ -12702,6 +12809,7 @@
         "self-hosted"
       ],
       "logomark": "EP",
+      "logo": "/service-logos/ente-photos.svg",
       "documentation": "https://help.ente.io/self-hosting/installation/compose",
       "source": "coolify",
       "updated": "2026-11-03T22:54:21+01:00",
@@ -13076,6 +13184,7 @@
         "self-hosted"
       ],
       "logomark": "EP",
+      "logo": "/service-logos/ente-photos-with-s3.svg",
       "documentation": "https://help.ente.io/self-hosting/installation/compose",
       "source": "coolify",
       "updated": "2026-11-03T22:54:21+01:00",
@@ -13364,6 +13473,7 @@
         "microcontroller"
       ],
       "logomark": "ES",
+      "logo": "/service-logos/esphome.svg",
       "documentation": "https://esphome.io/guides/getting_started_command_line/",
       "source": "coolify",
       "updated": "2026-01-05T14:20:17+01:00",
@@ -13432,6 +13542,7 @@
         "project management"
       ],
       "logomark": "ES",
+      "logo": "/service-logos/espocrm.svg",
       "documentation": "https://docs.espocrm.com",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -13572,6 +13683,7 @@
         "postgres"
       ],
       "logomark": "EA",
+      "logo": "/service-logos/evolution-api.svg",
       "documentation": "https://doc.evolution-api.com/v2/en/get-started/introduction",
       "source": "coolify",
       "updated": "2026-01-04T21:54:50+01:00",
@@ -13895,7 +14007,7 @@
           "label": "Postgres DB",
           "kind": "text",
           "group": "configuration",
-          "default": "postgres"
+          "default": "chatwoot"
         },
         {
           "key": "QRCODE_LIMIT",
@@ -14778,6 +14890,7 @@
         "whiteboard"
       ],
       "logomark": "EX",
+      "logo": "/service-logos/excalidraw.svg",
       "documentation": "https://docs.excalidraw.com/docs",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -14827,6 +14940,7 @@
         "development"
       ],
       "logomark": "EX",
+      "logo": "/service-logos/executor.png",
       "documentation": "https://executor.sh/docs/hosted/docker",
       "source": "coolify",
       "updated": "2026-08-27T10:39:38+02:00",
@@ -14926,6 +15040,7 @@
         "tool"
       ],
       "logomark": "FA",
+      "logo": "/service-logos/faraday.png",
       "documentation": "https://faradaysec.com/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -15006,6 +15121,7 @@
         "user-feedback"
       ],
       "logomark": "FI",
+      "logo": "/service-logos/fider.svg",
       "documentation": "https://fider.io",
       "source": "coolify",
       "updated": "2026-09-08T12:32:53+02:00",
@@ -15133,6 +15249,7 @@
         "administration-tool"
       ],
       "logomark": "FI",
+      "logo": "/service-logos/filebrowser.svg",
       "documentation": "https://filebrowser.org",
       "source": "coolify",
       "updated": "2025-09-12T02:43:33+07:00",
@@ -15181,6 +15298,7 @@
         "h265"
       ],
       "logomark": "FI",
+      "logo": "/service-logos/fileflows.svg",
       "documentation": "https://fileflows.com/docs/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -15248,6 +15366,7 @@
         "manager"
       ],
       "logomark": "FI",
+      "logo": "/service-logos/firefly.svg",
       "documentation": "https://firefly-iii.org",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -15359,6 +15478,7 @@
         "privacy"
       ],
       "logomark": "FI",
+      "logo": "/service-logos/firefox.svg",
       "documentation": "https://github.com/jlesage/docker-firefox",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -15408,6 +15528,7 @@
         "basecamp"
       ],
       "logomark": "FI",
+      "logo": "/service-logos/fizzy.png",
       "documentation": "https://github.com/basecamp/fizzy",
       "source": "coolify",
       "updated": "2025-12-03T09:32:48+01:00",
@@ -15473,6 +15594,7 @@
         "cd"
       ],
       "logomark": "FL",
+      "logo": "/service-logos/flipt.svg",
       "documentation": "https://docs.flipt.io/cloud/overview",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -15522,6 +15644,7 @@
         "anthropic"
       ],
       "logomark": "FL",
+      "logo": "/service-logos/flowise.png",
       "documentation": "https://docs.flowiseai.com/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -15618,6 +15741,7 @@
         "anthropic"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/flowise-with-databases.png",
       "documentation": "https://docs.flowiseai.com/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -15775,6 +15899,7 @@
         "mariadb"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/forgejo-with-mariadb.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -15888,6 +16013,7 @@
         "mysql"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/forgejo-with-mysql.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -16002,6 +16128,7 @@
         "postgresql"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/forgejo-with-postgresql.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -16107,6 +16234,7 @@
         "runner"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/forgejo-with-runner.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -16243,6 +16371,7 @@
         "runner"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/forgejo-with-runner-with-mariadb.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -16417,6 +16546,7 @@
         "runner"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/forgejo-with-runner-with-mysql.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -16592,6 +16722,7 @@
         "runner"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/forgejo-with-runner-with-postgresql.svg",
       "documentation": "https://forgejo.org/docs",
       "source": "coolify",
       "updated": "2026-10-18T12:45:49+02:00",
@@ -16756,6 +16887,7 @@
         "survey"
       ],
       "logomark": "FO",
+      "logo": "/service-logos/formbricks.png",
       "documentation": "https://formbricks.com/docs/self-hosting/setup/docker",
       "source": "coolify",
       "updated": "2026-10-15T23:32:06+02:00",
@@ -17199,6 +17331,7 @@
         "roleplaying"
       ],
       "logomark": "FO",
+      "logo": "/service-logos/foundryvtt.png",
       "documentation": "https://foundryvtt.com/kb/",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -17363,6 +17496,7 @@
         "customer-support"
       ],
       "logomark": "FR",
+      "logo": "/service-logos/freescout.png",
       "documentation": "https://github.com/freescout-help-desk/freescout/wiki/",
       "source": "coolify",
       "updated": "2026-10-22T21:46:20+02:00",
@@ -17494,6 +17628,7 @@
         "feed"
       ],
       "logomark": "FR",
+      "logo": "/service-logos/freshrss.png",
       "documentation": "https://freshrss.org/index.html",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -17546,6 +17681,7 @@
         "feed"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/freshrss-with-mariadb.png",
       "documentation": "https://freshrss.org/index.html",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -17636,6 +17772,7 @@
         "feed"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/freshrss-with-mysql.png",
       "documentation": "https://freshrss.org/index.html",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -17726,6 +17863,7 @@
         "feed"
       ],
       "logomark": "FW",
+      "logo": "/service-logos/freshrss-with-postgresql.png",
       "documentation": "https://freshrss.org/index.html",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -17811,6 +17949,7 @@
         "distributed"
       ],
       "logomark": "GA",
+      "logo": "/service-logos/garage.svg",
       "documentation": "https://garagehq.deuxfleurs.fr/documentation/",
       "source": "coolify",
       "updated": "2026-08-24T23:32:50+02:00",
@@ -17901,6 +18040,7 @@
         "documentation"
       ],
       "logomark": "GE",
+      "logo": "/service-logos/getoutline.jpeg",
       "documentation": "https://docs.getoutline.com/s/hosting/doc/hosting-outline-nipGaCRBDu",
       "source": "coolify",
       "updated": "2026-11-03T18:31:28+01:00",
@@ -18367,6 +18507,7 @@
         "docker"
       ],
       "logomark": "GR",
+      "logo": "/service-logos/gitea-runner.svg",
       "documentation": "https://github.com/go-gitea/gitea",
       "source": "coolify",
       "updated": "2026-06-06T00:11:24+02:00",
@@ -18432,6 +18573,7 @@
         "mariadb"
       ],
       "logomark": "GW",
+      "logo": "/service-logos/gitea-with-mariadb.svg",
       "documentation": "https://docs.gitea.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -18518,6 +18660,7 @@
         "mysql"
       ],
       "logomark": "GW",
+      "logo": "/service-logos/gitea-with-mysql.svg",
       "documentation": "https://docs.gitea.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -18605,6 +18748,7 @@
         "postgresql"
       ],
       "logomark": "GW",
+      "logo": "/service-logos/gitea-with-postgresql.svg",
       "documentation": "https://docs.gitea.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -18681,6 +18825,7 @@
         "docker"
       ],
       "logomark": "GR",
+      "logo": "/service-logos/github-runner.png",
       "documentation": "https://github.com/myoung34/docker-github-actions-runner/wiki/Usage",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -18764,6 +18909,7 @@
         "collaboration"
       ],
       "logomark": "GI",
+      "logo": "/service-logos/gitlab.svg",
       "documentation": "https://docs.gitlab.com/ee/install/docker.html",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -18925,6 +19071,7 @@
         "rrss"
       ],
       "logomark": "GL",
+      "logo": "/service-logos/glance.png",
       "documentation": "https://github.com/glanceapp/glance",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -18967,6 +19114,7 @@
       "description": "An Eye on your system",
       "category": "Monitoring",
       "logomark": "GL",
+      "logo": "/service-logos/glances.png",
       "documentation": "https://nicolargo.github.io/glances/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -19014,6 +19162,7 @@
         "sentry"
       ],
       "logomark": "GL",
+      "logo": "/service-logos/glitchtip.png",
       "documentation": "https://glitchtip.com",
       "source": "coolify",
       "updated": "2026-02-10T11:22:57+05:30",
@@ -19157,6 +19306,7 @@
         "open-source"
       ],
       "logomark": "GL",
+      "logo": "/service-logos/glpi.svg",
       "documentation": "https://help.glpi-project.org/documentation",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -19241,6 +19391,7 @@
         "privacy"
       ],
       "logomark": "GO",
+      "logo": "/service-logos/goatcounter.svg",
       "documentation": "https://www.goatcounter.com/help",
       "source": "coolify",
       "updated": "2026-01-27T21:23:59+01:00",
@@ -19288,6 +19439,7 @@
         "tool"
       ],
       "logomark": "GO",
+      "logo": "/service-logos/gotenberg.png",
       "documentation": "https://gotenberg.dev/docs/getting-started/introduction",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -19352,6 +19504,7 @@
         "collaboration"
       ],
       "logomark": "GO",
+      "logo": "/service-logos/gotify.png",
       "documentation": "https://gotify.net/docs/install",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -19469,6 +19622,7 @@
         "go-whatsapp"
       ],
       "logomark": "GO",
+      "logo": "/service-logos/gowa.svg",
       "documentation": "https://github.com/aldinokemal/go-whatsapp-web-multidevice",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -19571,6 +19725,7 @@
         "dashboard"
       ],
       "logomark": "GW",
+      "logo": "/service-logos/grafana-with-postgresql.svg",
       "documentation": "https://grafana.com",
       "source": "coolify",
       "updated": "2026-03-22T22:04:22+07:00",
@@ -19669,6 +19824,7 @@
         "personal"
       ],
       "logomark": "GW",
+      "logo": "/service-logos/gramps-web.svg",
       "documentation": "https://www.grampsweb.org/install_setup/setup/",
       "source": "coolify",
       "updated": "2025-10-09T00:14:17+03:00",
@@ -19740,6 +19896,7 @@
         "reader"
       ],
       "logomark": "GR",
+      "logo": "/service-logos/grimmory.svg",
       "documentation": "https://github.com/grimmory-tools/grimmory",
       "source": "coolify",
       "updated": "2026-04-03T18:59:26+05:30",
@@ -19848,6 +20005,7 @@
         "relational"
       ],
       "logomark": "GR",
+      "logo": "/service-logos/grist.svg",
       "documentation": "https://support.getgrist.com/",
       "source": "coolify",
       "updated": "2026-02-16T15:13:50+02:00",
@@ -20157,6 +20315,7 @@
         "shopping"
       ],
       "logomark": "GR",
+      "logo": "/service-logos/grocy.svg",
       "documentation": "https://github.com/grocy/grocy",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -20204,6 +20363,7 @@
         "scheduling"
       ],
       "logomark": "HA",
+      "logo": "/service-logos/hatchet.svg",
       "documentation": "https://docs.hatchet.run/self-hosting/docker-compose",
       "source": "coolify",
       "updated": "2026-10-15T23:30:10+02:00",
@@ -20394,6 +20554,7 @@
         "applications"
       ],
       "logomark": "HE",
+      "logo": "/service-logos/healthchecks.webp",
       "documentation": "https://healthchecks.io/docs",
       "source": "coolify",
       "updated": "2026-05-25T13:06:59-04:00",
@@ -20550,6 +20711,7 @@
         "interface"
       ],
       "logomark": "HE",
+      "logo": "/service-logos/heimdall.svg",
       "documentation": "https://github.com/linuxserver/Heimdall",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -20599,6 +20761,7 @@
         "openrouter"
       ],
       "logomark": "HA",
+      "logo": "/service-logos/hermes-agent-with-webui.png",
       "documentation": "https://github.com/nesquena/hermes-webui",
       "source": "coolify",
       "updated": "2026-10-16T21:48:29+02:00",
@@ -20744,6 +20907,7 @@
         "openrouter"
       ],
       "logomark": "HA",
+      "logo": "/service-logos/hermes-agent.png",
       "documentation": "https://github.com/NousResearch/hermes-agent",
       "source": "coolify",
       "updated": "2026-08-12T16:45:49+02:00",
@@ -20880,6 +21044,7 @@
         "open source"
       ],
       "logomark": "HE",
+      "logo": "/service-logos/heyform.svg",
       "documentation": "https://docs.heyform.net/open-source/self-hosting",
       "source": "coolify",
       "updated": "2026-03-03T17:57:00+08:00",
@@ -20981,6 +21146,7 @@
         "concerts"
       ],
       "logomark": "HE",
+      "logo": "/service-logos/hi-events.svg",
       "documentation": "https://hi.events/docs",
       "source": "coolify",
       "updated": "2026-10-29T18:55:45+01:00",
@@ -21238,6 +21404,7 @@
         "homepage"
       ],
       "logomark": "HO",
+      "logo": "/service-logos/homarr.svg",
       "documentation": "https://homarr.dev",
       "source": "coolify",
       "updated": "2026-10-01T20:31:00+02:00",
@@ -21298,6 +21465,7 @@
         "mqtt"
       ],
       "logomark": "HA",
+      "logo": "/service-logos/home-assistant.svg",
       "documentation": "https://www.home-assistant.io/installation/linux#docker-compose",
       "source": "coolify",
       "updated": "2025-10-18T14:40:21+02:00",
@@ -21363,6 +21531,7 @@
         "organize"
       ],
       "logomark": "HO",
+      "logo": "/service-logos/homebox.svg",
       "documentation": "https://github.com/sysadminsmedia/homebox",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -21476,6 +21645,7 @@
         "postgres"
       ],
       "logomark": "HO",
+      "logo": "/service-logos/honcho.svg",
       "documentation": "https://honcho.dev/docs/v3/contributing/self-hosting",
       "source": "coolify",
       "updated": "2026-09-08T19:51:32+02:00",
@@ -21567,6 +21737,7 @@
         "platform"
       ],
       "logomark": "HO",
+      "logo": "/service-logos/hoppscotch.png",
       "documentation": "https://docs.hoppscotch.io",
       "source": "coolify",
       "updated": "2026-03-13T11:40:25+05:30",
@@ -21689,6 +21860,7 @@
         "metadata"
       ],
       "logomark": "IM",
+      "logo": "/service-logos/imgcompress.png",
       "documentation": "https://imgcompress.karimzouine.com",
       "source": "coolify",
       "updated": "2026-03-13T12:28:25+05:30",
@@ -21760,6 +21932,7 @@
         "configuration"
       ],
       "logomark": "IN",
+      "logo": "/service-logos/infisical.png",
       "documentation": "https://infisical.com/docs/documentation/getting-started/introduction",
       "source": "coolify",
       "updated": "2025-12-15T17:56:33+01:00",
@@ -21950,6 +22123,7 @@
         "telegraf"
       ],
       "logomark": "IN",
+      "logo": "/service-logos/influxdb.svg",
       "documentation": "https://docs.influxdata.com/influxdb/",
       "source": "coolify",
       "updated": "2026-08-10T12:53:16+02:00",
@@ -22026,6 +22200,7 @@
         "automation"
       ],
       "logomark": "IN",
+      "logo": "/service-logos/inngest.png",
       "documentation": "https://www.inngest.com/docs/self-hosting",
       "source": "coolify",
       "updated": "2026-07-02T13:25:47+02:00",
@@ -22113,6 +22288,7 @@
         "self-hosted"
       ],
       "logomark": "IN",
+      "logo": "/service-logos/invoice-ninja.png",
       "documentation": "https://invoiceninja.github.io/selfhost.html",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -22454,6 +22630,7 @@
         "self-hosted"
       ],
       "logomark": "IT",
+      "logo": "/service-logos/it-tools.svg",
       "documentation": "https://github.com/corentinth/it-tools",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -22503,6 +22680,7 @@
         "git"
       ],
       "logomark": "JE",
+      "logo": "/service-logos/jean.png",
       "documentation": "https://github.com/coollabsio/jean/blob/main/docs/headless-server.md",
       "source": "coolify",
       "updated": "2026-08-13T11:00:04+02:00",
@@ -22613,6 +22791,7 @@
         "open-source"
       ],
       "logomark": "JE",
+      "logo": "/service-logos/jenkins.svg",
       "documentation": "https://www.jenkins.io/doc/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -22663,6 +22842,7 @@
         "self-hosted"
       ],
       "logomark": "JI",
+      "logo": "/service-logos/jitsi.svg",
       "documentation": "https://jitsi.github.io/handbook/docs/devops-guide/devops-guide-docker/",
       "source": "coolify",
       "updated": "2026-04-24T09:40:01+05:30",
@@ -22772,6 +22952,7 @@
         "mariadb"
       ],
       "logomark": "JW",
+      "logo": "/service-logos/joomla-with-mariadb.svg",
       "documentation": "https://joomla.org",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -22855,6 +23036,7 @@
         "joplin"
       ],
       "logomark": "JO",
+      "logo": "/service-logos/joplin.png",
       "documentation": "https://github.com/laurent22/joplin/blob/dev/packages/server/README.md",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -22938,6 +23120,7 @@
         "analysis"
       ],
       "logomark": "JN",
+      "logo": "/service-logos/jupyter-notebook-python.svg",
       "documentation": "https://jupyter.org/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -22986,6 +23169,7 @@
         "instapaper-alternative"
       ],
       "logomark": "KA",
+      "logo": "/service-logos/karakeep.svg",
       "documentation": "https://docs.karakeep.app/",
       "source": "coolify",
       "updated": "2026-08-17T11:20:06+02:00",
@@ -23091,6 +23275,7 @@
         "authentication"
       ],
       "logomark": "KE",
+      "logo": "/service-logos/keycloak.svg",
       "documentation": "https://www.keycloak.org",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -23207,6 +23392,7 @@
         "authentication"
       ],
       "logomark": "KW",
+      "logo": "/service-logos/keycloak-with-postgres.svg",
       "documentation": "https://www.keycloak.org",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -23347,6 +23533,7 @@
         "open-source"
       ],
       "logomark": "KI",
+      "logo": "/service-logos/kimai.svg",
       "documentation": "https://www.kimai.org/",
       "source": "coolify",
       "updated": "2026-10-23T09:53:25+02:00",
@@ -23480,6 +23667,7 @@
         "rest"
       ],
       "logomark": "KU",
+      "logo": "/service-logos/kuzzle.png",
       "documentation": "https://kuzzle.io",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -23575,6 +23763,7 @@
         "ai"
       ],
       "logomark": "LA",
+      "logo": "/service-logos/labelstudio.png",
       "documentation": "https://labelstud.io/guide/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -23730,6 +23919,7 @@
         "workflow"
       ],
       "logomark": "LA",
+      "logo": "/service-logos/langflow.svg",
       "documentation": "https://docs.langflow.org",
       "source": "coolify",
       "updated": "2026-01-20T22:59:13+01:00",
@@ -23838,6 +24028,7 @@
         "gpt"
       ],
       "logomark": "LA",
+      "logo": "/service-logos/langfuse.svg",
       "documentation": "https://langfuse.com/docs",
       "source": "coolify",
       "updated": "2026-10-19T17:18:16+02:00",
@@ -24303,6 +24494,7 @@
         "open source"
       ],
       "logomark": "LE",
+      "logo": "/service-logos/leantime.svg",
       "documentation": "https://leantime.io",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -24450,6 +24642,7 @@
         "openai"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/librechat.svg",
       "documentation": "https://docs.librechat.ai/install/configuration/dotenv.html",
       "source": "coolify",
       "updated": "2026-04-03T18:29:44+05:30",
@@ -24758,6 +24951,7 @@
         "open-source"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/libreoffice.svg",
       "documentation": "https://docs.linuxserver.io/images/docker-libreoffice/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -24824,6 +25018,7 @@
         "internet-speed"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/librespeed.png",
       "documentation": "https://github.com/librespeed/speedtest",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -24869,6 +25064,7 @@
         "api"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/libretranslate.svg",
       "documentation": "https://libretranslate.com/docs/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -24945,6 +25141,7 @@
         "audio"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/lidarr.svg",
       "documentation": "https://hub.docker.com/r/linuxserver/lidarr",
       "source": "coolify",
       "updated": "2026-09-03T17:39:57+02:00",
@@ -24999,6 +25196,7 @@
         "open source"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/limesurvey.svg",
       "documentation": "https://www.limesurvey.org/manual/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -25155,6 +25353,7 @@
         "feed"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/linkding-plus.svg",
       "documentation": "https://linkding.link/",
       "source": "coolify",
       "updated": "2026-01-13T00:05:43+01:00",
@@ -25218,6 +25417,7 @@
         "feed"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/linkding.svg",
       "documentation": "https://linkding.link/",
       "source": "coolify",
       "updated": "2026-01-13T00:05:43+01:00",
@@ -25284,6 +25484,7 @@
         "self-hosted"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/linkwarden.svg",
       "documentation": "https://docs.linkwarden.app/self-hosting/setup",
       "source": "coolify",
       "updated": "2026-09-03T17:36:01+02:00",
@@ -25384,6 +25585,7 @@
         "open source"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/listmonk.svg",
       "documentation": "https://listmonk.app/",
       "source": "coolify",
       "updated": "2026-03-29T14:35:48+10:00",
@@ -25461,6 +25663,7 @@
         "gpt"
       ],
       "logomark": "LI",
+      "logo": "/service-logos/litellm.svg",
       "documentation": "https://docs.litellm.ai",
       "source": "coolify",
       "updated": "2026-11-03T18:31:47+01:00",
@@ -25655,6 +25858,7 @@
         "chatbot"
       ],
       "logomark": "LC",
+      "logo": "/service-logos/lobe-chat.png",
       "documentation": "https://github.com/lobehub/lobe-chat?tab=readme-ov-file#b-deploying-with-docker",
       "source": "coolify",
       "updated": "2025-10-08T13:32:11+02:00",
@@ -25726,6 +25930,7 @@
         "oidc"
       ],
       "logomark": "LO",
+      "logo": "/service-logos/logto.svg",
       "documentation": "https://docs.logto.io/docs/tutorials/get-started/#logto-oss-self-hosted",
       "source": "coolify",
       "updated": "2026-09-02T19:39:19+02:00",
@@ -25805,6 +26010,7 @@
         "open"
       ],
       "logomark": "LO",
+      "logo": "/service-logos/lowcoder.svg",
       "documentation": "https://docs.lowcoder.cloud/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -25881,6 +26087,7 @@
         "pipelines"
       ],
       "logomark": "MA",
+      "logo": "/service-logos/mage-ai.svg",
       "documentation": "https://docs.mage.ai",
       "source": "coolify",
       "updated": "2025-12-19T18:57:35+11:00",
@@ -25928,6 +26135,7 @@
         "smtp"
       ],
       "logomark": "MA",
+      "logo": "/service-logos/mailpit.svg",
       "documentation": "https://mailpit.axllent.org/docs/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -25975,6 +26183,7 @@
         "analysis"
       ],
       "logomark": "MA",
+      "logo": "/service-logos/marimo.svg",
       "documentation": "https://marimo.io/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -26030,6 +26239,7 @@
         "tiles"
       ],
       "logomark": "MA",
+      "logo": "/service-logos/martin.png",
       "documentation": "https://maplibre.org/martin/introduction.html/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -26122,6 +26332,7 @@
         "call"
       ],
       "logomark": "MS",
+      "logo": "/service-logos/matrix-synapse-with-postgresql.svg",
       "documentation": "https://element-hq.github.io/synapse/latest/welcome_and_overview.html",
       "source": "coolify",
       "updated": "2026-01-08T22:11:03+01:00",
@@ -26256,6 +26467,7 @@
         "call"
       ],
       "logomark": "MS",
+      "logo": "/service-logos/matrix-synapse-with-sqlite.svg",
       "documentation": "https://element-hq.github.io/synapse/latest/welcome_and_overview.html",
       "source": "coolify",
       "updated": "2026-01-08T22:11:03+01:00",
@@ -26358,6 +26570,7 @@
         "alternative"
       ],
       "logomark": "MA",
+      "logo": "/service-logos/mattermost.svg",
       "documentation": "https://docs.mattermost.com",
       "source": "coolify",
       "updated": "2026-08-16T18:36:27+02:00",
@@ -26455,6 +26668,7 @@
         "food"
       ],
       "logomark": "ME",
+      "logo": "/service-logos/mealie.png",
       "documentation": "https://docs.mealie.io/",
       "source": "coolify",
       "updated": "2026-05-12T09:22:15+02:00",
@@ -26547,6 +26761,7 @@
         "documentation"
       ],
       "logomark": "ME",
+      "logo": "/service-logos/mediawiki.svg",
       "documentation": "https://www.mediawiki.org",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -26596,6 +26811,7 @@
         "meilisearch"
       ],
       "logomark": "ME",
+      "logo": "/service-logos/meilisearch.svg",
       "documentation": "https://www.meilisearch.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -26670,6 +26886,7 @@
         "markdown"
       ],
       "logomark": "ME",
+      "logo": "/service-logos/memos.png",
       "documentation": "https://github.com/usememos/memos",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -26717,6 +26934,7 @@
         "intelligence"
       ],
       "logomark": "ME",
+      "logo": "/service-logos/metabase.svg",
       "documentation": "https://www.metabase.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -26797,6 +27015,7 @@
         "middleware"
       ],
       "logomark": "ME",
+      "logo": "/service-logos/metamcp.png",
       "documentation": "https://github.com/metatool-ai/metamcp",
       "source": "coolify",
       "updated": "2025-10-19T18:04:06+02:00",
@@ -26921,6 +27140,7 @@
         "playlist"
       ],
       "logomark": "ME",
+      "logo": "/service-logos/metube.webp",
       "documentation": "https://github.com/alexta69/metube",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -26968,6 +27188,7 @@
         "ai"
       ],
       "logomark": "MI",
+      "logo": "/service-logos/mindsdb.svg",
       "documentation": "https://docs.mindsdb.com/what-is-mindsdb",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -27108,6 +27329,7 @@
         "minecraft"
       ],
       "logomark": "MI",
+      "logo": "/service-logos/minecraft.svg",
       "documentation": "https://github.com/itzg/docker-minecraft-server",
       "source": "coolify",
       "updated": "2026-04-01T15:06:17-05:00",
@@ -27409,6 +27631,7 @@
         "hosted"
       ],
       "logomark": "MI",
+      "logo": "/service-logos/miniflux.svg",
       "documentation": "https://miniflux.app/docs/index.html",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -27526,6 +27749,7 @@
         "self-hosted"
       ],
       "logomark": "MI",
+      "logo": "/service-logos/mixpost.svg",
       "documentation": "https://docs.mixpost.app/lite",
       "source": "coolify",
       "updated": "2026-10-23T09:53:25+02:00",
@@ -27643,6 +27867,7 @@
         "open-source"
       ],
       "logomark": "MO",
+      "logo": "/service-logos/mosquitto.svg",
       "documentation": "https://mosquitto.org/documentation/",
       "source": "coolify",
       "updated": "2026-10-23T22:58:59+02:00",
@@ -27733,6 +27958,7 @@
         "low"
       ],
       "logomark": "NW",
+      "logo": "/service-logos/n8n-with-postgres-and-worker.png",
       "documentation": "https://n8n.io",
       "source": "coolify",
       "updated": "2026-03-30T20:40:07+02:00",
@@ -27976,6 +28202,7 @@
         "low"
       ],
       "logomark": "NW",
+      "logo": "/service-logos/n8n-with-postgresql.png",
       "documentation": "https://n8n.io",
       "source": "coolify",
       "updated": "2026-03-30T20:40:07+02:00",
@@ -28198,6 +28425,7 @@
         "subsonic"
       ],
       "logomark": "NA",
+      "logo": "/service-logos/navidrome.svg",
       "documentation": "https://www.navidrome.org/docs/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -28290,6 +28518,7 @@
         "postgresql"
       ],
       "logomark": "NW",
+      "logo": "/service-logos/neon-ws-proxy.svg",
       "documentation": "https://neon.tech",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -28381,6 +28610,7 @@
         "open source"
       ],
       "logomark": "NC",
+      "logo": "/service-logos/netbird-client.png",
       "documentation": "https://docs.netbird.io/how-to/examples#net-bird-client-in-docker",
       "source": "coolify",
       "updated": "2026-04-09T00:00:38+05:30",
@@ -28441,6 +28671,7 @@
         "api-management"
       ],
       "logomark": "NE",
+      "logo": "/service-logos/newapi.png",
       "documentation": "https://docs.newapi.pro/en/getting-started/",
       "source": "coolify",
       "updated": "2025-10-02T16:37:31+08:00",
@@ -28551,6 +28782,7 @@
         "open source"
       ],
       "logomark": "NP",
+      "logo": "/service-logos/newt-pangolin.png",
       "documentation": "https://docs.digpangolin.com/manage/sites/install-site",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -28604,6 +28836,7 @@
         "service"
       ],
       "logomark": "NI",
+      "logo": "/service-logos/next-image-transformation.svg",
       "documentation": "https://github.com/coollabsio/next-image-transformation",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -28671,6 +28904,7 @@
         "data"
       ],
       "logomark": "NW",
+      "logo": "/service-logos/nextcloud-with-mariadb.svg",
       "documentation": "https://docs.nextcloud.com",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -28769,6 +29003,7 @@
         "data"
       ],
       "logomark": "NW",
+      "logo": "/service-logos/nextcloud-with-mysql.svg",
       "documentation": "https://docs.nextcloud.com",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -28867,6 +29102,7 @@
         "data"
       ],
       "logomark": "NW",
+      "logo": "/service-logos/nextcloud-with-postgres.svg",
       "documentation": "https://docs.nextcloud.com",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -28957,6 +29193,7 @@
         "container"
       ],
       "logomark": "NE",
+      "logo": "/service-logos/nexus.png",
       "documentation": "https://help.sonatype.com/en/sonatype-nexus-repository.html",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -29018,6 +29255,7 @@
         "container"
       ],
       "logomark": "NA",
+      "logo": "/service-logos/nexus-arm.png",
       "documentation": "https://help.sonatype.com/en/sonatype-nexus-repository.html",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -29067,6 +29305,7 @@
         "content"
       ],
       "logomark": "NI",
+      "logo": "/service-logos/nitropage.svg",
       "documentation": "https://nitropage.org",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -29135,6 +29374,7 @@
         "content"
       ],
       "logomark": "NW",
+      "logo": "/service-logos/nitropage-with-postgresql.svg",
       "documentation": "https://nitropage.org",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -29231,6 +29471,7 @@
         "builder"
       ],
       "logomark": "NO",
+      "logo": "/service-logos/nocobase.png",
       "documentation": "https://docs.nocobase.com/",
       "source": "coolify",
       "updated": "2026-01-06T15:08:23+01:00",
@@ -29317,6 +29558,7 @@
         "discussion"
       ],
       "logomark": "NO",
+      "logo": "/service-logos/nodebb.svg",
       "documentation": "https://docs.nodebb.org/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -29388,6 +29630,7 @@
         "notify"
       ],
       "logomark": "NT",
+      "logo": "/service-logos/ntfy.svg",
       "documentation": "https://docs.ntfy.sh/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -29615,6 +29858,7 @@
         "productivity"
       ],
       "logomark": "OB",
+      "logo": "/service-logos/obsidian.svg",
       "documentation": "https://docs.linuxserver.io/images/docker-obsidian",
       "source": "coolify",
       "updated": "2026-08-17T13:26:23+02:00",
@@ -29703,6 +29947,7 @@
         "markdown"
       ],
       "logomark": "OL",
+      "logo": "/service-logos/obsidian-livesync.svg",
       "documentation": "https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/setup_own_server.md",
       "source": "coolify",
       "updated": "2026-08-24T09:10:19+02:00",
@@ -29785,6 +30030,7 @@
         "inventory"
       ],
       "logomark": "OD",
+      "logo": "/service-logos/odoo.svg",
       "documentation": "https://www.odoo.com/",
       "source": "coolify",
       "updated": "2026-10-19T21:46:16+02:00",
@@ -29857,6 +30103,7 @@
         "integration"
       ],
       "logomark": "OW",
+      "logo": "/service-logos/ollama-with-open-webui.svg",
       "documentation": "https://docs.openwebui.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -29910,6 +30157,7 @@
         "basecamp"
       ],
       "logomark": "OC",
+      "logo": "/service-logos/once-campfire.png",
       "documentation": "https://github.com/basecamp/once-campfire",
       "source": "coolify",
       "updated": "2025-09-14T09:16:02+02:00",
@@ -30030,6 +30278,7 @@
         "packages"
       ],
       "logomark": "ON",
+      "logo": "/service-logos/onedev.svg",
       "documentation": "https://docs.onedev.io/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -30151,6 +30400,7 @@
         "secure"
       ],
       "logomark": "ON",
+      "logo": "/service-logos/onetimesecret.svg",
       "documentation": "https://docs.onetimesecret.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -30268,6 +30518,7 @@
         "search"
       ],
       "logomark": "OA",
+      "logo": "/service-logos/open-archiver.svg",
       "documentation": "https://docs.openarchiver.com/",
       "source": "coolify",
       "updated": "2026-05-09T19:35:15+05:30",
@@ -30521,6 +30772,7 @@
         "openai"
       ],
       "logomark": "OP",
+      "logo": "/service-logos/openclaw.svg",
       "documentation": "https://coolify.io/docs/services/openclaw",
       "source": "coolify",
       "updated": "2026-02-09T12:35:36+01:00",
@@ -30842,6 +31094,7 @@
         "opentelemetry"
       ],
       "logomark": "OP",
+      "logo": "/service-logos/openobserve.svg",
       "documentation": "https://openobserve.ai/docs/",
       "source": "coolify",
       "updated": "2026-05-19T16:40:18+05:30",
@@ -30929,6 +31182,7 @@
         "google"
       ],
       "logomark": "OP",
+      "logo": "/service-logos/openpanel.svg",
       "documentation": "https://openpanel.dev/docs",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -31128,6 +31382,7 @@
         "webhooks"
       ],
       "logomark": "OP",
+      "logo": "/service-logos/openwa.png",
       "documentation": "https://github.com/rmyndharis/OpenWA",
       "source": "coolify",
       "updated": "2026-09-28T00:20:58+02:00",
@@ -31239,6 +31494,7 @@
         "webhooks"
       ],
       "logomark": "OW",
+      "logo": "/service-logos/openwa-with-postgresql-and-redis.png",
       "documentation": "https://github.com/rmyndharis/OpenWA",
       "source": "coolify",
       "updated": "2026-09-28T00:20:58+02:00",
@@ -31246,7 +31502,7 @@
       "port": 2785,
       "healthPath": "/",
       "support": "advanced",
-      "supportNote": "Needs security_opt, cap_add and cap_drop after deploy",
+      "supportNote": "Needs cap_add, cap_drop and security_opt after deploy",
       "compose": "services:\n    openwa:\n        depends_on:\n            openwa-redis:\n                condition: service_healthy\n            postgresql:\n                condition: service_healthy\n        environment:\n            API_MASTER_KEY: ${SERVICE_PASSWORD_OPENWA}\n            AUTO_START_SESSIONS: ${AUTO_START_SESSIONS:-false}\n            BASE_URL: ${SERVICE_FQDN_OPENWA}\n            CACHE_ENABLED: \"true\"\n            DASHBOARD_URL: ${SERVICE_FQDN_OPENWA}\n            DATABASE_HOST: postgresql\n            DATABASE_NAME: ${POSTGRES_DB:-openwa}\n            DATABASE_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}\n            DATABASE_PORT: \"5432\"\n            DATABASE_SYNCHRONIZE: \"false\"\n            DATABASE_TYPE: postgres\n            DATABASE_USERNAME: ${SERVICE_USER_POSTGRES}\n            ENGINE_TYPE: ${ENGINE_TYPE:-whatsapp-web.js}\n            HOME: /tmp\n            LOG_LEVEL: ${LOG_LEVEL:-info}\n            NODE_ENV: production\n            PORT: \"2785\"\n            POSTGRES_SCHEMA: public\n            PUPPETEER_ARGS: --no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage\n            PUPPETEER_EXECUTABLE_PATH: /usr/local/bin/puppeteer-chrome\n            PUPPETEER_HEADLESS: \"true\"\n            QUEUE_ENABLED: \"true\"\n            REDIS_ENABLED: \"true\"\n            REDIS_HOST: openwa-redis\n            REDIS_PORT: \"6379\"\n            SERVICE_FQDN_OPENWA_2785: ${SERVICE_FQDN_OPENWA_2785}\n            SESSION_DATA_PATH: ./data/sessions\n            STORAGE_LOCAL_PATH: ./data/media\n            STORAGE_TYPE: local\n            XDG_CACHE_HOME: /tmp/.cache\n            XDG_CONFIG_HOME: /tmp/.config\n        healthcheck:\n            interval: 30s\n            retries: 3\n            start_period: 45s\n            test:\n                - CMD\n                - node\n                - -e\n                - 'require(''http'').get(''http://localhost:2785/api/health/ready'', (r) =\u003e process.exit(r.statusCode === 200 ? 0 : 1))'\n            timeout: 10s\n        image: ghcr.io/rmyndharis/openwa:0.23.1\n        mem_limit: ${OPENWA_MEM_LIMIT:-2g}\n        pids_limit: ${OPENWA_PIDS_LIMIT:-2048}\n        read_only: true\n        restart: unless-stopped\n        stop_grace_period: 45s\n        tmpfs:\n            - /tmp\n        volumes:\n            - source: data-openwa-0\n              target: /app/data\n              type: volume\n    openwa-redis:\n        command: redis-server --appendonly yes --maxmemory-policy noeviction\n        healthcheck:\n            interval: 5s\n            retries: 5\n            test:\n                - CMD\n                - redis-cli\n                - ping\n            timeout: 3s\n        image: redis:7-alpine\n        restart: unless-stopped\n        volumes:\n            - source: data-openwa-redis-0\n              target: /data\n              type: volume\n    postgresql:\n        environment:\n            POSTGRES_DB: ${POSTGRES_DB:-openwa}\n            POSTGRES_PASSWORD: ${SERVICE_PASSWORD_POSTGRES}\n            POSTGRES_USER: ${SERVICE_USER_POSTGRES}\n        healthcheck:\n            interval: 5s\n            retries: 5\n            test:\n                - CMD-SHELL\n                - pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}\n            timeout: 3s\n        image: postgres:16-alpine\n        restart: unless-stopped\n        volumes:\n            - source: data-postgresql-0\n              target: /var/lib/postgresql/data\n              type: volume\nvolumes:\n    data-openwa-0: {}\n    data-openwa-redis-0: {}\n    data-postgresql-0: {}\n    openwa-data: {}\n    postgresql-data: {}\n    redis-data: {}\n",
       "services": [
         {
@@ -31385,6 +31641,7 @@
         "self-hosted"
       ],
       "logomark": "OP",
+      "logo": "/service-logos/opnform.svg",
       "documentation": "https://docs.opnform.com/introduction",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -31733,6 +31990,7 @@
         "project-management"
       ],
       "logomark": "OR",
+      "logo": "/service-logos/orbit.svg",
       "documentation": "https://github.com/coollabsio/orbit/blob/main/docs/operations.md",
       "source": "coolify",
       "mainService": "orbit",
@@ -31806,6 +32064,7 @@
         "tool"
       ],
       "logomark": "OR",
+      "logo": "/service-logos/organizr.png",
       "documentation": "https://docs.organizr.app/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -31861,6 +32120,7 @@
         "radarr"
       ],
       "logomark": "OV",
+      "logo": "/service-logos/overseerr.svg",
       "documentation": "https://docs.overseerr.dev/getting-started/installation#docker",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -31915,6 +32175,7 @@
         "teamwork"
       ],
       "logomark": "PA",
+      "logo": "/service-logos/pairdrop.png",
       "documentation": "https://pairdrop.net/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -31956,6 +32217,7 @@
       "description": "Palworld.yaml",
       "category": "Games",
       "logomark": "PA",
+      "logo": "/service-logos/palworld.webp",
       "documentation": "https://coolify.io/docs",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -32808,6 +33070,7 @@
         "open source"
       ],
       "logomark": "PA",
+      "logo": "/service-logos/passbolt.svg",
       "documentation": "https://www.passbolt.com/ce/docker",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -32893,6 +33156,7 @@
         "open source"
       ],
       "logomark": "PA",
+      "logo": "/service-logos/paymenter.svg",
       "documentation": "https://paymenter.org/docs/guides/docker",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -33004,6 +33268,7 @@
         "self-hosted"
       ],
       "logomark": "PE",
+      "logo": "/service-logos/peertube.svg",
       "documentation": "https://docs.joinpeertube.org/install/docker",
       "source": "coolify",
       "updated": "2026-08-17T22:45:25+02:00",
@@ -33141,6 +33406,7 @@
         "source"
       ],
       "logomark": "PE",
+      "logo": "/service-logos/penpot.svg",
       "documentation": "https://help.penpot.app/technical-guide/getting-started/#install-with-docker",
       "source": "coolify",
       "updated": "2025-11-29T17:45:19+05:30",
@@ -33353,6 +33619,7 @@
         "source"
       ],
       "logomark": "PW",
+      "logo": "/service-logos/penpot-with-s3.svg",
       "documentation": "https://help.penpot.app/technical-guide/getting-started/#install-with-docker",
       "source": "coolify",
       "updated": "2026-10-15T23:32:06+02:00",
@@ -33581,6 +33848,7 @@
         "database management"
       ],
       "logomark": "PG",
+      "logo": "/service-logos/pgadmin.svg",
       "documentation": "https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html",
       "source": "coolify",
       "updated": "2025-09-09T22:48:07+05:30",
@@ -33642,6 +33910,7 @@
         "web-interface"
       ],
       "logomark": "PG",
+      "logo": "/service-logos/pgbackweb.svg",
       "documentation": "https://github.com/eduardolat/pgbackweb",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -33732,6 +34001,7 @@
         "database management"
       ],
       "logomark": "PH",
+      "logo": "/service-logos/phpmyadmin.svg",
       "documentation": "https://phpmyadmin.net",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -33780,6 +34050,7 @@
         "dhcp"
       ],
       "logomark": "PH",
+      "logo": "/service-logos/pi-hole.svg",
       "documentation": "https://pi-hole.net/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -33852,6 +34123,7 @@
         "music"
       ],
       "logomark": "PL",
+      "logo": "/service-logos/plex.svg",
       "documentation": "https://docs.linuxserver.io/images/docker-plex/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -33925,6 +34197,7 @@
         "aws"
       ],
       "logomark": "PL",
+      "logo": "/service-logos/plunk.svg",
       "documentation": "https://docs.useplunk.com/getting-started/introduction",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -34072,6 +34345,7 @@
         "authentication"
       ],
       "logomark": "PI",
+      "logo": "/service-logos/pocket-id-with-postgresql.png",
       "documentation": "https://pocket-id.org/docs/setup/installation",
       "source": "coolify",
       "updated": "2025-10-19T21:35:18+02:00",
@@ -34294,6 +34568,7 @@
         "authentication"
       ],
       "logomark": "PI",
+      "logo": "/service-logos/pocket-id.png",
       "documentation": "https://pocket-id.org/docs/setup/installation",
       "source": "coolify",
       "updated": "2025-10-19T21:35:49+02:00",
@@ -34469,6 +34744,7 @@
         "api"
       ],
       "logomark": "PO",
+      "logo": "/service-logos/pocketbase.svg",
       "documentation": "https://pocketbase.io/docs/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -34516,6 +34792,7 @@
         "open-source"
       ],
       "logomark": "PO",
+      "logo": "/service-logos/portabase.svg",
       "documentation": "https://portabase.io/docs",
       "source": "coolify",
       "updated": "2026-08-10T18:30:58+02:00",
@@ -34753,6 +35030,7 @@
         "planning"
       ],
       "logomark": "PO",
+      "logo": "/service-logos/postiz.svg",
       "documentation": "https://docs.postiz.com",
       "source": "coolify",
       "updated": "2026-01-05T15:14:32+01:00",
@@ -35261,6 +35539,7 @@
         "data-processing"
       ],
       "logomark": "PR",
+      "logo": "/service-logos/prefect.png",
       "documentation": "https://www.prefect.io/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -35417,6 +35696,7 @@
         "sharing"
       ],
       "logomark": "PR",
+      "logo": "/service-logos/privatebin.svg",
       "documentation": "https://github.com/PrivateBin/PrivateBin/blob/master/doc/README.md",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -35466,6 +35746,7 @@
         "torrent"
       ],
       "logomark": "PR",
+      "logo": "/service-logos/prowlarr.svg",
       "documentation": "https://hub.docker.com/r/linuxserver/prowlarr",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -35532,6 +35813,7 @@
         "cors"
       ],
       "logomark": "PR",
+      "logo": "/service-logos/proxyscotch.png",
       "documentation": "https://github.com/hoppscotch/proxyscotch",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -35608,6 +35890,7 @@
         "minecraft"
       ],
       "logomark": "PP",
+      "logo": "/service-logos/pterodactyl-panel.png",
       "documentation": "https://pterodactyl.io/",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -35785,6 +36068,7 @@
         "minecraft"
       ],
       "logomark": "PW",
+      "logo": "/service-logos/pterodactyl-with-wings.png",
       "documentation": "https://pterodactyl.io/",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -35976,6 +36260,7 @@
         "storage"
       ],
       "logomark": "PC",
+      "logo": "/service-logos/pydio-cells.svg",
       "documentation": "https://docs.pydio.com/",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -36073,6 +36358,7 @@
         "webui"
       ],
       "logomark": "QB",
+      "logo": "/service-logos/qbittorrent.svg",
       "documentation": "https://docs.linuxserver.io/images/docker-qbittorrent/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -36161,6 +36447,7 @@
         "embeddings"
       ],
       "logomark": "QD",
+      "logo": "/service-logos/qdrant.png",
       "documentation": "https://qdrant.tech/documentation/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -36219,6 +36506,7 @@
         "mqtt"
       ],
       "logomark": "RA",
+      "logo": "/service-logos/rabbitmq.svg",
       "documentation": "https://www.rabbitmq.com/documentation.html",
       "source": "coolify",
       "updated": "2026-10-15T22:51:15+02:00",
@@ -36290,6 +36578,7 @@
         "movies"
       ],
       "logomark": "RA",
+      "logo": "/service-logos/radarr.svg",
       "documentation": "https://hub.docker.com/r/linuxserver/radarr",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -36358,6 +36647,7 @@
         "doodle"
       ],
       "logomark": "RA",
+      "logo": "/service-logos/rallly.svg",
       "documentation": "https://support.rallly.co/self-hosting/introduction",
       "source": "coolify",
       "updated": "2026-08-17T11:50:47+02:00",
@@ -36533,6 +36823,7 @@
         "2fa"
       ],
       "logomark": "RR",
+      "logo": "/service-logos/reactive-resume.svg",
       "documentation": "https://docs.rxresu.me/self-hosting/docker",
       "source": "coolify",
       "updated": "2026-10-23T22:22:32+02:00",
@@ -36663,6 +36954,7 @@
         "instapaper-alternative"
       ],
       "logomark": "RE",
+      "logo": "/service-logos/readeck.svg",
       "documentation": "https://readeck.org/en/docs/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -36722,6 +37014,7 @@
         "analytics"
       ],
       "logomark": "RI",
+      "logo": "/service-logos/redis-insight.png",
       "documentation": "https://redis.io/docs/latest/operate/redisinsight/",
       "source": "coolify",
       "updated": "2025-11-10T15:25:33+05:30",
@@ -36805,6 +37098,7 @@
         "feed"
       ],
       "logomark": "RE",
+      "logo": "/service-logos/redlib.svg",
       "documentation": "https://github.com/redlib-org/redlib",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -36998,6 +37292,7 @@
         "project management"
       ],
       "logomark": "RE",
+      "logo": "/service-logos/redmine.svg",
       "documentation": "https://www.redmine.org/",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -37086,6 +37381,7 @@
         "postgresql"
       ],
       "logomark": "RE",
+      "logo": "/service-logos/rivet-engine.svg",
       "documentation": "https://www.rivet.dev/docs",
       "source": "coolify",
       "updated": "2026-04-01T19:58:30+02:00",
@@ -37145,6 +37441,7 @@
         "open"
       ],
       "logomark": "RC",
+      "logo": "/service-logos/rocketchat.svg",
       "documentation": "https://github.com/RocketChat/Rocket.Chat",
       "source": "coolify",
       "updated": "2026-01-20T19:15:03+01:00",
@@ -37247,6 +37544,7 @@
         "postgres"
       ],
       "logomark": "RY",
+      "logo": "/service-logos/rybbit.svg",
       "documentation": "https://rybbit.io/docs",
       "source": "coolify",
       "updated": "2026-11-03T20:19:27+01:00",
@@ -37403,6 +37701,7 @@
         "media"
       ],
       "logomark": "RY",
+      "logo": "/service-logos/ryot.svg",
       "documentation": "https://github.com/ignisda/ryot",
       "source": "coolify",
       "updated": "2026-05-12T08:34:57+02:00",
@@ -37498,6 +37797,7 @@
         "gaming"
       ],
       "logomark": "SA",
+      "logo": "/service-logos/satisfactory.jpg",
       "documentation": "https://github.com/wolveix/satisfactory-server",
       "source": "coolify",
       "updated": "2026-02-03T22:06:58+01:00",
@@ -37664,6 +37964,7 @@
         "storage"
       ],
       "logomark": "SE",
+      "logo": "/service-logos/seafile.svg",
       "documentation": "https://manual.seafile.com",
       "source": "coolify",
       "updated": "2026-10-15T23:27:15+02:00",
@@ -37893,6 +38194,7 @@
         "rss"
       ],
       "logomark": "SE",
+      "logo": "/service-logos/searxng.svg",
       "documentation": "https://docs.searxng.org",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -37970,6 +38272,7 @@
         "api"
       ],
       "logomark": "SE",
+      "logo": "/service-logos/seaweedfs.svg",
       "documentation": "https://github.com/seaweedfs/seaweedfs",
       "source": "coolify",
       "updated": "2026-08-10T11:21:26+02:00",
@@ -38083,6 +38386,7 @@
         "data"
       ],
       "logomark": "SE",
+      "logo": "/service-logos/sequin.svg",
       "documentation": "https://sequinstream.com/docs/",
       "source": "coolify",
       "updated": "2026-01-05T15:49:25+01:00",
@@ -38231,6 +38535,7 @@
         "analytics"
       ],
       "logomark": "SE",
+      "logo": "/service-logos/sessy.svg",
       "documentation": "https://github.com/marckohlbrugge/sessy/blob/main/docs/docker-deployment.md",
       "source": "coolify",
       "updated": "2026-01-14T13:27:32+01:00",
@@ -38307,6 +38612,7 @@
         "webdav"
       ],
       "logomark": "SF",
+      "logo": "/service-logos/sftpgo.png",
       "documentation": "https://docs.sftpgo.com/2.7/",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -38400,6 +38706,7 @@
         "link"
       ],
       "logomark": "SH",
+      "logo": "/service-logos/shlink.webp",
       "documentation": "https://shlink.io/",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -38490,6 +38797,7 @@
         "monitoring"
       ],
       "logomark": "SI",
+      "logo": "/service-logos/signoz.svg",
       "documentation": "https://signoz.io/docs/introduction/",
       "source": "coolify",
       "updated": "2026-10-15T22:46:19+02:00",
@@ -38694,6 +39002,7 @@
         "pkm"
       ],
       "logomark": "SI",
+      "logo": "/service-logos/silverbullet.png",
       "documentation": "https://v2.silverbullet.md/Install/Configuration",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -38758,6 +39067,7 @@
         "pkm"
       ],
       "logomark": "SI",
+      "logo": "/service-logos/siyuan.svg",
       "documentation": "https://github.com/siyuan-note/siyuan",
       "source": "coolify",
       "updated": "2025-10-24T13:24:48+02:00",
@@ -38823,6 +39133,7 @@
         "link"
       ],
       "logomark": "SL",
+      "logo": "/service-logos/slash.webp",
       "documentation": "https://github.com/yourselfhosted/slash",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -38868,6 +39179,7 @@
         "open-source"
       ],
       "logomark": "SI",
+      "logo": "/service-logos/snipe-it.webp",
       "documentation": "https://snipe-it.readme.io/docs/introduction",
       "source": "coolify",
       "updated": "2026-10-22T20:39:08+02:00",
@@ -39042,6 +39354,7 @@
         "relay"
       ],
       "logomark": "SO",
+      "logo": "/service-logos/soju.svg",
       "documentation": "https://soju.im/",
       "source": "coolify",
       "updated": "2025-12-09T00:35:53+03:00",
@@ -39095,6 +39408,7 @@
         "messaging"
       ],
       "logomark": "SO",
+      "logo": "/service-logos/soketi.jpeg",
       "documentation": "https://docs.soketi.app",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -39190,6 +39504,7 @@
         "tv"
       ],
       "logomark": "SO",
+      "logo": "/service-logos/sonarr.svg",
       "documentation": "https://hub.docker.com/r/linuxserver/sonarr",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -39259,6 +39574,7 @@
         "slack"
       ],
       "logomark": "SP",
+      "logo": "/service-logos/spacebot.png",
       "documentation": "https://docs.spacebot.sh/docker",
       "source": "coolify",
       "updated": "2026-02-18T11:20:32+01:00",
@@ -39363,6 +39679,7 @@
         "body measurements"
       ],
       "logomark": "SP",
+      "logo": "/service-logos/sparkyfitness.svg",
       "documentation": "https://codewithcj.github.io/SparkyFitness/",
       "source": "coolify",
       "updated": "2026-08-10T13:18:10+02:00",
@@ -39598,6 +39915,7 @@
         "email"
       ],
       "logomark": "ST",
+      "logo": "/service-logos/stalwart.svg",
       "documentation": "https://stalw.art/docs/",
       "source": "coolify",
       "updated": "2026-08-10T12:58:58+02:00",
@@ -39647,6 +39965,7 @@
         "hosted"
       ],
       "logomark": "ST",
+      "logo": "/service-logos/statusnook.svg",
       "documentation": "https://statusnook.com",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -39694,6 +40013,7 @@
         "tool"
       ],
       "logomark": "SP",
+      "logo": "/service-logos/stirling-pdf.png",
       "documentation": "https://github.com/Stirling-Tools/Stirling-PDF",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -39741,6 +40061,7 @@
         "api"
       ],
       "logomark": "ST",
+      "logo": "/service-logos/strapi.svg",
       "documentation": "https://docs.strapi.io/",
       "source": "coolify",
       "updated": "2026-02-03T22:19:16+01:00",
@@ -39917,6 +40238,7 @@
         "unofficial"
       ],
       "logomark": "SU",
+      "logo": "/service-logos/superset-with-postgresql.svg",
       "documentation": "https://github.com/amancevice/docker-superset",
       "source": "coolify",
       "updated": "2025-12-21T12:02:19+11:00",
@@ -40027,6 +40349,7 @@
         "user-management"
       ],
       "logomark": "SW",
+      "logo": "/service-logos/supertokens-with-mysql.svg",
       "documentation": "https://supertokens.com/docs/guides",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -40112,6 +40435,7 @@
         "user-management"
       ],
       "logomark": "SW",
+      "logo": "/service-logos/supertokens-with-postgresql.svg",
       "documentation": "https://supertokens.com/docs/guides",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -40196,6 +40520,7 @@
         "income"
       ],
       "logomark": "SU",
+      "logo": "/service-logos/sure.png",
       "documentation": "https://github.com/we-promise/sure",
       "source": "coolify",
       "updated": "2026-10-19T21:30:29+02:00",
@@ -40315,6 +40640,7 @@
         "redis"
       ],
       "logomark": "SW",
+      "logo": "/service-logos/swetrix.svg",
       "documentation": "https://docs.swetrix.com/selfhosting/how-to",
       "source": "coolify",
       "updated": "2025-10-11T21:48:53+01:00",
@@ -40577,6 +40903,7 @@
         "synchronization"
       ],
       "logomark": "SY",
+      "logo": "/service-logos/syncthing.svg",
       "documentation": "https://syncthing.net/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -40630,6 +40957,7 @@
         "remote-access"
       ],
       "logomark": "TC",
+      "logo": "/service-logos/tailscale-client.svg",
       "documentation": "https://tailscale.com/kb",
       "source": "coolify",
       "updated": "2025-11-14T21:14:13+01:00",
@@ -40700,6 +41028,7 @@
         "relational"
       ],
       "logomark": "TE",
+      "logo": "/service-logos/teable.png",
       "documentation": "https://help.teable.io/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -40874,6 +41203,7 @@
         "server-management"
       ],
       "logomark": "TE",
+      "logo": "/service-logos/termix.svg",
       "documentation": "https://docs.termix.site/install/server/docker",
       "source": "coolify",
       "updated": "2026-08-10T11:46:48+02:00",
@@ -40930,6 +41260,7 @@
         "terraria"
       ],
       "logomark": "TS",
+      "logo": "/service-logos/terraria-server.svg",
       "documentation": "https://github.com/hexlo/terraria-server-docker",
       "source": "coolify",
       "updated": "2026-08-17T11:03:26+02:00",
@@ -41026,6 +41357,7 @@
         "platform"
       ],
       "logomark": "TO",
+      "logo": "/service-logos/tolgee.svg",
       "documentation": "https://tolgee.io/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -41129,6 +41461,7 @@
         "source"
       ],
       "logomark": "TR",
+      "logo": "/service-logos/traccar.png",
       "documentation": "https://www.traccar.org/documentation/",
       "source": "coolify",
       "updated": "2025-09-29T04:21:17+05:30",
@@ -41232,6 +41565,7 @@
         "api"
       ],
       "logomark": "TR",
+      "logo": "/service-logos/trailbase.svg",
       "documentation": "https://trailbase.io/",
       "source": "coolify",
       "updated": "2026-01-05T13:56:41+01:00",
@@ -41278,6 +41612,7 @@
         "peer-to-peer"
       ],
       "logomark": "TR",
+      "logo": "/service-logos/transmission.svg",
       "documentation": "https://docs.linuxserver.io/images/docker-transmission/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -41345,6 +41680,7 @@
         "automation"
       ],
       "logomark": "TR",
+      "logo": "/service-logos/trigger.png",
       "documentation": "https://trigger.dev/docs/self-hosting/overview",
       "source": "coolify",
       "updated": "2026-10-19T21:05:49+02:00",
@@ -41784,6 +42120,7 @@
         "wiki"
       ],
       "logomark": "TR",
+      "logo": "/service-logos/triliumnext.svg",
       "documentation": "https://github.com/TriliumNext/Trilium",
       "source": "coolify",
       "updated": "2026-08-10T18:45:23+02:00",
@@ -41837,6 +42174,7 @@
         "dashboard"
       ],
       "logomark": "TW",
+      "logo": "/service-logos/twenty.svg",
       "documentation": "https://docs.twenty.com",
       "source": "coolify",
       "updated": "2026-10-19T21:18:52+02:00",
@@ -42044,6 +42382,7 @@
         "elasticsearch-alternative"
       ],
       "logomark": "TY",
+      "logo": "/service-logos/typesense.png",
       "documentation": "https://typesense.org/docs",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -42108,6 +42447,7 @@
         "privacy"
       ],
       "logomark": "UM",
+      "logo": "/service-logos/umami.svg",
       "documentation": "https://umami.is",
       "source": "coolify",
       "updated": "2025-12-17T22:34:31+05:30",
@@ -42195,6 +42535,7 @@
         "open source"
       ],
       "logomark": "UW",
+      "logo": "/service-logos/unleash-with-postgresql.svg",
       "documentation": "https://docs.getunleash.io",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -42288,6 +42629,7 @@
         "open source"
       ],
       "logomark": "UW",
+      "logo": "/service-logos/unleash-without-database.svg",
       "documentation": "https://docs.getunleash.io",
       "source": "coolify",
       "updated": "2026-04-06T11:35:16-05:00",
@@ -42376,6 +42718,7 @@
         "machine-learning"
       ],
       "logomark": "UN",
+      "logo": "/service-logos/unstructured.png",
       "documentation": "https://github.com/Unstructured-IO/unstructured-api?tab=readme-ov-file#--general-pre-processing-pipeline-for-documents",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -42434,6 +42777,7 @@
         "applications"
       ],
       "logomark": "UK",
+      "logo": "/service-logos/uptime-kuma-with-mysql.svg",
       "documentation": "https://github.com/louislam/uptime-kuma?tab=readme-ov-file",
       "source": "coolify",
       "updated": "2026-01-08T21:10:43+01:00",
@@ -42529,6 +42873,7 @@
         "applications"
       ],
       "logomark": "UK",
+      "logo": "/service-logos/uptime-kuma-with-mariadb.svg",
       "documentation": "https://github.com/louislam/uptime-kuma?tab=readme-ov-file",
       "source": "coolify",
       "updated": "2026-01-08T21:13:56+01:00",
@@ -42624,6 +42969,7 @@
         "postmark"
       ],
       "logomark": "US",
+      "logo": "/service-logos/usesend.svg",
       "documentation": "https://docs.usesend.com/self-hosting/overview",
       "source": "coolify",
       "updated": "2026-11-03T18:14:45+01:00",
@@ -42787,6 +43133,7 @@
         "encryption"
       ],
       "logomark": "VA",
+      "logo": "/service-logos/vault.webp",
       "documentation": "https://developer.hashicorp.com/vault/docs/deploy/run-container",
       "source": "coolify",
       "updated": "2026-08-24T09:04:51+02:00",
@@ -42843,6 +43190,7 @@
         "wasm"
       ],
       "logomark": "VE",
+      "logo": "/service-logos/vert.png",
       "documentation": "https://github.com/VERT-sh/VERT",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -42888,6 +43236,7 @@
         "todo"
       ],
       "logomark": "VI",
+      "logo": "/service-logos/vikunja.svg",
       "documentation": "https://vikunja.io",
       "source": "coolify",
       "updated": "2026-08-17T11:10:01+02:00",
@@ -42947,6 +43296,7 @@
         "todo"
       ],
       "logomark": "VW",
+      "logo": "/service-logos/vikunja-with-postgresql.svg",
       "documentation": "https://vikunja.io",
       "source": "coolify",
       "updated": "2026-08-17T11:10:53+02:00",
@@ -43034,6 +43384,7 @@
         "wakatime-api"
       ],
       "logomark": "WA",
+      "logo": "/service-logos/wakapi.svg",
       "documentation": "https://wakapi.dev/",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -43254,6 +43605,7 @@
         "embeddings"
       ],
       "logomark": "WE",
+      "logo": "/service-logos/weaviate.png",
       "documentation": "https://weaviate.io/developers/weaviate",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -43405,6 +43757,7 @@
         "analysis"
       ],
       "logomark": "WC",
+      "logo": "/service-logos/web-check.png",
       "documentation": "https://github.com/lissy93/web-check",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -43454,6 +43807,7 @@
         "libre"
       ],
       "logomark": "WE",
+      "logo": "/service-logos/weblate.webp",
       "documentation": "https://weblate.org",
       "source": "coolify",
       "updated": "2026-10-19T21:18:38+02:00",
@@ -43642,6 +43996,7 @@
         "search engine"
       ],
       "logomark": "WH",
+      "logo": "/service-logos/whoogle.png",
       "documentation": "https://github.com/benbusby/whoogle-search?tab=readme-ov-file",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -43688,6 +44043,7 @@
         "documentation"
       ],
       "logomark": "WI",
+      "logo": "/service-logos/wikijs.svg",
       "documentation": "https://docs.requarks.io",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -43766,6 +44122,7 @@
         "minecraft"
       ],
       "logomark": "WI",
+      "logo": "/service-logos/wings.png",
       "documentation": "https://pterodactyl.io/",
       "source": "coolify",
       "updated": "2026-01-19T19:14:41+01:00",
@@ -43830,6 +44187,7 @@
         "admin"
       ],
       "logomark": "WE",
+      "logo": "/service-logos/wireguard-easy.svg",
       "documentation": "https://github.com/wg-easy/wg-easy",
       "source": "coolify",
       "updated": "2026-01-05T15:54:25+01:00",
@@ -43908,6 +44266,7 @@
         "mariadb"
       ],
       "logomark": "WW",
+      "logo": "/service-logos/wordpress-with-mariadb.svg",
       "documentation": "https://wordpress.org",
       "source": "coolify",
       "updated": "2026-11-02T14:44:20+01:00",
@@ -43988,6 +44347,7 @@
         "mysql"
       ],
       "logomark": "WW",
+      "logo": "/service-logos/wordpress-with-mysql.svg",
       "documentation": "https://wordpress.org",
       "source": "coolify",
       "updated": "2026-11-02T14:44:20+01:00",
@@ -44067,6 +44427,7 @@
         "management"
       ],
       "logomark": "WW",
+      "logo": "/service-logos/wordpress-without-database.svg",
       "documentation": "https://wordpress.org",
       "source": "coolify",
       "updated": "2026-10-22T20:26:09+02:00",
@@ -44116,6 +44477,7 @@
         "shows"
       ],
       "logomark": "YA",
+      "logo": "/service-logos/yamtrack.svg",
       "documentation": "https://github.com/FuzzyGrim/Yamtrack/wiki",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -44210,6 +44572,7 @@
         "shows"
       ],
       "logomark": "YW",
+      "logo": "/service-logos/yamtrack-with-postgresql.svg",
       "documentation": "https://github.com/FuzzyGrim/Yamtrack/wiki",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",
@@ -44333,6 +44696,7 @@
         "local-first"
       ],
       "logomark": "ZE",
+      "logo": "/service-logos/zero.svg",
       "documentation": "https://zero.rocicorp.dev/docs/deployment",
       "source": "coolify",
       "updated": "2026-08-10T23:38:55+02:00",
@@ -44499,6 +44863,7 @@
         "sharing"
       ],
       "logomark": "ZI",
+      "logo": "/service-logos/zipline.png",
       "documentation": "https://zipline.diced.sh/docs/config",
       "source": "coolify",
       "updated": "2025-08-17T18:23:57+02:00",

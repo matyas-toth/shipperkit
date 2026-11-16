@@ -12654,3 +12654,83 @@ input[type="checkbox"]:disabled {
   .library-backdrop, .library-dialog, .library-skeleton { animation: none; }
   .library-tile, .library-entry { transition: none; }
 }
+
+/* Service logos and tight entry copy. */
+.service-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.service-logo img {
+  display: block;
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px #0008) drop-shadow(0 0 0.7px #fff5);
+}
+.service-logo-mark {
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: 1;
+}
+.service-logo > .icon {
+  width: 52%;
+  height: 52%;
+  color: var(--muted);
+}
+.library-heading-mark,
+.library-entry-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
+}
+.library-heading-mark .icon,
+.library-entry-icon .icon {
+  position: absolute;
+  inset: 0;
+  display: block;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+}
+.library-entry > span:nth-child(2) {
+  gap: 1px;
+  line-height: 1.15;
+  align-content: center;
+}
+.library-entry strong {
+  line-height: 1.15;
+}
+.library-entry small {
+  color: var(--muted);
+  opacity: .68;
+  line-height: 1.2;
+}
+
+/* The Service Library card explains itself directly under its label. */
+.creation-fields .choice-card:has(.choice-detail) {
+  height: auto;
+  min-height: 88px;
+  padding-bottom: 13px;
+  align-content: start;
+  grid-template-rows: 18px auto auto;
+  gap: 6px;
+}
+.creation-fields .choice-card .choice-detail {
+  position: static;
+  left: auto;
+  bottom: auto;
+  margin: 0;
+  color: var(--muted);
+  opacity: .62;
+  font-size: 11.5px;
+  line-height: 1.2;
+}

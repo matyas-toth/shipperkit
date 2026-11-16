@@ -17,6 +17,7 @@ func TestEmbeddedCatalogIsComplete(t *testing.T) {
 		t.Fatalf("expected at least 360 services, got %d", len(catalog.Services))
 	}
 	seen := map[string]bool{}
+	logos := 0
 	for _, service := range catalog.Services {
 		if seen[service.ID] {
 			t.Fatalf("duplicate service id %q", service.ID)
@@ -24,6 +25,13 @@ func TestEmbeddedCatalogIsComplete(t *testing.T) {
 		seen[service.ID] = true
 		if service.Name == "" || service.Description == "" || service.Compose == "" || service.MainService == "" {
 			t.Fatalf("incomplete service %q", service.ID)
+		}
+		if service.Logo != "" {
+			logos++
+			path := filepath.Join("..", "..", "web", "public", strings.TrimPrefix(service.Logo, "/"))
+			if _, err := os.Stat(path); err != nil {
+				t.Logf("logo fallback for %s: %v", service.ID, err)
+			}
 		}
 		if strings.Contains(service.Compose, "${$") {
 			t.Fatalf("service %q contains nested interpolation", service.ID)
@@ -46,6 +54,9 @@ func TestEmbeddedCatalogIsComplete(t *testing.T) {
 	index := catalog.Index(1, false)
 	if len(index.Items) != len(catalog.Services) {
 		t.Fatalf("index has %d items, want %d", len(index.Items), len(catalog.Services))
+	}
+	if logos < 350 {
+		t.Fatalf("expected logo paths for the library, got %d", logos)
 	}
 	if len(index.Categories) < 10 {
 		t.Fatalf("expected categories, got %d", len(index.Categories))

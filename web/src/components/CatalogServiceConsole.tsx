@@ -3,6 +3,7 @@ import type { Application, CatalogDomain, CatalogField, CatalogService, Domain, 
 import { domainURL, primaryDomain, statusOf } from "../data";
 import { Button, ErrorNotice, Status, ActionMenu } from "./Controls";
 import { Icon } from "./Icon";
+import ServiceLogo from "./ServiceLogo";
 import { useAuth } from "../context";
 import { post } from "../api";
 
@@ -27,7 +28,7 @@ function optionLabel(value: string) {
 export function CatalogSummary(props: { service: CatalogService; proxy?: ProxyConfig; application: Application; manage: () => void }) {
   const domain = () => primaryDomain(props.application);
   return <section class="catalog-summary">
-    <span class="catalog-mark">{props.service.logomark}</span>
+    <ServiceLogo logo={props.service.logo} mark={props.service.logomark} class="catalog-mark" />
     <div class="catalog-summary-copy">
       <div class="catalog-summary-title"><strong>{props.service.name}</strong><span class="catalog-chip">{props.service.category}</span></div>
       <p>{props.service.description}</p>
@@ -209,7 +210,7 @@ export function CatalogServiceConsole(props: {
 
   return <div class="catalog-console">
     <header class="catalog-console-head">
-      <span class="catalog-mark xl">{props.service.logomark}</span>
+      <ServiceLogo logo={props.service.logo} mark={props.service.logomark} class="catalog-mark xl" />
       <div class="catalog-console-copy">
         <div class="catalog-console-title"><h2>{props.service.name}</h2><span class={"catalog-support " + props.service.support}>{props.service.support === "ready" ? "Ready" : "Advanced"}</span></div>
         <p>{props.service.description}</p>
