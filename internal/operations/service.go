@@ -51,7 +51,9 @@ func (s *Service) Run(ctx context.Context) {
 		s.Deliver(work)
 		s.AutomaticRetention(work)
 		if lastMetric.IsZero() || time.Since(lastMetric) >= time.Minute {
-			s.SampleMetrics(work)
+			sampleCtx, sampleCancel := context.WithTimeout(ctx, 10*time.Second)
+			s.SampleMetrics(sampleCtx)
+			sampleCancel()
 			lastMetric = time.Now()
 		}
 		cancel()
