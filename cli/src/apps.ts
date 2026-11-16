@@ -33,6 +33,7 @@ export type Application = {
   config?: Record<string, unknown> & {
     localSource?: string;
     domain?: string;
+    https?: boolean;
     repository?: string;
     branch?: string;
     variables?: Array<{ name: string; secret?: boolean }>;
@@ -52,13 +53,13 @@ const terminal = new Set(["succeeded", "failed", "interrupted", "cancelled"]);
 
 export function primaryDomain(app: Application) {
   const domains = app.domains || [];
-  return domains.find(domain => domain.primary) || domains[0] || (app.config?.domain ? { hostname: app.config.domain, https: false } : undefined);
+  return domains.find(domain => domain.primary) || domains[0] || (app.config?.domain ? { hostname: app.config.domain, https: app.config.https ?? false } : undefined);
 }
 
 export function applicationUrl(app: Application) {
   const domain = primaryDomain(app);
   if (!domain) return undefined;
-  const secure = domain.https || (!domain.hostname.endsWith(".localhost") && !domain.hostname.startsWith("127."));
+  const secure = domain.https ?? (!domain.hostname.endsWith(".localhost") && !domain.hostname.startsWith("127."));
   return `${secure ? "https" : "http"}://${domain.hostname}`;
 }
 
