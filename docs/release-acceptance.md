@@ -5,6 +5,43 @@ managed Ubuntu 24.04 x86-64 VPS, one Docker host, and the existing dashboard on
 desktop and mobile. Public prerelease image and installer assets are published.
 The stable `1.0.0` release remains gated by the checks below.
 
+## Nightly release readiness, 2026-11-16
+
+PR #71 merged as `870b3e831dd5c7552abb8b17bc39e76085b9625c`. Nightly
+`1.0.0-rc.27.nightly.56` was published from that revision with image digest
+`sha256:b7d2e41c5d5a902925c9083c6dcc044d04b6ea5e6d8f0301195e7a6aa4b2591b`.
+The feed checksums, image revision, embedded version and Go 1.27.4 compiler were
+verified before installation. The host runs Ubuntu 24.04.5 x86-64, Docker
+29.9.3, Compose 5.7.0 and Buildx 0.38.1.
+
+| Journey | Observed result |
+| --- | --- |
+| Automated acceptance | All GitHub CI gates passed. The complete real Docker deployment/API suite also passed on the VPS. Network inventory was 13 before and after, with no leaked test networks. |
+| Managed update | The normal Nightly updater completed in 30 seconds. All 27 public application probes succeeded; existing workload/proxy container identities and public certificate identities were preserved. |
+| CLI package and source update | The bundled tarball installed offline outside the repository. A local static project deployed, uploaded a different immutable snapshot through explicit app binding, and rolled back to the first snapshot. Both stored archives excluded literal registry credentials and project-ignored data. |
+| Logs and credential binding | Empty history returned zero lines and exited; latest-five returned 206–210 from a 210-line fixture. A 211-line full snapshot redacted its canary secret, following cancelled, and an alternate-origin credential test made zero HTTP requests. |
+| Current-role enforcement | Admin→Viewer, Admin→Developer and Developer→Viewer revoked existing sessions and terminated real Docker shells. Powerful tokens minted by the Admin subjects were revoked; fresh logins received the new role. Legacy Developer token records remain covered by the permanent store/API regressions. |
+| Maintenance authority | Instance-scoped host-admin tokens performed recheck, reviewed repair and retention settings. Account/update administration, app-bound host maintenance and access to another application were denied. |
+| Native protection | PostgreSQL 18 passed writes and reads with certificate verification. The encrypted native archive was downloaded off-server, its checksum verified, and a reviewed copy restore retained the original row. |
+| Fresh installation | Data-preserving uninstall left the original application serving. After the saved installation was moved aside, the managed Nightly installer created a separate instance. First-owner setup supplied the ACME contact and the new dashboard served trusted HTTPS. |
+| Authenticated instance recovery | The downloaded instance archive restored the original encryption key, database CA identity, accounts/roles/identity metadata and both source snapshots. Sessions/tokens were revoked and applications/schedules were stopped. A tampered copy of the real archive was rejected before installing a database. |
+| Fresh database storage | The recovered PostgreSQL application started on a new empty volume. The original off-server client CA trusted its newly issued server certificate. Importing the downloaded encrypted native backup recovered the saved row, and subsequent writes/reads succeeded. |
+| Workload recovery and reboot | The three original applications restarted from their preserved volumes, and the recovered local-source snapshot redeployed. A changed boot ID confirmed a real reboot: six intended workloads returned, the intentionally stopped worker stayed stopped, and trusted certificates/database trust persisted. |
+| Failed update | A local candidate passed artifact-version preflight but exited instead of serving. The managed installer restored its prior image and SQLite checkpoint automatically; Nightly and the original application were healthy afterward. |
+
+Live testing also found two presentation defects: the CLI assumed HTTPS even
+when a public domain explicitly used HTTP, and installer preflight printed a
+literal `%s` instead of the dashboard IP. The follow-up honors domain protocol
+metadata, including legacy configuration, and expands the installer address.
+The CLI correction passed real HTTP and HTTPS route checks on the installed
+Nightly, plus behavioral tests through the executable CLI.
+The patched installer passed syntax validation and `--check` on the VPS with
+the expanded numeric address and no installation changes.
+
+These results cover one supported VPS configuration. Live Google/GitHub/Discord
+sign-in, a genuine ACME renewal, a broader OS/Docker installation matrix and an
+independent security review remain unproven by this run.
+
 | Journey | Evidence |
 | --- | --- |
 | Fresh managed install | Ubuntu lab with 7.8 GiB RAM and 94 GiB free. Preflight detected missing Docker. The installer added Docker Engine 29.9.3, Buildx 0.38.1 and Compose 5.7.0 from the signed package repository. Subsequent candidate updates reused Docker and verified a pre-update SQLite checkpoint. |
@@ -102,8 +139,8 @@ Not yet proven on a real installation:
 - Live Google, GitHub and Discord consoles with real client credentials.
 - An in-place Main-channel update from Beta 1 or rc.21 to Beta 2 with an existing
   multi-user database.
-- A restore of a multi-user database with provider identities, factors and
-  provider secrets onto a fresh host.
+- Live provider sign-in and provider-console interoperability after recovery;
+  the Nightly drill above verifies recovered account/identity metadata and keys.
 - Full human role acceptance across every Viewer, Developer and Admin surface.
 
 ## Remaining stable-release gates

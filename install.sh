@@ -50,7 +50,6 @@ elif $uninstall && ! $explicit_apply; then
   apply=false
 fi
 printf '\n%sShipper installer%s\n' "$bold" "$reset"
-printf '%sA calm install for the server you own.%s\n' "$dim" "$reset"
 [[ $(uname -s) == Linux && -r /etc/os-release ]] || die 'This installer requires Linux'
 . /etc/os-release
 [[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 24.04 && $(uname -m) == x86_64 ]] || die 'Use Ubuntu 24.04 on x86-64'
@@ -140,7 +139,7 @@ if [[ $engine == install ]]; then
 else
   info "Docker      use the existing engine"
 fi
-info "Dashboard   http://%s:8080" "$public_ip"
+info "Dashboard   http://$public_ip:8080"
 info "Firewall    allow TCP 80, 443 and 8080"
 printf '\n'
 if ! $apply; then
