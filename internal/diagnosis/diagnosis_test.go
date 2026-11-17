@@ -22,6 +22,11 @@ func TestClassifyFailureRecognisesCommonSignatures(t *testing.T) {
 			state: "failed", code: "healthcheck_failed", conf: "high",
 		},
 		{
+			name:  "readiness command",
+			logs:  []store.LogLine{{Step: "checking", Line: "The candidate did not pass its HTTP health check: Container command failed (1): missing configuration"}},
+			state: "failed", code: "readiness_failed", conf: "high",
+		},
+		{
 			name:  "container exit",
 			logs:  []store.LogLine{{Step: "starting", Line: "Container shp-api exited with code 1"}},
 			state: "failed", code: "container_exited", conf: "high",

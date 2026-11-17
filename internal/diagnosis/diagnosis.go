@@ -119,6 +119,10 @@ func classifyFailure(logs []store.LogLine, d store.Deployment) causeMatch {
 	for i := len(logs) - 1; i >= 0; i-- {
 		line := strings.ToLower(logs[i].Line)
 		switch {
+		case strings.Contains(line, "did not pass its http health check"):
+			return causeMatch{Code: "readiness_failed", Summary: "The candidate started, but its HTTP health check did not pass.", Confidence: "high", Index: i}
+		case strings.Contains(line, "container command failed"):
+			return causeMatch{Code: "container_exited", Summary: "A container command exited before the release became ready.", Confidence: "high", Index: i}
 		case strings.Contains(line, "is unhealthy") || strings.Contains(line, "unhealthy"):
 			return causeMatch{Code: "healthcheck_failed", Summary: "A service started, but its health check never passed.", Confidence: "high", Index: i}
 		case strings.Contains(line, "exited with code") || strings.Contains(line, "exit code"):
