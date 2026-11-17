@@ -7,7 +7,7 @@ import { useAuth } from "../context";
 import { bytes } from "../data";
 import { Button, IconButton, Status } from "./Controls";
 import { Icon } from "./Icon";
-import { DiskDonut, MetricChart } from "./MetricChart";
+import { MetricChart } from "./MetricChart";
 import type { PulseMetric } from "./SystemPulse";
 import type { SystemOverview } from "../types";
 import type { Observation } from "./Diagnostics";
@@ -52,7 +52,7 @@ export default function SystemDrawer(props: { metric: PulseMetric; close: () => 
     onCleanup(() => { document.removeEventListener("keydown", keyboard); previous?.focus(); });
   });
   const data = () => overview.data;
-  const free = () => Math.max(0, (data()?.disk.total ?? 0) - (data()?.disk.used ?? 0));
+  const checkLabel = (item: Observation) => item.kind === "daemon" ? "Docker" : item.kind === "storage" ? "Storage" : item.kind === "proxy" ? "Proxy" : item.kind;
   async function copy() {
     try {
       await navigator.clipboard.writeText(JSON.stringify(data(), null, 2));
@@ -81,7 +81,6 @@ export default function SystemDrawer(props: { metric: PulseMetric; close: () => 
           <MetricChart label="Memory" value={value(data()?.memory.percent)} state={data()?.thresholds.memory} values={data()?.series.memory ?? []} detail={data()?.memory.total ? `${bytes(data()!.memory.used ?? 0)} of ${bytes(data()!.memory.total!)}` : undefined} />
           <MetricChart label="Disk" value={value(data()?.disk.percent)} state={data()?.thresholds.disk} values={data()?.series.disk ?? []} detail={data()?.disk.total ? `${bytes(data()!.disk.used ?? 0)} of ${bytes(data()!.disk.total!)}` : undefined} />
         </div>
-        <DiskDonut percent={data()?.disk.percent ?? null} used={bytes(data()?.disk.used ?? 0)} total={bytes(data()?.disk.total ?? 0)} free={bytes(free())} />
         <dl class="details-list system-facts">
           <div><dt>Load</dt><dd>{data()?.load1 ? data()!.load1.toFixed(2) : "—"}</dd></div>
           <div><dt>Containers</dt><dd>{data()?.containers.running ?? 0} running of {data()?.containers.total ?? 0}</dd></div>
@@ -90,15 +89,12 @@ export default function SystemDrawer(props: { metric: PulseMetric; close: () => 
         <Show when={isAdmin() && operations.data?.items.length}>
           <section class="system-drawer-checks">
             <h3>Checks</h3>
-            <div class="check-list">
-              <For each={operations.data!.items.filter(item => ["daemon", "proxy", "storage", "host"].includes(item.kind))}>{item => (
-                <div class="check-row">
-                  <Status value={item.stale ? "stale" : item.state} />
-                  <span>{item.kind === "storage" ? item.details.scope ?? "Storage" : item.kind}</span>
-                  <span class="check-summary">{item.summary}</span>
-                </div>
-              )}</For>
-            </div>
+            <div class="table-tray"><table class="inventory-table system-checks-table">
+              <thead><tr><th>Component</th><th>Status</th><th>Summary</th></tr></thead>
+              <tbody><For each={operations.data!.items.filter(item => ["daemon", "proxy", "storage", "host"].includes(item.kind))}>{item => (
+                <tr><td>{checkLabel(item)}</td><td><Status value={item.stale ? "stale" : item.state} /></td><td>{item.summary}</td></tr>
+              )}</For></tbody>
+            </table></div>
           </section>
         </Show>
         <Show when={isAdmin()}>

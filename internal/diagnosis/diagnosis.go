@@ -1,4 +1,4 @@
-﻿package diagnosis
+package diagnosis
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 // Diagnosis is the bounded explanation of a failed deployment. It is derived
 // from stored logs and the last observed container facts, never from a model.
 type Diagnosis struct {
-	SchemaVersion       int                 `json:"schemaVersion"`
-	GeneratedAt         int64               `json:"generatedAt"`
-	Vantage             string              `json:"vantage"`
+	SchemaVersion       int                  `json:"schemaVersion"`
+	GeneratedAt         int64                `json:"generatedAt"`
+	Vantage             string               `json:"vantage"`
 	Application         DiagnosisApplication `json:"application"`
 	Deployment          DiagnosisDeployment  `json:"deployment"`
 	Cause               DiagnosisCause       `json:"cause"`
@@ -61,18 +61,18 @@ type DiagnosisCheck struct {
 }
 
 type DiagnosisService struct {
-	Name         string   `json:"name"`
-	Image        string   `json:"image,omitempty"`
-	State        string   `json:"state"`
-	Health       string   `json:"health"`
-	ExitCode     int      `json:"exitCode"`
-	Restarts     int      `json:"restarts"`
-	OOMKilled    bool     `json:"oomKilled"`
-	CPUPercent   *float64 `json:"cpuPercent,omitempty"`
-	MemoryBytes  *int64   `json:"memoryBytes,omitempty"`
-	MemoryLimit  *int64   `json:"memoryLimit,omitempty"`
-	RuntimePort  int      `json:"runtimePort,omitempty"`
-	HealthPath   string   `json:"healthPath,omitempty"`
+	Name        string   `json:"name"`
+	Image       string   `json:"image,omitempty"`
+	State       string   `json:"state"`
+	Health      string   `json:"health"`
+	ExitCode    int      `json:"exitCode"`
+	Restarts    int      `json:"restarts"`
+	OOMKilled   bool     `json:"oomKilled"`
+	CPUPercent  *float64 `json:"cpuPercent,omitempty"`
+	MemoryBytes *int64   `json:"memoryBytes,omitempty"`
+	MemoryLimit *int64   `json:"memoryLimit,omitempty"`
+	RuntimePort int      `json:"runtimePort,omitempty"`
+	HealthPath  string   `json:"healthPath,omitempty"`
 }
 
 type DiagnosisLog struct {
@@ -299,6 +299,13 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 			filtered = append(filtered, container)
 		}
 	}
+	serviceLogs := []deploy.FailureServiceLog{}
+	if raw, ok, _ := db.DeploymentDiagnosis(ctx, deploymentID); ok {
+		var snapshot deploy.FailureSnapshot
+		if json.Unmarshal(raw, &snapshot) == nil {
+			serviceLogs = snapshot.Services
+		}
+	}
 	stage := deploymentStage(logs)
 	match := classifyFailure(logs, d)
 	redact := func(value string) string {
@@ -312,9 +319,40 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 			detail = strings.TrimSpace(redact(logs[match.Index].Line))
 		}
 	}
+	serviceDetail := ""
+	for _, service := range serviceLogs {
+		for index := len(service.Lines) - 1; index >= 0; index-- {
+			value := strings.TrimSpace(redact(service.Lines[index]))
+			if value != "" {
+				serviceDetail = value
+				break
+			}
+		}
+		if serviceDetail != "" {
+			break
+		}
+	}
+	if serviceDetail != "" {
+		detail = serviceDetail
+	}
 	services := diagnosisServices(app, d, filtered, observations)
 	checks := diagnosisChecks(app, d, health, stage, services)
 	diagLogs := []DiagnosisLog{}
+	for _, service := range serviceLogs {
+		lines := []string{}
+		for _, line := range service.Lines {
+			value := strings.TrimSpace(redact(line))
+			if value != "" {
+				lines = append(lines, value)
+			}
+		}
+		if len(lines) > 20 {
+			lines = lines[len(lines)-20:]
+		}
+		if len(lines) > 0 {
+			diagLogs = append(diagLogs, DiagnosisLog{Service: service.Service, Lines: lines})
+		}
+	}
 	lines := []string{}
 	for _, line := range logs {
 		value := strings.TrimSpace(redact(line.Line))
@@ -338,6 +376,22 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 	if len(filtered) == 0 {
 		unknowns = append(unknowns, "Container state was removed during cleanup; the deployment logs are the remaining evidence.")
 	}
+	if len(serviceLogs) == 0 && (match.Code == "healthcheck_failed" || match.Code == "container_exited" || match.Code == "readiness_failed" || match.Code == "oom_killed") {
+		unknowns = append(unknowns, "The failed service logs were not captured before cleanup; only the deployment output is available.")
+	}
+	evidence := evidenceWindow(logs, match.Index, redact)
+	for _, service := range serviceLogs {
+		start := max(0, len(service.Lines)-2)
+		for _, line := range service.Lines[start:] {
+			value := strings.TrimSpace(redact(line))
+			if value != "" {
+				evidence = append(evidence, value)
+			}
+		}
+	}
+	if len(evidence) > 6 {
+		evidence = evidence[len(evidence)-6:]
+	}
 	duration := int64(0)
 	if d.StartedAt > 0 {
 		end := d.FinishedAt
@@ -357,7 +411,7 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 			Summary:    match.Summary,
 			Detail:     detail,
 			Confidence: match.Confidence,
-			Evidence:   evidenceWindow(logs, match.Index, redact),
+			Evidence:   evidence,
 		},
 		Checks:              checks,
 		Services:            services,
@@ -374,4 +428,3 @@ func DiagnosisMethod(app store.Application) string {
 	}
 	return app.Method
 }
-

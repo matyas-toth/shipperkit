@@ -10,7 +10,7 @@ import { SegmentedChoice } from "../components/Choices";
 import { bytes, createdDate, operationTime } from "../data";
 import Retention from "../components/Retention";
 import ChangeReview from "../components/ChangeReview";
-import { DiskDonut, MetricChart } from "../components/MetricChart";
+import { MetricChart } from "../components/MetricChart";
 import type {ChangePlan,SystemInfo,SystemOverview} from "../types";
 
 interface HostStatus { observedAt: number; stale: boolean; dockerAtBoot: boolean; shipperAtBoot: boolean; rebootRequired: boolean; securityServiceEnabled: boolean; clockSynchronized: boolean }
@@ -80,7 +80,6 @@ export default function System() {
           <MetricChart label="Memory" value={data().memory.percent == null ? "—" : Math.round(data().memory.percent!) + "%"} state={data().thresholds.memory} values={data().series.memory} detail={data().memory.total ? `${bytes(data().memory.used ?? 0)} of ${bytes(data().memory.total!)}` : undefined} />
           <MetricChart label="Disk" value={data().disk.percent == null ? "—" : Math.round(data().disk.percent!) + "%"} state={data().thresholds.disk} values={data().series.disk} detail={data().disk.total ? `${bytes(data().disk.used ?? 0)} of ${bytes(data().disk.total!)}` : undefined} />
         </div>
-        <DiskDonut percent={data().disk.percent ?? null} used={bytes(data().disk.used ?? 0)} total={bytes(data().disk.total ?? 0)} free={bytes(Math.max(0, (data().disk.total ?? 0) - (data().disk.used ?? 0)))} />
       </>}</Show>
     </section>
     <section class="settings-section"><h2>Runtime</h2><dl class="settings-group"><div class="setting-row"><dt>Shipper</dt><dd>{system.data?.version||"Loading"}</dd></div><div class="setting-row"><dt>Docker Engine</dt><dd>{system.data?.docker.engine.version||"Unavailable"}</dd></div><div class="setting-row"><dt>Docker host</dt><dd>{system.data?.docker.engine.os||"Unavailable"}</dd></div><div class="setting-row"><dt>Shipper heap</dt><dd>{bytes(system.data?.runtime.heapBytes||0)}</dd></div><div class="setting-row"><dt>Recovery</dt><dd><A class="button neutral small" href="/settings#recovery">Open recovery</A></dd></div></dl></section>

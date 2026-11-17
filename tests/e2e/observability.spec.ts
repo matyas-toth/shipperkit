@@ -32,7 +32,6 @@ test("host pulse, capacity drawer and deployment diagnosis", async ({ page, requ
   await pulse.locator(".pulse-segment").nth(2).click();
   await expect(page.locator(".system-drawer")).toBeVisible();
   await expect(page.locator(".system-drawer .metric-chart")).toHaveCount(3);
-  await expect(page.locator(".system-drawer .disk-donut")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.goto("/applications/application-web?tab=deployments&deployment=deployment-web-failed");
   await expect(page.getByText("Deployment failed", { exact: true })).toBeVisible();
@@ -40,7 +39,9 @@ test("host pulse, capacity drawer and deployment diagnosis", async ({ page, requ
   await page.getByRole("button", { name: "Diagnose", exact: true }).click();
   await expect(page.locator(".diagnosis-drawer")).toBeVisible();
   await expect(page.locator(".diagnosis-cause h3")).toHaveText("A service started, but its health check never passed.");
-  await expect(page.locator(".diagnosis-check").filter({ hasText: "runtime" })).toContainText("Failed");
+  await expect(page.locator(".diagnosis-checks-table tr").filter({ hasText: "Runtime" })).toContainText("Failed");
+  await expect(page.locator(".diagnosis-log-title").filter({ hasText: "garage" })).toBeVisible();
+  await expect(page.locator(".diagnosis-log").first()).toContainText("ERROR failed to read /etc/garage.toml");
   await expect(page.locator(".diagnosis-service").filter({ hasText: "garage" })).toContainText("Unhealthy");
   await expect(page.getByRole("button", { name: "Copy for agent", exact: true })).toBeVisible();
 });

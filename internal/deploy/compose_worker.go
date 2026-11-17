@@ -108,6 +108,11 @@ func (w *Worker) deployCompose(ctx context.Context, d *store.Deployment) (result
 		if result == nil || ctx.Err() == context.Canceled {
 			return
 		}
+		if dockerRuntime, ok := runtime.(*DockerRuntime); ok {
+			captureCtx, captureCancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+			w.captureComposeFailure(captureCtx, *d, dockerRuntime)
+			captureCancel()
+		}
 		rollback, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Minute)
 		defer cancel()
 		if d.PreviousID == "" {

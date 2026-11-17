@@ -127,7 +127,7 @@ Sections, in order:
 1. **Cause.** One sentence, one code, one confidence. The sentence is the answer. No jargon.
 2. **Checks.** The layers that matter for this failure, each with a state and the service name when relevant. Healthy layers stay collapsed and quiet. Failed and unknown layers are visible.
 3. **Failed service.** Container state, health, exit code, restart count, OOM flag, and the runtime command. The command is redacted.
-4. **Logs.** The last 20 lines for the failed service, with `View all` opening the existing Logs tab filtered to that service. For an instant exit, the previous container's logs are included when available.
+4. **Logs.** The last lines from the failed service, captured before cleanup so a removed candidate still has its own error. The deployment output is a secondary disclosure. For an instant exit, the previous container's logs are included when available.
 5. **Actions.** The smallest relevant actions, never a generic "fix it" button. Examples: open Compose source, open environment, open domains, retry release, copy for agent.
 6. **For agents.** `Copy for agent` copies the full JSON bundle. A small `Download` is available for support.
 
@@ -141,13 +141,13 @@ No new route. The drawer state is URL-addressable as `?diagnose=<deployment-id>`
 
 The existing System page is the deep dive. It keeps its sections and gains one:
 
-**Capacity.** The 24-hour charts for CPU, memory, and disk, and the disk composition donut. Below the charts, a compact resource table for images, containers, volumes, and build cache. The table is calculated on demand from `docker system df` with a 30-second cache. No auto-refresh while the drawer is closed.
+**Capacity.** The 24-hour charts for CPU, memory, and disk. No extra card below them; the three cards are the whole capacity view. Detailed Docker resource counts stay in the host diagnosis when they are needed, not as permanent chrome.
 
 The existing **Health** table stays. Each check gets an `Inspect` action that opens the same drawer in host mode. For checks that require host recovery, the drawer links to the relevant docs section instead of pretending the UI can restart Docker.
 
 **Runtime** gains the Shipper service uptime and the last successful health probe. **Maintenance** stays as it is.
 
-The System page is allowed to be denser than the dashboard. It is still not a Grafana board. Three charts, one donut, one resource table, the existing checks.
+The System page is allowed to be denser than the dashboard. It is still not a Grafana board. Three charts, the existing checks.
 
 ## The diagnosis model
 
@@ -331,16 +331,13 @@ The failure snapshot is stored separately:
 ```sql
 create table deployment_diagnoses (
   deployment_id text primary key,
+  application_id text not null,
   captured_at integer not null,
-  schema_version integer not null,
-  cause_code text not null,
-  cause_summary text not null,
-  confidence text not null,
   snapshot_json text not null
 );
 ```
 
-The snapshot is captured when the deployment transitions to failed, before cleanup. The worker writes the snapshot before it records the terminal failed state, so a failure is never visible without its explanation. The capture has a ten-second budget, a 50-container cap, 100 log lines per service, and a 256KB total cap. If the capture times out, the state still moves to failed with partial evidence and `complete: false`. It is never silently discarded.
+The snapshot is captured when the deployment transitions to failed, before cleanup. The worker writes the snapshot before it records the terminal failed state, so a failure is never visible without its explanation. The capture has a ten-second budget, a 20-service cap, 100 log lines per service, and a 256KB total cap. If the capture times out, the state still moves to failed with partial evidence and `complete: false`. It is never silently discarded.
 
 ## API and agent contract
 
@@ -480,7 +477,6 @@ Acceptance: the pulse matches `top`, `free`, and `df` within 5%, never blocks th
 
 - Add the host bundle endpoint and `shipper doctor --host`.
 - Add the proxy, Shipper service, and Docker resource checks to the System drawer.
-- Add the disk composition donut and the resource table.
 - Add the docs appendix for panel-down recovery.
 - Rewrite the troubleshooting page around the in-app actions.
 

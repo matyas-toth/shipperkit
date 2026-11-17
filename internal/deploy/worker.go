@@ -743,6 +743,13 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		}
 		d.Error = RedactDeployment(d, err.Error())
 		w.log(d, err.Error())
+		if d.ContainerID != "" {
+			service := d.Service
+			if service == "" {
+				service = d.ApplicationName
+			}
+			w.captureFailureLogs(ctx, d, []failureTarget{{Service: service, ContainerID: d.ContainerID}})
+		}
 		if (d.Operation == "deploy" || d.Operation == "apply" || d.Operation == "rollback") && Method(d.Config) != "compose" {
 			cleanup, stop := context.WithTimeout(context.Background(), 20*time.Second)
 			if a, e := w.DB.Application(cleanup, d.ApplicationID); e == nil && a.ActiveDeploymentID != d.ID {

@@ -12896,50 +12896,6 @@ input[type="checkbox"]:disabled {
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
-.disk-donut {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-top: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border-muted);
-  border-radius: 10px;
-  background: var(--deep);
-}
-.disk-donut svg {
-  width: 92px;
-  height: 92px;
-  flex: none;
-  transform: rotate(-90deg);
-}
-.disk-donut-track,
-.disk-donut-value {
-  fill: none;
-  stroke-width: 10;
-}
-.disk-donut-track {
-  stroke: var(--border-muted);
-}
-.disk-donut-value {
-  stroke: var(--success);
-  stroke-linecap: round;
-  transition: stroke-dashoffset 240ms ease;
-}
-.disk-donut-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.disk-donut-copy strong {
-  font-size: 22px;
-  font-weight: 560;
-  letter-spacing: -0.5px;
-  font-variant-numeric: tabular-nums;
-}
-.disk-donut-copy span {
-  color: var(--muted);
-  font-size: 12px;
-}
 .diagnosis-drawer .drawer-scroll {
   display: flex;
   flex-direction: column;
@@ -12948,12 +12904,8 @@ input[type="checkbox"]:disabled {
 .diagnosis-cause {
   padding: 14px;
   border: 1px solid var(--border-muted);
-  border-left: 3px solid var(--danger);
   border-radius: 8px;
   background: var(--deep);
-}
-.diagnosis-cause.medium {
-  border-left-color: var(--warning);
 }
 .diagnosis-cause-meta {
   display: flex;
@@ -12998,26 +12950,22 @@ input[type="checkbox"]:disabled {
   justify-content: space-between;
   gap: 12px;
 }
-.diagnosis-checks {
-  border: 1px solid var(--border-muted);
-  border-radius: 8px;
-  overflow: hidden;
+.diagnosis-checks-table {
+  table-layout: fixed;
 }
-.diagnosis-check {
-  display: grid;
-  grid-template-columns: auto 88px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--border-muted);
+.diagnosis-checks-table th:nth-child(1) {
+  width: 100px;
+}
+.diagnosis-checks-table th:nth-child(2) {
+  width: 108px;
+}
+.diagnosis-checks-table td {
+  padding-block: 8px;
   font-size: 12px;
-}
-.diagnosis-check:last-child {
-  border-bottom: 0;
-}
-.diagnosis-check-summary {
-  color: var(--muted);
   overflow-wrap: anywhere;
+}
+.diagnosis-checks-table td:first-child {
+  color: var(--secondary);
 }
 .diagnosis-services {
   display: grid;
@@ -13128,26 +13076,22 @@ input[type="checkbox"]:disabled {
   font-weight: 580;
   color: var(--secondary);
 }
-.check-list {
-  border: 1px solid var(--border-muted);
-  border-radius: 8px;
-  overflow: hidden;
+.system-checks-table {
+  table-layout: fixed;
 }
-.check-row {
-  display: grid;
-  grid-template-columns: auto 72px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--border-muted);
+.system-checks-table th:nth-child(1) {
+  width: 100px;
+}
+.system-checks-table th:nth-child(2) {
+  width: 108px;
+}
+.system-checks-table td {
+  padding-block: 8px;
   font-size: 12px;
-}
-.check-row:last-child {
-  border-bottom: 0;
-}
-.check-summary {
-  color: var(--muted);
   overflow-wrap: anywhere;
+}
+.system-checks-table td:first-child {
+  color: var(--secondary);
 }
 .drawer-system-link {
   align-self: flex-start;
@@ -13183,19 +13127,6 @@ input[type="checkbox"]:disabled {
   .metric-chart-plot {
     height: 64px;
   }
-  .disk-donut {
-    gap: 12px;
-  }
-  .disk-donut svg {
-    width: 76px;
-    height: 76px;
-  }
-  .diagnosis-check {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-  .diagnosis-check-summary {
-    grid-column: 1 / -1;
-  }
   .diagnosis-service dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -13210,12 +13141,10 @@ input[type="checkbox"]:disabled {
 .diagnosis-drawer .drawer-scroll {
   overflow-x: hidden;
 }
-.diagnosis-check > *,
 .diagnosis-service header > *,
 .diagnosis-footer > * {
   min-width: 0;
 }
-.diagnosis-check-summary,
 .diagnosis-service header strong {
   overflow-wrap: anywhere;
 }
@@ -13224,4 +13153,13 @@ input[type="checkbox"]:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.diagnosis-log-title {
+  margin: 10px 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 550;
+}
+.diagnosis-log-title:first-of-type {
+  margin-top: 0;
 }

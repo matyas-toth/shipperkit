@@ -31,7 +31,9 @@ export default function DiagnosisDrawer(props: { applicationId: string; deployme
     if (value === "medium") return "Medium confidence";
     return "Low confidence";
   });
-  const logs = () => diagnosis()?.logs.flatMap(group => group.lines).slice(-20) ?? [];
+  const layerLabel = (layer: string) => layer === "daemon" ? "Docker" : layer === "readiness" ? "Readiness" : layer.charAt(0).toUpperCase() + layer.slice(1);
+  const serviceLogs = () => (diagnosis()?.logs ?? []).filter(group => group.service && group.lines.length);
+  const deploymentLogs = () => (diagnosis()?.logs ?? []).filter(group => !group.service).flatMap(group => group.lines).slice(-20);
   onMount(() => {
     closeButton.focus();
     const keyboard = (event: KeyboardEvent) => {
@@ -95,7 +97,7 @@ export default function DiagnosisDrawer(props: { applicationId: string; deployme
         <Show when={error()}><ErrorNotice message={error()} /></Show>
         <Show when={!diagnosis() && query.isPending}><span class="loading-line" aria-label="Loading diagnosis" /></Show>
         <Show when={diagnosis()}>{value => <>
-          <section class="diagnosis-cause" classList={{ medium: value().cause.confidence !== "high" }}>
+          <section class="diagnosis-cause">
             <div class="diagnosis-cause-meta">
               <span>{value().cause.confidence === "high" ? "Cause" : "Likely cause"}</span>
               <span>{confidence()}</span>
@@ -108,13 +110,12 @@ export default function DiagnosisDrawer(props: { applicationId: string; deployme
           </section>
           <section class="diagnosis-section">
             <h3>Checks</h3>
-            <div class="diagnosis-checks"><For each={value().checks}>{check => (
-              <div class="diagnosis-check">
-                <Status value={check.state} />
-                <span>{check.layer === "daemon" ? "Docker" : check.layer === "readiness" ? "Readiness" : check.layer}</span>
-                <span class="diagnosis-check-summary">{check.summary}</span>
-              </div>
-            )}</For></div>
+            <div class="table-tray"><table class="inventory-table diagnosis-checks-table">
+              <thead><tr><th>Layer</th><th>Status</th><th>Summary</th></tr></thead>
+              <tbody><For each={value().checks}>{check => (
+                <tr><td>{layerLabel(check.layer)}</td><td><Status value={check.state} /></td><td>{check.summary}</td></tr>
+              )}</For></tbody>
+            </table></div>
           </section>
           <section class="diagnosis-section">
             <h3>Services</h3>
@@ -133,10 +134,24 @@ export default function DiagnosisDrawer(props: { applicationId: string; deployme
               </article>
             )}</For></div>
           </section>
-          <section class="diagnosis-section">
-            <div class="diagnosis-section-head"><h3>Last lines</h3><button type="button" class="inline-link" onClick={props.close}>Show full log</button></div>
-            <pre class="diagnosis-log">{logs().length ? logs().join("\n") : "No deployment lines were retained."}</pre>
-          </section>
+          <Show when={serviceLogs().length} fallback={
+            <section class="diagnosis-section">
+              <div class="diagnosis-section-head"><h3>Last lines</h3><button type="button" class="inline-link" onClick={props.close}>Show full log</button></div>
+              <pre class="diagnosis-log">{deploymentLogs().length ? deploymentLogs().join("\n") : "No deployment lines were retained."}</pre>
+            </section>
+          }>
+            <section class="diagnosis-section">
+              <div class="diagnosis-section-head"><h3>Service logs</h3><button type="button" class="inline-link" onClick={props.close}>Show full log</button></div>
+              <For each={serviceLogs()}>{group => <>
+                <h4 class="diagnosis-log-title">{group.service}</h4>
+                <pre class="diagnosis-log">{group.lines.join("\n")}</pre>
+              </>}</For>
+            </section>
+            <details class="diagnosis-unknowns">
+              <summary>Deployment output</summary>
+              <pre class="diagnosis-log">{deploymentLogs().join("\n")}</pre>
+            </details>
+          </Show>
           <Show when={value().unknowns.length}>
             <details class="diagnosis-unknowns">
               <summary>Not measured</summary>

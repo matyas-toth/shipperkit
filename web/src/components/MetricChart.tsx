@@ -71,23 +71,3 @@ export function MetricChart(props: {
     </section>
   );
 }
-
-export function DiskDonut(props: { percent: number | null; used: string; total: string; free: string }) {
-  const radius = 46;
-  const circumference = 2 * Math.PI * radius;
-  const value = () => Math.min(100, Math.max(0, props.percent ?? 0));
-  const offset = () => circumference - (value() / 100) * circumference;
-  return (
-    <section class="disk-donut" aria-label={props.percent == null ? "Disk usage not measured" : `Disk ${Math.round(value())} percent used`}>
-      <svg viewBox="0 0 120 120" role="img">
-        <circle class="disk-donut-track" cx="60" cy="60" r={radius} />
-        <circle class="disk-donut-value" cx="60" cy="60" r={radius} stroke-dasharray={`${circumference}`} stroke-dashoffset={`${offset()}`} />
-      </svg>
-      <div class="disk-donut-copy">
-        <strong>{props.percent == null ? "Not measured" : Math.round(value()) + "%"}</strong>
-        <span>{props.used} of {props.total}</span>
-        <span>{props.free} free</span>
-      </div>
-    </section>
-  );
-}
