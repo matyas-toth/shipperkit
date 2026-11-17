@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.29](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.28...v1.0.0-rc.29) (2026-11-17)
+
+
+### Features
+
+* add host pulse and deployment diagnosis ([#74](https://github.com/matyas-toth/shipperkit/issues/74)) ([3070471](https://github.com/matyas-toth/shipperkit/commit/307047124e05e546ff719c01e040d70042925835))
+
 ## [1.0.0-rc.28](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.27...v1.0.0-rc.28) (2026-11-16)
 
 
