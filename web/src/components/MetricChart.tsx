@@ -23,17 +23,6 @@ function segments(values: Array<number | null>, width: number, height: number, p
   return result;
 }
 
-export function Sparkline(props: { values: Array<number | null>; state?: string }) {
-  const width = 64;
-  const height = 18;
-  const parts = () => segments(props.values, width, height, 2);
-  return (
-    <svg class="sparkline" classList={{ warning: props.state === "warning", critical: props.state === "critical" }} viewBox={`0 0 ${width} ${height}`} aria-hidden="true" preserveAspectRatio="none">
-      <For each={parts()}>{points => <path d={path(points)} fill="none" stroke="currentColor" stroke-width="1.25" vector-effect="non-scaling-stroke" />}</For>
-    </svg>
-  );
-}
-
 export function MetricChart(props: {
   label: string;
   value: string;

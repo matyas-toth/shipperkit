@@ -1,6 +1,7 @@
 # Next-gen observability
 
 Status: proposal, 2026-11-16
+Review update, 2026-11-17: the dashboard pulse was rejected. Capacity lives on the System page; the Applications page stays a list. The diagnosis drawer remains the failure surface. The pulse section below is retained as a rejected option, not current scope.
 Scope: Shipper 1.1 and the stable 1.0 follow-up
 Audience: product, design, engineering
 

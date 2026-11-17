@@ -12741,88 +12741,7 @@ input[type="checkbox"]:disabled {
   min-height: 88px;
 }
 
-/* Observability: one pulse, one diagnosis drawer, one capacity section. */
-.system-pulse {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  position: relative;
-  margin-bottom: 16px;
-  border: 1px solid var(--border-muted);
-  border-radius: 10px;
-  background: var(--deep);
-  overflow: hidden;
-}
-.system-pulse:has(.pulse-status) {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-}
-.pulse-segment {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "label value" "chart chart";
-  align-items: end;
-  gap: 4px 12px;
-  min-width: 0;
-  padding: 10px 16px 12px;
-  border: 0;
-  border-right: 1px solid var(--border-muted);
-  background: transparent;
-  text-align: left;
-  color: var(--text);
-}
-.pulse-segment:last-of-type {
-  border-right: 0;
-}
-.pulse-segment:hover {
-  background: var(--surface);
-}
-.pulse-label {
-  grid-area: label;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 16px;
-}
-.pulse-value {
-  grid-area: value;
-  font-size: 19px;
-  font-weight: 560;
-  letter-spacing: -0.4px;
-  line-height: 22px;
-  font-variant-numeric: tabular-nums;
-}
-.pulse-segment.warning .pulse-value {
-  color: var(--warning);
-}
-.pulse-segment.critical .pulse-value {
-  color: var(--danger);
-}
-.sparkline {
-  grid-area: chart;
-  display: block;
-  width: 100%;
-  height: 22px;
-  color: var(--secondary);
-  opacity: 0.62;
-}
-.sparkline.warning {
-  color: var(--warning);
-  opacity: 0.9;
-}
-.sparkline.critical {
-  color: var(--danger);
-  opacity: 0.95;
-}
-.pulse-status {
-  align-self: center;
-  padding: 0 12px;
-  border-left: 1px solid var(--border-muted);
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
-.system-pulse.loading .pulse-value,
-.system-pulse.loading .sparkline {
-  opacity: 0.35;
-}
+/* Observability: capacity on the System page and the deployment diagnosis. */
 .capacity-charts {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -13061,66 +12980,7 @@ input[type="checkbox"]:disabled {
 .drawer-error {
   color: var(--danger);
 }
-.system-drawer .capacity-charts {
-  margin-bottom: 0;
-}
-.system-facts {
-  margin-top: 12px;
-}
-.system-drawer-checks {
-  margin-top: 20px;
-}
-.system-drawer-checks h3 {
-  margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 580;
-  color: var(--secondary);
-}
-.system-checks-table {
-  table-layout: fixed;
-}
-.system-checks-table th:nth-child(1) {
-  width: 100px;
-}
-.system-checks-table th:nth-child(2) {
-  width: 108px;
-}
-.system-checks-table td {
-  padding-block: 8px;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-.system-checks-table td:first-child {
-  color: var(--secondary);
-}
-.drawer-system-link {
-  align-self: flex-start;
-  margin-top: 16px;
-}
 @media (width < 48rem) {
-  .system-pulse {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-bottom: 12px;
-  }
-  .system-pulse:has(.pulse-status) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .pulse-segment {
-    padding: 9px 10px 10px;
-  }
-  .pulse-value {
-    font-size: 16px;
-    line-height: 20px;
-  }
-  .sparkline {
-    height: 18px;
-  }
-  .pulse-status {
-    grid-column: 1 / -1;
-    padding: 6px 10px;
-    border-top: 1px solid var(--border-muted);
-    border-left: 0;
-  }
   .capacity-charts {
     grid-template-columns: 1fr;
   }
@@ -13132,12 +12992,6 @@ input[type="checkbox"]:disabled {
   }
 }
 
-.system-drawer .capacity-charts {
-  grid-template-columns: 1fr;
-}
-.system-drawer .drawer-scroll {
-  overflow-x: hidden;
-}
 .diagnosis-drawer .drawer-scroll {
   overflow-x: hidden;
 }

@@ -18,21 +18,17 @@ async function enter(page: import("@playwright/test").Page) {
   await expect(page.getByRole("heading", { name: "Applications", exact: true })).toBeVisible();
 }
 
-test("host pulse, capacity drawer and deployment diagnosis", async ({ page, request }) => {
+test("system capacity and deployment diagnosis", async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await enter(page);
   await request.post("http://127.0.0.1:9083/metrics");
   await request.post("http://127.0.0.1:9083/failure");
   await page.waitForTimeout(1200);
   await page.goto("/");
-  const pulse = page.locator(".system-pulse");
-  await expect(pulse).toBeVisible();
-  await expect(pulse.locator(".pulse-segment")).toHaveCount(3);
-  await expect(pulse.locator(".pulse-value").first()).toContainText("%");
-  await pulse.locator(".pulse-segment").nth(2).click();
-  await expect(page.locator(".system-drawer")).toBeVisible();
-  await expect(page.locator(".system-drawer .metric-chart")).toHaveCount(3);
-  await page.keyboard.press("Escape");
+  await expect(page.locator(".system-pulse")).toHaveCount(0);
+  await page.goto("/system");
+  await expect(page.getByRole("heading", { name: "Capacity", exact: true })).toBeVisible();
+  await expect(page.locator(".capacity-charts .metric-chart")).toHaveCount(3);
   await page.goto("/applications/application-web?tab=deployments&deployment=deployment-web-failed");
   await expect(page.getByText("Deployment failed", { exact: true })).toBeVisible();
   await expect(page.locator(".deployment-result")).toContainText("A service started, but its health check never passed.");
