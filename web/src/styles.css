@@ -6190,7 +6190,7 @@ textarea::placeholder {
   gap: 10px 18px;
   min-width: 0;
   min-height: 64px;
-  padding: 8px 0 12px;
+  padding: 8px 0 6px;
   border-bottom: 1px solid var(--border-muted);
 }
 .release-summary > div {
