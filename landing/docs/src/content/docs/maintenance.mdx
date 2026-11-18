@@ -1,6 +1,6 @@
 ---
 title: Maintenance
-description: Free disk space safely, review cleanup and retention, repair the proxy, and read host maintenance status.
+description: Free disk space safely, review cleanup and retention, read host capacity and maintenance status, and repair the proxy.
 ---
 
 Routine maintenance is about keeping the control plane healthy without deleting data that a release or backup still needs.
@@ -61,6 +61,21 @@ The host status collector reports:
 - Whether the update helper is ready.
 
 These are observations, not automatic repairs. Host OS and Docker patch policy remain operator managed.
+
+## Capacity
+
+**System → Overview** shows CPU, memory, and disk together in the **Capacity** section. Each chart keeps a rolling series and marks the recent reading against its threshold.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/system-capacity.png" target="_blank" rel="noreferrer"><img src="/docs/shots/system-capacity.png" alt="Shipper System overview with CPU, memory, and disk capacity charts beside component health" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>Capacity keeps the current host reading and a short series for CPU, memory, and disk.</figcaption>
+</figure>
+
+- CPU and memory warn at 85% and turn critical at 95%, using a short average rather than one spike.
+- Disk warns at 80% and turns critical at 90%, using the latest reading.
+- **Measuring** appears until the first sample arrives. **Recheck** refreshes the page without resetting the stored series.
+
+Capacity is host-wide and does not attribute usage to an application. Application CPU and memory are reported in the container drawer and in the release diagnosis, where the failed service is the subject.
 
 ## Related
 

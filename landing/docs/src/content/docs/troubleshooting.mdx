@@ -1,14 +1,34 @@
 ---
 title: Troubleshooting
-description: Fix failed builds, containers that exit, readiness failures, 502 routes, certificate warnings, failed tasks, missing Compose dependencies, and stale data.
+description: Diagnose a failed release, fix containers that exit, readiness failures, 502 routes, certificate warnings, failed tasks, missing Compose dependencies, and stale data.
 ---
 
-Use the application's Overview issue alert, deployment logs, runtime logs, and **System → Overview** health cards to identify the failed layer. This page maps each symptom to the next action.
+Use the application's Overview issue alert, release diagnosis, deployment logs, runtime logs, and **System → Overview** health and capacity cards to identify the failed layer. This page maps each symptom to the next action.
 
 <figure class="docs-shot">
   <a class="docs-shot-link" href="/docs/shots/application-issue.png" target="_blank" rel="noreferrer"><img src="/docs/shots/application-issue.png" alt="Shipper application overview issue alert with the failing runtime and a link to the next action" width="1440" height="900" loading="lazy" decoding="async" /></a>
   <figcaption>The Overview issue alert names the failing layer and links to the next useful action.</figcaption>
 </figure>
+
+## Diagnose a failed release
+
+A failed release has a **Diagnose** button beside its log. The **Why this failed** drawer groups the evidence into a likely cause, layer checks, per-service state, and captured service logs.
+
+- The cause states its confidence and lists the evidence behind it.
+- Checks cover the build, runtime, readiness, route, and dependency layers.
+- Each Compose service shows its state, exit code, restarts, health, CPU, and memory.
+- Facts Shipper could not measure are listed separately from observed facts.
+
+<figure class="docs-shot">
+  <a class="docs-shot-link" href="/docs/shots/diagnosis.png" target="_blank" rel="noreferrer"><img src="/docs/shots/diagnosis.png" alt="Shipper Why this failed drawer with a likely cause, layer checks, service state, and captured service logs" width="1440" height="900" loading="lazy" decoding="async" /></a>
+  <figcaption>The cause, layer checks, service state, and the failed service's own log stay in one view.</figcaption>
+</figure>
+
+Shipper copies up to 100 recent lines from each failed service before the candidate container is removed. The captured lines and the report are redacted. Application names, application IDs, service names, and instance or container IDs stay visible so the failure can be traced to its source. Secret values are replaced with `[REDACTED]`.
+
+**Copy diagnosis** and **Download** produce the same bounded JSON report.
+
+A failure that happened before log capture, or whose candidate was removed already, cannot show service logs. The drawer says so and offers **Retry release**. The retry captures the next failure's service logs.
 
 ## Build fails
 
@@ -26,6 +46,8 @@ Check the build method in the review. An explicit method overrides automatic sel
 
 ## Container exits immediately
 
+Open **Diagnose** first when the release was captured. The drawer keeps the failed service's own output after the candidate is removed. Use the commands below for a container that is still present or for a failure without a capture.
+
 ```sh
 docker ps -a --filter label=io.shipper.application.id=<application-id>
 docker logs --tail 200 <container-name>
@@ -41,6 +63,14 @@ Common causes:
 - The image entrypoint is a shell that exits when the command is empty.
 
 Fix the source or configuration, then redeploy. Editing a running container is not a supported fix.
+
+## Application shows Stopped
+
+**Stopped** reflects the desired state, not the last health result. After you stop an application, Shipper reports **Stopped** even when the last observation was degraded or the container exited with an error.
+
+Use **Application actions → Start application** to return it to service. A start that is queued or running shows its operation state until it finishes.
+
+If you did not stop the application, open the deployment history and the diagnosis for the release that changed its state.
 
 ## Readiness fails
 
@@ -120,7 +150,7 @@ sudo systemctl restart shipper.service
 
 - Check `df -h /var/lib` and the storage check.
 - Check `docker system df` for image and build cache pressure.
-- Check host memory and CPU.
+- Open **System → Overview** and read the **Capacity** charts for CPU, memory, and disk, including the rolling series and the threshold state.
 - Recheck the inventory.
 - Look for a stale observation time.
 
@@ -149,3 +179,10 @@ Include the Shipper version, the exact application and release ID, the failed ch
 - Do not edit a running container and call it fixed.
 - Do not restore a database over a database that accepted writes after the backup.
 - Do not treat a running container as proof that the route, certificate, or application protocol works.
+
+## Related
+
+- [Releases](/docs/releases/)
+- [Secrets](/docs/secrets/)
+- [Maintenance](/docs/maintenance/)
+- [Recovery runbook](/docs/recovery/)

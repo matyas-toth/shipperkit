@@ -1,6 +1,6 @@
 ---
 title: Releases
-description: What a Shipper release records, how deploy and apply differ, where deployment logs live, and how image retention affects rollback.
+description: What a Shipper release records, how deploy and apply differ, where deployment logs live, how diagnosis captures a failed release, and how image retention affects rollback.
 ---
 
 A release records more than an image. Shipper keeps the source commit, build method, runtime configuration, routes, and the image that served traffic.
@@ -45,6 +45,16 @@ A failed release names the failed stage and the first useful error. The serving 
   <a class="docs-shot-link" href="/docs/shots/failed.png" target="_blank" rel="noreferrer"><img src="/docs/shots/failed.png" alt="Shipper failed deployment with the failed stage, build error, and log lines" width="1440" height="900" loading="lazy" decoding="async" /></a>
   <figcaption>A failed release names the stage and the first useful error. The serving release can remain healthy.</figcaption>
 </figure>
+
+## Diagnosis
+
+A failed release has a **Diagnose** button beside its log. The **Why this failed** drawer turns the failure into a likely cause with its evidence, checks for each layer, per-service state, and captured service logs.
+
+The captured logs come from the failed candidate container, not the serving release. Shipper copies up to 100 recent lines per failed service before cleanup, so the application's own error survives the failed release. Secret values are replaced with `[REDACTED]`. Application names, application IDs, service names, and container or instance IDs stay visible so the log points at the service that produced it.
+
+A release that failed before log capture, or whose candidate container was removed already, shows only the retained deployment output. The drawer states that limit and offers **Retry release** so the next failure can be captured.
+
+Use **Download** to keep the bounded JSON report with an incident record.
 
 ## Image retention
 
