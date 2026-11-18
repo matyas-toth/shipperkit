@@ -313,9 +313,7 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 	stage := deploymentStage(logs)
 	match := classifyFailure(logs, d)
 	redact := func(value string) string {
-		value = deploy.Redact(app.Config, value)
-		value = deploy.Redact(d.Config, value)
-		return value
+		return deploy.RedactDeployment(d, value)
 	}
 	detail := strings.TrimSpace(redact(d.Error))
 	if detail == "" || match.Code != "unknown" {

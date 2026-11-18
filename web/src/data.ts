@@ -28,6 +28,7 @@ export function statusLabel(value: string): string {
 export const operationPending = (state?: string) => !!state && !["succeeded", "failed", "interrupted","cancelled"].includes(state);
 export function applicationState(app: import("./types").Application) {
   if (operationPending(app.latestDeployment?.state)) return app.latestDeployment!.state;
+  if (app.desiredState === "stopped") return "stopped";
   if(!app.activeDeploymentId&&app.latestDeployment?.state==="cancelled")return "created";
   if (!app.activeDeploymentId && app.latestDeployment?.state === "failed") return "failed";
   if (app.state === "missing" && app.activeDeploymentId && (app.sourceKind === "git" || app.sourceKind === "compose")) return "unavailable";

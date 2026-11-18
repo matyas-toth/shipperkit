@@ -323,15 +323,22 @@ func DetectMethod(root string) string {
 	return "railpack"
 }
 func Redact(c store.Config, text string) string {
+	return redactWithSafe(c, text, nil)
+}
+
+func redactWithSafe(c store.Config, text string, safe map[string]bool) string {
+	allowed := func(value string) bool {
+		return value == "" || safe[value] || safe[strings.ToLower(value)]
+	}
 	values := []string{}
 	for _, svc := range c.Services {
-		text = Redact(store.Config{Variables: svc.Variables}, text)
+		text = redactWithSafe(store.Config{Variables: svc.Variables}, text, safe)
 	}
 	for _, v := range c.Variables {
-		if v.Secret && v.Value != "" {
+		if v.Secret && v.Value != "" && !allowed(v.Value) {
 			values = append(values, v.Value)
 			for _, line := range strings.Split(strings.ReplaceAll(v.Value, "\r\n", "\n"), "\n") {
-				if line != "" && line != v.Value {
+				if line != "" && line != v.Value && !allowed(line) {
 					values = append(values, line)
 				}
 			}
@@ -342,6 +349,18 @@ func Redact(c store.Config, text string) string {
 		text = strings.ReplaceAll(text, value, "[REDACTED]")
 	}
 	return text
+}
+
+func identifierValue(value string) bool {
+	if len(value) != 12 && len(value) != 24 && len(value) != 40 {
+		return false
+	}
+	for _, r := range value {
+		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+			return false
+		}
+	}
+	return true
 }
 func SourceRoot(repository string, c store.Config) (string, error) {
 	root, e := filepath.Abs(repository)

@@ -48,3 +48,25 @@ func TestCaptureFailureLogsStoresRedactedSnapshot(t *testing.T) {
 		t.Fatalf("unexpected snapshot: %+v", snapshot)
 	}
 }
+
+func TestRedactDeploymentKeepsApplicationIdentity(t *testing.T) {
+	deployment := store.Deployment{
+		ID:              "deployment",
+		ApplicationID:   "46511337df01561aa2981789",
+		ApplicationName: "Garage",
+		Service:         "garage",
+		Services:        []store.Service{{Name: "garage"}},
+		Config:          store.StaticConfig{Variables: []store.Variable{{Name: "TOKEN", Value: "super-secret", Secret: true}}},
+		ComposePlan:     `{"masks":["Garage","garage","46511337df01561aa2981789","dfbe08d5fa03","super-secret"]}`,
+	}
+	line := "Container shp-dfbe08d5fa03-46511337df01561aa2981789-garage Garage token super-secret"
+	got := RedactDeployment(deployment, line)
+	for _, expected := range []string{"Garage", "garage", "46511337df01561aa2981789", "dfbe08d5fa03"} {
+		if !strings.Contains(got, expected) {
+			t.Fatalf("expected %q in %q", expected, got)
+		}
+	}
+	if strings.Contains(got, "super-secret") {
+		t.Fatalf("secret remained in %q", got)
+	}
+}

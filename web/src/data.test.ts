@@ -32,5 +32,7 @@ describe("deployment history", () => {
     const app = { method:"auto",activeMethod:"static",sourceKind:"git",activeDeploymentId:"release",state:"running" } as Application;
     expect(applicationState(app)).toBe("serving");expect(applicationState({...app,state:"missing"})).toBe("unavailable");
     expect(applicationState({...app,latestDeployment:{state:"building"} as Deployment})).toBe("building");
+    expect(applicationState({...app,desiredState:"stopped",state:"degraded"})).toBe("stopped");
+    expect(applicationState({...app,desiredState:"stopped",latestDeployment:{state:"starting"} as Deployment})).toBe("starting");
   });
 });

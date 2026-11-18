@@ -347,11 +347,29 @@ func ComposeMasks(d store.Deployment) []string {
 	return p.Masks
 }
 func RedactDeployment(d store.Deployment, line string) string {
-	line = Redact(d.Config, line)
-	for _, v := range ComposeMasks(d) {
-		if v != "" {
-			line = strings.ReplaceAll(line, v, "[REDACTED]")
+	safe := map[string]bool{}
+	add := func(value string) {
+		if value != "" {
+			safe[value] = true
+			safe[strings.ToLower(value)] = true
 		}
+	}
+	add(d.ApplicationName)
+	add(d.ApplicationID)
+	add(d.Service)
+	add(d.Config.Domain)
+	for _, svc := range d.Services {
+		add(svc.Name)
+	}
+	for _, svc := range d.Config.Services {
+		add(svc.Name)
+	}
+	line = redactWithSafe(d.Config, line, safe)
+	for _, v := range ComposeMasks(d) {
+		if v == "" || safe[v] || safe[strings.ToLower(v)] || identifierValue(v) {
+			continue
+		}
+		line = strings.ReplaceAll(line, v, "[REDACTED]")
 	}
 	return line
 }
