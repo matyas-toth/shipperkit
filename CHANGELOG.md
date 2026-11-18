@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.30](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.29...v1.0.0-rc.30) (2026-11-18)
+
+
+### Bug Fixes
+
+* polish service headers, stopped state and diagnosis logs ([#76](https://github.com/matyas-toth/shipperkit/issues/76)) ([0810625](https://github.com/matyas-toth/shipperkit/commit/081062564e35f510daa17228d7e65d8732de5682))
+
 ## [1.0.0-rc.29](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.28...v1.0.0-rc.29) (2026-11-17)
 
 
