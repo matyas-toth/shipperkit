@@ -77,7 +77,7 @@ export default function LogViewer(props: {
   }
 
   return <div class="deployment-detail">
-    <section class="release-summary" aria-label="Selected release">
+    <section class="release-summary" aria-label="Selected deployment">
       <div>
         <div class="log-context">
           <strong class="mono log-commit" title={props.deployment.commit || props.deployment.id}>{deploymentRef(props.deployment)}</strong>
@@ -86,15 +86,15 @@ export default function LogViewer(props: {
         </div>
       </div>
       <Show when={props.current?.id !== props.deployment.id}><div class="release-serving">
-        <Show when={props.current} fallback="No current release">{current =>
-          <><span>Serving release</span><code title={current().commit || current().id}>{deploymentRef(current())}</code></>
+        <Show when={props.current} fallback="Nothing serving">{current =>
+          <><span>Serving</span><code title={current().commit || current().id}>{deploymentRef(current())}</code></>
         }</Show>
       </div></Show>
       <Show when={cancellable() || props.restore || retryable()}>
         <div class="log-operation-actions">
           <Show when={cancellable()}><Button small disabled={props.deployment.cancelRequested} onClick={props.cancel}>{props.deployment.cancelRequested ? "Cancelling" : "Cancel"}</Button></Show>
-          <Show when={props.restore}><Button small icon="back" onClick={props.restore}>Restore release</Button></Show>
-          <Show when={retryable()}><Button small variant="primary" onClick={props.retry}>Retry release</Button></Show>
+          <Show when={props.restore}><Button small icon="back" onClick={props.restore}>Roll back</Button></Show>
+          <Show when={retryable()}><Button small variant="primary" onClick={props.retry}>Retry</Button></Show>
         </div>
       </Show>
     </section>

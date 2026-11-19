@@ -138,7 +138,7 @@ export default function DiagnosisDrawer(props: { applicationId: string; deployme
             <section class="diagnosis-section">
               <div class="diagnosis-section-head"><h3>Last lines</h3><button type="button" class="inline-link" onClick={props.close}>Show full log</button></div>
               <Show when={!serviceLogs().length && ["healthcheck_failed", "container_exited", "readiness_failed", "oom_killed"].includes(value().cause.code)}>
-                <p class="diagnosis-capture-note">Service logs were not captured for this older failure. Retry the release to capture the next failure's service logs.</p>
+                <p class="diagnosis-capture-note">Service logs were not captured for this older failure. Retry the deployment to capture the next failure's service logs.</p>
               </Show>
               <pre class="diagnosis-log">{deploymentLogs().length ? deploymentLogs().join("\n") : "No deployment lines were retained."}</pre>
             </section>

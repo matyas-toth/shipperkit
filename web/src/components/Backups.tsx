@@ -546,7 +546,6 @@ export default function Backups(props: {
                   <span class="recovery-tool-icon"><Icon name="key" /></span>
                   <div class="recovery-tool-copy">
                     <h4>Recovery key</h4>
-                    <p>Decrypts instance archives and encrypted backups.</p>
                   </div>
                   <Button
                     disabled={!!downloading()}
@@ -562,8 +561,7 @@ export default function Backups(props: {
                 <summary class="recovery-tool-row">
                   <span class="recovery-tool-icon"><Icon name="upload" /></span>
                   <div class="recovery-tool-copy">
-                    <h4>Load a save</h4>
-                    <p>Restore a fresh install from an instance archive.</p>
+                    <h4>Restore an instance</h4>
                   </div>
                   <span class="recovery-tool-toggle">How it works<Icon name="chevron" /></span>
                 </summary>
@@ -911,9 +909,7 @@ export default function Backups(props: {
               </For>
               <Show when={!plans().length}>
                 <tr class="empty-row">
-                  <td colspan="3"><div class="empty-backup-state"><span>No scheduled backups</span><div class="toolbar-actions"><Button small variant="ghost" icon="plus" onClick={() => {
-                    create(); setEditing(plan => plan ? { ...plan, schedule: "0 3 * * *" } : plan);
-                  }}>Add schedule</Button><a class="docs-link" href={docs("backups/")} target="_blank" rel="noreferrer">Backup guide</a></div></div></td>
+                  <td colspan="3"><div class="empty-backup-state"><span>No scheduled backups</span><div class="toolbar-actions"><a class="docs-link" href={docs("backups/")} target="_blank" rel="noreferrer">Backup guide</a></div></div></td>
                 </tr>
               </Show>
             </tbody>

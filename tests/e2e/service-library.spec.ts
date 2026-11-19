@@ -41,7 +41,6 @@ test("deploys a service from the library through review", async ({ page }) => {
   await page.getByRole("button", { name: "Configure manually", exact: true }).click();
   const source = page.getByRole("group", { name: "Source type", exact: true });
   await expect(source.getByText("Service Library", { exact: true })).toBeVisible();
-  await expect(source.getByText("360+ ready-made services", { exact: true })).toBeVisible();
   await source.getByRole("radio", { name: "Service Library", exact: true }).check({ force: true });
   await expect(page.getByRole("dialog", { name: "Service Library", exact: true })).toBeVisible();
 });

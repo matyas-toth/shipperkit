@@ -205,3 +205,41 @@ export function ErrorNotice(props: { message: string; retry?: () => void }) {
     {props.retry && <Button variant="ghost" small onClick={props.retry}>Retry</Button>}</div>;
 }
 
+
+export function ConfirmDialog(props: { title: string; message: JSX.Element; confirm: string; danger?: boolean; close: () => void; run: () => Promise<unknown> | unknown }) {
+  const [busy, setBusy] = createSignal(false), [error, setError] = createSignal("");
+  const titleId = `confirm-${createUniqueId()}`;
+  let panel!: HTMLDivElement;
+  const previous = document.activeElement as HTMLElement | null;
+  const close = () => { if (!busy()) props.close(); };
+  async function confirm() {
+    if (busy()) return;
+    setBusy(true); setError("");
+    try { await props.run(); props.close(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+  createEffect(() => {
+    queueMicrotask(() => panel?.querySelector<HTMLButtonElement>("[data-confirm]")?.focus());
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); close(); }
+      if (event.key !== "Tab") return;
+      const nodes = Array.from(panel.querySelectorAll<HTMLElement>("button:not(:disabled)"));
+      const first = nodes[0], last = nodes[nodes.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", key);
+    onCleanup(() => { document.removeEventListener("keydown", key); if (previous?.isConnected) previous.focus({ preventScroll: true }); });
+  });
+  return <Portal>
+    <div class="drawer-scrim" onClick={close} />
+    <div ref={panel} class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby={titleId}>
+      <header><h2 id={titleId}>{props.title}</h2></header>
+      <p>{props.message}</p>
+      <Show when={error()}><ErrorNotice message={error()} /></Show>
+      <div class="form-actions">
+        <Button variant="ghost" disabled={busy()} onClick={close}>Cancel</Button>
+        <Button data-confirm variant={props.danger ? "neutral" : "primary"} class={props.danger ? "danger-button" : ""} disabled={busy()} onClick={() => void confirm()}>{props.confirm}</Button>
+      </div>
+    </div>
+  </Portal>;
+}

@@ -121,7 +121,6 @@ export default function Shell(props: RouteSectionProps) {
     setActionError("");
     try { await auth.logout(); } catch (error) { setActionError((error as Error).message); }
   }
-  const connected = () => query.data?.docker.connected && live();
   const section = () => location.pathname === "/settings" ? "settings" : location.pathname === "/system" ? "system" : "applications";
   return <UpdatesContext.Provider value={{ data: () => updates.data, pending: () => updates.isPending, error: () => updates.error,
     loadedVersion, check: checkUpdates, save: saveUpdates, apply: applyUpdate, open: openUpdate }}>
@@ -136,9 +135,6 @@ export default function Shell(props: RouteSectionProps) {
           <A href="/settings" activeClass="active" class="nav-link"><Icon name="settings" />Settings<Show when={updateBadge()}><span class="nav-update-badge" title={updates.data?.available ? "Update to " + updates.data.available.version : "Update available"}>Update</span></Show><Show when={updating()}><span class="nav-update-badge is-updating" title="Shipper is updating">Updating</span></Show></A>
         </nav>
         <div class="topbar-actions">
-          <span class={"connection " + (connected() ? "is-connected" : "")} title={query.data?.docker.error ?? "Docker connection"}>
-            <span class="status-dot" /><span class="connection-label">{connected() ? "Connected" : "Reconnecting"}</span>
-          </span>
           <IconButton icon="search" label="Search applications" class="topbar-search" ghost onClick={focusSearch} />
           <div class="account">
             <button ref={accountButton} class="account-trigger" aria-label="Account" aria-expanded={menu()} aria-haspopup="menu" onClick={() => setMenu(!menu())}>

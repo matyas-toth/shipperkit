@@ -17,9 +17,10 @@ export interface Diagnostic {
   cause?: DiagnosisCause; nextActions?: DiagnosisAction[];
 }
 const checkNames: Record<string, string> = {
-  daemon: "Docker", runtime: "Runtime", route: "Routing", certificate: "HTTPS",
-  build: "Build", readiness: "Readiness", task: "Task", "dependency-network": "Dependency network",
+  daemon: "Docker", runtime: "Runtime", route: "Routing", certificate: "HTTPS", proxy: "Proxy", storage: "Storage",
+  host: "Host", service: "Service", build: "Build", readiness: "Readiness", task: "Task", "dependency-network": "Dependency network",
 };
+export const checkName = (kind: string) => checkNames[kind] ?? (kind ? kind[0].toUpperCase() + kind.slice(1).replaceAll("-", " ") : kind);
 const attention = new Set(["failed", "unreachable", "degraded", "warning", "unhealthy"]);
 export function applicationDiagnostics(id: () => string, enabled: () => boolean) {
   return createQuery(() => ({ queryKey: ["applications", id(), "diagnostics"], queryFn: () => api<Diagnostic>(`/applications/${id()}/diagnostics`), enabled: enabled(), staleTime: 15000, refetchInterval: 15000 }));
@@ -33,10 +34,16 @@ export function diagnosticIssue(data?: Diagnostic) {
 }
 
 export function ApplicationIssue(props: { diagnostic?: Diagnostic; domains: (hostname: string) => void; deployments: () => void; view: (id: string) => void }) {
-  const issue = () => diagnosticIssue(props.diagnostic);
   const failed = () => props.diagnostic?.latestOperation?.state === "failed" ? props.diagnostic.latestOperation : undefined;
+  // A failed deployment explains most runtime symptoms, so it leads unless Docker is down or an
+  // older release still serves and its route needs attention on its own.
+  const issue = () => {
+    const found = diagnosticIssue(props.diagnostic);
+    if (!failed() || !found || found.layer === "daemon") return found;
+    return props.diagnostic?.servingRelease && ["route", "certificate"].includes(found.layer) ? found : undefined;
+  };
   const route = () => ["route", "certificate"].includes(issue()?.layer ?? "");
-  const issueTitle = () => issue() && (checkNames[issue()!.layer] ?? issue()!.layer) +
+  const issueTitle = () => issue() && checkName(issue()!.layer) +
     (route() ? " " + statusLabel(issue()!.state).toLowerCase() : " needs attention");
   return <Show when={issue() || failed()}>
     <section class="diagnostic-alert application-issue" aria-label="Application issue">

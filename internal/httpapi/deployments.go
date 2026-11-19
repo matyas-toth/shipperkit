@@ -10,11 +10,13 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"os"
 	"path"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -34,8 +36,82 @@ func (s *Server) effectiveProxy(ctx context.Context) deploy.ProxyConfig {
 	return config
 }
 
+type proxyView struct {
+	deploy.ProxyConfig
+	// PublicAddress is where application DNS records should point.
+	PublicAddress string `json:"publicAddress,omitempty"`
+	// AppDomainSuffix names a wildcard zone that already resolves to this server,
+	// so a new application can be reachable before the operator owns a domain.
+	AppDomainSuffix string `json:"appDomainSuffix,omitempty"`
+}
+
 func (s *Server) proxyInfo(w http.ResponseWriter, r *http.Request) {
-	s.json(w, 200, s.effectiveProxy(r.Context()))
+	config := s.effectiveProxy(r.Context())
+	address := s.serverAddress(r, config)
+	s.json(w, 200, proxyView{ProxyConfig: config, PublicAddress: address, AppDomainSuffix: appDomainSuffix(r, address)})
+}
+
+var addressCache = struct {
+	sync.Mutex
+	values map[string]cachedAddress
+}{values: map[string]cachedAddress{}}
+
+type cachedAddress struct {
+	value   string
+	expires time.Time
+}
+
+// serverAddress prefers explicit configuration, then the address the operator
+// used to reach the dashboard, then the public address its hostname resolves to.
+func (s *Server) serverAddress(r *http.Request, config deploy.ProxyConfig) string {
+	host := r.Host
+	if name, _, e := net.SplitHostPort(host); e == nil {
+		host = name
+	}
+	host = strings.Trim(host, "[]")
+	for _, raw := range []string{os.Getenv("SHIPPER_PUBLIC_IP"), config.BindIP, host} {
+		if ip, e := netip.ParseAddr(raw); e == nil && !ip.IsUnspecified() && !ip.IsLoopback() {
+			return ip.Unmap().String()
+		}
+	}
+	if host == "" || host == "localhost" || strings.HasSuffix(host, ".localhost") {
+		return ""
+	}
+	addressCache.Lock()
+	cached, ok := addressCache.values[host]
+	addressCache.Unlock()
+	if ok && time.Now().Before(cached.expires) {
+		return cached.value
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	value := ""
+	if ips, e := net.DefaultResolver.LookupNetIP(ctx, "ip", host); e == nil {
+		for _, ip := range ips {
+			if deploy.PublicAddress(ip) && (value == "" || ip.Is4()) {
+				value = ip.Unmap().String()
+			}
+		}
+	}
+	addressCache.Lock()
+	addressCache.values[host] = cachedAddress{value: value, expires: time.Now().Add(5 * time.Minute)}
+	addressCache.Unlock()
+	return value
+}
+
+func appDomainSuffix(r *http.Request, address string) string {
+	if address != "" {
+		return strings.ReplaceAll(address, ":", "-") + ".sslip.io"
+	}
+	host := r.Host
+	if name, _, e := net.SplitHostPort(host); e == nil {
+		host = name
+	}
+	host = strings.Trim(host, "[]")
+	if ip, e := netip.ParseAddr(host); host == "localhost" || strings.HasSuffix(host, ".localhost") || e == nil && ip.IsLoopback() {
+		return "localhost"
+	}
+	return ""
 }
 
 func (s *Server) saveProxy(w http.ResponseWriter, r *http.Request) {
@@ -568,7 +644,15 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 	} else {
 		addresses, e = net.DefaultResolver.LookupNetIP(ctx, "ip", d.Config.Domain)
 		if e != nil || len(addresses) == 0 {
-			respond("dns_pending", "Point the domain's A or AAAA record to this server")
+			message := "Point the domain's A or AAAA record to this server"
+			if address := s.serverAddress(r, s.effectiveProxy(r.Context())); address != "" {
+				record := "A"
+				if strings.Contains(address, ":") {
+					record = "AAAA"
+				}
+				message = "Point the domain's " + record + " record to " + address
+			}
+			respond("dns_pending", message)
 			return
 		}
 		for _, ip := range addresses {

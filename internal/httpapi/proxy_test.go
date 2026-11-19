@@ -121,3 +121,19 @@ func TestDashboardDomainSetting(t *testing.T) {
 		t.Fatal("dashboard domain was not cleared", domain)
 	}
 }
+
+func TestApplicationDomainDefaultsFollowTheDashboardAddress(t *testing.T) {
+	for _, tc := range []struct{ host, address, suffix string }{
+		{"203.0.113.7:8080", "203.0.113.7", "203.0.113.7.sslip.io"},
+		{"[2001:db8::7]:8080", "2001:db8::7", "2001-db8--7.sslip.io"},
+		{"localhost:9081", "", "localhost"},
+		{"127.0.0.1:9081", "", "localhost"},
+	} {
+		req := httptest.NewRequest("GET", "/api/proxy", nil)
+		req.Host = tc.host
+		address := (&Server{}).serverAddress(req, deploy.ProxyConfig{})
+		if address != tc.address || appDomainSuffix(req, address) != tc.suffix {
+			t.Fatalf("%s: got %q and %q", tc.host, address, appDomainSuffix(req, address))
+		}
+	}
+}

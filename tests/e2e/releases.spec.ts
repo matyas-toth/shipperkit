@@ -224,10 +224,10 @@ test("routing options, runtime limits, recorded release review and certificate d
     "/applications/release-fixture?tab=deployments&deployment=release-one",
   );
   await page
-    .getByRole("button", { name: "Restore release", exact: true })
+    .getByRole("button", { name: "Roll back", exact: true })
     .click();
   await expect(
-    page.getByRole("dialog", { name: "Restore release", exact: true }),
+    page.getByRole("dialog", { name: "Roll back", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Persistent data retained", { exact: true }),
@@ -244,7 +244,7 @@ test("routing options, runtime limits, recorded release review and certificate d
   ).toBe(true);
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Restore release", exact: true })
+    .getByRole("button", { name: "Roll back", exact: true })
     .click();
   await expect(page).toHaveURL(/deployment=restored-release/);
   expect(queued).toBe(true);

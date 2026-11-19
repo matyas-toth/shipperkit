@@ -3,7 +3,7 @@ import { useNavigate } from "@solidjs/router";
 import type { Application } from "../types";
 import { useInventory } from "../context";
 import { useAuth } from "../context";
-import { applicationState, methodLabel, operationTime, primaryDomain, deploymentLabel } from "../data";
+import { applicationState, methodLabel, operationPending, operationTime, primaryDomain, deploymentLabel } from "../data";
 import { Icon } from "../components/Icon";
 import { Button, ErrorNotice, IconButton, Status } from "../components/Controls";
 import { mediaQuery } from "../media";
@@ -11,6 +11,18 @@ import { docs } from "../docs";
 import HighlightedText from "../components/HighlightedText";
 
 const WINDOW_ROWS = 32;
+const statusGroups = [
+  { value: "all", label: "All statuses" }, { value: "running", label: "Running" }, { value: "deploying", label: "Deploying" },
+  { value: "attention", label: "Needs attention" }, { value: "failed", label: "Failed" }, { value: "stopped", label: "Stopped" },
+] as const;
+function statusGroup(app: Application) {
+  const state = applicationState(app);
+  if (operationPending(app.latestDeployment?.state)) return "deploying";
+  if (state === "running" || state === "serving") return "running";
+  if (state === "failed" || state === "dead") return "failed";
+  if (state === "stopped" || state === "exited" || state === "created" || state === "paused") return "stopped";
+  return "attention";
+}
 export default function Applications() {
   const inventory = useInventory(), navigate = useNavigate();
   const auth = useAuth();
@@ -21,7 +33,7 @@ export default function Applications() {
   const rowHeight = () => compact() ? 88 : 56;
   onMount(() => { document.title = "Applications | Shipper"; });
   const items = createMemo(() => (inventory.data()?.items ?? []).filter(app =>
-    (status() === "all" || applicationState(app) === status() || status() === "running" && applicationState(app) === "serving") && (!search().trim() || [app.name, primaryDomain(app)?.hostname, methodLabel(app), app.sourceRef, ...(app.domains ?? []).map(d => d.hostname)].some(value => value?.toLowerCase().includes(search().trim().toLowerCase())))));
+    (status() === "all" || statusGroup(app) === status()) && (!search().trim() || [app.name, primaryDomain(app)?.hostname, methodLabel(app), app.sourceRef, ...(app.domains ?? []).map(d => d.hostname)].some(value => value?.toLowerCase().includes(search().trim().toLowerCase())))));
   const start = createMemo(() => Math.min(Math.max(0, Math.floor(scrollTop() / rowHeight()) - 5), Math.max(0, items().length - WINDOW_ROWS)));
   const visible = createMemo(() => items().slice(start(), start() + WINDOW_ROWS));
   function resetScroll() { if (viewport) viewport.scrollTop = 0; setScrollTop(0); }
@@ -39,7 +51,7 @@ export default function Applications() {
         <Show when={search()}><IconButton icon="close" label="Clear search" ghost onClick={() => { setSearch(""); resetScroll(); }} /></Show>
       </div>
       <select class="input status-filter" aria-label="Filter by status" value={status()} onChange={e => { setStatus(e.currentTarget.value); resetScroll(); }}>
-        <option value="all">All statuses</option><option value="running">Running</option><option value="exited">Stopped</option><option value="failed">Failed</option><option value="degraded">Degraded</option><option value="queued">Queued</option><option value="cloning">Cloning</option><option value="building">Building</option><option value="routing">Updating domains</option><option value="operating">Applying action</option><option value="packaging">Packaging</option><option value="starting">Starting</option><option value="checking">Checking</option><option value="promoting">Promoting</option><option value="unavailable">Unavailable</option><option value="missing">Missing</option>
+        <For each={statusGroups}>{group => <option value={group.value}>{group.label}</option>}</For>
       </select>
       <Show when={auth.session()?.user?.role !== "viewer"}><Button class="inventory-create" variant="primary" icon="plus" onClick={() => navigate("/new")}>New application</Button></Show>
     </div>

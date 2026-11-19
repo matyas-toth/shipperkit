@@ -340,21 +340,9 @@ button:disabled {
   margin-left: auto;
   gap: 2px;
 }
-.connection {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  margin-right: 6px;
-  white-space: nowrap;
-}
-.connection .status-dot {
-  background: var(--warning);
-}
-.connection.is-connected .status-dot {
-  background: var(--success);
-}
+
+
+
 .app-panel {
   display: flex;
   flex: 1;
@@ -1139,9 +1127,7 @@ input::placeholder {
     grid-template-columns: 100px minmax(0, 1fr);
     gap: 12px;
   }
-  .connection {
-    font-size: 12px;
-  }
+
   .table-tray {
     max-height: calc(100dvh - 270px);
   }
@@ -3629,12 +3615,7 @@ h3,
 .topbar-actions {
   gap: 8px;
 }
-.connection {
-  margin: 0;
-  color: var(--secondary);
-  font-size: 12px;
-  gap: 7px;
-}
+
 .account-trigger {
   width: 38px;
   height: 38px;
@@ -4653,9 +4634,7 @@ textarea::placeholder {
   .topbar-actions {
     gap: 2px;
   }
-  .connection {
-    font-size: 11px;
-  }
+
   .page-heading {
     gap: 8px;
     margin-bottom: 17px;
@@ -7337,10 +7316,7 @@ h3,
     inset 0 1px 0 #ffffff0d,
     inset 0 0 0 1px #ffffff17;
 }
-.connection {
-  color: var(--muted);
-  font-size: 12px;
-}
+
 .avatar {
   background: var(--layer-02);
   color: var(--text);
@@ -8269,9 +8245,7 @@ h2 {
 .no-value {
   color: #93938e;
 }
-.connection {
-  color: #9a9a95;
-}
+
 .creation-steps {
   background: #111111f2;
 }
@@ -9431,16 +9405,8 @@ h2 {
       0 1px 3px #00000073,
       inset 0 1px 0 #ffffff08;
   }
-  .connection {
-    font-size: 0;
-    gap: 0;
-    width: 8px;
-    margin-inline: 4px;
-  }
-  .connection .status-dot {
-    width: 7px;
-    height: 7px;
-  }
+
+
   .visit-app {
     display: none;
   }
@@ -13041,4 +13007,314 @@ input[type="checkbox"]:disabled {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* Editor actions float over the work surface so saving never resizes the page. */
+.app-frame {
+  position: relative;
+}
+.page-actions {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: 20px;
+  left: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  pointer-events: none;
+}
+.page-actions > * {
+  pointer-events: auto;
+}
+.editor-action-row {
+  min-height: 0;
+  padding: 10px 12px;
+  border: 1px solid #2f3030;
+  border-radius: 12px;
+  background: #1b1c1c;
+  box-shadow:
+    0 16px 36px #000000a6,
+    0 3px 10px #00000066,
+    inset 0 1px 0 #ffffff0d;
+  animation: editor-actions-enter 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.app-frame:has(.page-actions:not(:empty)) .page-scroll {
+  padding-bottom: 92px;
+  scroll-padding-bottom: 92px;
+}
+@keyframes editor-actions-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (width < 48rem) {
+  .page-actions {
+    bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+  .editor-action-row {
+    padding: 8px;
+    border-radius: 12px;
+  }
+  .app-frame:has(.page-actions:not(:empty)) .page-scroll {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-action-row {
+    animation: none;
+  }
+}
+
+/* Menus open above every dialog, including the Service Library. */
+.select-menu,
+.action-menu {
+  z-index: 120;
+}
+
+/* The Service Library uses the same flat cards as the rest of the app. */
+.library-entry {
+  border: 0;
+  border-radius: 10px;
+  background: #1b1b1b;
+  box-shadow:
+    inset 0 0 0 1px #2a2a2a,
+    inset 0 1px 0 #ffffff07;
+  transition: background-color 0.14s ease, box-shadow 0.14s ease;
+}
+.library-entry:hover {
+  transform: none;
+  background: #202020;
+  box-shadow:
+    inset 0 0 0 1px #343535,
+    inset 0 1px 0 #ffffff0a;
+}
+.library-entry-icon,
+.library-heading-mark,
+.library-mark {
+  border: 0;
+  border-radius: 8px;
+  background: var(--layer-02);
+  box-shadow:
+    inset 0 0 0 1px #ffffff12,
+    inset 0 1px 0 #ffffff0a;
+}
+.library-backdrop {
+  background: #000000a6;
+  backdrop-filter: none;
+}
+.library-dialog {
+  border: 0;
+  border-radius: 12px;
+  background: #1a1b1b;
+  box-shadow:
+    0 24px 48px #00000066,
+    0 8px 20px #00000040,
+    inset 0 0 0 0.5px #ffffff1c,
+    inset 0 1px 0 #ffffff10;
+}
+.library-heading {
+  background: transparent;
+}
+.library-search {
+  border: 0;
+  border-radius: 8px;
+  background: #0d0e0e;
+  box-shadow:
+    inset 0 1px 2px #0000005c,
+    inset 0 0 0 1px #ffffff14,
+    0 1px 0 #ffffff06;
+}
+.library-categories button:hover {
+  background: var(--layer-02);
+}
+.library-categories button.active {
+  border-color: transparent;
+  background: var(--layer-02);
+  box-shadow:
+    inset 0 0 0 1px #ffffff14,
+    inset 0 1px 0 #ffffff0a;
+}
+.library-tile {
+  border: 0;
+  border-radius: 9px;
+  background: #1f2020;
+  box-shadow:
+    inset 0 0 0 1px #2c2d2d,
+    inset 0 1px 0 #ffffff07;
+  transition: background-color 0.14s ease, box-shadow 0.14s ease;
+}
+.library-tile:hover {
+  transform: none;
+  background: #242525;
+  box-shadow:
+    inset 0 0 0 1px #3a3b3b,
+    inset 0 1px 0 #ffffff0a;
+}
+.library-skeleton {
+  border-color: var(--border-muted);
+  border-radius: 9px;
+}
+.library-footer {
+  background: transparent;
+}
+
+/* Notifications and access tokens now live in Settings. */
+.settings-page .notification-editor .form-fields {
+  max-width: none;
+  margin: 14px 0 18px;
+}
+.settings-page .configuration {
+  margin: 16px 0;
+}
+.settings-page .token-form .form-fields {
+  margin-top: 0;
+  max-width: none;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+.settings-page .token-form .section-toolbar h3 {
+  margin: 0;
+}
+.settings-page #tokens > .section-toolbar h2 {
+  margin: 0;
+}
+.capability-choices label.is-implied {
+  color: var(--muted);
+}
+.token-reveal {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #18211b;
+  box-shadow:
+    inset 0 0 0 1px #2d4334,
+    inset 0 1px 0 #ffffff08;
+}
+.token-reveal strong {
+  font-weight: 560;
+}
+.token-reveal-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.token-reveal-row .input {
+  flex: 1;
+  min-width: 0;
+}
+@media (width < 48rem) {
+  .settings-page .token-form .form-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .token-reveal-row {
+    flex-wrap: wrap;
+  }
+  .token-reveal-row .input {
+    flex-basis: 100%;
+  }
+}
+
+/* System instance details. */
+.system-overview .instance-section {
+  grid-column: 1 / -1;
+}
+.instance-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.instance-group h3 {
+  margin: 0 0 8px;
+  color: var(--secondary);
+  font-size: 13px;
+  font-weight: 560;
+}
+@media (width < 64rem) {
+  .instance-groups {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* DNS target with the server address. */
+.dns-target {
+  display: inline-flex;
+  justify-self: start;
+  width: fit-content;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 4px 4px 4px 12px;
+  border-radius: 8px;
+  background: #171818;
+  box-shadow: inset 0 0 0 1px #2a2b2b;
+  color: var(--muted);
+  font-size: 13px;
+}
+.dns-target code {
+  color: var(--text);
+  font-size: 13px;
+}
+.dns-target .icon-button {
+  width: 30px;
+  min-height: 30px;
+  height: 30px;
+}
+
+/* Compose service header facts. */
+.service-heading .status {
+  flex: none;
+}
+.service-facts {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.service-facts .truncate {
+  max-width: 280px;
+}
+@media (width < 48rem) {
+  .service-facts {
+    display: none;
+  }
+}
+
+/* Editable name and domain on the deployment review. */
+.deployment-proposal .review-fact {
+  align-items: center;
+}
+.deployment-proposal .review-input {
+  width: 100%;
+  max-width: 460px;
+}
+
+/* The not found page keeps its action off the heading. */
+.not-found .button {
+  margin-top: 20px;
+}
+
+/* The compact More tab sits next to its label instead of the row's far edge. */
+@media (width < 48rem) {
+  .app-more-select {
+    flex: 0 1 auto;
+  }
+  .application-tabs .app-section-select {
+    width: auto;
+    padding-inline: 4px 22px;
+    field-sizing: content;
+  }
+  .app-more-select > .icon {
+    right: 4px;
+  }
 }

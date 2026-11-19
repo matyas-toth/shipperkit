@@ -40,7 +40,7 @@ export interface Deployment { rollbackId?:string; digest?:string;cancelRequested
 export interface Application { id: string; name: string; sourceKind: string; sourceRef: string; method: string; state: string; createdAt: number; updatedAt: number; containers: Container[]; config: StaticConfig; activeDeploymentId: string; latestDeployment?: Deployment; domains: Domain[]; desiredState: string; activeMethod?: string }
 export interface ApplicationDetail { application: Application; deployments: Deployment[]; activeDeployment?: Deployment | null; database?: { engine: string; host: string; port: number } | null }
 export interface LogLine { number: number; sequence: number; step: string; line: string; createdAt: number }
-export interface ProxyConfig { dashboardURL?:string; dashboardUpstream?:string; bindIP: string; httpPort: number; httpsPort: number; acmeEmail: string; acmeCA: string; autoHTTPS?: boolean }
+export interface ProxyConfig { dashboardURL?:string; dashboardUpstream?:string; bindIP: string; httpPort: number; httpsPort: number; acmeEmail: string; acmeCA: string; autoHTTPS?: boolean; publicAddress?: string; appDomainSuffix?: string }
 export interface Inventory { items: Application[]; docker: DockerHealth }
 export interface SystemInfo {
   version: string; instanceId: string; docker: DockerHealth;

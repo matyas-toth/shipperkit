@@ -4,6 +4,7 @@ import { post } from "../api";
 import { useAuth } from "../context";
 import { Button, ErrorNotice } from "./Controls";
 import ProxyCheck from "./ProxyCheck";
+import DnsTarget from "./DnsTarget";
 
 export default function DashboardSettings(props: { proxy?: ProxyConfig; refresh: () => Promise<unknown> }) {
   const auth = useAuth();
@@ -49,6 +50,7 @@ export default function DashboardSettings(props: { proxy?: ProxyConfig; refresh:
         <input id="dashboard-domain" class="input mono" placeholder="shipper.example.com" disabled={!props.proxy}
           value={domain()} onInput={event => setDomain(event.currentTarget.value)} />
       </div>
+      <DnsTarget address={props.proxy?.publicAddress} />
       <div class="form-actions">
         <Show when={current()}><Button type="button" variant="ghost" disabled={busy() || !props.proxy} onClick={() => void save("")}>Remove domain</Button></Show>
         <Button type="submit" variant="primary" disabled={busy() || !props.proxy || domain().trim().toLowerCase() === current()}>{busy() ? "Applying" : "Save domain"}</Button>

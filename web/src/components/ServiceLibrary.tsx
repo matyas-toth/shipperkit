@@ -13,6 +13,9 @@ type Props = {
   close: () => void;
   use: (request: { name: string; config: StaticConfig }) => Promise<void>;
   acme: boolean;
+  // A wildcard zone that resolves to this server, such as 203.0.113.10.sslip.io.
+  domainSuffix?: string;
+  secureDefault?: boolean;
 };
 
 const categoryIcons: Record<string, IconName> = {
@@ -58,10 +61,10 @@ function optionLabel(value: string) {
   return value;
 }
 
-function hostFor(id: string, index: number, port: number) {
+function hostFor(id: string, index: number, port: number, suffix = "localhost") {
   const base = slug(id);
-  if (index === 0) return base + ".localhost";
-  return base + "-" + port + ".localhost";
+  if (index === 0) return base + "." + suffix;
+  return base + "-" + port + "." + suffix;
 }
 
 export default function ServiceLibrary(props: Props) {
@@ -167,8 +170,8 @@ export default function ServiceLibrary(props: Props) {
     const nextSecure: Record<string, boolean> = {};
     domainRows().forEach((domain, index) => {
       const key = "service:" + domain.service;
-      nextHosts[key] = hostFor(value.id, index, domain.port);
-      nextSecure[key] = false;
+      nextHosts[key] = hostFor(value.id, index, domain.port, props.domainSuffix);
+      nextSecure[key] = !!props.secureDefault && !nextHosts[key].endsWith(".localhost");
     });
     setValues(nextValues);
     setHostnames(nextHosts);
@@ -417,10 +420,10 @@ export default function ServiceLibrary(props: Props) {
   </div></Portal></Show>;
 }
 
-export function ServiceLibraryEntry(props: { open: () => void; count?: number }) {
+export function ServiceLibraryEntry(props: { open: () => void }) {
   return <button type="button" class="library-entry" onClick={props.open}>
     <span class="library-entry-icon"><Icon name="layers" /></span>
-    <span><strong>Service Library</strong><small>{props.count ? props.count + " ready-made services" : "360+ ready-made services"}</small></span>
+    <span><strong>Service Library</strong></span>
     <Icon name="chevron" />
   </button>;
 }

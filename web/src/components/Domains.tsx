@@ -9,6 +9,7 @@ import type { Application, Domain, ProxyConfig, Service } from "../types";
 import { domainURL } from "../data";
 import { Button, ErrorNotice, IconButton, Status, validateForm } from "./Controls";
 import { Icon } from "./Icon";
+import DnsTarget from "./DnsTarget";
 
 export default function Domains(props: { application: Application; proxy?: ProxyConfig; services?: Service[]; service?: string; busy: boolean; save: (domains: Domain[]) => Promise<void>; configureService?: () => void; selectedHostname?: string }) {
   const saved = () => (props.application.domains ?? []).filter(d => !props.service || d.service === props.service);
@@ -91,6 +92,7 @@ export default function Domains(props: { application: Application; proxy?: Proxy
         <Show when={options.data?.canIncludeWWW && lookup() === hostname()}><label class="check-field"><input type="checkbox" checked={www()} onChange={e => setWWW(e.currentTarget.checked)} />Include www</label></Show>
         <Button icon="plus" onClick={add} disabled={!hostname().trim() || props.busy || compose() && !service()}>Add domain</Button>
       </div>
+      <DnsTarget address={props.proxy?.publicAddress} />
     </Show>
     <div class="domain-workspace" classList={{ "has-route": !!editing() }}><div class="domain-list"><For each={groups()}>{group => <div class="domain-group">
       <Show when={pickService() && group}><h3>{group}</h3></Show>

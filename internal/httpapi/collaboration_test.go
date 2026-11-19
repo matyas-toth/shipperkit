@@ -817,6 +817,10 @@ func TestRoleIsolationAndLastAdminProtection(t *testing.T) {
 			}
 		})
 	}
+	// Viewers follow runtime logs; the route is no longer limited to developers.
+	if code, body, _ := view.call(t, fx, "GET", "/api/applications/role-app/logs", nil, ""); code == 403 || code == 401 {
+		t.Fatalf("viewer logs returned %d %v", code, body)
+	}
 
 	// The last active administrator cannot be removed, demoted, disabled or
 	// stripped of every sign-in route.

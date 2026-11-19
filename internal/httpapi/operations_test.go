@@ -95,6 +95,9 @@ func TestOperationsCapabilitiesSourcesAndBoundReviews(t *testing.T) {
 	if code, body := call("GET", "/api/applications/one", "", nil); code != 200 || !strings.Contains(body, "private-command-body") {
 		t.Fatal("Command projection fixture is missing", code, body)
 	}
+	if code, body := call("POST", "/api/operation-tokens", "", map[string]any{"name": "App maintenance", "scopes": []string{"host-admin"}, "applications": []string{"one"}, "days": 1}); code != 422 {
+		t.Fatal("app-bound host maintenance was accepted", code, body)
+	}
 	code, body := call("POST", "/api/operation-tokens", "", map[string]any{"name": "Reader", "scopes": []string{"read"}, "applications": []string{"one"}, "days": 1})
 	if code != 201 {
 		t.Fatal(code, body)

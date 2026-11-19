@@ -13,7 +13,7 @@ import RuntimeFields from "./RuntimeFields";
 import { MemoryLimitField, RuntimeConnectivity } from "./DeployFields";
 import { Icon } from "./Icon";
 import EditorActions from "./EditorActions";
-import { createdDate, deploymentLabel, methodLabel, primaryDomain } from "../data";
+import { createdDate } from "../data";
 
 const areas = [
   { id: "general", label: "General", icon: "settings" },
@@ -114,10 +114,7 @@ export default function ApplicationSettings(props: {
           </form>
           <Show when={renameError()}><ErrorNotice message={renameError()} /></Show>
           <dl class="settings-group app-settings-facts">
-            <div class="setting-row"><dt>Domain</dt><dd>{primaryDomain(props.application)?.hostname || "None"}</dd></div>
-            <div class="setting-row"><dt>Method</dt><dd>{methodLabel(props.application)}</dd></div>
             <div class="setting-row"><dt>Created</dt><dd>{createdDate(props.application.createdAt)}</dd></div>
-            <div class="setting-row"><dt>Last release</dt><dd>{props.application.latestDeployment ? deploymentLabel(props.application.latestDeployment) : "None"}</dd></div>
           </dl>
           <div class="app-settings-secondary">
             <DeploymentTriggers applicationId={props.application.id} />
@@ -170,5 +167,5 @@ function DeleteDialog(props: { name: string; close: () => void; remove: () => Pr
   let panel!: HTMLDivElement, input!: HTMLInputElement;const previous = document.activeElement as HTMLElement | null;
   onMount(() => { input.focus(); const key = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy()) props.close(); if (e.key === "Tab") { const nodes = Array.from(panel.querySelectorAll<HTMLElement>("button:not(:disabled),input")); const first = nodes[0], last = nodes[nodes.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } } };document.addEventListener("keydown", key);onCleanup(() => { document.removeEventListener("keydown", key); previous?.focus(); }); });
   async function remove(e: SubmitEvent) { e.preventDefault(); if (value() !== props.name || busy()) return; setBusy(true);try { await props.remove(); props.close(); } catch (e) { setError((e as Error).message); }finally { setBusy(false); } }
-  return <Portal><div class="drawer-scrim" onClick={() => { if (!busy()) props.close(); }} /><div ref={panel} class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title"><header><h2 id="delete-title">Delete {props.name}?</h2><IconButton icon="close" label="Close deletion" ghost disabled={busy()} onClick={props.close} /></header><p>Deleting this application removes its containers and retains its images and volumes.</p><form onSubmit={remove}><Show when={error()}><ErrorNotice message={error()} /></Show><div class="form-fields"><label for="confirm-name">Application name</label><input ref={input} id="confirm-name" class="input" value={value()} onInput={e => setValue(e.currentTarget.value)} autocomplete="off" /></div><div class="form-actions"><Button variant="ghost" disabled={busy()} onClick={props.close}>Cancel</Button><Button type="submit" class="danger-button" icon="trash" disabled={busy() || value() !== props.name}>{busy() ? "Deleting application" : "Delete application"}</Button></div></form></div></Portal>;
+  return <Portal><div class="drawer-scrim" onClick={() => { if (!busy()) props.close(); }} /><div ref={panel} class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title"><header><h2 id="delete-title">Delete {props.name}?</h2><IconButton icon="close" label="Close deletion" ghost disabled={busy()} onClick={props.close} /></header><p>Deleting removes its containers and keeps its images. Its volumes stay listed under Recovery in Settings.</p><form onSubmit={remove}><Show when={error()}><ErrorNotice message={error()} /></Show><div class="form-fields"><label for="confirm-name">Application name</label><input ref={input} id="confirm-name" class="input" value={value()} onInput={e => setValue(e.currentTarget.value)} autocomplete="off" /></div><div class="form-actions"><Button variant="ghost" disabled={busy()} onClick={props.close}>Cancel</Button><Button type="submit" class="danger-button" icon="trash" disabled={busy() || value() !== props.name}>{busy() ? "Deleting application" : "Delete application"}</Button></div></form></div></Portal>;
 }

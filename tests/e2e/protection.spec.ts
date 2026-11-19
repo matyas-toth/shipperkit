@@ -24,7 +24,7 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   ).toBeVisible();
   await page.goto("/settings#recovery");
   const recovery = page.locator("#recovery");
-  const restoreSteps = recovery.locator("summary").filter({ hasText: "Load a save" });
+  const restoreSteps = recovery.locator("summary").filter({ hasText: "Restore an instance" });
   await expect(recovery.getByText("Fresh install, first run", { exact: true })).toBeHidden();
   await restoreSteps.focus();
   await restoreSteps.press("Enter");
@@ -115,6 +115,13 @@ test("instance recovery, encrypted downloads, schedule choices and mobile backup
   expect(await page.locator("body").innerText()).not.toContain(
     "browser-test-secret",
   );
+  // Static sites hide Backups, so present the fixture as a container application.
+  await page.route("**/api/applications/application-web", async (route) => {
+    const body = await (await route.fetch()).json();
+    for (const value of [body.application, body.application.config]) value.method = "dockerfile";
+    body.application.activeMethod = "dockerfile";
+    await route.fulfill({ json: body });
+  });
   await page.goto("/applications/application-web?tab=backups");
   await expect(
     page.getByRole("button", { name: "New schedule", exact: true }),
@@ -220,6 +227,13 @@ test("reviewed database copy keeps existing data and requires the application na
       }
     },
   );
+  // Static sites hide Backups, so present the fixture as a container application.
+  await page.route("**/api/applications/application-web", async (route) => {
+    const body = await (await route.fetch()).json();
+    for (const value of [body.application, body.application.config]) value.method = "dockerfile";
+    body.application.activeMethod = "dockerfile";
+    await route.fulfill({ json: body });
+  });
   await page.goto("/applications/application-web?tab=backups");
   await page
     .getByRole("button", {

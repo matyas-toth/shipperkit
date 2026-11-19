@@ -201,6 +201,10 @@ func (s *Server) createOperationToken(w http.ResponseWriter, r *http.Request) {
 			s.problem(w, 422, "invalid_scope", "Choose a supported capability")
 			return
 		}
+		if v == "host-admin" && len(input.Applications) > 0 {
+			s.problem(w, 422, "invalid_scope", "Host maintenance applies to the whole instance, not one application")
+			return
+		}
 	}
 	for _, id := range input.Applications {
 		if _, e := s.db.Application(r.Context(), id); e != nil {

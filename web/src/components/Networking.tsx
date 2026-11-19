@@ -8,6 +8,7 @@ export default function Networking(props: {
   value: NetworkAccess;
   applications: NetworkApplication[];
   host: string;
+  name?: string;
   port?: number;
   applicationId?: string;
   services?: Service[];
@@ -63,7 +64,7 @@ export default function Networking(props: {
               <For each={applications().filter(entry => entry.id === applicationId() || !connections().includes(entry.id))}>{entry => <option value={entry.id}>{entry.name}</option>}</For>
             </select>
           </label>
-          <div class="network-host-cell"><code class="network-host">{target()}</code><IconButton icon={copiedHost() === target() ? "check" : "copy"} ghost label="Copy internal host" onClick={() => void copyHost(target())} /></div>
+          <div class="network-host-cell"><span class="network-host" title={target()}>{props.name || target()}</span><IconButton icon={copiedHost() === target() ? "check" : "copy"} ghost label="Copy internal host" onClick={() => void copyHost(target())} /></div>
           <div class="network-row-actions"><button type="button" class="network-remove" aria-label={"Disconnect application " + (index + 1)} onClick={() => update({ applications: connections().filter((_, i) => i !== index) })}>Remove</button></div>
         </div>}</Index>
       </Show>

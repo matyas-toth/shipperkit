@@ -29,7 +29,11 @@ func (s *Server) checkProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	ips, e := net.DefaultResolver.LookupNetIP(ctx, "ip", u.Hostname())
 	if e != nil || len(ips) == 0 {
-		respond("dns_pending", "Point the dashboard domain to this server")
+		message := "Point the dashboard domain to this server"
+		if address := s.serverAddress(r, config); address != "" {
+			message = "Point the dashboard domain to " + address
+		}
+		respond("dns_pending", message)
 		return
 	}
 	addresses := []string{}

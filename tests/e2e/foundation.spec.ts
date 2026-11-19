@@ -72,11 +72,10 @@ test("secure setup, application grouping, deployment logs, settings, and failure
   await expect(page.getByRole("button",{name:"Deploy",exact:true})).toBeVisible();
   await page.screenshot({path:join(tmpdir(),"shipper-phase95-review.png")});
   await page.getByRole("button", { name: "Deploy", exact: true }).click();await expect(page.getByRole("heading", { name: "Portfolio", exact: true })).toBeVisible();await expect(page.getByRole("log")).toContainText("Proxy setup failed", { timeout: 15000 });await expect(page.locator(".log-context")).toContainText("Failed");await expect(page.getByRole("button", { name: "Cancel", exact: true })).toHaveCount(0);await page.screenshot({ path: screenshot("failure") });await expect(page.getByRole("button", { name: "Diagnostics", exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Settings", exact: true }).first().click();await expect(page.getByText("29.8.2", { exact: true })).toBeVisible();await page.getByRole("button", { name: "Account", exact: true }).click();await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();await expect(page.getByRole("heading", { name: "Welcome back aboard.", exact: true })).toBeVisible();expect(errors).toEqual([]);
+  await page.getByRole("link", { name: "System", exact: true }).first().click();await expect(page.getByText("29.8.2", { exact: true })).toBeVisible();await page.getByRole("button", { name: "Account", exact: true }).click();await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();await expect(page.getByRole("heading", { name: "Welcome back aboard.", exact: true })).toBeVisible();expect(errors).toEqual([]);
 });
 test("live deployment duration, completed duration, and container option counts", async ({page,request}) => {
   await page.setViewportSize({width:1440,height:1000});await login(page);await page.goto("/applications/application-web?tab=logs");
-  await expect(page.locator(".connection")).toHaveText("Connected");
   await request.post("http://127.0.0.1:9083/runtime-options",{data:{count:2}});await expect(page.getByLabel("Log container")).toBeVisible();await expect(page.getByLabel("Log container").locator("option")).toHaveCount(2);
   await request.post("http://127.0.0.1:9083/runtime-options",{data:{count:0}});await expect(page.getByLabel("Log container")).toHaveCount(0);await expect(page.getByRole("log")).toContainText("No runtime logs");
   await page.getByRole("button",{name:"Overview",exact:true}).click();await expect(page.locator(".application-title")).toContainText("Unavailable");await expect(page.getByRole("heading",{name:"Runtime",exact:true})).toBeVisible();await expect(page.getByText("Static site unavailable",{exact:true})).toBeVisible();
@@ -138,7 +137,7 @@ test("Compose creation and focused service editing on desktop and mobile", async
   await page.route("**/api/applications/compose-browser/deployments", async r => { submitted = r.request().postDataJSON();await r.fulfill({ status: 202, json: release }); });
   await page.route("**/api/applications/compose-browser/deployments/*/logs?**", r => r.fulfill({ json: { items: [], state: "succeeded" } }));
   await page.goto("/applications/compose-browser");await expect(page).toHaveTitle("Fieldnotes | Shipper");await expect(page.getByRole("button", { name: "Open service postgres", exact: true })).toContainText(/running/i);
-  await expect(page.locator(".connection")).toHaveText("Connected");await page.screenshot({ path: join(tmpdir(), "shipper-phase4-services.png") });
+  await page.screenshot({ path: join(tmpdir(), "shipper-phase4-services.png") });
   await page.getByRole("button", { name: "Open service api", exact: true }).click();await expect(page.getByRole("log")).toContainText("Service is ready");await expect(page.getByLabel("Log container")).toHaveCount(0);
   await page.getByRole("navigation", { name: "Service navigation" }).getByRole("button", { name: ".env", exact: true }).click();
   await expect(page.getByRole("button", { name: "Review changes", exact: true })).toBeDisabled();

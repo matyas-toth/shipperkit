@@ -134,6 +134,13 @@ test("connected GitHub accounts load repositories and branches in the simple ent
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Ready to deploy", exact: true })).toBeVisible();
   expect(submitted.config).toMatchObject({ sourceId: "work-second", repositoryId: 2, repository: repo(2, "work").clone_url, branch: "develop" });
+  // The quick path gives the site a reachable default domain that follows the name until edited.
+  expect(submitted.config.domain).toMatch(/\.localhost$/);
+  await page.getByLabel("Application name", { exact: true }).fill("Marketing Site");
+  await expect(page.getByLabel("Domain", { exact: true })).toHaveValue("marketing-site.localhost");
+  await page.getByLabel("Domain", { exact: true }).fill("www.example.test");
+  await page.getByLabel("Application name", { exact: true }).fill("Landing");
+  await expect(page.getByLabel("Domain", { exact: true })).toHaveValue("www.example.test");
   await page.getByRole("button", { name: "Configure manually", exact: true }).click();
   await expect(page.getByLabel("Connection", { exact: true })).toHaveValue("work-second");
   await expect(page.getByLabel("Branch or commit", { exact: true })).toHaveValue("develop");

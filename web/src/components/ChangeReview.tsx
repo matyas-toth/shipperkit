@@ -8,12 +8,12 @@ import { commandStageLabel, commandText } from "./Commands";
 import { variableScopeLabel, variableSignature } from "../env";
 
 const operationNames: Record<ChangePlan["operation"], string> = {
-  rollback: "Restore release", metadata: "Update settings", rebuild: "Rebuild and deploy",
+  rollback: "Roll back", metadata: "Update settings", rebuild: "Rebuild and deploy",
   recreate: "Recreate using the current image", none: "No changes",
 };
 
 const confirmNames: Record<ChangePlan["operation"], string> = {
-  rollback: "Restore release", metadata: "Save settings", rebuild: "Rebuild and deploy",
+  rollback: "Roll back", metadata: "Save settings", rebuild: "Rebuild and deploy",
   recreate: "Recreate application", none: "Apply changes",
 };
 
@@ -144,8 +144,8 @@ export default function ChangeReview(props: {
         <Show when={props.application}><strong class="review-application"><Icon name={props.icon ?? "box"} />{props.application}</strong></Show>
         <Show when={props.release} fallback={<Show when={!props.summary?.length}><p class="change-operation">{subject() === "database" && props.plan.operation === "recreate" ? "Redeploy using the current image" : operationNames[props.plan.operation]}</p></Show>}>{release =>
           <dl class="release-comparison">
-            <div><dt>Current release</dt><dd><ReleaseReference deployment={release().serving} /></dd></div>
-            <div><dt>Restore to</dt><dd><ReleaseReference deployment={release().target} /></dd></div>
+            <div><dt>Serving</dt><dd><ReleaseReference deployment={release().serving} /></dd></div>
+            <div><dt>Roll back to</dt><dd><ReleaseReference deployment={release().target} /></dd></div>
           </dl>
         }</Show>
         <Show when={props.summary?.length}><dl class="review-summary"><For each={props.summary!}>{item => <div><dt>{item.label}</dt><dd>{item.value}</dd></div>}</For></dl></Show>
