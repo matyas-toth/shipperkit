@@ -1250,7 +1250,7 @@ export default function Backups(props: {
               type="submit"
               disabled={busy() || !props.save || !logical()}
             >
-              Review attachment
+              Attach and redeploy
             </Button>
           </div>
         </form>

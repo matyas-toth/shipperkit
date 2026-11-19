@@ -5,7 +5,6 @@ import { createStore, reconcile } from "solid-js/store";
 import { api, post } from "../api";
 import type { Application, Deployment, ProxyConfig, Service, StaticConfig } from "../types";
 import { useAuth, useInventory } from "../context";
-import { clearDraft, readDraft, safeConfigDraft, saveDraft, saveVolatileDraft } from "../drafts";
 import { emptyVariable } from "../env";
 import { repositoryLabel } from "../data";
 import { Button, ErrorNotice, validateForm } from "../components/Controls";
@@ -41,7 +40,6 @@ type Inspection = {
 };
 type Preview = { services: Service[]; files: string[]; composeFile: string; commit?: string };
 type CreatePlan = { applicationId: string; revision: string; name: string; config: StaticConfig; commit?: string };
-type Draft = { name: string; source?: Source; composeInput?: "git" | "local" | "paste"; config: StaticConfig };
 const sources: readonly Choice<Source>[] = [
   { value: "git", label: "Git repository", icon: "git" },
   { value: "image", label: "Container image", icon: "box" },
@@ -52,42 +50,15 @@ const sources: readonly Choice<Source>[] = [
 const steps = [{ value: "source", label: "Source" }, { value: "configure", label: "Configure" }, { value: "review", label: "Review" }] as const;
 const libraryChoice: Choice<Source> = { value: "library", label: "Service Library", icon: "layers" };
 
-function draftSource(draft?: Draft): Source {
-  const config = draft?.config;
-  if (draft?.source === "compose" || config?.method === "compose") {
-    if (draft?.source === "git" || draft?.source === "local") return draft.source;
-    if (draft?.composeInput === "git" || draft?.composeInput === "local") return draft.composeInput;
-    if (config?.composeSource === "paste") return "compose";
-    return config?.localSource ? "local" : "git";
-  }
-  if (draft?.source) return draft.source;
-  if (config?.method === "image" || config?.method === "inline") return config.method;
-  return config?.localSource ? "local" : "git";
-}
-
 function hostLabel(value: string) {
   return value.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "") || "app";
 }
 
-function persistedConfig(config: StaticConfig): StaticConfig {
-  const safe = safeConfigDraft(config);
-  // An unfinished URL or shell command may contain credentials even when it
-  // never reached server validation. Keep these inputs only in memory.
-  try {
-    const url = new URL(safe.repository);
-    if (url.username || url.password || url.search || url.hash) safe.repository = "";
-  } catch { safe.repository = ""; }
-  return { ...safe, image: safe.image?.includes("://") ? "" : safe.image,
-    hooks: [], installCommand: "", buildCommand: "", startCommand: "" };
-}
-
 export default function NewApplication() {
   const auth = useAuth(), navigate = useNavigate(), inventory = useInventory();
-  const key = "new:" + auth.session()?.user?.id;
-  const draft = readDraft<Draft>(key);
-  const [config, setConfig] = createStore<StaticConfig>({ ...emptyConfig(), ...draft?.config });
-  const [source, setSource] = createSignal<Source>(draftSource(draft));
-  const [name, setName] = createSignal(draft?.name ?? "");
+  const [config, setConfig] = createStore<StaticConfig>(emptyConfig());
+  const [source, setSource] = createSignal<Source>("git");
+  const [name, setName] = createSignal("");
   const [databaseOpen, setDatabaseOpen] = createSignal(false);
   const [manual, setManual] = createSignal(false);
   const [sourcePanel, setSourcePanel] = createSignal(false);
@@ -166,11 +137,6 @@ export default function NewApplication() {
   const sourceDrafts = new Map<Source, StaticConfig>();
   onCleanup(() => { disposed = true; });
   onMount(() => { document.title = "New application | Shipper"; });
-  createEffect(() => {
-    const current = { name: name(), source: source(), config };
-    saveVolatileDraft(key, current);
-    saveDraft(key, { ...current, config: persistedConfig(config) });
-  });
   createEffect(() => { sourceKey(); setInspectionError(""); });
 
   createEffect(() => {
@@ -377,8 +343,6 @@ export default function NewApplication() {
         id: approved.plan.applicationId, revision: approved.plan.revision, name: approved.plan.name,
         config: approved.inputs, commit: approved.commit,
       }, auth.session()?.csrfToken, approved.requestKey);
-      clearDraft(key);
-      clearDraft("variables:" + auth.session()?.user?.id + ":new");
       navigate("/applications/" + d.applicationId + "?tab=deployments");
     } catch (e) { if (!disposed) setError((e as Error).message); }
     finally { if (!disposed) setPending(false); }

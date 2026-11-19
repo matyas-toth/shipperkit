@@ -101,7 +101,7 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await page.getByRole("switch", { name: "Public TLS", exact: true }).click();
   await page.getByLabel("TLS hostname", { exact: true }).fill("db.example.com");
   await shot(page, "public-database-tls");
-  await page.getByRole("button", { name: "Review changes", exact: true }).click();
+  await page.getByRole("button", { name: "Save and redeploy", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await shot(page, "review-network-change");
   await page.getByRole("button", { name: "Keep editing", exact: true }).click();
@@ -111,7 +111,7 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await page.getByLabel("Container port", { exact: true }).last().fill("9000");
   await shot(page, "tcp-udp-mappings");
   await page.route("**/api/applications/application-web/changes", r => r.fulfill({ status: 409, json: { error: { message: "Port 15432/tcp is already in use" } } }));
-  await page.getByRole("button", { name: "Review changes", exact: true }).click();
+  await page.getByRole("button", { name: "Save and redeploy", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("already in use");
   await shot(page, "port-conflict");
   await page.route("**/api/applications/application-web/terminal", r => r.fulfill({ json: { id: "gallery-terminal", ticket: "gallery-ticket", expiresAt: Math.floor(Date.now()/1000)+900 } }));

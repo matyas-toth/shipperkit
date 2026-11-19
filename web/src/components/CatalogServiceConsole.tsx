@@ -280,7 +280,7 @@ export function CatalogServiceConsole(props: {
       </div></section></Show>
       <Show when={advanced().length}><details class="catalog-advanced"><summary>Advanced<Icon name="down" /></summary><div class="catalog-field-grid"><For each={advanced()}>{field => <label class="catalog-field"><span>{field.label}</span><input class="input" type={field.kind === "number" ? "number" : "text"} value={fieldValue(values(), field)} placeholder={field.placeholder} onInput={event => update(field, event.currentTarget.value)} /></label>}</For></div></details></Show>
       <Show when={!config().length && !advanced().length && !domainRows().length}><p class="catalog-card-empty">No settings to configure.</p></Show>
-      <div class="catalog-settings-actions"><Button variant="primary" type="submit" disabled={props.busy || saving()}>{saving() ? "Preparing review" : "Review changes"}</Button></div>
+      <div class="catalog-settings-actions"><Button variant="primary" type="submit" disabled={props.busy || saving()}>{saving() ? "Saving" : "Save and redeploy"}</Button></div>
     </form>
   </div>;
 }

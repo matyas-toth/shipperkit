@@ -119,7 +119,7 @@ export default function ApplicationNetworking(props: {
       <Show when={changed()}><Button variant="ghost" type="button" disabled={saving()} onClick={reset}>Revert</Button></Show>
       <Show when={portProblem()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem()}</span></Show>
       <Show when={conflict() !== undefined || tlsInvalid()}><button type="button" class="network-issue-count" onClick={() => document.querySelector<HTMLInputElement>(".network-field.is-conflict input, .network-tls .is-invalid")?.focus()}>{issues()} {issues() === 1 ? "issue" : "issues"}</button></Show>
-      <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Preparing review" : "Review changes"}</Button>
+      <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Saving" : "Save and redeploy"}</Button>
     </div></Show>
   </form>;
 }

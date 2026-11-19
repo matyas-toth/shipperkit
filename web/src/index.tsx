@@ -18,7 +18,6 @@ import System from "./pages/System";
 import Application from "./pages/Application";
 import CliAuthorize from "./pages/CliAuthorize";
 import { Button, ErrorNotice } from "./components/Controls";
-import {clearVolatileDrafts} from "./drafts";
 import "./styles.css";
 
 const NewApplication = lazy(() => import("./pages/NewApplication"));
@@ -35,12 +34,11 @@ function SystemRoute() {
 
 function App() {
   const session = createQuery(() => ({ queryKey: ["session"], queryFn: () => api<Session>("/auth/session"), retry: 1 }));
-  function expire() { queryClient.setQueryData<Session>(["session"], { setupRequired: false, user: null });clearVolatileDrafts(); }
+  function expire() { queryClient.setQueryData<Session>(["session"], { setupRequired: false, user: null }); }
   const refresh = () => void session.refetch();
   function accept(value: Session) {
     queryClient.setQueryData(["session"], value);
     if (value.authStep) {
-      clearVolatileDrafts();
       queryClient.removeQueries({ predicate: query => query.queryKey[0] !== "session" });
     }
   }

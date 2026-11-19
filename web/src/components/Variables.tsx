@@ -3,7 +3,6 @@ import { Dynamic, Portal } from "solid-js/web";
 import { post } from "../api";
 import { useAuth } from "../context";
 import type { Application, StaticConfig, Variable } from "../types";
-import { clearDraft, readDraft, saveDraft, saveVolatileDraft } from "../drafts";
 import { emptyVariable, formatEnvironment, looksLikeEnvironment, mergeEnvironment, parseEnvironment, parseEnvironmentFile, variableHasContent, variableScopeLabel, variableSignature, variablesForSave } from "../env";
 import { Button, ErrorNotice, IconButton } from "./Controls";
 import EditorActions from "./EditorActions";
@@ -18,8 +17,8 @@ function storedView(application: string) {
 type Options = { index: number; left: number; top: number; trigger: HTMLButtonElement };
 
 export default function Variables(props: { application: Application; busy: boolean; save?: (config: StaticConfig) => Promise<boolean | void>; embedded?: boolean; service?: string; change?: (variables: Variable[]) => void }) {
-  const auth = useAuth(), id = createUniqueId(), key = "variables:" + auth.session()?.user?.id + ":" + props.application.id + (props.service ? ":" + props.service : "");
-  const initial = (props.embedded ? props.application.config.variables : readDraft<Variable[]>(key) ?? props.application.config.variables) ?? [];
+  const auth = useAuth(), id = createUniqueId();
+  const initial = props.application.config.variables ?? [];
   const [items, setItems] = createSignal<Variable[]>([...variablesForSave(initial), emptyVariable()]);
   const [error, setError] = createSignal(""), [saving, setSaving] = createSignal(false), [revealing, setRevealing] = createSignal(false);
   const [visible, setVisible] = createSignal<Record<number, boolean>>({}), [options, setOptions] = createSignal<Options>();
@@ -46,7 +45,6 @@ export default function Variables(props: { application: Application; busy: boole
   let root!: HTMLElement, panel!: HTMLDivElement;
   const dirty = createMemo(() => variableSignature(items()) !== variableSignature(props.application.config.variables ?? []));
 
-  createEffect(() => {if(props.embedded)return;if(!dirty()){clearDraft(key);return;}const rows=variablesForSave(items());saveVolatileDraft(key,rows.map(v=>v.secret&&v.keep?{...v,value:""}:v));saveDraft(key,rows.filter(v=>!v.secret||v.keep).map(v=>v.secret?{...v,value:""}:v));});
   createEffect(() => props.change?.(variablesForSave(items())));
   function update(index: number, value: Partial<Variable>) {
     setItems(rows => {
@@ -113,7 +111,7 @@ export default function Variables(props: { application: Application; busy: boole
       names.add(variable.name);
     }
     setSaving(true);
-    try { if(await props.save?.({ ...props.application.config, variables })!==false)clearDraft(key); }
+    try { await props.save?.({ ...props.application.config, variables }); }
     catch (e) { setError((e as Error).message); }
     finally { setSaving(false); }
   }
@@ -140,7 +138,7 @@ export default function Variables(props: { application: Application; busy: boole
       </Show>
       <div class="variable-options"><Show when={variableHasContent(variable())}><IconButton icon="more" label={"Options for " + (variable().name || "variable " + (index + 1))} ghost aria-haspopup="dialog" aria-expanded={options()?.index === index} onClick={event => openOptions(index, event.currentTarget)} /></Show></div>
     </div>}</Index></div></div>
-    <Show when={!props.embedded}><EditorActions docked={dirty()} revert={dirty() ? () => { setItems([...variablesForSave(props.application.config.variables ?? []), emptyVariable()]); setText(undefined); setEditorError(undefined); setVisible({}); setError(""); clearDraft(key); } : undefined}><Show when={!props.service&&(props.application.config.repository||props.application.config.localSource)}><Button variant="ghost" disabled={props.busy||saving()} onClick={()=>void findMissing()}>Find missing variables</Button></Show><Button type="submit" variant="primary" form={id} icon="deploy" disabled={props.busy || saving() || !dirty() || view() === "editor" && !!editorError()}>{saving() ? "Reviewing changes" : "Review changes"}</Button></EditorActions></Show>
+    <Show when={!props.embedded}><EditorActions docked={dirty()} revert={dirty() ? () => { setItems([...variablesForSave(props.application.config.variables ?? []), emptyVariable()]); setText(undefined); setEditorError(undefined); setVisible({}); setError(""); } : undefined}><Show when={!props.service&&(props.application.config.repository||props.application.config.localSource)}><Button variant="ghost" disabled={props.busy||saving()} onClick={()=>void findMissing()}>Find missing variables</Button></Show><Button type="submit" variant="primary" form={id} icon="deploy" disabled={props.busy || saving() || !dirty() || view() === "editor" && !!editorError()}>{saving() ? "Saving" : "Save and redeploy"}</Button></EditorActions></Show>
     <Show when={options()}>{opened => <Portal><div ref={panel} class="variable-menu" role="dialog" aria-label={"Options for " + (items()[opened().index]?.name || "variable")} style={{ left: opened().left + "px", top: opened().top + "px" }}>
       <header class="variable-menu-heading"><strong>{items()[opened().index]?.name || "Variable"}</strong><IconButton icon="close" label="Close variable options" ghost onClick={() => closeOptions(true)} /></header>
       <label class="check-field"><input type="checkbox" checked={items()[opened().index]?.secret} onChange={event => update(opened().index, { secret: event.currentTarget.checked })} />Secret</label>

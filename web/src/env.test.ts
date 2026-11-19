@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyVariable, formatEnvironment, looksLikeEnvironment, mergeEnvironment, parseEnvironment, parseEnvironmentFile, retainedValue, variableSignature, variablesForSave } from "./env";
-import { safeConfigDraft } from "./drafts";
-import type { StaticConfig, Variable } from "./types";
+import type { Variable } from "./types";
 
 describe("simple environment editing", () => {
   it("pastes complete files locally with secret build/runtime defaults", () => {
@@ -24,8 +23,6 @@ describe("simple environment editing", () => {
     expect(variableSignature([{...old,value:"revealed"}])).toBe(variableSignature([old]));
     expect(variableSignature([{...old,keep:false,value:""}])).not.toBe(variableSignature([old]));
     expect(variablesForSave([{...emptyVariable(),name:"EMPTY"},emptyVariable()])).toHaveLength(1);
-    const draft = safeConfigDraft({variables:[{...old,value:"revealed"},{...emptyVariable(),name:"NEW",value:"unsaved-secret"}]} as StaticConfig);
-    expect(draft.variables).toEqual([{...old,value:""}]);
   });
   it("round-trips the .env editor without losing retained secrets or settings", () => {
     const saved: Variable[] = [

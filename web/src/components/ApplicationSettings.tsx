@@ -5,8 +5,6 @@ import type { Application, StaticConfig } from "../types";
 import { LifecycleCommands } from "./Commands";
 import StaticFields, { normalizedConfig } from "./StaticFields";
 import { Button, Disclosure, ErrorNotice, IconButton, validateForm } from "./Controls";
-import { clearDraft, readDraft, safeConfigDraft, saveDraft, saveVolatileDraft } from "../drafts";
-import { useAuth } from "../context";
 import Volumes from "./Volumes";
 import RuntimeFields from "./RuntimeFields";
 import { MemoryLimitField, ReadinessField, RuntimeConnectivity } from "./DeployFields";
@@ -29,8 +27,10 @@ function editableConfig(config: Partial<StaticConfig>) {
   return JSON.parse(JSON.stringify(normalizedConfig(config))) as StaticConfig;
 }
 
+// Inline sources and .env values are compared elsewhere, so they stay out of the settings fingerprint.
 function configFingerprint(config: StaticConfig) {
-  return JSON.stringify(safeConfigDraft(config), (_, value) =>
+  const comparable = { ...config, inlineDockerfile: "", inlineKeep: config.inlineKeep || config.inlineHasValue || undefined, composeYAML: "", composeKeep: config.composeKeep || config.composeHasValue || undefined, services: config.services?.map(service => ({ ...service, variables: undefined })), variables: undefined };
+  return JSON.stringify(comparable, (_, value) =>
     value && typeof value === "object" && !Array.isArray(value)
       ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]]))
       : value);
@@ -45,9 +45,9 @@ export default function ApplicationSettings(props: {
   rename: (name: string) => Promise<void>;
   remove: () => Promise<void>;
 }) {
-  const auth = useAuth(), formId = createUniqueId();
-  const key = "settings:" + auth.session()?.user?.id + ":" + props.application.id;
-  const [config, setConfig] = createStore(editableConfig(readDraft<StaticConfig>(key) ?? props.application.config));
+  const formId = createUniqueId();
+  // Edits live only in this view until they are saved. Leaving or reloading the page discards them.
+  const [config, setConfig] = createStore(editableConfig(props.application.config));
   const [name, setName] = createSignal(props.application.name);
   const [error, setError] = createSignal("");
   const [reviewing, setReviewing] = createSignal(false);
@@ -62,18 +62,8 @@ export default function ApplicationSettings(props: {
   const configDirty = createMemo(() => composeEdited() || configFingerprint(config) !== savedFingerprint());
   const renamed = () => !!name().trim() && name().trim() !== props.application.name;
   const dirty = () => configDirty() || renamed();
-  createEffect(() => {
-    if (!configDirty()) {
-      clearDraft(key);
-      return;
-    }
-    const safe = safeConfigDraft(config);
-    saveDraft(key, safe);
-    // Inline source can contain credentials. Keep edited YAML in memory only.
-    saveVolatileDraft(key, composeEdited() ? { ...safe, composeYAML: config.composeYAML, composeKeep: config.composeKeep } : safe);
-  });
   createEffect(() => { if (props.showSource) setArea("source"); });
-  function revert() { setConfig(reconcile(editableConfig(props.application.config))); setName(props.application.name); setError(""); clearDraft(key); }
+  function revert() { setConfig(reconcile(editableConfig(props.application.config))); setName(props.application.name); setError(""); }
   async function save(e: SubmitEvent) {
     e.preventDefault();
     if (props.busy || reviewing() || !dirty()) return;
@@ -88,8 +78,7 @@ export default function ApplicationSettings(props: {
       // A new name applies right away; configuration changes still go through the review.
       if (renamed()) await props.rename(name().trim());
       if (!configDirty()) return;
-      const draft = { ...config, variables: props.application.config.variables, services: props.application.config.services };
-      if (await props.save(draft) !== false) clearDraft(key);
+      await props.save({ ...config, variables: props.application.config.variables, services: props.application.config.services });
     } catch (e) { setError((e as Error).message); }
     finally { setReviewing(false); }
   }
@@ -148,7 +137,7 @@ export default function ApplicationSettings(props: {
           <Show when={error()}><ErrorNotice message={error()} /></Show>
           <EditorActions docked={dirty()} measure="form" inlineWhenFits revert={dirty() ? revert : undefined}>
             <Button variant="primary" type="submit" form={formId} icon="deploy" disabled={props.busy || !dirty()} aria-disabled={reviewing() || undefined}>
-              {renamed() && !configDirty() ? reviewing() ? "Saving" : "Save changes" : reviewing() ? "Reviewing changes" : "Review changes"}
+              {reviewing() ? "Saving" : renamed() && !configDirty() ? "Save changes" : "Save and redeploy"}
             </Button>
           </EditorActions>
         </form>
