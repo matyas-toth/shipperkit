@@ -21,6 +21,7 @@ export function AutomaticDeployFields(props: {
               onChange={(e) =>
                 props.change("autoDeploy", {
                   ...value(),
+                  paths: [],
                   enabled: e.currentTarget.checked,
                 })
               }
@@ -28,22 +29,6 @@ export function AutomaticDeployFields(props: {
             Deploy on push
           </label>
           <Show when={value().enabled}>
-            <label for="watch-paths">Watch paths</label>
-            <textarea
-              id="watch-paths"
-              class="input mono command-input"
-              placeholder="All files"
-              value={(value().paths ?? []).join("\n")}
-              onInput={(e) =>
-                props.change("autoDeploy", {
-                  ...value(),
-                  paths: e.currentTarget.value
-                    .split("\n")
-                    .map((p) => p.trim())
-                    .filter(Boolean),
-                })
-              }
-            />
             <label class="check-field">
               <input
                 type="checkbox"
@@ -51,6 +36,7 @@ export function AutomaticDeployFields(props: {
                 onChange={(e) =>
                   props.change("autoDeploy", {
                     ...value(),
+                    paths: [],
                     supersede: e.currentTarget.checked,
                   })
                 }

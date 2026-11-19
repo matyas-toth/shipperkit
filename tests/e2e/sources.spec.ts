@@ -306,7 +306,6 @@ test("connections, private repository selection, immutable queue controls and im
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByText("Automatic deployments", { exact: true }).click();
   await page.getByLabel("Deploy on push", { exact: true }).check();
-  await page.getByLabel("Watch paths", { exact: true }).fill("apps/web/**");
   await page.getByRole("button", { name: "Review deployment", exact: true }).click();
   await expect(page.locator(".creation-review")).toContainText("Dockerfile (automatic)");
   await page.getByRole("button", { name: "Deploy", exact: true }).click();
@@ -317,7 +316,7 @@ test("connections, private repository selection, immutable queue controls and im
   expect(submitted.config.repositoryId).toBe(55);
   expect(submitted.config.branch).toBe("develop");
   expect(submitted.commit).toBe("a".repeat(40));
-  expect(submitted.config.autoDeploy.paths).toEqual(["apps/web/**"]);
+  expect(submitted.config.autoDeploy).toMatchObject({ enabled: true, paths: [] });
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(page.getByRole("region", { name: "Selected deployment" })).toContainText("Cancelled");
   await page.getByRole("button", { name: "Retry", exact: true }).click();

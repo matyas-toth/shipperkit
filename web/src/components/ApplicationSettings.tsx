@@ -24,6 +24,12 @@ const areas = [
 ] as const;
 type SettingsArea = (typeof areas)[number]["id"];
 
+// The editor owns a deep copy. Nested objects shared with the query cache would let edits
+// rewrite the saved config and let background refetches overwrite edits in progress.
+function editableConfig(config: Partial<StaticConfig>) {
+  return JSON.parse(JSON.stringify(normalizedConfig(config))) as StaticConfig;
+}
+
 function configFingerprint(config: StaticConfig) {
   return JSON.stringify(safeConfigDraft(config), (_, value) =>
     value && typeof value === "object" && !Array.isArray(value)
@@ -42,7 +48,7 @@ export default function ApplicationSettings(props: {
 }) {
   const auth = useAuth(), formId = createUniqueId();
   const key = "settings:" + auth.session()?.user?.id + ":" + props.application.id;
-  const [config, setConfig] = createStore(normalizedConfig(readDraft<StaticConfig>(key) ?? props.application.config));
+  const [config, setConfig] = createStore(editableConfig(readDraft<StaticConfig>(key) ?? props.application.config));
   const [name, setName] = createSignal(props.application.name);
   const [error, setError] = createSignal("");
   const [renameError, setRenameError] = createSignal("");
@@ -68,7 +74,7 @@ export default function ApplicationSettings(props: {
     saveVolatileDraft(key, composeEdited() ? { ...safe, composeYAML: config.composeYAML, composeKeep: config.composeKeep } : safe);
   });
   createEffect(() => { if (props.showSource) setArea("source"); });
-  function revert() { setConfig(reconcile(normalizedConfig(props.application.config))); setError(""); clearDraft(key); }
+  function revert() { setConfig(reconcile(editableConfig(props.application.config))); setError(""); clearDraft(key); }
   async function save(e: SubmitEvent) {
     e.preventDefault();
     if (props.busy || reviewing() || !dirty()) return;
