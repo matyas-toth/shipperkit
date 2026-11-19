@@ -144,3 +144,29 @@ test("Local folder source can be reviewed without connecting Git",async({page})=
  await expect(page.locator(".creation-review")).toContainText(commit.slice(0,12));
  await expect(page.locator(".creation-review")).toContainText("deploy/compose.yaml");
 });
+
+test("background refetches keep chosen select values", async ({ page }) => {
+  await login(page);
+  const csrf = (await (await page.request.get("/api/auth/session")).json()).csrfToken;
+  const refresh = async () => {
+    await page.evaluate(token => fetch("/api/refresh", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": token }, body: "{}" }), csrf);
+    await page.waitForTimeout(1200);
+  };
+  const shown = (select: import("@playwright/test").Locator) => select.evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent);
+  await page.route("**/api/applications/application-web/networking", route => route.fulfill({ json: { networking: { applications: [], ports: [] }, host: "app-application-web", applications: [
+    { id: "a1", name: "Alpha", host: "app-a1" }, { id: "b2", name: "Beta", host: "app-b2" }, { id: "c3", name: "Gamma", host: "app-c3" }] } }));
+  await page.goto("/applications/application-web?tab=networking");
+  await page.getByRole("button", { name: "Connect application", exact: true }).first().click();
+  const connected = page.getByLabel("Connected application 1", { exact: true });
+  await connected.selectOption("c3");
+  await refresh();
+  await expect(connected).toHaveValue("c3");
+  expect(await shown(connected)).toBe("Gamma");
+  await page.goto("/settings#tokens");
+  await page.getByRole("button", { name: "Create token", exact: true }).click();
+  const application = page.getByLabel("Application", { exact: true });
+  await application.selectOption("application-web");
+  await refresh();
+  await expect(application).toHaveValue("application-web");
+  expect(await shown(application)).toBe("Website");
+});

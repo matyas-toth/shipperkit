@@ -61,7 +61,7 @@ export default function Networking(props: {
             <span>Application</span>
             <select class="input" aria-label={"Connected application " + (index + 1)} value={applicationId()} onChange={e => update({ applications: connections().map((value, i) => i === index ? e.currentTarget.value : value) })}>
               <Show when={!app(applicationId())}><option value={applicationId()}>{applicationId()}</option></Show>
-              <For each={applications().filter(entry => entry.id === applicationId() || !connections().includes(entry.id))}>{entry => <option value={entry.id}>{entry.name}</option>}</For>
+              <For each={applications().map(entry => entry.id).filter(id => id === applicationId() || !connections().includes(id))}>{id => <option value={id}>{app(id)?.name ?? id}</option>}</For>
             </select>
           </label>
           <div class="network-host-cell"><span class="network-host" title={target()}>{props.name || target()}</span><IconButton icon={copiedHost() === target() ? "check" : "copy"} ghost label="Copy internal host" onClick={() => void copyHost(target())} /></div>
@@ -90,7 +90,7 @@ export default function Networking(props: {
               <span>Service</span>
               <select class="input" aria-label={"Service for port " + (index + 1)} value={port().service ?? ""} required onChange={e => updatePort(index, { service: e.currentTarget.value })}>
                 <option value="" disabled>Select service</option>
-                <For each={props.services}>{service => <option value={service.name}>{service.name}</option>}</For>
+                <For each={props.services?.map(service => service.name)}>{name => <option value={name}>{name}</option>}</For>
               </select>
             </label></Show>
             <label class="network-field">

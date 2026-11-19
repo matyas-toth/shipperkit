@@ -9,6 +9,9 @@ import AuthPage from "./pages/Auth";
 import FactorGate from "./pages/FactorGate";
 import Shell from "./components/Shell";
 import SelectMenu from "./components/SelectMenu";
+import { keepSelectValues } from "./selectValue";
+
+keepSelectValues();
 import Applications from "./pages/Applications";
 import Settings from "./pages/Settings";
 import System from "./pages/System";

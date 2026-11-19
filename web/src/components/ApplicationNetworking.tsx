@@ -7,7 +7,8 @@ import { Icon } from "./Icon";
 import Networking from "./Networking";
 
 const empty = (): NetworkAccess => ({ applications: [], ports: [] });
-const normalize = (value?: NetworkAccess | null): NetworkAccess => ({ applications: value?.applications ?? [], ports: value?.ports ?? [] });
+// Copies keep edits independent of the refetched application data.
+const normalize = (value?: NetworkAccess | null): NetworkAccess => ({ applications: [...(value?.applications ?? [])], ports: (value?.ports ?? []).map(port => ({ ...port })) });
 const portLabel = (port: PublishedPort) => port.hostPort + "/" + port.protocol + " to container port " + port.containerPort + " on " + (port.bindIP === "0.0.0.0" ? "all interfaces" : port.bindIP === "127.0.0.1" ? "loopback" : port.bindIP);
 const samePort = (a: PublishedPort, b: PublishedPort) => a.protocol === b.protocol && a.hostPort === b.hostPort && a.containerPort === b.containerPort && a.bindIP === b.bindIP;
 
@@ -18,7 +19,7 @@ export default function ApplicationNetworking(props: {
   save: (config: StaticConfig, summary?: ReviewSummaryItem[], note?: string) => Promise<boolean | void>;
   onDirty?: (value: boolean) => void;
 }) {
-  const info = createQuery(() => ({ queryKey: ["applications", props.application.id, "networking"], queryFn: () => api<NetworkingInfo>(`/applications/${props.application.id}/networking`) }));
+  const info = createQuery(() => ({ queryKey: ["applications", props.application.id, "networking"], queryFn: () => api<NetworkingInfo>(`/applications/${props.application.id}/networking`), reconcile: "id" }));
   const [value, setValue] = createSignal<NetworkAccess>(normalize(props.application.config.networking));
   const [tlsHostname, setTlsHostname] = createSignal(props.application.config.database?.tlsHostname ?? "");
   const [tlsOn, setTlsOn] = createSignal(!!props.application.config.database?.tlsHostname);
