@@ -109,13 +109,17 @@ test(".env editor view keeps retained secrets and is remembered per application"
   const variables=[{name:"STORED_TOKEN",value:"",secret:true,scope:"runtime",keep:true,hasValue:true},{name:"PUBLIC_MODE",value:"production",secret:false,scope:"runtime",hasValue:true}];
   await page.route("**/api/applications/application-web",async route=>{const response=await route.fetch();const body=await response.json();serving=body.activeDeployment;body.application.config.variables=variables;await route.fulfill({json:body});});
   await page.route("**/api/applications/application-web/deployments",async route=>{submitted=route.request().postDataJSON();await route.fulfill({status:202,json:serving});});
+  const revealed: string[][] = [];
+  await page.route("**/api/applications/application-web/variables/reveal",route=>{revealed.push(route.request().postDataJSON().names);return route.fulfill({json:{values:{STORED_TOKEN:"stored-secret-fixture"}}});});
   await page.goto("/applications/application-web?tab=env");
   await page.getByRole("group",{name:".env view"}).getByRole("button",{name:"Editor",exact:true}).click();
   const file=page.getByLabel(".env file",{exact:true});
-  const saved = "STORED_TOKEN=••••••••\nPUBLIC_MODE=production";
+  const saved = "STORED_TOKEN=stored-secret-fixture\nPUBLIC_MODE=production";
   await expect(file).toHaveValue(saved);
+  await expect(page.getByRole("button",{name:"Save and redeploy",exact:true})).toBeDisabled();
   await page.reload();
   await expect(file).toHaveValue(saved);
+  expect(revealed).toEqual([["STORED_TOKEN"],["STORED_TOKEN"]]);
   await file.press("ControlOrMeta+End");await file.pressSequentially("\nNEW_FLAG=on");
   await expect(page.locator(".env-editor-gutter span")).toHaveCount(3);
   await page.screenshot({path:screenshot("env-editor")});

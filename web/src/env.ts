@@ -55,8 +55,11 @@ function quote(value: string) {
   return '"' + value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n") + '"';
 }
 
+// Like variablesForSave, but a revealed secret keeps its value so the editor can show it.
+const editorRows = (variables: Variable[]) => variables.filter(variableHasContent).map(variable => ({ ...variable, name: variable.name.trim() }));
+
 export function formatEnvironment(variables: Variable[]): string {
-  return variablesForSave(variables).map(v => v.name + "=" + (v.keep && !v.value ? retainedValue : quote(v.value))).join("\n");
+  return editorRows(variables).map(v => v.name + "=" + (v.keep && !v.value ? retainedValue : quote(v.value))).join("\n");
 }
 
 function unquote(raw: string, line: number) {
@@ -86,7 +89,7 @@ function unquote(raw: string, line: number) {
 // New names default to build and runtime.
 export function parseEnvironmentFile(text: string, current: Variable[]): Variable[] {
   if (text.length > 128 * 1024) throw Error("The environment file is too large");
-  const previous = new Map(variablesForSave(current).map(v => [v.name, v]));
+  const previous = new Map(editorRows(current).map(v => [v.name, v]));
   const variables: Variable[] = [], names = new Set<string>();
   for (const [index, raw] of text.replace(/^\uFEFF/, "").replaceAll("\r\n", "\n").split("\n").entries()) {
     const line = raw.trim();
@@ -104,7 +107,8 @@ export function parseEnvironmentFile(text: string, current: Variable[]): Variabl
     }
     const value = unquote(match[2], index + 1);
     if (value.length > 16384 || value.includes("\0")) throw Error(`Variable ${name} is too large or contains null bytes`);
-    if (before && !before.keep && before.value === value) variables.push({ ...before });
+    // Unchanged rows stay as saved, including secrets the editor revealed.
+    if (before && before.value === value && (!before.keep || value !== "")) variables.push({ ...before });
     else if (before?.keep) variables.push({ ...before, value, keep: false, keepFrom: undefined, hasValue: undefined });
     else variables.push(before ? { ...before, value } : { ...emptyVariable(), name, value });
   }

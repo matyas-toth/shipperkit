@@ -50,10 +50,15 @@ func (s *Server) parseVariables(w http.ResponseWriter, r *http.Request) {
 }
 func (s *Server) revealVariable(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name    string `json:"name"`
-		Service string `json:"service"`
+		Name    string   `json:"name"`
+		Names   []string `json:"names"`
+		Service string   `json:"service"`
 	}
 	if !s.decode(w, r, &input) {
+		return
+	}
+	if len(input.Names) > 256 {
+		s.problem(w, 422, "too_many_variables", "Reveal up to 256 variables at once")
 		return
 	}
 	a, e := s.db.Application(r.Context(), chi.URLParam(r, "id"))
@@ -84,6 +89,20 @@ func (s *Server) revealVariable(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+	// The .env editor shows every value as text, so it reveals the saved secrets in one request.
+	if input.Names != nil {
+		wanted, values := map[string]bool{}, map[string]string{}
+		for _, name := range input.Names {
+			wanted[name] = true
+		}
+		for _, v := range variables {
+			if wanted[v.Name] {
+				values[v.Name] = v.Value
+			}
+		}
+		s.json(w, 200, map[string]any{"values": values})
+		return
 	}
 	for _, v := range variables {
 		if v.Name == input.Name {

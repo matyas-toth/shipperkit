@@ -1,4 +1,4 @@
-import { Index, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup } from "solid-js";
+import { Index, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, untrack } from "solid-js";
 import { Dynamic, Portal } from "solid-js/web";
 import { post } from "../api";
 import { useAuth } from "../context";
@@ -34,13 +34,29 @@ export default function Variables(props: { application: Application; busy: boole
     setText(value); setError("");
     try {
       // Saved rows first, then the current ones, so retained secrets and per-variable settings carry over.
-      const known = new Map([...variablesForSave(props.application.config.variables ?? []), ...variablesForSave(items())].map(v => [v.name, v]));
+      const known = new Map([...variablesForSave(props.application.config.variables ?? []), ...items().filter(variableHasContent)].map(v => [v.name.trim(), v]));
       setItems([...parseEnvironmentFile(value, [...known.values()]), emptyVariable()]);
       setEditorError(undefined);
     } catch (e) {
       const message = (e as Error).message, line = /^Line (\d+)/.exec(message)?.[1];
       setEditorError({ message, line: line ? Number(line) : undefined });
     }
+  }
+  // The editor is a plain file, so saved secrets open revealed. One request covers every hidden value.
+  const [revealingAll, setRevealingAll] = createSignal(false);
+  createEffect(() => { if (view() === "editor" && !props.embedded) untrack(() => void revealAll()); });
+  async function revealAll() {
+    const hidden = items().filter(v => v.keep && !v.value).map(v => v.keepFrom || v.name);
+    if (!hidden.length || revealingAll()) return;
+    setRevealingAll(true);
+    try {
+      const { values } = await post<{ values: Record<string, string> }>(`/applications/${props.application.id}/variables/reveal`, { names: hidden, ...(props.service ? { service: props.service } : {}) }, auth.session()?.csrfToken);
+      setItems(rows => rows.map(row => {
+        const value = row.keep && !row.value ? values[row.keepFrom || row.name] : undefined;
+        return value === undefined ? row : { ...row, value };
+      }));
+    } catch { /* Without permission to reveal, saved secrets stay masked and keep their values. */ }
+    finally { setRevealingAll(false); }
   }
   let root!: HTMLElement, panel!: HTMLDivElement;
   const dirty = createMemo(() => variableSignature(items()) !== variableSignature(props.application.config.variables ?? []));
@@ -101,7 +117,7 @@ export default function Variables(props: { application: Application; busy: boole
     closeOptions();setItems(rows => [...variablesForSave(rows.filter((_, i) => i !== index)), emptyVariable()]);setVisible({});
     queueMicrotask(() => root.querySelectorAll<HTMLInputElement>(".env-name")[Math.min(index, items().length - 1)]?.focus());
   }
-  async function findMissing(){setSaving(true);setError("");try{const result=await post<{variables:string[]}>("/repositories/inspect",{config:props.application.config},auth.session()?.csrfToken);const names=new Set(items().map(v=>v.name).filter(Boolean));const found=result.variables.filter(name=>!names.has(name)).slice(0,Math.max(0,256-names.size)).map(name=>({...emptyVariable(),name}));setItems([...variablesForSave(items()),...found,emptyVariable()]);setText(undefined);}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
+  async function findMissing(){setSaving(true);setError("");try{const result=await post<{variables:string[]}>("/repositories/inspect",{config:props.application.config},auth.session()?.csrfToken);const names=new Set(items().map(v=>v.name).filter(Boolean));const found=result.variables.filter(name=>!names.has(name)).slice(0,Math.max(0,256-names.size)).map(name=>({...emptyVariable(),name}));setItems([...items().filter(variableHasContent),...found,emptyVariable()]);setText(undefined);}catch(e){setError((e as Error).message);}finally{setSaving(false);}}
   async function save(event: SubmitEvent) {
     event.preventDefault();if (props.busy || saving() || !dirty() || view() === "editor" && editorError()) return;setError("");
     const variables = variablesForSave(items()), names = new Set<string>();
@@ -123,7 +139,9 @@ export default function Variables(props: { application: Application; busy: boole
     <Show when={error()}><ErrorNotice message={error()} /></Show>
     <Show when={view() === "editor"}>
       <Show when={editorError()}>{problem => <ErrorNotice message={problem().message} />}</Show>
-      <EnvEditor label=".env file" value={editorText()} invalidLine={editorError()?.line} change={editText} />
+      <Show when={!revealingAll()} fallback={<span class="loading-line" aria-label="Loading .env" />}>
+        <EnvEditor label=".env file" value={editorText()} invalidLine={editorError()?.line} change={editText} />
+      </Show>
     </Show>
     <div class="table-tray variables-tray" hidden={view() === "editor"}><div class="variables-header"><span>Name</span><span>Value</span><span class="variable-scope-heading">Scope</span><span class="sr-only">Options</span></div><div class="variables-body"><Index each={items()}>{(variable, index) => <div class="variable-row">
       <input class="input mono env-name" aria-label={"Variable name " + (index + 1)} placeholder="NAME" value={variable().name} required={variableHasContent(variable())} pattern="[A-Za-z_][A-Za-z0-9_]*" maxlength={128} autocomplete="off" autocapitalize="off" spellcheck={false} onPaste={event => paste(event, true)} onInput={event => update(index, { name: event.currentTarget.value, keepFrom: variable().keep ? variable().keepFrom || variable().name : undefined })} />
@@ -138,7 +156,7 @@ export default function Variables(props: { application: Application; busy: boole
       </Show>
       <div class="variable-options"><Show when={variableHasContent(variable())}><IconButton icon="more" label={"Options for " + (variable().name || "variable " + (index + 1))} ghost aria-haspopup="dialog" aria-expanded={options()?.index === index} onClick={event => openOptions(index, event.currentTarget)} /></Show></div>
     </div>}</Index></div></div>
-    <Show when={!props.embedded}><EditorActions docked={dirty()} revert={dirty() ? () => { setItems([...variablesForSave(props.application.config.variables ?? []), emptyVariable()]); setText(undefined); setEditorError(undefined); setVisible({}); setError(""); } : undefined}><Show when={!props.service&&(props.application.config.repository||props.application.config.localSource)}><Button variant="ghost" disabled={props.busy||saving()} onClick={()=>void findMissing()}>Find missing variables</Button></Show><Button type="submit" variant="primary" form={id} icon="deploy" disabled={props.busy || saving() || !dirty() || view() === "editor" && !!editorError()}>{saving() ? "Saving" : "Save and redeploy"}</Button></EditorActions></Show>
+    <Show when={!props.embedded}><EditorActions docked={dirty()} revert={dirty() ? () => { setItems([...variablesForSave(props.application.config.variables ?? []), emptyVariable()]); setText(undefined); setEditorError(undefined); setVisible({}); if (view() === "editor") void revealAll(); setError(""); } : undefined}><Show when={!props.service&&(props.application.config.repository||props.application.config.localSource)}><Button variant="ghost" disabled={props.busy||saving()} onClick={()=>void findMissing()}>Find missing variables</Button></Show><Button type="submit" variant="primary" form={id} icon="deploy" disabled={props.busy || saving() || !dirty() || view() === "editor" && !!editorError()}>{saving() ? "Saving" : "Save and redeploy"}</Button></EditorActions></Show>
     <Show when={options()}>{opened => <Portal><div ref={panel} class="variable-menu" role="dialog" aria-label={"Options for " + (items()[opened().index]?.name || "variable")} style={{ left: opened().left + "px", top: opened().top + "px" }}>
       <header class="variable-menu-heading"><strong>{items()[opened().index]?.name || "Variable"}</strong><IconButton icon="close" label="Close variable options" ghost onClick={() => closeOptions(true)} /></header>
       <label class="check-field"><input type="checkbox" checked={items()[opened().index]?.secret} onChange={event => update(opened().index, { secret: event.currentTarget.checked })} />Secret</label>

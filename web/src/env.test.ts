@@ -33,6 +33,9 @@ describe("simple environment editing", () => {
     const text = formatEnvironment(saved);
     expect(text).toBe(["TOKEN=" + retainedValue, 'GREETING="hello world"', 'MULTI="a\\nb \\"c\\""'].join("\n"));
     expect(variableSignature(parseEnvironmentFile(text, saved))).toBe(variableSignature(saved));
+    const revealed = saved.map(v => v.keep ? { ...v, value: "shown-secret" } : v);
+    expect(variableSignature(parseEnvironmentFile(formatEnvironment(revealed), revealed))).toBe(variableSignature(saved));
+    expect(parseEnvironmentFile(formatEnvironment(revealed).replace("shown-secret", "changed"), revealed)[0]).toMatchObject({ value: "changed", keep: false });
     const edited = parseEnvironmentFile(text + "\n# note\nNEW=value", saved);
     expect(edited[3]).toMatchObject({ name: "NEW", value: "value", scope: "both" });
     expect(parseEnvironmentFile("GREETING=changed", saved)[0]).toMatchObject({ value: "changed", scope: "build", secret: false });

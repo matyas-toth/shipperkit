@@ -188,6 +188,10 @@ func TestAuthenticationCSRFAndReadOnlyAPI(t *testing.T) {
 	if resp.StatusCode != 200 || body["value"] != "runtime-api-private-value" || resp.Header.Get("Cache-Control") != "no-store" {
 		t.Fatal("explicit reveal failed", body)
 	}
+	resp, body = request("POST", "/api/applications/"+appID+"/variables/reveal", map[string]any{"names": []string{"TOKEN", "MISSING"}}, csrf, "")
+	if values, _ := body["values"].(map[string]any); resp.StatusCode != 200 || len(values) != 1 || values["TOKEN"] != "runtime-api-private-value" {
+		t.Fatal("bulk reveal failed", body)
+	}
 	worker.Runtime = testLogRuntime{}
 	runtimeStream, err := client.Get(server.URL + "/api/applications/" + appID + "/logs?container=runtime-fixture")
 	if err != nil {
