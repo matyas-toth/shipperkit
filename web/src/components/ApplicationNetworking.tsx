@@ -114,8 +114,8 @@ export default function ApplicationNetworking(props: {
     </Show>
     <Show when={error() && conflict() === undefined}><ErrorNotice message={error()} /></Show>
     <Show when={info.data && changed() && !saving()}><div class="form-actions network-review-bar">
-      <Show when={changed()}><span class="network-unsaved-page"><span class="network-unsaved-dot" />Unsaved changes</span></Show>
-      <Show when={changed()}><Button variant="neutral" type="button" disabled={saving()} onClick={reset}>Discard changes</Button></Show>
+      <Show when={changed()}><span class="network-unsaved-page"><span class="network-unsaved-dot" />You have unsaved changes</span></Show>
+      <Show when={changed()}><Button variant="ghost" type="button" disabled={saving()} onClick={reset}>Revert</Button></Show>
       <Show when={portProblem()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem()}</span></Show>
       <Show when={conflict() !== undefined || tlsInvalid()}><button type="button" class="network-issue-count" onClick={() => document.querySelector<HTMLInputElement>(".network-field.is-conflict input, .network-tls .is-invalid")?.focus()}>{issues()} {issues() === 1 ? "issue" : "issues"}</button></Show>
       <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Preparing review" : "Review changes"}</Button>

@@ -13269,24 +13269,70 @@ input[type="checkbox"]:disabled {
   height: 30px;
 }
 
-/* Compose service header facts. */
+/* Compose service header: breadcrumb, then status, then image and port as quiet facts. */
+.service-heading {
+  gap: 10px;
+}
 .service-heading .status {
   flex: none;
+  margin-inline-start: 6px;
 }
 .service-facts {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
+  margin-inline-start: 10px;
+  padding-inline-start: 16px;
+  border-inline-start: 1px solid var(--border);
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .service-facts .truncate {
-  max-width: 280px;
+  max-width: 320px;
+}
+.service-fact-sep {
+  width: 3px;
+  height: 3px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.6;
 }
 @media (width < 48rem) {
   .service-facts {
     display: none;
+  }
+}
+
+/* Unsaved edits: message on the left, Revert beside the main action. */
+.editor-unsaved {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-end: auto;
+  padding-inline-start: 6px;
+  color: var(--secondary);
+  font-size: 13.5px;
+}
+.editor-unsaved::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+.editor-action-row:has(.editor-unsaved) {
+  justify-content: flex-end;
+}
+@media (width < 48rem) {
+  .editor-unsaved {
+    font-size: 0;
+    padding-inline-start: 8px;
+  }
+  .editor-unsaved::after {
+    content: "Unsaved";
+    font-size: 13px;
   }
 }
 

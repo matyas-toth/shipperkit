@@ -1,4 +1,4 @@
-import { createStore } from "solid-js/store";
+import { createStore, reconcile } from "solid-js/store";
 import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { Application, StaticConfig } from "../types";
@@ -68,6 +68,7 @@ export default function ApplicationSettings(props: {
     saveVolatileDraft(key, composeEdited() ? { ...safe, composeYAML: config.composeYAML, composeKeep: config.composeKeep } : safe);
   });
   createEffect(() => { if (props.showSource) setArea("source"); });
+  function revert() { setConfig(reconcile(normalizedConfig(props.application.config))); setError(""); clearDraft(key); }
   async function save(e: SubmitEvent) {
     e.preventDefault();
     if (props.busy || reviewing() || !dirty()) return;
@@ -151,7 +152,7 @@ export default function ApplicationSettings(props: {
               change={hooks => setConfig("hooks", hooks)} />
           </section>
           <Show when={error()}><ErrorNotice message={error()} /></Show>
-          <EditorActions docked={dirty()} measure="form" inlineWhenFits>
+          <EditorActions docked={dirty()} measure="form" inlineWhenFits revert={dirty() ? revert : undefined}>
             <Button variant="primary" type="submit" form={formId} icon="deploy" disabled={props.busy || !dirty()} aria-disabled={reviewing() || undefined}>
               {reviewing() ? "Reviewing changes" : "Review changes"}
             </Button>

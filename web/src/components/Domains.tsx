@@ -143,6 +143,6 @@ export default function Domains(props: { application: Application; proxy?: Proxy
       </Show>
       </>;
     }}</For></div>}</For><Show when={!domains().length && canAdd()}><div class="empty-state">No domains <a class="docs-link" href={docs("domains/")} target="_blank" rel="noreferrer">Domain guide</a></div></Show></div></div>
-    <Show when={domains().length || dirty()}><EditorActions docked={dirty()} measure="form" inlineWhenFits><Button variant="primary" type="submit" form={formId} icon="check" disabled={props.busy || !dirty()}>Save domains</Button></EditorActions></Show>
+    <Show when={domains().length || dirty()}><EditorActions docked={dirty()} measure="form" inlineWhenFits revert={dirty() ? () => { setDomains(saved()); setEditing(undefined); setError(""); } : undefined}><Button variant="primary" type="submit" form={formId} icon="check" disabled={props.busy || !dirty()}>Save domains</Button></EditorActions></Show>
   </form>;
 }
