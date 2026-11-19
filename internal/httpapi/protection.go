@@ -185,7 +185,7 @@ func (s *Server) saveBackupPlan(w http.ResponseWriter, r *http.Request) {
 	p.Config.Remote = nil
 	p.Config.Target = ""
 	p.Config.Identity = ""
-	if p.Config.Kind == "database" && (p.Config.User == "" || p.Config.Password == "") {
+	if p.Config.Kind == "database" && (p.Config.User == "" || p.Config.Password == "" || p.Config.Database == "") {
 		a, e := s.db.Application(r.Context(), id)
 		if e != nil {
 			s.resourceError(w, e)

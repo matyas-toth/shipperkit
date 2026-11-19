@@ -54,6 +54,12 @@ export default function LogViewer(props: {
   }));
   const message = () => props.deployment.error || (terminal()?.step === state() ? terminal()?.line : "");
   const failedStep = createMemo(() => [...lines()].reverse().find(line => !["failed", "cancelled", "interrupted"].includes(line.step))?.step);
+  // A failed deployment opens on the first error of the step that failed.
+  const failureLine = createMemo(() => {
+    if (state() !== "failed" || search()) return undefined;
+    const step = failedStep(), rows = lines().filter(line => line.step === step);
+    return (rows.find(line => /(^|\s)(error|failed|failure|fatal|panic)\b/i.test(line.line)) ?? rows[rows.length - 1])?.number;
+  });
   const filtered = createMemo(() => {
     const text = search().toLowerCase();
     return text ? lines().filter(line => (line.line + " " + line.step).toLowerCase().includes(text)) : lines();
@@ -90,11 +96,11 @@ export default function LogViewer(props: {
           <><span>Serving</span><code title={current().commit || current().id}>{deploymentRef(current())}</code></>
         }</Show>
       </div></Show>
-      <Show when={cancellable() || props.restore || retryable()}>
+      <Show when={cancellable() || props.restore || retryable() && !message()}>
         <div class="log-operation-actions">
           <Show when={cancellable()}><Button small disabled={props.deployment.cancelRequested} onClick={props.cancel}>{props.deployment.cancelRequested ? "Cancelling" : "Cancel"}</Button></Show>
           <Show when={props.restore}><Button small icon="back" onClick={props.restore}>Roll back</Button></Show>
-          <Show when={retryable()}><Button small variant="primary" onClick={props.retry}>Retry</Button></Show>
+          <Show when={retryable() && !message()}><Button small variant="primary" onClick={props.retry}>Retry</Button></Show>
         </div>
       </Show>
     </section>
@@ -112,7 +118,7 @@ export default function LogViewer(props: {
         </div>
         <div class="deployment-result-actions">
           <Show when={state() === "failed"}><Button small variant="primary" onClick={() => setDiagnose(true)}>Diagnose</Button></Show>
-          <Show when={failedStep()}><Button small variant="ghost" onClick={() => filter(failedStep()!)}>Show failed step</Button></Show>
+          <Show when={retryable()}><Button small onClick={props.retry}>Retry</Button></Show>
         </div>
       </section>
     </Show>
@@ -132,7 +138,7 @@ export default function LogViewer(props: {
       <Show when={query.error || copyError()}><ErrorNotice message={copyError() || query.error!.message} /></Show>
       <LogViewport label="Deployment logs" rows={filtered()} lineNumber={line => line.number} message={line => line.line}
         tone={line => /(^|\s)(error|failed|failure|fatal|panic)\b/i.test(line.line) || /^(failed|failure)$/i.test(line.step) ? "error" : undefined}
-        details={presentation.details() ? details : undefined} wrap={presentation.wrap()}
+        details={presentation.details() ? details : undefined} wrap={presentation.wrap()} reveal={failureLine()} quietReveal
         empty={!lines().length ? query.isPending ? "Loading logs" : operationPending(state()) ? "Waiting for deployment" : "No deployment logs" : !filtered().length ? "No matching logs" : undefined}
         ref={node => viewport = node} onFollow={value => follow = value} />
     </div>

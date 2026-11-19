@@ -1,9 +1,9 @@
-import { useLocation } from "@solidjs/router";
-import { For, Show, createMemo, createSignal, onMount } from "solid-js";
+import { useLocation, useNavigate } from "@solidjs/router";
+import { For, Show, createEffect, createMemo, createSignal, onMount } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
 import type { ProxyConfig } from "../types";
-import { useAuth } from "../context";
+import { useAuth, useUpdates } from "../context";
 import { Button, ErrorNotice } from "../components/Controls";
 import Connections from "../components/Connections";
 import Backups from "../components/Backups";
@@ -22,25 +22,33 @@ type SettingsGroup = {
   sections: { id: string; label: string; icon: IconName }[];
 };
 
-const accountGroup: SettingsGroup = { id: "account", label: "Account settings", sections: [
+const accountGroup: SettingsGroup = { id: "account", label: "Account", sections: [
   { id: "account", label: "Account", icon: "user" },
 ] };
-const serverGroup: SettingsGroup = { id: "server", label: "Server settings", sections: [
+const peopleGroup: SettingsGroup = { id: "people", label: "People and sign-in", sections: [
   { id: "users", label: "Users", icon: "users" },
   { id: "authentication", label: "Authentication", icon: "security" },
-  { id: "security", label: "Access policy", icon: "shield" },
-  { id: "tokens", label: "Access tokens", icon: "key" },
+] };
+const instanceGroup: SettingsGroup = { id: "instance", label: "Instance", sections: [
   { id: "dashboard", label: "Dashboard", icon: "globe" },
   { id: "sources", label: "Connections", icon: "git" },
+  { id: "tokens", label: "Access tokens", icon: "key" },
   { id: "notifications", label: "Notifications", icon: "mail" },
   { id: "updates", label: "Updates", icon: "refresh" },
   { id: "recovery", label: "Recovery", icon: "database" },
 ] };
+// Older links point at sections that were merged into another one.
+const merged: Record<string, string> = { security: "authentication" };
+const updating = ["queued", "preparing", "pulling", "checkpoint", "updating", "starting", "verifying", "restarting"];
 
 export default function Settings() {
   const auth = useAuth();
   const location = useLocation();
-  const groups = createMemo(() => auth.session()?.user?.role === "admin" ? [accountGroup, serverGroup] : [accountGroup]);
+  const navigate = useNavigate();
+  const updates = useUpdates();
+  const groups = createMemo(() => auth.session()?.user?.role === "admin" ? [accountGroup, peopleGroup, instanceGroup] : [accountGroup]);
+  createEffect(() => { const target = merged[location.hash.slice(1)]; if (target) navigate("/settings#" + target, { replace: true }); });
+  const updateReady = () => { const data = updates.data(); return !!data?.enabled && !!data.available && !updating.includes(data.status?.state ?? ""); };
   const sections = createMemo(() => groups().flatMap(group => group.sections));
   const section = () => sections().find(item => item.id === location.hash.slice(1))?.id ?? "account";
   const [actionError, setActionError] = createSignal("");
@@ -55,9 +63,9 @@ export default function Settings() {
     <div class="settings-layout">
       <nav class="settings-navigation" aria-label="Settings sections">
         <For each={groups()}>{group => <section class="settings-nav-group">
-          <h2 class="settings-nav-heading">{group.label}</h2>
+          <Show when={group.sections.length > 1 || group.sections[0].label !== group.label}><h2 class="settings-nav-heading">{group.label}</h2></Show>
           <For each={group.sections}>{item => <a href={"/settings#" + item.id} class="settings-link"
-            aria-current={section() === item.id ? "page" : undefined}><Icon name={item.icon} />{item.label}</a>}</For>
+            aria-current={section() === item.id ? "page" : undefined}><Icon name={item.icon} />{item.label}<Show when={item.id === "updates" && updateReady()}><span class="settings-link-badge">New</span></Show></a>}</For>
         </section>}</For>
       </nav>
       <div class="settings-content">
@@ -71,7 +79,6 @@ export default function Settings() {
           <div class="setting-row"><dt>Email</dt><dd>{auth.session()?.user?.email}</dd></div>
           <div class="setting-row"><dt>Session</dt><dd><Button small onClick={() => void logout()}>Sign out</Button></dd></div>
         </dl><AccountSecurity /></section></Show>
-        <Show when={section() === "security"}><section class="settings-section" id="security"><h2>Access policy</h2><AccountSecurity scope="instance" /></section></Show>
         <Show when={section() === "dashboard"}><DashboardSettings proxy={proxy.data} refresh={() => proxy.refetch()} /></Show>
         <Show when={section() === "notifications"}><Notifications /></Show>
         <Show when={section() === "tokens"}><AccessTokens /></Show>

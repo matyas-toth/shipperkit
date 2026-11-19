@@ -141,9 +141,9 @@ export default function NewApplication() {
     for (let n = 2; taken.has(hostname); n++) hostname = base + "-" + n + "." + suffix;
     return hostname;
   }
-  // The quick path gives every web application a reachable address unless one was chosen.
+  // Every web application gets a reachable address unless one was chosen.
   function withDefaultDomain(inputs: StaticConfig) {
-    if (manual() || config.database || worker()) return false;
+    if (config.database || worker()) return false;
     const hostname = defaultDomain(name().trim() || suggestedName());
     if (!hostname) return false;
     if (compose()) {
@@ -342,6 +342,9 @@ export default function NewApplication() {
       setError("");
     });
     if (!await plan()) throw Error(error() || "The service could not be prepared");
+    // The library form already showed the name, domains and settings, so it deploys straight away.
+    // A failed deploy leaves the review open with the error.
+    await deploy();
   }
   function reviewedInputs(approved: { plan: CreatePlan; inputs: StaticConfig }) {
     const hostname = reviewDomain().trim().toLowerCase();
@@ -513,7 +516,7 @@ export default function NewApplication() {
             <Show when={!worker()}>
               <div class="form-fields creation-inputs">
                 <Show when={method() !== "static"}><PortField config={config} change={change} /></Show>
-                <DomainFields config={config} change={change} acme={acme()} autoHTTPS={proxy.data?.autoHTTPS} />
+                <DomainFields config={config} change={change} acme={acme()} autoHTTPS={proxy.data?.autoHTTPS} placeholder={defaultDomain(name().trim() || suggestedName())} />
               </div>
             </Show>
             <BuildDetails config={config} change={change} method={method()} hints={detected()} essentials />
@@ -539,7 +542,7 @@ export default function NewApplication() {
               <Show when={stack()}>{result => <ServiceSummary services={result().services} routes={service =>
                 <Show when={service.port && !service.oneShot}>
                   <div class="service-route">
-                    <input class="input" aria-label={"Domain for " + service.name} placeholder="Add domain"
+                    <input class="input" aria-label={"Domain for " + service.name} placeholder={service.name === routedService() && !config.domains?.length ? defaultDomain(name().trim() || suggestedName()) || "Add domain" : "Add domain"}
                       value={config.domains?.find(d => d.service === service.name)?.hostname ?? ""}
                       onInput={e => serviceDomain(service.name, e.currentTarget.value)} />
                     <Show when={config.domains?.some(d => d.service === service.name && !d.hostname.toLowerCase().endsWith(".localhost"))}>

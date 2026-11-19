@@ -1,4 +1,4 @@
-import { Show, createSignal } from "solid-js";
+import { Show, createSignal, type JSX } from "solid-js";
 import type { StaticConfig } from "../types";
 import { post } from "../api";
 import { useAuth } from "../context";
@@ -10,11 +10,11 @@ export type ConfigFields = {
   change: (key: keyof StaticConfig, value: unknown) => void;
 };
 
-export function DomainFields(props: ConfigFields & { acme: boolean; autoHTTPS?: boolean }) {
+export function DomainFields(props: ConfigFields & { acme: boolean; autoHTTPS?: boolean; placeholder?: string }) {
   const [override, setOverride] = createSignal<boolean>();
   return <>
     <label for="domain">Domain</label>
-    <input class="input" id="domain" placeholder={props.autoHTTPS ? "Optional" : "Automatic"}
+    <input class="input" id="domain" placeholder={props.placeholder || (props.autoHTTPS ? "Optional" : "Automatic")}
       value={props.config.domain} onInput={e => {
         const value = e.currentTarget.value;
         props.change("domain", value);
@@ -41,6 +41,8 @@ export function BuildDetails(props: ConfigFields & {
   open?: boolean;
   essentials?: boolean;
   splitRuntime?: boolean;
+  // Settings put the build method inside the same disclosure.
+  leading?: JSX.Element;
   hints?: { installCommand: string; buildCommand: string; startCommand: string };
 }) {
   const auth = useAuth(), [loading, setLoading] = createSignal(false), [error, setError] = createSignal("");
@@ -104,19 +106,25 @@ export function BuildDetails(props: ConfigFields & {
     </div>;
   return <Show when={props.splitRuntime} fallback={<details class="configuration" open={props.open}>
     <summary>Configuration<Icon name="down" /></summary>{fields()}
-  </details>}><section class="source-build-fields"><h3>Build configuration</h3>{fields()}</section></Show>;
+  </details>}><details class="configuration build-options"><summary>Build options<Icon name="down" /></summary>
+    <div class="build-options-body">{props.leading}{fields()}</div>
+  </details></Show>;
 }
 
-export function RuntimeConnectivity(props: ConfigFields & { method: StaticConfig["method"]; essentials?: boolean; withoutMemory?: boolean }) {
+export function ReadinessField(props: ConfigFields) {
+  return <div class="field"><label for="startup-policy">Readiness</label>
+    <select id="startup-policy" class="input" value={props.config.startupPolicy || "http"}
+      onChange={e => props.change("startupPolicy", e.currentTarget.value)}>
+      <option value="http">HTTP</option><option value="process">Running process</option>
+    </select>
+  </div>;
+}
+
+export function RuntimeConnectivity(props: ConfigFields & { method: StaticConfig["method"]; essentials?: boolean; withoutMemory?: boolean; withoutReadiness?: boolean }) {
   return <>
     <Show when={props.method !== "static" && !props.essentials}>
       <Show when={props.config.startupPolicy !== "process"}><PortField config={props.config} change={props.change} /></Show>
-      <div class="field"><label for="startup-policy">Readiness</label>
-        <select id="startup-policy" class="input" value={props.config.startupPolicy || "http"}
-          onChange={e => props.change("startupPolicy", e.currentTarget.value)}>
-          <option value="http">HTTP</option><option value="process">Running process</option>
-        </select>
-      </div>
+      <Show when={!props.withoutReadiness}><ReadinessField config={props.config} change={props.change} /></Show>
     </Show>
     <Show when={props.config.startupPolicy !== "process"}>
       <div class="field"><label for="health-path">Health check path</label>

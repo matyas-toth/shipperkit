@@ -5,7 +5,7 @@ import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application, Service, StaticConfig } from "../types";
 import { bytes, formatDuration, operationTime } from "../data";
-import { Button, ErrorNotice, IconButton, Status } from "./Controls";
+import { ActionMenu, Button, ErrorNotice, IconButton, Status } from "./Controls";
 import EditorActions from "./EditorActions";
 import SchedulePicker from "./SchedulePicker";
 import { ChoiceCards } from "./Choices";
@@ -82,6 +82,16 @@ interface Protection {
   volumes: Volume[];
   volumeError: string;
   revision: string;
+}
+// Compose databases are recognised by their image; the server reads credentials and the
+// database name from the running container when the form leaves them empty.
+function databaseEngine(image = "") {
+  const name = image.toLowerCase().split("@")[0].split(":")[0].split("/").pop() ?? "";
+  if (/postgres|postgis|timescale|pgvector/.test(name)) return "postgres";
+  if (name.includes("mariadb")) return "mariadb";
+  if (name.includes("mysql")) return "mysql";
+  if (name.includes("mongo")) return "mongodb";
+  return "";
 }
 const when = (n: number) => n ? operationTime(n, true) : "";
 const whenShort = (n: number) => n ? operationTime(n) : "";
@@ -198,6 +208,7 @@ export default function Backups(props: {
     config.service = props.service ?? "";
     if (!props.application) config.kind = "instance";
     const database = props.application?.config.database;
+    let prefilled = false;
     if (database) {
       config.engine = database.engine === "postgresql" ? "postgres" : database.engine;
       config.database = "app";
@@ -210,10 +221,16 @@ export default function Backups(props: {
       }
     }
     if (props.application?.method !== "compose") config.service = "";
+    else if (!database) {
+      const candidate = props.services?.find(service => service.name === config.service && databaseEngine(service.image)) ??
+        props.services?.find(service => databaseEngine(service.image));
+      if (candidate) { config.service = candidate.name; config.engine = databaseEngine(candidate.image); }
+      prefilled = !!candidate;
+    }
     setEditing({
       id: "",
       applicationId: props.application?.id ?? "",
-      name: props.application?.config.database ? "Database backup" : props.application ? "Application data" : "Instance recovery",
+      name: props.application?.config.database || prefilled ? "Database backup" : props.application ? "Application data" : "Instance recovery",
       config,
       enabled: true,
       schedule: "",
@@ -367,21 +384,14 @@ export default function Backups(props: {
       <div class="section-toolbar toolbar-end">
         <Show when={!props.application && !editing() && !importing()}><h2>Recovery</h2></Show>
         <Show when={!editing() && !importing()}><div class="toolbar-actions">
-          <Show when={props.application && !database()}>
-            <Button
-              variant="neutral"
-              icon="upload"
-              onClick={() => {
-                setImporting(!importing());
-                setSelected(undefined);
-              }}
-            >
-              {importLabel()}
-            </Button>
-          </Show>
           <Button variant="primary" icon="plus" onClick={create} disabled={busy()}>
             New schedule
           </Button>
+          <Show when={props.application && !database()}>
+            <ActionMenu label="More backup actions" icon="more">
+              <button onClick={() => { setImporting(true); setSelected(undefined); }}>{importLabel()}</button>
+            </ActionMenu>
+          </Show>
         </div></Show>
       </div>
       <Show when={!props.application && !editing() && query.data}>
@@ -673,7 +683,10 @@ export default function Backups(props: {
                       class="input"
                       required
                       value={editing()!.config.service}
-                      onChange={(e) => spec({ service: e.currentTarget.value })}
+                      onChange={(e) => {
+                        const service = e.currentTarget.value, engine = databaseEngine(props.services?.find(s => s.name === service)?.image);
+                        spec(engine ? { service, engine } : { service });
+                      }}
                     >
                       <option value="">Choose a service</option>
                       <For each={props.services}>
@@ -681,6 +694,7 @@ export default function Backups(props: {
                       </For>
                     </select></div>
                   </Show>
+                  <Show when={!databaseEngine(props.services?.find(s => s.name === editing()!.config.service)?.image)}>
                   <div class="field"><label for="backup-engine">Engine</label>
                   <select
                     id="backup-engine"
@@ -693,11 +707,12 @@ export default function Backups(props: {
                     <option value="mariadb">MariaDB</option>
                     <option value="mongodb">MongoDB</option>
                   </select></div>
+                  </Show>
                   <div class="field"><label for="backup-database">Database name</label>
                   <input
                     id="backup-database"
                     class="input"
-                    required
+                    placeholder="Detected automatically"
                     value={editing()!.config.database}
                     onInput={(e) => spec({ database: e.currentTarget.value })}
                   /></div>
@@ -842,17 +857,6 @@ export default function Backups(props: {
         )}
       </Show>
       <Show when={!editing()}>
-        <Show when={props.application && query.data}>
-          <div class="backup-readiness" aria-label="Backup readiness">
-            <dl>
-              <div><dt>Backup status</dt><dd><Status value={attemptStatus().value} label={attemptStatus().label} /></dd></div>
-              <Show when={latestCopy()}>{copy => <>
-                <div><dt>Latest backup</dt><dd><strong>{whenShort(copy().finishedAt || copy().createdAt)}</strong><Button small variant="ghost" onClick={() => choose(copy())}>View backup</Button></dd></div>
-                <div><dt>Destination</dt><dd>{copy().objectKey ? "Local and off-server" : "Local only"}</dd></div>
-              </>}</Show>
-            </dl>
-          </div>
-        </Show>
         <Show when={!props.application}><div class="backup-plans-heading"><h3>Scheduled backups</h3></div></Show>
         <div class="table-tray backup-plans" classList={{ "is-empty": !plans().length }}>
           <table class="inventory-table backups-table">

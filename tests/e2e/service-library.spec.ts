@@ -5,7 +5,7 @@ const account = { email: "owner@example.test", password: "shipper-browser-test-p
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-test("deploys a service from the library through review", async ({ page }) => {
+test("deploys a service straight from the library", async ({ page }) => {
   await page.goto("/");
   if (await page.getByLabel("Setup token").count()) {
     await page.getByLabel("Setup token").fill(token);
@@ -30,14 +30,13 @@ test("deploys a service from the library through review", async ({ page }) => {
   await expect(dialog.locator(".library-service-title").getByText("n8n", { exact: true })).toBeVisible();
   await expect(dialog.getByText("2 services", { exact: true }).first()).toBeVisible();
 
-  await dialog.getByRole("button", { name: "Review deployment", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Ready to deploy", exact: true })).toBeVisible();
-  await expect(page.getByText("Service Library", { exact: true })).toBeVisible();
-  await expect(page.locator(".deployment-proposal")).toContainText("n8n");
-  await expect(page.locator(".deployment-proposal")).toContainText("task-runners");
-  await expect(page.getByRole("button", { name: "Deploy", exact: true })).toBeVisible();
+  // The library form already covers name, domains and settings, so Deploy skips the second review.
+  await expect(dialog.getByText("Advanced", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Deploy", exact: true }).click();
+  await expect(page).toHaveURL(/\/applications\/[^/?]+\?tab=deployments/);
+  await expect(page.getByRole("heading", { name: "n8n", exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "Back", exact: true }).click();
+  await page.goto("/new");
   await page.getByRole("button", { name: "Configure manually", exact: true }).click();
   const source = page.getByRole("group", { name: "Source type", exact: true });
   await expect(source.getByText("Service Library", { exact: true })).toBeVisible();

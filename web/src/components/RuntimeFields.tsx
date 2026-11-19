@@ -9,6 +9,8 @@ export default function RuntimeFields(props: {
   connectivity?: JSX.Element;
   expanded?: boolean;
   memory?: JSX.Element;
+  // Rarely changed controls that sit with the advanced limits.
+  advanced?: JSX.Element;
 }) {
   const change = (key: keyof RuntimePolicy, value: number | string) =>
     props.change({ ...props.value, [key]: value });
@@ -77,9 +79,9 @@ export default function RuntimeFields(props: {
     <div class="form-fields field-pairs configuration-fields">{props.connectivity}{limits()}{restart()}</div>
   </details>}>
     <div class="runtime-groups">
-      <section class="runtime-group"><h4>Network and health</h4><div class="form-fields field-pairs">{props.connectivity}{limits(["startupSeconds"])}</div></section>
+      <section class="runtime-group"><h4>Network and health</h4><div class="form-fields field-pairs">{props.connectivity}</div></section>
       <section class="runtime-group"><h4>Resources</h4><div class="form-fields field-pairs">{props.memory}{limits(["cpus"])}</div></section>
-      <details class="configuration runtime-configuration"><summary>Advanced runtime<Icon name="down" /></summary><div class="form-fields field-pairs configuration-fields">{limits(["pids", "stopSeconds", "drainSeconds"])}{restart()}</div></details>
+      <details class="configuration runtime-configuration"><summary>Advanced runtime<Icon name="down" /></summary><div class="form-fields field-pairs configuration-fields">{props.advanced}{limits(["startupSeconds", "pids", "stopSeconds", "drainSeconds"])}{restart()}</div></details>
     </div>
   </Show>;
 }

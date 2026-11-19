@@ -41,7 +41,7 @@ export default function Tasks(props:{application:Application;services:Service[];
            </td>
            <td><Status value={r.state} label={r.state === "succeeded" ? "Completed" : undefined} /></td>
            <td class="task-start"><Show when={r.startedAt} fallback="Not started"><time datetime={new Date(r.startedAt * 1000).toISOString()} title={operationTime(r.startedAt, true)}>{operationTime(r.startedAt)}</time></Show></td>
-           <td class="mono">{r.startedAt ? formatDuration(Math.max(0, (r.finishedAt || Math.floor(now())) - r.startedAt)) : ""}</td>
+           <td class="task-duration">{r.startedAt ? formatDuration(Math.max(0, (r.finishedAt || Math.floor(now())) - r.startedAt)) : ""}</td>
            <td><Button small icon="terminal" variant="ghost" aria-label={"View run " + r.id} onClick={() => props.view(r.deploymentId)}>View logs</Button></td>
          </tr>
        }</For></tbody>

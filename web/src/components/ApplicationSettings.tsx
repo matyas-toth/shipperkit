@@ -2,7 +2,6 @@ import { createStore, reconcile } from "solid-js/store";
 import { For, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { Application, StaticConfig } from "../types";
-import DeploymentTriggers from "./DeploymentTriggers";
 import { LifecycleCommands } from "./Commands";
 import StaticFields, { normalizedConfig } from "./StaticFields";
 import { Button, Disclosure, ErrorNotice, IconButton, validateForm } from "./Controls";
@@ -10,7 +9,7 @@ import { clearDraft, readDraft, safeConfigDraft, saveDraft, saveVolatileDraft } 
 import { useAuth } from "../context";
 import Volumes from "./Volumes";
 import RuntimeFields from "./RuntimeFields";
-import { MemoryLimitField, RuntimeConnectivity } from "./DeployFields";
+import { MemoryLimitField, ReadinessField, RuntimeConnectivity } from "./DeployFields";
 import { Icon } from "./Icon";
 import EditorActions from "./EditorActions";
 import { createdDate } from "../data";
@@ -51,8 +50,6 @@ export default function ApplicationSettings(props: {
   const [config, setConfig] = createStore(editableConfig(readDraft<StaticConfig>(key) ?? props.application.config));
   const [name, setName] = createSignal(props.application.name);
   const [error, setError] = createSignal("");
-  const [renameError, setRenameError] = createSignal("");
-  const [renaming, setRenaming] = createSignal(false);
   const [reviewing, setReviewing] = createSignal(false);
   const [confirm, setConfirm] = createSignal(false);
   const inlineCompose = () => config.method === "compose" && config.composeSource === "paste";
@@ -62,9 +59,11 @@ export default function ApplicationSettings(props: {
     !!(props.application.config.composeKeep || props.application.config.composeHasValue);
   const composeEdited = () => inlineCompose() && (config.composeKeep === false && hasSavedCompose() || !!config.composeYAML);
   const savedFingerprint = createMemo(() => configFingerprint(normalizedConfig(props.application.config)));
-  const dirty = createMemo(() => composeEdited() || configFingerprint(config) !== savedFingerprint());
+  const configDirty = createMemo(() => composeEdited() || configFingerprint(config) !== savedFingerprint());
+  const renamed = () => !!name().trim() && name().trim() !== props.application.name;
+  const dirty = () => configDirty() || renamed();
   createEffect(() => {
-    if (!dirty()) {
+    if (!configDirty()) {
       clearDraft(key);
       return;
     }
@@ -74,7 +73,7 @@ export default function ApplicationSettings(props: {
     saveVolatileDraft(key, composeEdited() ? { ...safe, composeYAML: config.composeYAML, composeKeep: config.composeKeep } : safe);
   });
   createEffect(() => { if (props.showSource) setArea("source"); });
-  function revert() { setConfig(reconcile(editableConfig(props.application.config))); setError(""); clearDraft(key); }
+  function revert() { setConfig(reconcile(editableConfig(props.application.config))); setName(props.application.name); setError(""); clearDraft(key); }
   async function save(e: SubmitEvent) {
     e.preventDefault();
     if (props.busy || reviewing() || !dirty()) return;
@@ -82,22 +81,17 @@ export default function ApplicationSettings(props: {
     const invalidArea = form.querySelector(":invalid")?.closest<HTMLElement>("[data-settings-section]")?.dataset.settingsSection as SettingsArea | undefined;
     if (invalidArea) setArea(invalidArea);
     if (!validateForm(form)) return;
+    if (!name().trim()) { setArea("general"); setError("Name the application"); return; }
     setError("");
     setReviewing(true);
     try {
+      // A new name applies right away; configuration changes still go through the review.
+      if (renamed()) await props.rename(name().trim());
+      if (!configDirty()) return;
       const draft = { ...config, variables: props.application.config.variables, services: props.application.config.services };
       if (await props.save(draft) !== false) clearDraft(key);
     } catch (e) { setError((e as Error).message); }
     finally { setReviewing(false); }
-  }
-  async function rename(e: SubmitEvent) {
-    e.preventDefault();
-    if (renaming() || name().trim() === props.application.name) return;
-    setRenaming(true);
-    setRenameError("");
-    try { await props.rename(name().trim()); }
-    catch (e) { setRenameError((e as Error).message); }
-    finally { setRenaming(false); }
   }
   return <div class="application-settings">
     <div class="app-settings-workspace">
@@ -112,19 +106,12 @@ export default function ApplicationSettings(props: {
       <div class="app-settings-main">
         <section class="app-settings-pane" hidden={area() !== "general"}>
           <h3>General</h3>
-          <form onSubmit={rename} class="rename-form">
+          <div class="form-fields rename-form">
             <label for="application-name">Name</label>
-            <div>
-              <input id="application-name" class="input" value={name()} required maxlength={80} onInput={e => setName(e.currentTarget.value)} />
-              <Button type="submit" disabled={renaming() || !name().trim() || name().trim() === props.application.name}>Save name</Button>
-            </div>
-          </form>
-          <Show when={renameError()}><ErrorNotice message={renameError()} /></Show>
-          <dl class="settings-group app-settings-facts">
-            <div class="setting-row"><dt>Created</dt><dd>{createdDate(props.application.createdAt)}</dd></div>
-          </dl>
+            <input id="application-name" class="input" value={name()} required maxlength={80} form={formId} onInput={e => setName(e.currentTarget.value)} />
+          </div>
+          <p class="app-settings-created">Created {createdDate(props.application.createdAt)}</p>
           <div class="app-settings-secondary">
-            <DeploymentTriggers applicationId={props.application.id} />
             <Disclosure label="Danger zone" icon="warning" class="delete-section">
               <div class="app-settings-disclosure-body">
                 <Button icon="trash" class="danger-button" disabled={props.busy} onClick={() => setConfirm(true)}>Delete application</Button>
@@ -144,8 +131,9 @@ export default function ApplicationSettings(props: {
             <section class="app-settings-pane" data-settings-section="runtime" hidden={area() !== "runtime"}>
               <h3>Runtime</h3>
               <RuntimeFields value={config.runtime} change={runtime => setConfig("runtime", runtime)} expanded
-                connectivity={<RuntimeConnectivity config={config} change={(key, value) => setConfig(key, value as never)} method={config.method} withoutMemory />}
-                memory={<MemoryLimitField config={config} change={(key, value) => setConfig(key, value as never)} />} />
+                connectivity={<RuntimeConnectivity config={config} change={(key, value) => setConfig(key, value as never)} method={config.method} withoutMemory withoutReadiness />}
+                memory={<MemoryLimitField config={config} change={(key, value) => setConfig(key, value as never)} />}
+                advanced={config.method !== "static" ? <ReadinessField config={config} change={(key, value) => setConfig(key, value as never)} /> : undefined} />
             </section>
             <section class="app-settings-pane" data-settings-section="storage" hidden={area() !== "storage"}>
               <h3>Storage</h3>
@@ -160,7 +148,7 @@ export default function ApplicationSettings(props: {
           <Show when={error()}><ErrorNotice message={error()} /></Show>
           <EditorActions docked={dirty()} measure="form" inlineWhenFits revert={dirty() ? revert : undefined}>
             <Button variant="primary" type="submit" form={formId} icon="deploy" disabled={props.busy || !dirty()} aria-disabled={reviewing() || undefined}>
-              {reviewing() ? "Reviewing changes" : "Review changes"}
+              {renamed() && !configDirty() ? reviewing() ? "Saving" : "Save changes" : reviewing() ? "Reviewing changes" : "Review changes"}
             </Button>
           </EditorActions>
         </form>

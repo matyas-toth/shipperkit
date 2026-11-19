@@ -33,10 +33,10 @@ export default function Updates() {
   return <section class="settings-section updates-section" id="updates">
     <div class="section-toolbar updates-toolbar">
       <h2>Updates</h2>
-      <div class="updates-toolbar-actions">
+      <Show when={data()?.enabled}><div class="updates-toolbar-actions">
         <span class="updates-last-check">{data()?.checkedAt ? "Checked " + operationTime(data()!.checkedAt, true) : "Not checked yet"}</span>
         <Button small variant="ghost" icon="refresh" disabled={!data()?.enabled || busy() || data()?.checking} aria-busy={data()?.checking} onClick={() => void check()}>{data()?.checking ? "Checking" : "Check for updates"}</Button>
-      </div>
+      </div></Show>
     </div>
 
     <Show when={error() || data()?.error || updates.error()}><ErrorNotice message={error() || data()?.error || updates.error()!.message} retry={() => void check()} /></Show>

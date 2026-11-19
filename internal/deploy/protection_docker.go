@@ -481,10 +481,24 @@ func (r *DockerRuntime) InferBackupCredentials(ctx context.Context, d store.Depl
 			}
 		}
 	}
-	if c.Engine == "mongodb" && c.Database == "" {
-		c.Database = env["MONGO_INITDB_DATABASE"]
-		if c.Database == "" {
-			c.Database = "app"
+	if c.Database == "" {
+		// The official images create these databases on first start.
+		switch c.Engine {
+		case "postgres":
+			c.Database = env["POSTGRES_DB"]
+			if c.Database == "" {
+				c.Database = c.User
+			}
+		case "mysql", "mariadb":
+			c.Database = env["MYSQL_DATABASE"]
+			if c.Database == "" {
+				c.Database = env["MARIADB_DATABASE"]
+			}
+		case "mongodb":
+			c.Database = env["MONGO_INITDB_DATABASE"]
+			if c.Database == "" {
+				c.Database = "app"
+			}
 		}
 	}
 	return nil

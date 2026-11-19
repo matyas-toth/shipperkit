@@ -6,6 +6,7 @@ import { useAuth } from "../context";
 import type { AuthProviderSettings, AuthSettings } from "../types";
 import { Button, ErrorNotice, IconButton, Status } from "./Controls";
 import { Icon, type IconName } from "./Icon";
+import AccountSecurity from "./AccountSecurity";
 
 const providerCopy: Record<string, { label: string; icon: IconName; scopes: string; help: string[] }> = {
   google: {
@@ -94,6 +95,7 @@ export default function Authentication() {
         <span class="method-state">{settings.data?.passwordEnabled ? "Enabled" : "Disabled"}</span>
       </dd></div>
     </dl>
+    <AccountSecurity scope="instance" />
     <h2 class="settings-subheading">Providers</h2>
     <div class="provider-list">
       <For each={settings.data?.providers}>{item => <ProviderCard item={item} remove={() => setRemoving(item)} />}</For>
@@ -120,6 +122,7 @@ function ProviderCard(props: { item: AuthProviderSettings; remove: () => void })
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
   const [copied, setCopied] = createSignal(false);
+  const [open, setOpen] = createSignal(false);
   async function save() {
     setBusy(true); setError("");
     try {
@@ -142,11 +145,15 @@ function ProviderCard(props: { item: AuthProviderSettings; remove: () => void })
     try { await navigator.clipboard.writeText(props.item.callback); setCopied(true); setTimeout(() => setCopied(false), 1600); }
     catch { setError("The callback could not be copied"); }
   }
-  return <article class="provider-card" classList={{ "is-enabled": props.item.enabled }}>
+  return <article class="provider-card" classList={{ "is-enabled": props.item.enabled, "is-collapsed": !open() }}>
     <header>
       <span class="provider-heading"><span class="provider-icon"><Icon name={copy().icon} /></span><strong>{copy().label}</strong></span>
-      <Status value={props.item.enabled ? "enabled" : "disabled"} label={props.item.enabled ? "Enabled" : "Disabled"} />
+      <span class="provider-header-actions">
+        <Status value={props.item.enabled ? "enabled" : "disabled"} label={props.item.enabled ? "Enabled" : "Disabled"} />
+        <Button small variant={open() ? "ghost" : "neutral"} aria-expanded={open()} onClick={() => setOpen(!open())}>{open() ? "Close" : props.item.configured ? "Edit" : "Set up"}</Button>
+      </span>
     </header>
+    <Show when={open()}>
     <div class="provider-fields">
       <label for={"client-id-" + props.item.provider}>Client ID</label>
       <input id={"client-id-" + props.item.provider} class="input mono" autocomplete="off" value={clientID()} onInput={e => setClientID(e.currentTarget.value)} />
@@ -173,5 +180,6 @@ function ProviderCard(props: { item: AuthProviderSettings; remove: () => void })
         <Button small variant="primary" disabled={busy()} onClick={() => void save()}>Save</Button>
       </div>
     </footer>
+    </Show>
   </article>;
 }

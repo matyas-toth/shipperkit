@@ -46,3 +46,68 @@ export function mergeEnvironment(current: Variable[], pasted: Variable[]): Varia
   if (merged.length > 128) throw Error("Applications support up to 128 variables");
   return merged;
 }
+
+// The .env editor shows retained secrets with this mask. Leaving it in place keeps the saved value.
+export const retainedValue = "••••••••";
+
+function quote(value: string) {
+  if (value === "" || /^[^\s"'#\\]*$/.test(value)) return value;
+  return '"' + value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n") + '"';
+}
+
+export function formatEnvironment(variables: Variable[]): string {
+  return variablesForSave(variables).map(v => v.name + "=" + (v.keep && !v.value ? retainedValue : quote(v.value))).join("\n");
+}
+
+function unquote(raw: string, line: number) {
+  const value = raw.trim();
+  if (value.startsWith("'")) {
+    if (value.length < 2 || !value.endsWith("'")) throw Error(`Line ${line} has an unclosed quote`);
+    return value.slice(1, -1);
+  }
+  if (!value.startsWith('"')) return value;
+  let result = "", closed = false;
+  for (let i = 1; i < value.length; i++) {
+    const char = value[i];
+    if (char === "\\" && i + 1 < value.length) {
+      const next = value[++i];
+      result += next === "n" ? "\n" : next === "t" ? "\t" : next;
+    } else if (char === '"') {
+      if (value.slice(i + 1).trim()) throw Error(`Line ${line} has text after the closing quote`);
+      closed = true;
+      break;
+    } else result += char;
+  }
+  if (!closed) throw Error(`Line ${line} has an unclosed quote`);
+  return result;
+}
+
+// Parses the editor text against the saved rows so secrets, scopes and retained values survive.
+// New names default to build and runtime.
+export function parseEnvironmentFile(text: string, current: Variable[]): Variable[] {
+  if (text.length > 128 * 1024) throw Error("The environment file is too large");
+  const previous = new Map(variablesForSave(current).map(v => [v.name, v]));
+  const variables: Variable[] = [], names = new Set<string>();
+  for (const [index, raw] of text.replace(/^\uFEFF/, "").replaceAll("\r\n", "\n").split("\n").entries()) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]{0,127})\s*=(.*)$/.exec(line);
+    if (!match) throw Error(`Line ${index + 1} must contain NAME=value`);
+    const name = match[1];
+    if (names.has(name)) throw Error(`Variable ${name} appears more than once`);
+    names.add(name);
+    const before = previous.get(name);
+    if (match[2].trim() === retainedValue) {
+      if (!before?.keep) throw Error(`Enter a value for ${name}`);
+      variables.push({ ...before });
+      continue;
+    }
+    const value = unquote(match[2], index + 1);
+    if (value.length > 16384 || value.includes("\0")) throw Error(`Variable ${name} is too large or contains null bytes`);
+    if (before && !before.keep && before.value === value) variables.push({ ...before });
+    else if (before?.keep) variables.push({ ...before, value, keep: false, keepFrom: undefined, hasValue: undefined });
+    else variables.push(before ? { ...before, value } : { ...emptyVariable(), name, value });
+  }
+  if (variables.length > 256) throw Error("Applications support up to 256 variables");
+  return variables;
+}

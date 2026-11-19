@@ -2,54 +2,63 @@ import { Show, createSignal } from "solid-js";
 import { post } from "../api";
 import { useAuth } from "../context";
 import type { StaticConfig } from "../types";
-import { Button, Disclosure, ErrorNotice } from "./Controls";
+import { Button, ErrorNotice } from "./Controls";
+
+// Pushes and the deploy token both start deployments without opening Shipper, so they share one section.
 export function AutomaticDeployFields(props: {
   config: StaticConfig;
   change: (key: keyof StaticConfig, value: unknown) => void;
+  applicationId?: string;
+  push?: boolean;
 }) {
   const value = () =>
     props.config.autoDeploy ?? { enabled: false, paths: [], supersede: true };
+  const push = () => (props.push ?? true) && !!props.config.sourceId;
   return (
-    <Show when={props.config.sourceId}>
-      <details class="configuration">
+    <Show when={push() || props.applicationId}>
+      <details class="configuration automatic-deployments">
         <summary>Automatic deployments</summary>
-        <div class="form-fields configuration-fields">
-          <label class="check-field">
-            <input
-              type="checkbox"
-              checked={value().enabled}
-              onChange={(e) =>
-                props.change("autoDeploy", {
-                  ...value(),
-                  paths: [],
-                  enabled: e.currentTarget.checked,
-                })
-              }
-            />
-            Deploy on push
-          </label>
-          <Show when={value().enabled}>
+        <Show when={push()}>
+          <div class="form-fields configuration-fields">
             <label class="check-field">
               <input
                 type="checkbox"
-                checked={value().supersede}
+                checked={value().enabled}
                 onChange={(e) =>
                   props.change("autoDeploy", {
                     ...value(),
                     paths: [],
-                    supersede: e.currentTarget.checked,
+                    enabled: e.currentTarget.checked,
                   })
                 }
               />
-              Replace older queued deployments
+              Deploy on push
             </label>
-          </Show>
-        </div>
+            <Show when={value().enabled}>
+              <label class="check-field">
+                <input
+                  type="checkbox"
+                  checked={value().supersede}
+                  onChange={(e) =>
+                    props.change("autoDeploy", {
+                      ...value(),
+                      paths: [],
+                      supersede: e.currentTarget.checked,
+                    })
+                  }
+                />
+                Replace older queued deployments
+              </label>
+            </Show>
+          </div>
+        </Show>
+        <Show when={props.applicationId}>{id => <DeployToken applicationId={id()} />}</Show>
       </details>
     </Show>
   );
 }
-export default function DeploymentTriggers(props: { applicationId: string }) {
+
+function DeployToken(props: { applicationId: string }) {
   const auth = useAuth(),
     [token, setToken] = createSignal(""),
     [busy, setBusy] = createSignal(false),
@@ -71,8 +80,8 @@ export default function DeploymentTriggers(props: { applicationId: string }) {
     }
   }
   return (
-    <Disclosure label="Deploy token" icon="plug" class="deploy-token">
-      <div class="app-settings-disclosure-body">
+    <div class="deploy-token">
+      <h4>Deploy token</h4>
       <Show when={error()}>
         <ErrorNotice message={error()} />
       </Show>
@@ -110,7 +119,6 @@ export default function DeploymentTriggers(props: { applicationId: string }) {
           Generate token
         </Button>
       </div>
-      </div>
-    </Disclosure>
+    </div>
   );
 }

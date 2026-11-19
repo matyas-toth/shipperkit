@@ -106,11 +106,12 @@ export default function ServiceLibrary(props: Props) {
   const domainFields = createMemo(() => fields().filter(field => field.kind === "domain"));
   const accessFields = createMemo(() => fields().filter(field => field.group === "access" && field.kind !== "domain"));
   const configList = createMemo(() => fields().filter(field => field.group !== "access" && field.kind !== "domain" && !field.advanced && field.group !== "advanced"));
-  const configFields = createMemo(() => configList().slice(0, 10));
+  // Only fields a deployment cannot do without stay visible; every tuning knob waits under Advanced.
+  const configFields = createMemo(() => configList().filter(field => field.required && !field.generate));
   const advancedFields = createMemo(() => {
     const explicit = fields().filter(field => field.kind !== "domain" && (field.advanced || field.group === "advanced"));
-    const seen = new Set(explicit.map(field => field.key));
-    return [...explicit, ...configList().slice(10).filter(field => !seen.has(field.key))];
+    const seen = new Set([...explicit, ...configFields()].map(field => field.key));
+    return [...configList().filter(field => !seen.has(field.key)), ...explicit];
   });
   const domainRows = createMemo<CatalogDomain[]>(() => {
     const value = service();
@@ -376,22 +377,18 @@ export default function ServiceLibrary(props: Props) {
               </Show>
               <Show when={configFields().length}>
                 <section class="library-group"><h4>Configuration</h4><div class="library-field-grid">
-                  <For each={configFields()}>{field => <label class="library-field" classList={{ wide: field.kind === "textarea" }}><span>{field.label}</span>
-                    <Show when={field.kind === "select"} fallback={<Show when={field.kind === "textarea"} fallback={<input class="input" type={field.kind === "number" ? "number" : field.kind === "email" ? "email" : "text"} value={value(field.key)} placeholder={field.placeholder ?? field.default} autocomplete="off" onInput={event => setValue(field.key, event.currentTarget.value)} />}><textarea class="input" rows={3} value={value(field.key)} onInput={event => setValue(field.key, event.currentTarget.value)} /></Show>}>
-                      <select class="input" value={value(field.key)} onChange={event => setValue(field.key, event.currentTarget.value)}><For each={field.options ?? []}>{option => <option value={option}>{optionLabel(option)}</option>}</For></select>
-                    </Show>
-                  </label>}</For>
+                  <For each={configFields()}>{field => <ConfigField field={field} value={value(field.key)} change={next => setValue(field.key, next)} />}</For>
                 </div></section>
               </Show>
               <Show when={advancedFields().length}><details class="library-advanced" open={advanced()} onToggle={event => setAdvanced(event.currentTarget.open)}>
                 <summary>Advanced<Icon name="down" /></summary>
-                <div class="library-field-grid"><For each={advancedFields()}>{field => <label class="library-field"><span>{field.label}</span><input class="input" type={field.kind === "number" ? "number" : "text"} value={value(field.key)} placeholder={field.placeholder} onInput={event => setValue(field.key, event.currentTarget.value)} /></label>}</For></div>
+                <div class="library-field-grid"><For each={advancedFields()}>{field => <ConfigField field={field} value={value(field.key)} change={next => setValue(field.key, next)} />}</For></div>
               </details></Show>
             </div>
           </div>
           <footer class="library-footer">
             <Show when={error()}><div class="library-alert" role="alert">{error()}</div></Show>
-            <div class="library-footer-actions"><Button variant="ghost" type="button" disabled={using()} onClick={props.close}>Cancel</Button><Button variant="primary" type="submit" disabled={using() || detail.isPending}>{using() ? "Preparing deployment" : "Review deployment"}</Button></div>
+            <div class="library-footer-actions"><Button variant="ghost" type="button" disabled={using()} onClick={props.close}>Cancel</Button><Button variant="primary" type="submit" disabled={using() || detail.isPending}>{using() ? "Deploying" : "Deploy"}</Button></div>
           </footer>
         </>}</Show>
       </form>}>
@@ -418,6 +415,14 @@ export default function ServiceLibrary(props: Props) {
       </Show>
     </section>
   </div></Portal></Show>;
+}
+
+function ConfigField(props: { field: CatalogField; value: string; change: (value: string) => void }) {
+  return <label class="library-field" classList={{ wide: props.field.kind === "textarea" }}><span>{props.field.label}</span>
+    <Show when={props.field.kind === "select"} fallback={<Show when={props.field.kind === "textarea"} fallback={<input class="input" type={props.field.kind === "number" ? "number" : props.field.kind === "email" ? "email" : "text"} value={props.value} placeholder={props.field.placeholder ?? props.field.default} autocomplete="off" onInput={event => props.change(event.currentTarget.value)} />}><textarea class="input" rows={3} value={props.value} onInput={event => props.change(event.currentTarget.value)} /></Show>}>
+      <select class="input" value={props.value} onChange={event => props.change(event.currentTarget.value)}><For each={props.field.options ?? []}>{option => <option value={option}>{optionLabel(option)}</option>}</For></select>
+    </Show>
+  </label>;
 }
 
 export function ServiceLibraryEntry(props: { open: () => void }) {

@@ -27,19 +27,15 @@ export default function ContainerDrawer(props: { container: Container; stats?: {
   });
   const rows = () => [
     ["Image", props.container.image],
-    ["Container ID", props.container.id],
     ["State", props.container.status],
     ["Health", props.container.health || "Not configured"],
     ["CPU", props.stats?.cpuPercent == null ? "Not measured" : props.stats.cpuPercent.toFixed(1) + "%"],
     ["Memory", props.stats?.memoryBytes == null ? "Not measured" : bytes(props.stats.memoryBytes)],
     ["Ports", portLabel(props.container.ports) || "None"],
     ["Created", createdDate(props.container.createdAt)],
-    ["Ownership", props.container.managed ? "Shipper" : "External"],
     ...(props.container.project ? [["Compose project", props.container.project]] : []),
     ...(props.container.service ? [["Service", props.container.service]] : []),
-    ...(props.container.applicationId ? [["Application ID", props.container.applicationId]] : []),
   ];
-  const display = (label: string, value: string) => label === "Container ID" && value.length > 28 ? value.slice(0, 14) + "…" + value.slice(-8) : value;
   async function copy() { try { await navigator.clipboard.writeText(props.container.id); setCopied(true); } catch { setCopyError("The container ID could not be copied"); } }
   return <Portal>
     <div class="drawer-scrim" onClick={props.close} />
@@ -57,7 +53,7 @@ export default function ContainerDrawer(props: { container: Container; stats?: {
       <div class="drawer-scroll">
         <Show when={copyError()}><ErrorNotice message={copyError()} /></Show>
         <dl class="details-list"><For each={rows()}>{([label, value]) =>
-          <div><dt>{label}</dt><dd classList={{ mono: label === "Container ID" || label === "Application ID" }} title={String(value)}>{display(label, String(value))}</dd></div>
+          <div><dt>{label}</dt><dd title={String(value)}>{String(value)}</dd></div>
         }</For></dl>
       </div>
       <Show when={copied()}><span class="sr-only" role="status">Container ID copied</span></Show>

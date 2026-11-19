@@ -22,6 +22,7 @@ test("user provisioning and provider settings send session CSRF tokens", async (
   await page.goto("/settings#authentication");
   const provider = page.locator(".provider-card").first();
   await expect(provider).toBeVisible();
+  await provider.getByRole("button", { name: /^(Set up|Edit)$/ }).click();
   const saved = page.waitForResponse(response => response.url().endsWith("/api/auth/providers/google") && response.request().method() === "POST");
   await provider.getByRole("button", { name: "Save", exact: true }).click();
   expect((await saved).status()).toBe(200);

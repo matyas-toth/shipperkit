@@ -109,7 +109,7 @@ export default function Domains(props: { application: Application; proxy?: Proxy
             <div class="domain-facts">
               <span>{domain().https ? "HTTPS" : "HTTP"}</span>
               <Show when={domain().primary}><span>Primary</span></Show>
-              <Show when={domain().redirect} fallback={<code>{domain().pathPrefix || "/"}</code>}><span>Redirect to <strong>{target() || "primary domain"}</strong></span></Show>
+              <Show when={domain().redirect} fallback={<Show when={domain().pathPrefix && domain().pathPrefix !== "/"}><code>{domain().pathPrefix}</code></Show>}><span>Redirect to <strong>{target() || "primary domain"}</strong></span></Show>
               <Show when={verified()}><Status value="running" label="Verified" /></Show>
               <Show when={!stored(domain())}><Status value="queued" label="Unsaved" /></Show>
             </div>

@@ -13,12 +13,16 @@ export default function EditorActions(props: { docked?: boolean; measure?: "form
     if (!props.inlineWhenFits || !anchor) return;
     const scroller = anchor.closest<HTMLElement>(".page-scroll");
     if (!scroller) return;
+    // The dock floats over the page, but on phones the bottom navigation hides while it shows.
+    // Measuring as if the navigation were always there keeps the choice from flipping back and forth.
+    let navigation = 0;
     function measure() {
       if (!anchor || !scroller) return;
-      const dockHeight = target?.()?.getBoundingClientRect().height ?? 0;
+      const nav = document.querySelector<HTMLElement>(".mobile-bottom-nav");
+      const shown = nav && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect().height : 0;
+      if (shown) navigation = shown;
       const top = anchor.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
-      // Evaluate against the entire work area even when the dock is mounted.
-      setFits(top + 78 <= scroller.clientHeight + dockHeight);
+      setFits(top + 78 <= scroller.clientHeight - (shown ? 0 : navigation));
     }
     measure();
     const observer = new ResizeObserver(measure);

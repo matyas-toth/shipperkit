@@ -9929,8 +9929,10 @@ body:has(.confirm-dialog) .page-actions {
   font-size: 13px;
 }
 .service-card-image {
-  white-space: normal;
-  overflow-wrap: anywhere;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   line-height: 1.5;
 }
 .recovery-overview {
@@ -13363,4 +13365,88 @@ input[type="checkbox"]:disabled {
   .app-more-select > .icon {
     right: 4px;
   }
+}
+
+/* System maintenance sits under the overview and opens cleanup in place. */
+.system-overview #maintenance {
+  grid-column: 1 / -1;
+}
+.system-overview #maintenance .section-toolbar {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.retention-plan {
+  padding: 16px;
+  margin-top: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+}
+.retention-plan h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.retention-plan .form-actions {
+  margin-top: 16px;
+}
+
+/* Collapsed sign-in providers and the update hint in the settings list. */
+.provider-card.is-collapsed > header {
+  border-bottom: 0;
+}
+.provider-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.settings-link-badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #86ddb21f;
+  color: var(--success);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+/* App settings fold rarely changed build and trigger controls into disclosures. */
+.build-options,
+.automatic-deployments {
+  grid-column: 1 / -1;
+}
+.build-options-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+}
+.build-options-body > .form-fields {
+  padding-top: 0;
+}
+.automatic-deployments .deploy-token {
+  margin-top: 16px;
+}
+.automatic-deployments .deploy-token h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--secondary);
+}
+.app-settings-created {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.rename-form {
+  margin-bottom: 0;
+}
+.task-duration {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.service-settings-fields {
+  margin-bottom: 16px;
+}
+.service-card-body {
+  align-content: start;
 }

@@ -8,6 +8,7 @@ import { GitConnectionFields } from "./SourceFields";
 export default function GitFields(props: {
   config: StaticConfig;
   change: (key: keyof StaticConfig, value: unknown) => void;
+  withoutConnection?: boolean;
 }) {
   const auth = useAuth();
   const [branches, setBranches] = createSignal<string[]>([]);
@@ -39,7 +40,7 @@ export default function GitFields(props: {
     } finally { setLoading(false); }
   }
   return <>
-    <GitConnectionFields config={props.config} change={props.change} />
+    <GitConnectionFields config={props.config} change={props.change} withoutConnection={props.withoutConnection} />
     <Show when={!props.config.sourceId}>
       <div class="field git-field"><label for="repository">Repository URL</label>
       <input class="input" id="repository" type="url" required placeholder="https://github.com/owner/application"

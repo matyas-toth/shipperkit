@@ -27,6 +27,8 @@ export default function LogViewport<T extends object>(props: {
   tone?: (row: T) => string | undefined;
   activate?: (row: T) => void;
   reveal?: number;
+  // Revealing on request moves focus to the log; revealing on load must not steal it.
+  quietReveal?: boolean;
   details?: (row: T) => JSX.Element;
   wrap: boolean;
   empty?: string;
@@ -112,7 +114,7 @@ export default function LogViewport<T extends object>(props: {
     const first = Math.max(0, index - 6);
     viewport.scrollTop = first ? offset(first) + parseFloat(getComputedStyle(viewport).paddingTop) : 0;
     setScroll(viewport.scrollTop);
-    viewport.focus({ preventScroll: true });
+    if (!props.quietReveal) viewport.focus({ preventScroll: true });
   }, { defer: true }));
   return <div ref={node => { viewport = node; props.ref(node); }} class="log-viewport mono" classList={{ "is-wrapped": props.wrap }} role="log" aria-label={props.label} aria-live="off" tabindex="0"
     onScroll={e => {

@@ -70,9 +70,10 @@ test("update badge, channels, settings and progress dialog", async ({ page }) =>
   await login(page);
   await expect(page.locator(".nav-update-badge")).toHaveText("Update");
   await page.locator(".primary-navigation").getByRole("link", { name: /Settings/ }).click();
-  await expect(page.getByRole("heading", { name: "Account settings", exact: true }).locator("svg")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Server settings", exact: true }).locator("svg")).toHaveCount(0);
-  await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Updates", exact: true }).click();
+  // The update badge leads straight to Updates, which carries its own hint in the section list.
+  await expect(page).toHaveURL(/\/settings#updates$/);
+  await expect(page.getByRole("heading", { name: "Instance", exact: true }).locator("svg")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: /^Updates/ })).toContainText("New");
 
   await expect(page.getByText("Update available", { exact: true })).toBeVisible();
   await expect(page.getByText("Shipper 1.0.0-rc.10 is ready to install. Applications stay online.", { exact: true })).toBeVisible();

@@ -14,11 +14,13 @@ export function useConnections() {
 export function GitConnectionFields(props: {
   config: StaticConfig;
   change: (key: keyof StaticConfig, value: unknown) => void;
+  // The settings source list already names every connection.
+  withoutConnection?: boolean;
 }) {
   const connections = useConnections();
   return (
     <>
-      <Show when={connections.data?.items.some(c => c.kind !== "registry")}
+      <Show when={!props.withoutConnection}><Show when={connections.data?.items.some(c => c.kind !== "registry")}
         fallback={<a class="button neutral small source-connect" href="/settings#sources"><Icon name="git" />Connect GitHub</a>}>
         <div class="field git-field"><label for="source-connection">Connection</label>
           <select id="source-connection" class="input" value={props.config.sourceId ?? ""} onChange={e => {
@@ -31,7 +33,7 @@ export function GitConnectionFields(props: {
             <For each={connections.data?.items.filter(c => c.kind !== "registry")}>{c => <option value={c.id}>{c.name}</option>}</For>
           </select>
         </div>
-      </Show>
+      </Show></Show>
       <Show when={props.config.sourceId} keyed>{sourceId => <RepositoryPicker sourceId={sourceId} config={props.config} change={props.change} />}</Show>
     </>
   );
