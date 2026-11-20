@@ -18,7 +18,7 @@ export interface DockerHealth {
 }
 export interface Variable { name: string; value: string; secret: boolean; scope: "runtime" | "build" | "both"; keep?: boolean; keepFrom?: string; hasValue?: boolean }
 export interface PersistentVolume { name: string; path: string }
-export interface RuntimePolicy { cpus?:number; pids?:number; restart?:string; startupSeconds?:number; stopSeconds?:number; drainSeconds?:number }
+export interface RuntimePolicy { cpus?:number; pids?:number; restart?:string; startupSeconds?:number; stopSeconds?:number; drainSeconds?:number; compatibility?:boolean }
 export interface ServiceConfig { runtime?:RuntimePolicy; name: string; port?: number; healthPath: string; memoryMB: number; variables: Variable[]; unsetVariables?: string[] }
 export interface Service { oneShot?: boolean; name: string; image: string; port: number; healthPath: string; volumes: PersistentVolume[]; variables?: Variable[] }
 export interface Domain { pathPrefix?:string; stripPrefix?:boolean; compress?:boolean; maintenance?:boolean; responseHeaders?:Record<string,string>; certificateExpiresAt?:number; certificateIssuer?:string; service?: string; id: string; hostname: string; https: boolean; primary: boolean; redirect: boolean; verificationState?: string; message?: string; checkedAt?: number }

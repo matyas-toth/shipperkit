@@ -10,11 +10,11 @@ import (
 
 func TestClassifyFailureRecognisesCommonSignatures(t *testing.T) {
 	tests := []struct {
-		name   string
-		logs   []store.LogLine
-		state  string
-		code   string
-		conf   string
+		name  string
+		logs  []store.LogLine
+		state string
+		code  string
+		conf  string
 	}{
 		{
 			name:  "healthcheck",
@@ -119,6 +119,8 @@ func TestSpecificCausesNameTheRootCause(t *testing.T) {
 		{[]string{"npm warn config production Use `--omit=dev` instead.", "Error: MongoDB error", "Kind: Server selection timeout: failed to lookup address information: Name or service not known", "before start failed: exit status 1"}, "host_unresolved", "Name or service not known"},
 		{[]string{"wget: bad address 'db-0123'"}, "host_unresolved", "bad address"},
 		{[]string{"Error: connect ECONNREFUSED 10.0.0.2:5432"}, "connection_refused", "ECONNREFUSED"},
+		{[]string{`nginx: [emerg] chown("/var/cache/nginx/client_temp", 101) failed (1: Operation not permitted)`}, "permissions_restricted", "chown("},
+		{[]string{"(1)Operation not permitted: AH02156: setgid: unable to set group id to Group 33"}, "permissions_restricted", "AH02156"},
 		{[]string{"npm warn deprecated thing", "Error: Cannot find module 'prisma'", "before start failed: exit status 1"}, "before_start_failed", "Cannot find module"},
 	} {
 		cause, detail, ok := specificCause(tc.lines)

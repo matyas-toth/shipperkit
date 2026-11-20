@@ -426,9 +426,15 @@ function ConfigField(props: { field: CatalogField; value: string; change: (value
 }
 
 export function ServiceLibraryEntry(props: { open: () => void }) {
+  // Shares the dialog's cache, so opening the library is instant afterwards.
+  const index = createQuery(() => ({ queryKey: ["catalog"], queryFn: () => api<CatalogIndex>("/catalog"), staleTime: 5 * 60_000 }));
+  const count = () => {
+    const total = index.data?.items?.length ?? 0;
+    return total >= 100 ? Math.floor(total / 100) * 100 + "+ services" : total ? total + " services" : "300+ services";
+  };
   return <button type="button" class="library-entry" onClick={props.open}>
     <span class="library-entry-icon"><Icon name="layers" /></span>
-    <span><strong>Service Library</strong></span>
+    <span><strong>Service Library</strong><small>{count()}</small></span>
     <Icon name="chevron" />
   </button>;
 }

@@ -136,7 +136,9 @@ func (s *Service) checkCertificate(ctx context.Context, apps []store.Application
 			if item.firstFailure.IsZero() {
 				item.firstFailure = now
 			}
-			item.delay = min(max(item.delay*2, 30*time.Second), 10*time.Minute)
+			// A new certificate usually arrives within a minute, so the first
+			// retries follow the 15 second monitor cycle before backing off.
+			item.delay = min(max(item.delay*2, 15*time.Second), 10*time.Minute)
 			item.next = now.Add(item.delay)
 			state = "pending"
 			if now.Sub(item.firstFailure) >= 5*time.Minute {

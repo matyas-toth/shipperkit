@@ -35,6 +35,15 @@ export function applicationState(app: import("./types").Application) {
   if (app.state === "running" && isStaticApplication(app)) return "serving";
   return app.state;
 }
+// Let's Encrypt needs a moment after a route goes live. Until the monitor sees a
+// trusted certificate, a recently deployed HTTPS domain is still issuing, which
+// is expected rather than an error.
+export function certificateIssuing(app: import("./types").Application, domain: import("./types").Domain | undefined, now: number) {
+  const latest = app.latestDeployment;
+  if (!domain?.https || !app.activeDeploymentId || app.desiredState === "stopped" || domain.hostname.endsWith(".localhost")) return false;
+  if (domain.verificationState && domain.verificationState !== "tls_pending") return false;
+  return !!latest && latest.state === "succeeded" && now - (latest.finishedAt || latest.createdAt) < 600;
+}
 export function methodLabel(app: import("./types").Application) {
   if (app.config?.database) return ({ postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", mongodb: "MongoDB", clickhouse: "ClickHouse", redis: "Redis", sqlite: "SQLite" }[app.config.database.engine]) + " " + app.config.database.version;
   const methods: Record<string, string> = { image:"Container image",inline:"Dockerfile",static: "Static site", compose: "Compose", dockerfile: "Dockerfile", railpack: "Railpack" };

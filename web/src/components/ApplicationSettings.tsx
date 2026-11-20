@@ -40,6 +40,7 @@ export default function ApplicationSettings(props: {
   application: Application;
   services?: string[];
   showSource?: boolean;
+  section?: string;
   busy: boolean;
   save: (config: StaticConfig) => Promise<boolean | void>;
   rename: (name: string) => Promise<void>;
@@ -53,7 +54,8 @@ export default function ApplicationSettings(props: {
   const [reviewing, setReviewing] = createSignal(false);
   const [confirm, setConfirm] = createSignal(false);
   const inlineCompose = () => config.method === "compose" && config.composeSource === "paste";
-  const [area, setArea] = createSignal<SettingsArea>(props.showSource || inlineCompose() ? "source" : "general");
+  const requested = () => areas.find(item => item.id === props.section)?.id;
+  const [area, setArea] = createSignal<SettingsArea>(requested() ?? (props.showSource || inlineCompose() ? "source" : "general"));
   const visibleAreas = () => areas.filter(item => config.method !== "compose" || !["runtime", "storage"].includes(item.id));
   const hasSavedCompose = () => props.application.config.composeSource === "paste" &&
     !!(props.application.config.composeKeep || props.application.config.composeHasValue);
@@ -62,7 +64,7 @@ export default function ApplicationSettings(props: {
   const configDirty = createMemo(() => composeEdited() || configFingerprint(config) !== savedFingerprint());
   const renamed = () => !!name().trim() && name().trim() !== props.application.name;
   const dirty = () => configDirty() || renamed();
-  createEffect(() => { if (props.showSource) setArea("source"); });
+  createEffect(() => { if (props.showSource) setArea("source"); else { const next = requested(); if (next) setArea(next); } });
   function revert() { setConfig(reconcile(editableConfig(props.application.config))); setName(props.application.name); setError(""); }
   async function save(e: SubmitEvent) {
     e.preventDefault();

@@ -157,6 +157,7 @@ var specificCauses = []struct {
 }{
 	{[]string{"name or service not known", "no such host", "enotfound", "temporary failure in name resolution", "could not translate host name", "nodename nor servname", "could not resolve host", "bad address"}, causeMatch{Code: "host_unresolved", Summary: "The application could not resolve a host it connects to. Check the hostname and connect both applications in Networking.", Confidence: "high"}},
 	{[]string{"econnrefused", "connection refused"}, causeMatch{Code: "connection_refused", Summary: "A service the application connects to refused the connection.", Confidence: "medium"}},
+	{[]string{"unable to set group id", "unable to set user id", "setgroups", "chown(", "changing ownership of", "setgid: operation not permitted", "setuid: operation not permitted", "can't drop privilege"}, causeMatch{Code: "permissions_restricted", Summary: "The image changes file owners or switches users at startup. Turn on ownership changes and user switching in Runtime settings.", Confidence: "high"}},
 	{[]string{"before start failed"}, causeMatch{Code: "before_start_failed", Summary: "The before start command failed, so the application never started.", Confidence: "high"}},
 }
 
@@ -322,6 +323,9 @@ func diagnosisActions(app store.Application, d store.Deployment, cause string, s
 	case "host_unresolved", "connection_refused":
 		actions = append(actions, DiagnosisAction{ID: "networking", Label: "Open networking", Kind: "navigate", Target: base + "?tab=networking"})
 		actions = append(actions, DiagnosisAction{ID: "environment", Label: "Open environment", Kind: "navigate", Target: base + "?tab=env"})
+	case "permissions_restricted":
+		actions = append(actions, DiagnosisAction{ID: "runtime", Label: "Open runtime settings", Kind: "navigate", Target: base + "?tab=settings&section=runtime"})
+		actions = append(actions, DiagnosisAction{ID: "logs", Label: "Open runtime logs", Kind: "navigate", Target: base + "?tab=logs"})
 	case "before_start_failed":
 		actions = append(actions, DiagnosisAction{ID: "logs", Label: "Open runtime logs", Kind: "navigate", Target: base + "?tab=logs"})
 		actions = append(actions, DiagnosisAction{ID: "settings", Label: "Open settings", Kind: "navigate", Target: base + "?tab=settings"})

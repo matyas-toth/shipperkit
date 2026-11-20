@@ -6,7 +6,7 @@ import { api, post } from "../api";
 import { docs } from "../docs";
 import { useAuth } from "../context";
 import type { Application, Domain, ProxyConfig, Service } from "../types";
-import { domainURL } from "../data";
+import { certificateIssuing, domainURL } from "../data";
 import { Button, ErrorNotice, IconButton, Status, validateForm } from "./Controls";
 import { Icon } from "./Icon";
 import DnsTarget from "./DnsTarget";
@@ -60,6 +60,11 @@ export default function Domains(props: { application: Application; proxy?: Proxy
   }
   async function save(e: SubmitEvent) { e.preventDefault(); if (!dirty() || props.busy || !validateForm(e.currentTarget as HTMLFormElement)) return;setError("");try { await props.save(props.service ? [...(props.application.domains ?? []).filter(d => d.service !== props.service), ...domains()] : domains()); } catch (e) { setError((e as Error).message); } }
   async function verify(domain: Domain) { setChecks(value => ({ ...value, [domain.id]: true }));setError("");try { await post(`/applications/${props.application.id}/domain-check`, { domainId: domain.id }, auth.session()?.csrfToken); } catch (e) { setError((e as Error).message); }finally { setChecks(value => ({ ...value, [domain.id]: false })); } }
+  const [now, setNow] = createSignal(Date.now() / 1000);
+  const clock = setInterval(() => setNow(Date.now() / 1000), 15000);
+  onCleanup(() => clearInterval(clock));
+  const issuing = (domain: Domain) => certificateIssuing(props.application, stored(domain), now());
+  const issuingHosts = () => saved().filter(issuing).map(d => d.hostname);
   const savedHost = (domain: Domain) => saved().find(d => d.id === domain.id && d.hostname === domain.hostname && d.https === domain.https && d.service === domain.service);
   const stored = (domain: Domain) => savedHost(domain) && saved().find(d => route(d) === route(domain));
   function remove(id: string) {
@@ -94,6 +99,13 @@ export default function Domains(props: { application: Application; proxy?: Proxy
       </div>
       <DnsTarget address={props.proxy?.publicAddress} />
     </Show>
+    <Show when={issuingHosts().length}>
+      <div class="certificate-pending" role="status">
+        <span class="update-spinner" aria-hidden="true" />
+        <div><strong>Requesting HTTPS certificates for {issuingHosts().join(", ")}</strong>
+          <span>Domain checks and visits can fail until they are issued, usually within a minute.</span></div>
+      </div>
+    </Show>
     <div class="domain-workspace" classList={{ "has-route": !!editing() }}><div class="domain-list"><For each={groups()}>{group => <div class="domain-group">
       <Show when={pickService() && group}><h3>{group}</h3></Show>
       <For each={groupIDs(group)}>{id => {
@@ -111,6 +123,7 @@ export default function Domains(props: { application: Application; proxy?: Proxy
               <Show when={domain().primary}><span>Primary</span></Show>
               <Show when={domain().redirect} fallback={<Show when={domain().pathPrefix && domain().pathPrefix !== "/"}><code>{domain().pathPrefix}</code></Show>}><span>Redirect to <strong>{target() || "primary domain"}</strong></span></Show>
               <Show when={verified()}><Status value="running" label="Verified" /></Show>
+              <Show when={issuing(domain())}><Status value="starting" label="Issuing certificate" /></Show>
               <Show when={!stored(domain())}><Status value="queued" label="Unsaved" /></Show>
             </div>
           </div>
@@ -123,7 +136,7 @@ export default function Domains(props: { application: Application; proxy?: Proxy
             <IconButton icon="trash" label={"Remove " + domain().hostname} onClick={() => remove(id)} />
           </div>
         </header>
-        <Show when={stored(domain())?.message && !verified()}><div class="domain-row-error" role="status">{stored(domain())?.message}</div></Show>
+        <Show when={stored(domain())?.message && !verified() && !issuing(domain())}><div class="domain-row-error" role="status">{stored(domain())?.message}</div></Show>
       </article>
       <Show when={editing() === id}>
         <section ref={editor} id={editorId} class="domain-editor" aria-labelledby={editorId + "-title"}>

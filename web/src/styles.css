@@ -1891,6 +1891,38 @@ input::placeholder {
   padding-top: 6px;
   padding-bottom: 6px;
 }
+.certificate-issuing {
+  display: block;
+  margin-top: 4px;
+  font-weight: 450;
+}
+.certificate-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.certificate-pending .update-spinner {
+  flex: none;
+  margin-top: 2px;
+}
+.certificate-pending > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.certificate-pending strong {
+  font-weight: 560;
+  overflow-wrap: anywhere;
+}
+.certificate-pending span:not(.update-spinner) {
+  color: var(--muted);
+  font-size: 12.5px;
+}
 .domain-row-error {
   grid-column: 1/-1;
   color: var(--warning);
@@ -12499,7 +12531,20 @@ input[type="checkbox"]:disabled {
 .library-field .input { width: 100%; min-height: 36px; }
 .library-domain-list { display: grid; gap: 8px; }
 .library-domain { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
-.library-domain .check-field { min-height: 36px; }
+.library-domain .check-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  background: var(--surface);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.library-domain .check-field:has(input:disabled) { cursor: default; }
 .library-secret { position: relative; display: flex; align-items: center; }
 .library-secret .input { padding-right: 70px; }
 .library-icon-button { position: absolute; top: 4px; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }

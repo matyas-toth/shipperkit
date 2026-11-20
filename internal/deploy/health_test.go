@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/moby/moby/api/types/container"
+	"shipper/internal/store"
 )
 
 func TestCandidateCrashDetection(t *testing.T) {
@@ -31,5 +32,22 @@ func TestCandidateCrashDetection(t *testing.T) {
 		if tc.want == "" && err != nil || tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)) {
 			t.Fatalf("%s: got %v, want %q", tc.name, err, tc.want)
 		}
+	}
+}
+
+func TestCompatibilityAddsOnlyOwnershipAndUserSwitching(t *testing.T) {
+	d := store.Deployment{ResolvedMethod: "image", Config: store.Config{Method: "image", Image: "nginx:1.27-alpine"}}
+	if caps := applicationCapabilities(d); len(caps) != 0 {
+		t.Fatalf("default capabilities %v", caps)
+	}
+	d.Config.Runtime.Compatibility = true
+	caps := applicationCapabilities(d)
+	if strings.Join(caps, ",") != "CHOWN,DAC_OVERRIDE,FOWNER,SETGID,SETUID" {
+		t.Fatalf("compatibility capabilities %v", caps)
+	}
+	// A database image already holds the same set; nothing is listed twice.
+	d.Config.Image = "postgres:18"
+	if caps = applicationCapabilities(d); len(caps) != 5 {
+		t.Fatalf("database capabilities %v", caps)
 	}
 }

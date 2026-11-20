@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -708,6 +709,9 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		}
 		if d.Config.Domain != "" {
 			w.log(d, "Application is serving at "+d.Config.Domain)
+			if d.Config.HTTPS && !slices.ContainsFunc(d.PreviousDomains, func(p store.Domain) bool { return p.Hostname == d.Config.Domain && p.HTTPS }) {
+				w.log(d, "Requesting an HTTPS certificate for "+d.Config.Domain+"; visits can fail until it is issued, usually within a minute")
+			}
 		} else {
 			w.log(d, "Application is running without public domains")
 		}

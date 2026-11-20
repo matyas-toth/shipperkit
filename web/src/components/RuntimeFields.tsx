@@ -12,7 +12,7 @@ export default function RuntimeFields(props: {
   // Rarely changed controls that sit with the advanced limits.
   advanced?: JSX.Element;
 }) {
-  const change = (key: keyof RuntimePolicy, value: number | string) =>
+  const change = (key: keyof RuntimePolicy, value: number | string | boolean) =>
     props.change({ ...props.value, [key]: value });
   const fields = () => [
     { key: "cpus", label: "CPU limit", max: 64, min: 0, step: 0.1, default: 1 },
@@ -60,7 +60,7 @@ export default function RuntimeFields(props: {
         <input id={"runtime-" + field.key} class="input" type="number"
           min={field.min} max={field.max} step={field.step}
           placeholder={props.service && ["cpus", "pids", "stopSeconds"].includes(field.key) ? "Compose configuration" : String(field.default)}
-          value={props.value?.[field.key as keyof RuntimePolicy] || ""}
+          value={Number(props.value?.[field.key as keyof RuntimePolicy]) || ""}
           onInput={e => change(field.key as keyof RuntimePolicy, Number(e.currentTarget.value) || 0)} />
       </div>
     }</For>;
@@ -74,13 +74,19 @@ export default function RuntimeFields(props: {
       <option value="no">Never</option>
     </select>
   </div>;
+  // Opt-in for images whose entrypoints chown files or drop to another user.
+  const compatibility = () => <Show when={!props.service}>
+    <label class="check-field runtime-compatibility"><input type="checkbox" checked={!!props.value?.compatibility} onChange={e => change("compatibility", e.currentTarget.checked)} />Allow ownership changes and user switching</label>
+  </Show>;
   return <Show when={props.expanded} fallback={<details class="configuration runtime-configuration">
     <summary>Runtime limits<Icon name="down" /></summary>
     <div class="form-fields field-pairs configuration-fields">{props.connectivity}{limits()}{restart()}</div>
+    <div class="form-fields">{compatibility()}</div>
   </details>}>
     <div class="runtime-groups">
       <section class="runtime-group"><h4>Network and health</h4><div class="form-fields field-pairs">{props.connectivity}</div></section>
       <section class="runtime-group"><h4>Resources</h4><div class="form-fields field-pairs">{props.memory}{limits(["cpus"])}</div></section>
+      <Show when={!props.service}><section class="runtime-group"><h4>Permissions</h4><div class="form-fields">{compatibility()}</div></section></Show>
       <details class="configuration runtime-configuration"><summary>Advanced runtime<Icon name="down" /></summary><div class="form-fields field-pairs configuration-fields">{props.advanced}{limits(["startupSeconds", "pids", "stopSeconds", "drainSeconds"])}{restart()}</div></details>
     </div>
   </Show>;

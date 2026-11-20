@@ -29,12 +29,12 @@ type Identity struct {
 }
 
 type Session struct {
-	User      User
-	CSRF      string
-	ExpiresAt int64
-	Factor    FactorState
-	Verified  bool
-	FirstFactor   string
+	User            User
+	CSRF            string
+	ExpiresAt       int64
+	Factor          FactorState
+	Verified        bool
+	FirstFactor     string
 	PendingProvider string
 	PendingSubject  string
 	PendingEmail    string
@@ -133,6 +133,9 @@ type RuntimePolicy struct {
 	StartupSeconds int     `json:"startupSeconds,omitempty"`
 	StopSeconds    int     `json:"stopSeconds,omitempty"`
 	DrainSeconds   int     `json:"drainSeconds,omitempty"`
+	// Compatibility lets images whose entrypoints change file owners or switch
+	// users, such as the official nginx and httpd images, start.
+	Compatibility bool `json:"compatibility,omitempty"`
 }
 type StaticConfig struct {
 	Database      *DatabaseResource `json:"database,omitempty"`

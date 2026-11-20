@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterContainers, portLabel, statusOf, bytes, deploymentSeconds, formatDuration, applicationState, methodLabel } from "./data";
+import { filterContainers, portLabel, statusOf, bytes, deploymentSeconds, formatDuration, applicationState, methodLabel, certificateIssuing } from "./data";
 import type { Container, Deployment, Application } from "./types";
 const running: Container = { id: "abc", name: "API", image: "example/api:v1", state: "running", health: "", status: "Up", createdAt: 0, ports: [], managed: true };
 describe("inventory presentation", () => {
@@ -34,6 +34,16 @@ describe("deployment history", () => {
     expect(applicationState({...app,latestDeployment:{state:"building"} as Deployment})).toBe("building");
     expect(applicationState({...app,desiredState:"stopped",state:"degraded"})).toBe("stopped");
     expect(applicationState({...app,desiredState:"stopped",latestDeployment:{state:"starting"} as Deployment})).toBe("starting");
+  });
+  it("treats a fresh HTTPS domain as issuing, not failing", () => {
+    const domain = { id: "d", hostname: "shop.example.com", https: true, primary: true, redirect: false };
+    const app = { activeDeploymentId: "r", desiredState: "running", latestDeployment: { state: "succeeded", finishedAt: 1000, createdAt: 990 } } as unknown as Application;
+    expect(certificateIssuing(app, domain, 1030)).toBe(true);
+    expect(certificateIssuing(app, { ...domain, verificationState: "tls_pending" }, 1300)).toBe(true);
+    expect(certificateIssuing(app, { ...domain, verificationState: "verified" }, 1030)).toBe(false);
+    expect(certificateIssuing(app, { ...domain, verificationState: "dns_pending" }, 1030)).toBe(false);
+    expect(certificateIssuing(app, domain, 1700)).toBe(false);
+    expect(certificateIssuing(app, { ...domain, https: false }, 1030)).toBe(false);
   });
   it("names the serving method after a stop or domain change", () => {
     const app = { method:"auto",activeMethod:"railpack",containers:[],config:{},latestDeployment:{operation:"stop",resolvedMethod:""} } as unknown as Application;

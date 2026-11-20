@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -60,6 +61,20 @@ func databaseImage(image string) (string, int) {
 	default:
 		return "", 0
 	}
+}
+
+// applicationCapabilities adds back only what an application opted into, on
+// top of everything dropped. no-new-privileges still applies.
+func applicationCapabilities(d store.Deployment) []string {
+	caps := databaseCapabilities(d)
+	if d.Config.Runtime.Compatibility {
+		for _, c := range []string{"CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"} {
+			if !slices.Contains(caps, c) {
+				caps = append(caps, c)
+			}
+		}
+	}
+	return caps
 }
 
 func databaseCapabilities(d store.Deployment) []string {
