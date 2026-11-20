@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/moby/moby/client"
+	"shipper/internal/events"
 	"shipper/internal/store"
 	"testing"
 )
@@ -99,5 +100,39 @@ func TestNetworkChangeReusesImage(t *testing.T) {
 	plan := PlanChanges(old, next)
 	if plan.Operation != "recreate" {
 		t.Fatalf("%+v", plan)
+	}
+}
+
+func TestDomainlessApplicationsKeepPrivateNames(t *testing.T) {
+	dir := t.TempDir()
+	db, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	a := store.Application{ID: "database", Name: "Database", Config: store.Config{Method: "image", Image: "mongo:8", Database: &store.DatabaseResource{Engine: "mongodb", Version: "8"}}}
+	d, err := db.Enqueue(ctx, a, store.Deployment{ID: "release", Operation: "deploy"}, "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.State = "succeeded"
+	if err = db.SaveDeployment(ctx, d); err != nil {
+		t.Fatal(err)
+	}
+	if err = db.SetActive(ctx, a.ID, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	runtime := &fakeRuntime{}
+	w := NewWorker(db, runtime, events.New(), dir)
+	if err = w.routes(ctx, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	// A database has no public domain, yet the runtime must still give it db-<id>.
+	if runtime.active[a.ID].ID != d.ID {
+		t.Fatalf("domainless application missing from alias reconciliation: %+v", runtime.active)
+	}
+	if routes := Routes([]store.Application{{ID: a.ID, Domains: []store.Domain{}}}, runtime.active)["http"].(map[string]any); routes["routers"] != nil {
+		t.Fatalf("domainless application received a public router: %+v", routes)
 	}
 }

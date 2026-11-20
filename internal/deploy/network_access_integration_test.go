@@ -149,6 +149,19 @@ time.sleep(3600)`
 	}
 	dnsCancel()
 	t.Log("Connected application resolves the stable alias; unconnected application cannot resolve or reach it")
+	// A database usually holds the link to the application it serves, so the
+	// linked side must resolve the linking application's stable names as well.
+	if err = r.reconcileApplicationAliases(ctx, map[string]store.Deployment{a.ApplicationID: a}); err != nil {
+		t.Fatal(err)
+	}
+	for _, host := range []string{"app-" + a.ApplicationID, "db-" + a.ApplicationID} {
+		if out, err = r.exec(ctx, b.ContainerID, []string{"python", "-c", fmt.Sprintf("import socket; print(socket.gethostbyname(%q))", host)}); err != nil {
+			t.Fatalf("linked application did not resolve %s: %s %v", host, out, err)
+		}
+	}
+	if out, err = r.exec(ctx, a.ContainerID, command); err != nil || !strings.Contains(string(out), "shipper-tcp") {
+		t.Fatalf("private connection after alias reconciliation: %s %v", out, err)
+	}
 	// Port claims include unmanaged and stopped Docker containers.
 	unmanagedPort := free()
 	foreignInstance := auth.Token()

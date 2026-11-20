@@ -258,7 +258,9 @@ func (w *Worker) routes(ctx context.Context, exclude string, override *store.Dep
 	}
 	active := map[string]store.Deployment{}
 	for _, a := range apps {
-		if a.ID == exclude || a.ActiveDeploymentID == "" || a.DesiredState == "stopped" || (a.Domains != nil && len(a.Domains) == 0) {
+		// Applications without domains stay in the map. Routes skips their public
+		// routers, but they still need stable private names such as db-<id>.
+		if a.ID == exclude || a.ActiveDeploymentID == "" || a.DesiredState == "stopped" {
 			continue
 		}
 		d, e := w.DB.Deployment(ctx, a.ActiveDeploymentID)

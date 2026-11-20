@@ -324,37 +324,38 @@ func (r *DockerRuntime) reconcileApplicationAliases(ctx context.Context, active 
 		if !owned(info.Container.Config.Labels, r.Instance, app) {
 			return errors.New("Application network ownership check failed")
 		}
+		// A connection puts both applications on the same bridge network, so the
+		// stable names are published on every network the release joins. Either
+		// side can then reach the other, whichever application holds the link.
+		networks := []string{name}
 		for _, target := range d.Config.Networking.Applications {
 			if err := r.ensureApplicationNetwork(ctx, target); err != nil {
 				return err
 			}
-			targetName := r.applicationNetwork(target)
-			if info.Container.NetworkSettings.Networks[targetName] == nil {
-				if _, err := r.Client.NetworkConnect(ctx, targetName, client.NetworkConnectOptions{Container: d.ContainerID}); err != nil {
-					return err
-				}
-			}
+			networks = append(networks, r.applicationNetwork(target))
 		}
 		if info.Container.NetworkSettings.Networks[r.network()] != nil {
 			if _, err := r.Client.NetworkDisconnect(ctx, r.network(), client.NetworkDisconnectOptions{Container: d.ContainerID}); err != nil {
 				return err
 			}
 		}
-		endpoint := info.Container.NetworkSettings.Networks[name]
-		if endpoint != nil {
-			present := false
-			for _, alias := range endpoint.Aliases {
-				present = present || alias == "app-"+app
+		for _, link := range networks {
+			aliases := []string{"app-" + app, "db-" + app}
+			if link == name {
+				aliases = append([]string{"site-" + d.ID}, aliases...)
 			}
-			if present {
-				continue
+			endpoint := info.Container.NetworkSettings.Networks[link]
+			if endpoint != nil {
+				if hasStableAlias(endpoint.Aliases, app) {
+					continue
+				}
+				if _, err = r.Client.NetworkDisconnect(ctx, link, client.NetworkDisconnectOptions{Container: d.ContainerID}); err != nil {
+					return err
+				}
 			}
-			if _, err = r.Client.NetworkDisconnect(ctx, name, client.NetworkDisconnectOptions{Container: d.ContainerID}); err != nil {
+			if _, err = r.Client.NetworkConnect(ctx, link, client.NetworkConnectOptions{Container: d.ContainerID, EndpointConfig: &network.EndpointSettings{Aliases: aliases}}); err != nil {
 				return err
 			}
-		}
-		if _, err = r.Client.NetworkConnect(ctx, name, client.NetworkConnectOptions{Container: d.ContainerID, EndpointConfig: &network.EndpointSettings{Aliases: []string{"site-" + d.ID, "app-" + app, "db-" + app}}}); err != nil {
-			return err
 		}
 		// A previous serving release may still drain, but must not answer the stable name.
 		items, err := r.Client.ContainerList(ctx, client.ContainerListOptions{All: true, Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.application.id="+app)})
@@ -372,26 +373,34 @@ func (r *DockerRuntime) reconcileApplicationAliases(ctx context.Context, active 
 			if old.Container.NetworkSettings == nil {
 				continue
 			}
-			ep := old.Container.NetworkSettings.Networks[name]
-			if ep == nil {
-				continue
-			}
-			stable := false
-			for _, alias := range ep.Aliases {
-				stable = stable || alias == "app-"+app
-			}
-			if !stable {
-				continue
-			}
-			if _, e = r.Client.NetworkDisconnect(ctx, name, client.NetworkDisconnectOptions{Container: c.ID}); e != nil {
-				return e
-			}
-			if _, e = r.Client.NetworkConnect(ctx, name, client.NetworkConnectOptions{Container: c.ID, EndpointConfig: &network.EndpointSettings{Aliases: []string{"site-" + c.Labels["io.shipper.deployment.id"]}}}); e != nil {
-				return e
+			for _, link := range networks {
+				ep := old.Container.NetworkSettings.Networks[link]
+				if ep == nil || !hasStableAlias(ep.Aliases, app) {
+					continue
+				}
+				if _, e = r.Client.NetworkDisconnect(ctx, link, client.NetworkDisconnectOptions{Container: c.ID}); e != nil {
+					return e
+				}
+				endpoint := &network.EndpointSettings{}
+				if link == name {
+					endpoint.Aliases = []string{"site-" + c.Labels["io.shipper.deployment.id"]}
+				}
+				if _, e = r.Client.NetworkConnect(ctx, link, client.NetworkConnectOptions{Container: c.ID, EndpointConfig: endpoint}); e != nil {
+					return e
+				}
 			}
 		}
 	}
 	return nil
+}
+
+func hasStableAlias(aliases []string, app string) bool {
+	for _, alias := range aliases {
+		if alias == "app-"+app {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *DockerRuntime) reconcileComposeNetworks(ctx context.Context, d store.Deployment) error {
