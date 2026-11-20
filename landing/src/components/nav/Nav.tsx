@@ -118,11 +118,17 @@ export function Nav({ variant = 1, contained = false }: { variant?: number; cont
             <a href={docs} className="hidden text-[14px] text-[#9a9b95] transition-colors hover:text-white sm:block">
               Docs
             </a>
-            <a href={discord} className="hidden items-center gap-2 text-[14px] text-[#9a9b95] transition-colors hover:text-white sm:flex">
-              <HugeiconsIcon icon={DiscordIcon} size={17} strokeWidth={1.6} />
-              Join Discord
-            </a>
-            <Install always className="h-11 px-3 text-[13px] max-[359px]:hidden sm:h-10 sm:px-4 sm:text-[14px]" />
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="ghost"
+                className="hidden h-10 shrink-0 rounded-lg border-white/[0.08] bg-white/[0.08] px-4 text-[14px] font-[500] text-[#ecece7] hover:bg-white/[0.13] sm:inline-flex sm:h-10"
+                render={<a href={discord} />}
+              >
+                <HugeiconsIcon icon={DiscordIcon} size={17} strokeWidth={1.7} />
+                Join Discord
+              </Button>
+              <Install always className="h-11 px-3 text-[13px] max-[359px]:hidden sm:h-10 sm:px-4 sm:text-[14px]" />
+            </div>
             <MobileMenu />
           </div>
         </div>
