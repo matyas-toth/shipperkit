@@ -10852,7 +10852,8 @@ body:has(.confirm-dialog) .page-actions {
   .topbar > .primary-navigation {
     display: none;
   }
-  .topbar-search {
+  .topbar-search,
+  .topbar-discord {
     display: none;
   }
   .page-scroll {

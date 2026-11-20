@@ -1,6 +1,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import { sidebar } from "./src/data/docs-navigation.mjs";
+import { discord } from "./src/data/links.mjs";
 
 export default defineConfig({
   site: "https://shipperkit.dev",
@@ -33,6 +34,11 @@ export default defineConfig({
           icon: "github",
           label: "Shipper on GitHub",
           href: "https://github.com/matyas-toth/shipperkit",
+        },
+        {
+          icon: "discord",
+          label: "Join the Shipper Discord",
+          href: discord,
         },
       ],
       editLink: {

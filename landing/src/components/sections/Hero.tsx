@@ -2,6 +2,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowDown01Icon,
   CheckmarkCircle02Icon,
+  DiscordIcon,
   GithubIcon,
   TerminalIcon,
 } from "@hugeicons/core-free-icons";
@@ -17,6 +18,7 @@ import {
   TerminalInstall,
 } from "@/components/primitives";
 import { cn } from "@/lib/utils";
+import { discord } from "@/data/links.mjs";
 
 const docs = "/docs/";
 
@@ -232,10 +234,16 @@ function Hero3() {
               Shipper runs on the VPS you already pay for. Push a repo, get a live
               URL, logs, and a rollback. No YAML, no SSH, no dashboard account.
             </p>
-            <a href="#how-it-works" className="mt-4 inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white">
-              See how it works
-              <HugeiconsIcon icon={ArrowDown01Icon} size={13} strokeWidth={1.8} />
-            </a>
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+              <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white">
+                See how it works
+                <HugeiconsIcon icon={ArrowDown01Icon} size={13} strokeWidth={1.8} />
+              </a>
+              <a href={discord} className="inline-flex items-center gap-1.5 text-[14px] text-[#a2a39d] underline decoration-white/20 underline-offset-4 transition-colors hover:text-white hover:decoration-white">
+                <HugeiconsIcon icon={DiscordIcon} size={15} strokeWidth={1.7} />
+                Get help on Discord
+              </a>
+            </div>
             <div className="mt-6 hidden grid-cols-2 gap-x-6 gap-y-3 border-t border-white/[0.08] pt-4 text-[13px] text-[#8d8e88] lg:grid">
               <a href="https://github.com/matyas-toth/shipperkit" className="inline-flex items-center gap-2 text-[#a2a39d] transition-colors hover:text-white">
                 <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />

@@ -4,6 +4,7 @@ import { A, useLocation, useNavigate, type RouteSectionProps } from "@solidjs/ro
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { api, post } from "../api";
+import { DISCORD_URL } from "../docs";
 import { InventoryContext, UpdatesContext, useAuth } from "../context";
 import type { Inventory, UpdateChannel, UpdateState, UpdateStatus } from "../types";
 import { IconButton } from "./Controls";
@@ -135,6 +136,7 @@ export default function Shell(props: RouteSectionProps) {
           <A href={updateBadge() ? "/settings#updates" : "/settings"} activeClass="active" class="nav-link"><Icon name="settings" />Settings<Show when={updateBadge()}><span class="nav-update-badge" title={updates.data?.available ? "Update to " + updates.data.available.version : "Update available"}>Update</span></Show><Show when={updating()}><span class="nav-update-badge is-updating" title="Shipper is updating">Updating</span></Show></A>
         </nav>
         <div class="topbar-actions">
+          <a class="button ghost topbar-discord" href={DISCORD_URL} target="_blank" rel="noreferrer"><Icon name="discord" />Join Discord</a>
           <IconButton icon="search" label="Search applications" class="topbar-search" ghost onClick={focusSearch} />
           <div class="account">
             <button ref={accountButton} class="account-trigger" aria-label="Account" aria-expanded={menu()} aria-haspopup="menu" onClick={() => setMenu(!menu())}>

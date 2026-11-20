@@ -1,11 +1,13 @@
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+  DiscordIcon,
   GithubIcon,
   Menu01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/primitives";
+import { discord } from "@/data/links.mjs";
 
 const links = [
   { href: "#product", label: "Product" },
@@ -77,6 +79,9 @@ function MobileMenu() {
         <a href={repo} className="block rounded-lg px-3 py-2.5 text-[16px] text-[#c3c4be] hover:bg-white/[0.06] hover:text-white">
           GitHub
         </a>
+        <a href={discord} className="block rounded-lg px-3 py-2.5 text-[16px] text-[#c3c4be] hover:bg-white/[0.06] hover:text-white">
+          Join Discord
+        </a>
       </div>
     </details>
   );
@@ -112,6 +117,10 @@ export function Nav({ variant = 1, contained = false }: { variant?: number; cont
             <div className="hidden h-5 w-px bg-white/[0.12] sm:block" />
             <a href={docs} className="hidden text-[14px] text-[#9a9b95] transition-colors hover:text-white sm:block">
               Docs
+            </a>
+            <a href={discord} className="hidden items-center gap-2 text-[14px] text-[#9a9b95] transition-colors hover:text-white sm:flex">
+              <HugeiconsIcon icon={DiscordIcon} size={17} strokeWidth={1.6} />
+              Join Discord
             </a>
             <Install always className="h-11 px-3 text-[13px] max-[359px]:hidden sm:h-10 sm:px-4 sm:text-[14px]" />
             <MobileMenu />

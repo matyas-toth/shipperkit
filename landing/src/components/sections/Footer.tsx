@@ -1,6 +1,7 @@
 import { HugeiconsIcon } from "@hugeicons/react";
-import { GithubIcon } from "@hugeicons/core-free-icons";
+import { DiscordIcon, GithubIcon } from "@hugeicons/core-free-icons";
 import { Container, Logo, Status } from "@/components/primitives";
+import { discord } from "@/data/links.mjs";
 
 const repo = "https://github.com/matyas-toth/shipperkit";
 const docs = "/docs/";
@@ -36,6 +37,7 @@ const groups = [
     title: "Project",
     links: [
       ["GitHub", repo],
+      ["Discord", discord],
       ["Releases", `${repo}/releases`],
       ["Security", `${repo}/blob/master/SECURITY.md`],
       ["Contributing", `${repo}/blob/master/CONTRIBUTING.md`],
@@ -138,6 +140,10 @@ function Footer3() {
             <a href={repo} className="flex items-center gap-2 text-[14px] text-[#8d8e88] transition-colors hover:text-white">
               <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.6} />
               Source
+            </a>
+            <a href={discord} className="flex items-center gap-2 text-[14px] text-[#8d8e88] transition-colors hover:text-white">
+              <HugeiconsIcon icon={DiscordIcon} size={15} strokeWidth={1.6} />
+              Discord
             </a>
             <a href={docs} className="text-[14px] text-[#8d8e88] transition-colors hover:text-white">Docs</a>
           </div>
