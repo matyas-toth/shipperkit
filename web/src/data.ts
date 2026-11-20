@@ -44,6 +44,14 @@ export function certificateIssuing(app: import("./types").Application, domain: i
   if (domain.verificationState && domain.verificationState !== "tls_pending") return false;
   return !!latest && latest.state === "succeeded" && now - (latest.finishedAt || latest.createdAt) < 600;
 }
+const identityKeys: Record<string, [string, string]> = { postgresql: ["POSTGRES_USER", "POSTGRES_DB"], mysql: ["MYSQL_USER", "MYSQL_DATABASE"], mariadb: ["MARIADB_USER", "MARIADB_DATABASE"], mongodb: ["MONGO_INITDB_ROOT_USERNAME", "MONGO_INITDB_DATABASE"], clickhouse: ["CLICKHOUSE_USER", "CLICKHOUSE_DB"] };
+// The user and database a managed database created on its first start.
+export function databaseIdentity(config: import("./types").StaticConfig | undefined) {
+  const keys = identityKeys[config?.database?.engine ?? ""];
+  if (!keys) return undefined;
+  const value = (name: string) => config?.variables?.find(variable => variable.name === name)?.value || "app";
+  return { user: value(keys[0]), database: value(keys[1]) };
+}
 export function methodLabel(app: import("./types").Application) {
   if (app.config?.database) return ({ postgresql: "PostgreSQL", mysql: "MySQL", mariadb: "MariaDB", mongodb: "MongoDB", clickhouse: "ClickHouse", redis: "Redis", sqlite: "SQLite" }[app.config.database.engine]) + " " + app.config.database.version;
   const methods: Record<string, string> = { image:"Container image",inline:"Dockerfile",static: "Static site", compose: "Compose", dockerfile: "Dockerfile", railpack: "Railpack" };

@@ -453,3 +453,23 @@
     padding: 4px 12px;
   }
 }
+
+.database-settings {
+  display: grid;
+  gap: 20px;
+}
+.database-settings .setting-row dd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.database-password-mask {
+  letter-spacing: 1px;
+}
+.database-cache-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-weight: 440;
+}

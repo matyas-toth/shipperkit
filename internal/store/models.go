@@ -188,6 +188,7 @@ type DatabaseResource struct {
 	Engine      string `json:"engine"`
 	Version     string `json:"version"`
 	TLSHostname string `json:"tlsHostname,omitempty"`
+	Cache       bool   `json:"cache,omitempty"`
 }
 type ServiceConfig struct {
 	Runtime        RuntimePolicy `json:"runtime"`
@@ -269,6 +270,9 @@ type Deployment struct {
 	RuntimePort     int          `json:"runtimePort"`
 	ComposePlan     string       `json:"-"`
 	Services        []Service    `json:"services"`
+
+	// CredentialRotation lets one enqueue carry a password the database already uses.
+	CredentialRotation bool `json:"-"`
 }
 type LogLine struct {
 	Sequence  int64  `json:"sequence"`

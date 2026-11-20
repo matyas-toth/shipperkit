@@ -89,6 +89,56 @@ test("System tokens, notification choices and responsive diagnostics", async({pa
   await page.request.post("http://127.0.0.1:9083/runtime-options",{data:{count:1}});await page.setViewportSize({width:1440,height:1000});await page.goto("/applications/application-web");await expect(page.getByRole("region", {name:"Application issue"})).toContainText("Routing unreachable");await page.locator(".page-scroll").evaluate(el=>el.scrollTop=0);await page.screenshot({path:join(tmpdir(),"shipper-phase9-issue.png")});await page.getByRole("button", { name: "Inspect route", exact: true }).click();await expect(page.getByRole("region", { name: "Edit route" })).toBeVisible();expect(errors).toEqual([]);
 });
 
+test("managed database settings show credentials and rotate the password", async ({ page }) => {
+  await login(page);
+  const original = await (await page.request.get("/api/applications/application-web")).json();
+  const variables = [
+    { name: "MONGO_INITDB_ROOT_USERNAME", value: "shop", scope: "runtime" },
+    { name: "MONGO_INITDB_ROOT_PASSWORD", value: "", secret: true, keep: true, hasValue: true, scope: "runtime" },
+    { name: "MONGO_INITDB_DATABASE", value: "orders", scope: "runtime" },
+  ];
+  let config: any = { ...original.application.config, method: "image", image: "mongo:8", startupPolicy: "process", port: 27017, database: { engine: "mongodb", version: "8" }, variables, volumes: [{ name: "data", path: "/data/db" }] };
+  const release = () => ({ ...original.activeDeployment, id: "database-release", resolvedMethod: "image", runtimePort: config.port, config });
+  const database = () => ({ ...original.application, name: "Orders", state: "running", activeMethod: "image", method: "image", sourceKind: "image", sourceRef: config.image, config, activeDeploymentId: "database-release", latestDeployment: release(), domains: [], containers: [{ ...original.application.containers[0], name: "shp-orders", state: "running", health: "healthy", image: config.image, ports: [] }] });
+  await page.route("**/api/applications/application-web", route => route.fulfill({ json: { application: database(), deployments: [release()], activeDeployment: release(), database: { engine: config.database.engine, host: "db-application-web", port: config.port } } }));
+  await page.route("**/api/applications", async route => {
+    const body = await (await route.fetch()).json();
+    body.items = [...body.items.filter((item: any) => item.id !== "application-web"), { ...database(), id: "application-web" }, { ...body.items[0], id: "application-store", name: "Storefront", config: { ...body.items[0].config, networking: { applications: ["application-web"], ports: [] } } }];
+    await route.fulfill({ json: body });
+  });
+  const rotations: any[] = [];
+  await page.route("**/api/applications/application-web/database/password", route => {
+    const body = route.request().postDataJSON();
+    rotations.push(body);
+    return route.fulfill(body.review ? { json: { revision: "rotation-review" } } : { status: 202, json: { ...release(), id: "rotation-release", operation: "apply", state: "queued" } });
+  });
+  await page.goto("/applications/application-web");
+  await expect(page.getByLabel("Connection string", { exact: true })).toContainText("mongodb://shop:••••@db-application-web:27017/orders?authSource=admin&replicaSet=rs0");
+  await page.goto("/applications/application-web?tab=settings&section=database");
+  const nav = page.getByRole("navigation", { name: "Application settings sections" });
+  await expect(nav.getByRole("button")).toHaveText(["General", "Credentials", "Resources"]);
+  const pane = page.locator("[data-settings-section=database]");
+  await expect(pane.locator(".setting-row")).toHaveText([/User\s*shop/, /Database\s*orders/, /Password/]);
+  await expect(page.getByRole("button", { name: "Save and redeploy" })).toBeHidden();
+  await pane.getByRole("button", { name: "Rotate", exact: true }).click();
+  const dialog = page.getByRole("alertdialog", { name: "Rotate the database password?" });
+  await expect(dialog).toContainText("Storefront keeps the old password");
+  await dialog.getByRole("button", { name: "Rotate and redeploy" }).click();
+  await expect(page).toHaveURL(/tab=deployments.*deployment=rotation-release|deployment=rotation-release.*tab=deployments/);
+  expect(rotations).toEqual([{ review: true }, { revision: "rotation-review" }]);
+  // Resources keep only what a database can change.
+  await page.goto("/applications/application-web?tab=settings&section=runtime");
+  await expect(page.getByLabel("Memory limit (MiB)")).toBeVisible();
+  await expect(page.getByText("Allow ownership changes and user switching")).toHaveCount(0);
+  await expect(page.getByLabel("Container port")).toHaveCount(0);
+  // Redis offers cache mode through the regular reviewed save.
+  config = { ...config, image: "redis:8", port: 6379, database: { engine: "redis", version: "8" }, variables: [{ name: "REDIS_PASSWORD", value: "", secret: true, keep: true, hasValue: true, scope: "runtime" }], volumes: [{ name: "data", path: "/data" }] };
+  await page.goto("/applications/application-web?tab=settings&section=database");
+  await expect(page.locator("[data-settings-section=database] .setting-row")).toHaveText([/Password/]);
+  await page.getByLabel("Use as a cache and evict the least recently used keys when memory runs out").check();
+  await expect(page.getByRole("button", { name: "Save and redeploy" })).toBeEnabled();
+});
+
 test("Compose overview service logs survive inventory refreshes without replay",async({page})=>{
   await login(page);const original=await (await page.request.get("/api/applications/application-web")).json();
   const service={name:"api",image:"example/api:v1",port:3000,healthPath:"/",volumes:[],variables:[]};

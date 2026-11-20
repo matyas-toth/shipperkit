@@ -118,7 +118,7 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 			return sourceKind(a.Config)
 		}(), sourceRef(a.Config), method, now, now, cfg, string(domains))
 	} else {
-		if d.Operation != "delete" {
+		if d.Operation != "delete" && !d.CredentialRotation {
 			var oldRaw string
 			if err = tx.QueryRowContext(ctx, "SELECT config_json FROM applications WHERE id=? AND deleted_at=0", a.ID).Scan(&oldRaw); err != nil {
 				return d, err
@@ -356,6 +356,12 @@ func sourceKind(c Config) string {
 	return "git"
 }
 
+// ApplicationBusy reports a running deployment, task or backup operation.
+func (s *Store) ApplicationBusy(ctx context.Context, app string) (bool, error) {
+	var busy int
+	e := s.db.QueryRowContext(ctx, "SELECT (SELECT COUNT(*) FROM deployments WHERE application_id=? AND state NOT IN ('succeeded','failed','interrupted','cancelled'))+(SELECT count(*) FROM backup_runs WHERE application_id=? AND state IN ('queued','running'))", app, app).Scan(&busy)
+	return busy > 0, e
+}
 func (s *Store) ConfigRevision(a Application) string {
 	data, _ := json.Marshal(struct {
 		Config Config

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterContainers, portLabel, statusOf, bytes, deploymentSeconds, formatDuration, applicationState, methodLabel, certificateIssuing } from "./data";
+import { filterContainers, portLabel, statusOf, bytes, deploymentSeconds, formatDuration, applicationState, methodLabel, certificateIssuing, databaseIdentity } from "./data";
 import type { Container, Deployment, Application } from "./types";
 const running: Container = { id: "abc", name: "API", image: "example/api:v1", state: "running", health: "", status: "Up", createdAt: 0, ports: [], managed: true };
 describe("inventory presentation", () => {
@@ -48,5 +48,11 @@ describe("deployment history", () => {
   it("names the serving method after a stop or domain change", () => {
     const app = { method:"auto",activeMethod:"railpack",containers:[],config:{},latestDeployment:{operation:"stop",resolvedMethod:""} } as unknown as Application;
     expect(methodLabel(app)).toBe("Railpack");
+  });
+  it("reads a managed database's chosen user and database", () => {
+    const config = { database: { engine: "mongodb", version: "8" }, variables: [{ name: "MONGO_INITDB_ROOT_USERNAME", value: "shop" }, { name: "MONGO_INITDB_DATABASE", value: "orders" }] } as never;
+    expect(databaseIdentity(config)).toEqual({ user: "shop", database: "orders" });
+    expect(databaseIdentity({ database: { engine: "postgresql", version: "18" }, variables: [] } as never)).toEqual({ user: "app", database: "app" });
+    expect(databaseIdentity({ database: { engine: "redis", version: "8" }, variables: [] } as never)).toBeUndefined();
   });
 });

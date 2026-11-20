@@ -29,6 +29,8 @@ func buildConfig(c store.Config) store.Config {
 	c.Port = 0
 	c.HealthPath = ""
 	c.MemoryMB = 0
+	// Engine and version never change in place; the rest are runtime options.
+	c.Database = nil
 	c.Volumes = nil
 	c.VolumeSources = nil
 	c.Domains = nil
@@ -157,7 +159,7 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	var left, right map[string]any
 	json.Unmarshal(a, &left)
 	json.Unmarshal(b, &right)
-	labels := map[string]string{"localSource": "Source files", "networking": "Networking", "runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration"}
+	labels := map[string]string{"localSource": "Source files", "networking": "Networking", "runtime": "Runtime policy", "repository": "Repository", "branch": "Revision", "method": "Deployment method", "rootDirectory": "Application directory", "dockerfile": "Dockerfile", "installCommand": "Install command", "buildCommand": "Build command", "startCommand": "Start command", "publishDirectory": "Publish directory", "routing": "Static routing", "htaccess": ".htaccess", "port": "Container port", "healthPath": "Health check", "memoryMB": "Memory limit", "volumes": "Volumes", "hooks": "Lifecycle commands", "startupPolicy": "Readiness", "composeFile": "Compose file", "composeSource": "Compose source", "composeYAML": "Compose source", "autoDeploy": "Automatic deployments", "image": "Image", "registryId": "Registry", "platform": "Platform", "inlineDockerfile": "Dockerfile source", "sourceId": "Source connection", "services": "Service configuration", "database": "Database settings"}
 	for key, label := range labels {
 		if !reflect.DeepEqual(left[key], right[key]) && !slices.Contains(p.Changes, label) {
 			p.Changes = append(p.Changes, label)

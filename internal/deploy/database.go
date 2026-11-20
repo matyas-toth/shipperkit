@@ -161,9 +161,14 @@ func DatabaseURI(d store.Deployment) (string, error) {
 		if (user == "") != (password == "") {
 			return "", errors.New("Set both MongoDB root credentials in the database environment")
 		}
+		query := url.Values{}
 		if user != "" {
-			u.RawQuery = "authSource=admin"
+			query.Set("authSource", "admin")
 		}
+		if d.Config.Database != nil {
+			query.Set("replicaSet", MongoReplicaSet)
+		}
+		u.RawQuery = query.Encode()
 	case "clickhouse":
 		user, password, database = env["CLICKHOUSE_USER"], env["CLICKHOUSE_PASSWORD"], env["CLICKHOUSE_DB"]
 		if user == "" || password == "" {

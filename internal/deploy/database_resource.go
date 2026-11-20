@@ -79,6 +79,63 @@ func DatabaseResourceConfig(engine, version string) (store.Config, error) {
 	}
 	return c, nil
 }
+
+// DatabaseIdentityKeys names the variables holding the user and database an
+// engine creates on its first start. Engines without them return empty keys.
+func DatabaseIdentityKeys(engine string) (string, string) {
+	switch engine {
+	case "postgresql":
+		return "POSTGRES_USER", "POSTGRES_DB"
+	case "mysql":
+		return "MYSQL_USER", "MYSQL_DATABASE"
+	case "mariadb":
+		return "MARIADB_USER", "MARIADB_DATABASE"
+	case "mongodb":
+		return "MONGO_INITDB_ROOT_USERNAME", "MONGO_INITDB_DATABASE"
+	case "clickhouse":
+		return "CLICKHOUSE_USER", "CLICKHOUSE_DB"
+	}
+	return "", ""
+}
+
+var databaseIdentifier = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
+var reservedDatabaseUsers = map[string]bool{"root": true, "default": true, "admin": true, "mysql": true, "public": true}
+var reservedDatabaseNames = map[string]bool{"admin": true, "local": true, "config": true, "mysql": true, "information_schema": true, "performance_schema": true, "sys": true, "system": true, "template0": true, "template1": true}
+
+// NamedDatabaseResourceConfig sets the user and database once, at creation. The
+// official images only read them while initializing an empty data directory.
+func NamedDatabaseResourceConfig(engine, version, user, database string) (store.Config, error) {
+	c, e := DatabaseResourceConfig(engine, version)
+	if e != nil {
+		return c, e
+	}
+	userKey, databaseKey := DatabaseIdentityKeys(engine)
+	if userKey == "" {
+		return c, nil
+	}
+	user, database = strings.TrimSpace(user), strings.TrimSpace(database)
+	if user == "" {
+		user = "app"
+	}
+	if database == "" {
+		database = "app"
+	}
+	if !databaseIdentifier.MatchString(user) || reservedDatabaseUsers[user] || strings.HasPrefix(user, "pg_") {
+		return c, errors.New("Use a user name of lowercase letters, digits and underscores that is not reserved")
+	}
+	if !databaseIdentifier.MatchString(database) || reservedDatabaseNames[database] || strings.HasPrefix(database, "pg_") {
+		return c, errors.New("Use a database name of lowercase letters, digits and underscores that is not reserved")
+	}
+	for i := range c.Variables {
+		switch c.Variables[i].Name {
+		case userKey:
+			c.Variables[i].Value = user
+		case databaseKey:
+			c.Variables[i].Value = database
+		}
+	}
+	return c, nil
+}
 func databaseEnvironment(c store.Config) map[string]string {
 	m := map[string]string{}
 	for _, v := range c.Variables {
@@ -104,6 +161,9 @@ func ValidateDatabaseResource(c store.Config) error {
 	}
 	if len(c.Volumes) != 1 || c.Volumes[0] != preset.Volumes[0] {
 		return errors.New("Keep the database data volume at its engine's data directory")
+	}
+	if c.Database.Cache && c.Database.Engine != "redis" {
+		return errors.New("Only Redis databases run as a cache")
 	}
 	host := c.Database.TLSHostname
 	if host != "" && !databaseTLSCapable(c.Database.Engine) {

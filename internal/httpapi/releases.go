@@ -47,6 +47,7 @@ func (s *Server) rollbackRelease(w http.ResponseWriter, r *http.Request) {
 	// Domains and trigger policy have independent histories and stay current.
 	next := target.Config
 	next.AutoDeploy = a.Config.AutoDeploy
+	store.KeepDatabaseCredentials(&next, a.Config)
 	if next.SourceID == "" || next.Method == "image" || next.Method == "inline" {
 		// Only switching it off is meaningful; resetting the other fields would
 		// list "Automatic deployments" as a change when nothing changes.

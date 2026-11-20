@@ -6,6 +6,8 @@ export default function RuntimeFields(props: {
   value?: RuntimePolicy;
   change: (value: RuntimePolicy) => void;
   service?: boolean;
+  // Managed databases have fixed networking, readiness and permissions.
+  database?: boolean;
   connectivity?: JSX.Element;
   expanded?: boolean;
   memory?: JSX.Element;
@@ -40,7 +42,7 @@ export default function RuntimeFields(props: {
       step: 1,
       default: 10,
     },
-    ...(!props.service
+    ...(!props.service && !props.database
       ? [
           {
             key: "drainSeconds",
@@ -84,10 +86,10 @@ export default function RuntimeFields(props: {
     <div class="form-fields">{compatibility()}</div>
   </details>}>
     <div class="runtime-groups">
-      <section class="runtime-group"><h4>Network and health</h4><div class="form-fields field-pairs">{props.connectivity}</div></section>
-      <section class="runtime-group"><h4>Resources</h4><div class="form-fields field-pairs">{props.memory}{limits(["cpus"])}</div></section>
-      <Show when={!props.service}><section class="runtime-group"><h4>Permissions</h4><div class="form-fields">{compatibility()}</div></section></Show>
-      <details class="configuration runtime-configuration"><summary>Advanced runtime<Icon name="down" /></summary><div class="form-fields field-pairs configuration-fields">{props.advanced}{limits(["startupSeconds", "pids", "stopSeconds", "drainSeconds"])}{restart()}</div></details>
+      <Show when={!props.database}><section class="runtime-group"><h4>Network and health</h4><div class="form-fields field-pairs">{props.connectivity}</div></section></Show>
+      <section class="runtime-group"><Show when={!props.database}><h4>Resources</h4></Show><div class="form-fields field-pairs">{props.memory}{limits(["cpus"])}</div></section>
+      <Show when={!props.service && !props.database}><section class="runtime-group"><h4>Permissions</h4><div class="form-fields">{compatibility()}</div></section></Show>
+      <details class="configuration runtime-configuration"><summary>Advanced runtime<Icon name="down" /></summary><div class="form-fields field-pairs configuration-fields">{props.database ? undefined : props.advanced}{limits(["startupSeconds", "pids", "stopSeconds", "drainSeconds"])}{restart()}</div></details>
     </div>
   </Show>;
 }

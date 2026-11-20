@@ -375,6 +375,8 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 	if e := r.configureDatabaseTLS(ctx, d, configuration); e != nil {
 		return "", e
 	}
+	configureMongo(d, configuration)
+	configureClickHouse(d, configuration)
 	endpoints, e := r.applicationEndpoints(ctx, d)
 	if e != nil {
 		return "", e
@@ -424,6 +426,10 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 		cpus = int64(d.Config.Runtime.CPUs * 1e9)
 	}
 	pids := int64(256)
+	if d.Config.Database != nil && d.Config.Database.Engine == "clickhouse" {
+		// ClickHouse starts hundreds of background threads and aborts below that.
+		pids = 4096
+	}
 	if d.Config.Runtime.PIDs > 0 {
 		pids = d.Config.Runtime.PIDs
 	}
@@ -437,6 +443,9 @@ func (r *DockerRuntime) Start(ctx context.Context, d store.Deployment) (string, 
 		return "", e
 	}
 	if e = r.seedDatabaseTLS(ctx, d, c.ID); e != nil {
+		return c.ID, e
+	}
+	if e = r.seedMongoKey(ctx, d, c.ID); e != nil {
 		return c.ID, e
 	}
 	if d.TaskCommand != nil {

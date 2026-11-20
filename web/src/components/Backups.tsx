@@ -4,7 +4,7 @@ import { docs } from "../docs";
 import { api, post } from "../api";
 import { useAuth } from "../context";
 import type { Application, Service, StaticConfig } from "../types";
-import { bytes, formatDuration, operationTime } from "../data";
+import { bytes, databaseIdentity, formatDuration, operationTime } from "../data";
 import { ActionMenu, Button, ErrorNotice, IconButton, Status } from "./Controls";
 import EditorActions from "./EditorActions";
 import SchedulePicker from "./SchedulePicker";
@@ -214,7 +214,7 @@ export default function Backups(props: {
     let prefilled = false;
     if (database) {
       config.engine = database.engine === "postgresql" ? "postgres" : database.engine;
-      config.database = "app";
+      config.database = databaseIdentity(props.application?.config)?.database ?? "app";
       if (["redis", "clickhouse", "sqlite"].includes(database.engine)) {
         config.kind = "volume";
         config.engine = database.engine;

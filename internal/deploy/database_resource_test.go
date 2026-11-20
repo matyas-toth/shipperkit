@@ -93,7 +93,7 @@ func TestDatabaseResourceEngineConnections(t *testing.T) {
 		if password != databaseEnvironment(c)[tc.password] {
 			t.Fatal(tc.engine, "wrong password")
 		}
-		if tc.engine == "mongodb" && u.Query().Get("authSource") != "admin" {
+		if tc.engine == "mongodb" && (u.Query().Get("authSource") != "admin" || u.Query().Get("replicaSet") != MongoReplicaSet) {
 			t.Fatal("Mongo authentication database missing")
 		}
 	}

@@ -639,11 +639,14 @@ func mongoConnection(c store.BackupSpec, database string) string {
 	if c.User != "" {
 		u.User = url.UserPassword(c.User, c.Password)
 	}
+	// Tools inside the container talk to this server alone, even when it is a
+	// replica set member advertising its private name.
+	query := u.Query()
+	query.Set("directConnection", "true")
 	if c.User != "" {
-		query := u.Query()
 		query.Set("authSource", "admin")
-		u.RawQuery = query.Encode()
 	}
+	u.RawQuery = query.Encode()
 	return u.String()
 }
 func (r *DockerRuntime) dumpMongoDatabase(ctx context.Context, id string, c store.BackupSpec, file string) (string, error) {

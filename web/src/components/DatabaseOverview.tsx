@@ -1,7 +1,7 @@
 import { Show, createMemo } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
-import { operationTime } from "../data";
+import { databaseIdentity, operationTime } from "../data";
 import type { Application, ApplicationDetail, Inventory } from "../types";
 import { Button, Status } from "./Controls";
 import { Icon } from "./Icon";
@@ -46,9 +46,10 @@ export default function DatabaseOverview(props: {
     if (!engine || !info()) return undefined;
     if (engine === "sqlite") return "sqlite:///home/sqlite/app.db";
     const scheme = engine === "postgresql" ? "postgresql" : engine === "mongodb" ? "mongodb" : engine === "clickhouse" ? "clickhouse" : engine === "redis" ? "rediss" : "mysql";
-    const user = engine === "redis" ? "default" : "app";
-    const path = engine === "redis" ? "0" : "app";
-    const query = engine === "postgresql" ? "?sslmode=require" : engine === "mongodb" ? "?authSource=admin" : "";
+    const identity = databaseIdentity(props.application.config);
+    const user = engine === "redis" ? "default" : identity?.user ?? "app";
+    const path = engine === "redis" ? "0" : identity?.database ?? "app";
+    const query = engine === "postgresql" ? "?sslmode=require" : engine === "mongodb" ? "?authSource=admin&replicaSet=rs0" : "";
     return scheme + "://" + user + ":••••@" + address() + "/" + path + query;
   };
   const publicAccess = () => database()?.engine === "sqlite" ? "File volume" : ports().length ? ports().map(port => port.hostPort + "/" + port.protocol + " → " + port.containerPort).join(", ") : "No public ports";

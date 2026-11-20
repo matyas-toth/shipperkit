@@ -118,6 +118,8 @@ func TestSpecificCausesNameTheRootCause(t *testing.T) {
 	}{
 		{[]string{"npm warn config production Use `--omit=dev` instead.", "Error: MongoDB error", "Kind: Server selection timeout: failed to lookup address information: Name or service not known", "before start failed: exit status 1"}, "host_unresolved", "Name or service not known"},
 		{[]string{"wget: bad address 'db-0123'"}, "host_unresolved", "bad address"},
+		{[]string{"Invalid `prisma.user.create()` invocation:", "Prisma needs to perform transactions, which requires your MongoDB server to be run as a replica set. https://pris.ly/d/mongodb-replica-set"}, "mongodb_replica_set", "replica set"},
+		{[]string{"MongoServerError: Transaction numbers are only allowed on a replica set member or mongos"}, "mongodb_replica_set", "Transaction numbers"},
 		{[]string{"Error: connect ECONNREFUSED 10.0.0.2:5432"}, "connection_refused", "ECONNREFUSED"},
 		{[]string{`nginx: [emerg] chown("/var/cache/nginx/client_temp", 101) failed (1: Operation not permitted)`}, "permissions_restricted", "chown("},
 		{[]string{"(1)Operation not permitted: AH02156: setgid: unable to set group id to Group 33"}, "permissions_restricted", "AH02156"},

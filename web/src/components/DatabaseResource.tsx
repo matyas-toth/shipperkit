@@ -23,6 +23,9 @@ export default function DatabaseResource(props: { prepare: (config: StaticConfig
   const [engine, setEngine] = createSignal(engines[0]);
   const [version, setVersion] = createSignal(engines[0].versions[0]);
   const [name, setName] = createSignal("");
+  const [user, setUser] = createSignal(""), [databaseName, setDatabaseName] = createSignal("");
+  // Redis and SQLite have no user or database to name.
+  const named = () => !["redis", "sqlite"].includes(engine().id);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
   const selectedName = createMemo(() => name().trim() || engine().name);
@@ -35,7 +38,7 @@ export default function DatabaseResource(props: { prepare: (config: StaticConfig
     setBusy(true);
     setError("");
     try {
-      const result = await post<{ config: StaticConfig }>("/database-resources/prepare", { engine: engine().id, version: version() }, auth.session()?.csrfToken);
+      const result = await post<{ config: StaticConfig }>("/database-resources/prepare", { engine: engine().id, version: version(), ...(named() ? { user: user().trim(), database: databaseName().trim() } : {}) }, auth.session()?.csrfToken);
       await props.prepare(result.config, selectedName());
     } catch (e) {
       setError((e as Error).message);
@@ -69,6 +72,16 @@ export default function DatabaseResource(props: { prepare: (config: StaticConfig
         <label for="database-name">Name</label>
         <input id="database-name" class="input" maxlength="80" placeholder={engine().name} value={name()} onInput={e => setName(e.currentTarget.value)} />
       </div>
+      <Show when={named()}>
+        <div class="form-fields">
+          <label for="database-user">User</label>
+          <input id="database-user" class="input" maxlength="63" pattern="[a-z_][a-z0-9_]*" placeholder="app" autocomplete="off" spellcheck={false} value={user()} onInput={e => setUser(e.currentTarget.value)} />
+        </div>
+        <div class="form-fields">
+          <label for="database-database">Database</label>
+          <input id="database-database" class="input" maxlength="63" pattern="[a-z_][a-z0-9_]*" placeholder="app" autocomplete="off" spellcheck={false} value={databaseName()} onInput={e => setDatabaseName(e.currentTarget.value)} />
+        </div>
+      </Show>
     </div>
     </div>
     <div class="form-actions creation-actions database-create-actions">

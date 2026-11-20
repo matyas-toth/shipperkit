@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"shipper/internal/store"
+	"strconv"
 	"time"
 )
 
@@ -145,6 +146,7 @@ func (r *DockerRuntime) configureDatabaseTLS(ctx context.Context, d store.Deploy
 	case "redis":
 		health = `REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --tls --cacert /shipper-tls/ca.crt -h 127.0.0.1 PING | grep -qx PONG`
 		c.Cmd = []string{"redis-server", "--appendonly", "yes", "--port", "0", "--tls-port", "6379", "--tls-cert-file", "/shipper-tls/server.crt", "--tls-key-file", "/shipper-tls/server.key", "--tls-ca-cert-file", "/shipper-tls/ca.crt", "--tls-auth-clients", "no", "--requirepass", databaseEnvironment(d.Config)["REDIS_PASSWORD"]}
+		c.Cmd = append(c.Cmd, redisCacheArgs(d.Config)...)
 	}
 	c.Healthcheck = &container.HealthConfig{Test: []string{"CMD-SHELL", health}, Interval: 2 * time.Second, Timeout: 5 * time.Second, Retries: 3, StartPeriod: 240 * time.Second}
 	return nil
@@ -182,4 +184,17 @@ func (r *DockerRuntime) seedDatabaseTLS(ctx context.Context, d store.Deployment,
 	}
 	_, e = r.Client.CopyToContainer(ctx, id, client.CopyToContainerOptions{DestinationPath: "/", Content: &buf, CopyUIDGID: true})
 	return e
+}
+
+// redisCacheArgs leave a quarter of the memory limit for Redis itself, so
+// eviction starts well before the kernel kills the container.
+func redisCacheArgs(c store.Config) []string {
+	if c.Database == nil || !c.Database.Cache {
+		return nil
+	}
+	memory := c.MemoryMB
+	if memory <= 0 {
+		memory = 512
+	}
+	return []string{"--maxmemory", strconv.FormatInt(memory*3/4, 10) + "mb", "--maxmemory-policy", "allkeys-lru"}
 }

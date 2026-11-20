@@ -10,6 +10,7 @@ import RuntimeFields from "./RuntimeFields";
 import { MemoryLimitField, ReadinessField, RuntimeConnectivity } from "./DeployFields";
 import { Icon } from "./Icon";
 import EditorActions from "./EditorActions";
+import DatabaseSettings from "./DatabaseSettings";
 import { createdDate } from "../data";
 
 const areas = [
@@ -18,6 +19,7 @@ const areas = [
   { id: "runtime", label: "Runtime", icon: "terminal" },
   { id: "storage", label: "Storage", icon: "database" },
   { id: "commands", label: "Deployment commands", icon: "code" },
+  { id: "database", label: "Credentials", icon: "key" },
 ] as const;
 type SettingsArea = (typeof areas)[number]["id"];
 
@@ -56,7 +58,11 @@ export default function ApplicationSettings(props: {
   const inlineCompose = () => config.method === "compose" && config.composeSource === "paste";
   const requested = () => areas.find(item => item.id === props.section)?.id;
   const [area, setArea] = createSignal<SettingsArea>(requested() ?? (props.showSource || inlineCompose() ? "source" : "general"));
-  const visibleAreas = () => areas.filter(item => config.method !== "compose" || !["runtime", "storage"].includes(item.id));
+  // A managed database keeps its engine's image, storage and commands.
+  const database = () => !!props.application.config.database;
+  const visibleAreas = () => database()
+    ? (["general", "database", "runtime"] as const).map(id => { const item = areas.find(entry => entry.id === id)!; return id === "runtime" ? { ...item, label: "Resources", icon: "sliders" as const } : item; })
+    : areas.filter(item => item.id !== "database" && (config.method !== "compose" || !["runtime", "storage"].includes(item.id)));
   const hasSavedCompose = () => props.application.config.composeSource === "paste" &&
     !!(props.application.config.composeKeep || props.application.config.composeHasValue);
   const composeEdited = () => inlineCompose() && (config.composeKeep === false && hasSavedCompose() || !!config.composeYAML);
@@ -80,7 +86,12 @@ export default function ApplicationSettings(props: {
       // A new name applies right away; configuration changes still go through the review.
       if (renamed()) await props.rename(name().trim());
       if (!configDirty()) return;
-      await props.save({ ...config, variables: props.application.config.variables, services: props.application.config.services });
+      // A database only changes its resources and engine options, so the
+      // defaults the form fills in for other methods never reach the review.
+      const saved = props.application.config;
+      await props.save(database()
+        ? { ...saved, memoryMB: config.memoryMB, runtime: config.runtime, database: config.database }
+        : { ...config, variables: saved.variables, services: saved.services });
     } catch (e) { setError((e as Error).message); }
     finally { setReviewing(false); }
   }
@@ -110,7 +121,7 @@ export default function ApplicationSettings(props: {
             </Disclosure>
           </div>
         </section>
-        <form id={formId} noValidate onSubmit={save} class="app-config-form" classList={{ "is-general": area() === "general" && !dirty() }}>
+        <form id={formId} noValidate onSubmit={save} class="app-config-form" classList={{ "is-general": (area() === "general" || area() === "database" && props.application.config.database?.engine !== "redis") && !dirty() }}>
           <section class="app-settings-pane" data-settings-section="source" hidden={area() !== "source"}>
             <h3>Source and build</h3>
             <div class="form-fields app-settings-fields">
@@ -120,8 +131,8 @@ export default function ApplicationSettings(props: {
           </section>
           <Show when={config.method !== "compose"}>
             <section class="app-settings-pane" data-settings-section="runtime" hidden={area() !== "runtime"}>
-              <h3>Runtime</h3>
-              <RuntimeFields value={config.runtime} change={runtime => setConfig("runtime", runtime)} expanded
+              <h3>{database() ? "Resources" : "Runtime"}</h3>
+              <RuntimeFields value={config.runtime} change={runtime => setConfig("runtime", runtime)} expanded database={database()}
                 connectivity={<RuntimeConnectivity config={config} change={(key, value) => setConfig(key, value as never)} method={config.method} withoutMemory withoutReadiness />}
                 memory={<MemoryLimitField config={config} change={(key, value) => setConfig(key, value as never)} />}
                 advanced={config.method !== "static" ? <ReadinessField config={config} change={(key, value) => setConfig(key, value as never)} /> : undefined} />
@@ -129,6 +140,12 @@ export default function ApplicationSettings(props: {
             <section class="app-settings-pane" data-settings-section="storage" hidden={area() !== "storage"}>
               <h3>Storage</h3>
               <Volumes values={config.volumes} change={volumes => setConfig("volumes", volumes)} />
+            </section>
+          </Show>
+          <Show when={database()}>
+            <section class="app-settings-pane" data-settings-section="database" hidden={area() !== "database"}>
+              <h3>Credentials</h3>
+              <DatabaseSettings application={props.application} config={config} busy={props.busy} change={value => setConfig("database", value)} />
             </section>
           </Show>
           <section class="app-settings-pane" data-settings-section="commands" hidden={area() !== "commands"}>
