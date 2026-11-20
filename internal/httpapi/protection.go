@@ -324,6 +324,7 @@ func (s *Server) restoreBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	var in struct {
 		Target   string `json:"target"`
+		Replace  bool   `json:"replace"`
 		Confirm  string `json:"confirm"`
 		Revision string `json:"revision"`
 		Review   bool   `json:"review"`
@@ -350,7 +351,7 @@ func (s *Server) restoreBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	revision := s.db.ConfigRevision(a) + ":" + v.ID
 	if in.Review {
-		s.json(w, 200, map[string]any{"revision": revision, "kind": v.Config.Kind, "engine": v.Config.Engine, "database": v.Config.Database, "service": v.Config.Service, "volume": v.Config.Volume})
+		s.json(w, 200, map[string]any{"revision": revision, "kind": v.Config.Kind, "engine": v.Config.Engine, "database": v.Config.Database, "service": v.Config.Service, "volume": v.Config.Volume, "replace": v.Config.Kind == "database" && deploy.ReplaceSupported(v.Config.Engine)})
 		return
 	}
 	if in.Revision != revision || in.Confirm != a.Name {
@@ -359,6 +360,13 @@ func (s *Server) restoreBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	c := v.Config
 	c.Target = in.Target
+	if in.Replace {
+		if c.Kind != "database" || !deploy.ReplaceSupported(c.Engine) {
+			s.problem(w, 422, "replace_unsupported", "Restore a copy for this database engine")
+			return
+		}
+		c.Target, c.Replace = "", true
+	}
 	if in.Identity != "" {
 		c.Identity = in.Identity
 	}
@@ -374,7 +382,7 @@ func (s *Server) restoreBackup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if c.Kind == "database" && (!deploy.ValidRecoveryDatabase(c.Target) || c.Target == c.Database) {
+	if c.Kind == "database" && !c.Replace && (!deploy.ValidRecoveryDatabase(c.Target) || c.Target == c.Database) {
 		s.problem(w, 422, "invalid_target", "Enter a new database name")
 		return
 	}

@@ -96,8 +96,8 @@ function ImportDialog(props: {
   let panel!: HTMLFormElement;
   const previous = document.activeElement as HTMLElement | null;
   const importLabel = () => props.redis ? "Restore snapshot" : props.mongodb ? "Create from archive" : "Create from dump";
-  const fileHint = () => props.redis ? ".rdb" : props.mongodb ? ".archive or .gz" : props.application.config.database?.engine === "postgresql" ? ".dump or .backup" : ".sql";
-  const fileType = () => props.redis ? ".rdb" : props.mongodb ? ".archive,.gz" : props.application.config.database?.engine === "postgresql" ? ".dump,.backup" : ".sql";
+  const fileHint = () => props.redis ? ".rdb" : props.mongodb ? ".archive or .gz" : props.application.config.database?.engine === "postgresql" ? ".sql, .dump or .backup" : ".sql";
+  const fileType = () => props.redis ? ".rdb" : props.mongodb ? ".archive,.gz" : props.application.config.database?.engine === "postgresql" ? ".sql,.dump,.backup" : ".sql";
   onMount(() => {
     panel.querySelector<HTMLInputElement>("input:not([type=file])")?.focus();
     const key = (event: KeyboardEvent) => {

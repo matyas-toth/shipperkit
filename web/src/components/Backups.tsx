@@ -8,7 +8,7 @@ import { bytes, formatDuration, operationTime } from "../data";
 import { ActionMenu, Button, ErrorNotice, IconButton, Status } from "./Controls";
 import EditorActions from "./EditorActions";
 import SchedulePicker from "./SchedulePicker";
-import { ChoiceCards } from "./Choices";
+import { ChoiceCards, SegmentedChoice } from "./Choices";
 import { Icon } from "./Icon";
 
 interface Spec {
@@ -146,7 +146,9 @@ export default function Backups(props: {
       volume: string;
       service: string;
       engine: string;
+      replace?: boolean;
     }>(),
+    [mode, setMode] = createSignal<"replace" | "copy">("copy"),
     [target, setTarget] = createSignal(""),
     [confirm, setConfirm] = createSignal(""),
     [identity, setIdentity] = createSignal(""),
@@ -161,6 +163,7 @@ export default function Backups(props: {
   createEffect(() => props.editorScope?.(editing() ? editing()?.id ? "Edit schedule" : "New schedule" : importing() ? importLabel() : undefined));
   onCleanup(() => props.editorScope?.());
   const database = () => !!props.application?.config.database;
+  const replacing = () => !!review()?.replace && mode() === "replace";
   const importLabel = () => database() ? "Create from dump" : "Import archive";
   const plans = () =>
     query.data?.plans.filter(
@@ -310,6 +313,7 @@ export default function Backups(props: {
         auth.session()?.csrfToken,
       );
       setReview(data);
+      setMode(data.replace ? "replace" : "copy");
       setConfirm("");
       setTarget(data.database ? data.database + "_recovered" : "");
     });
@@ -322,7 +326,8 @@ export default function Backups(props: {
         {
           revision: review()!.revision,
           confirm: confirm(),
-          target: target(),
+          target: replacing() ? "" : target(),
+          replace: replacing(),
           identity: identity(),
           password: password(),
           user: restoreUser(),
@@ -949,7 +954,7 @@ export default function Backups(props: {
                     >
                       <td>
                         <time class="backup-run-date" datetime={new Date((r.finishedAt || r.createdAt) * 1000).toISOString()}>{whenShort(r.finishedAt || r.createdAt)}</time>
-                        <Show when={!database() || r.operation !== "backup"}><span class="backup-plan-name">{r.operation === "restore" ? "Restore copy" : r.operation === "delete-volume" ? "Delete volume" : (plans().find((p) => p.id === r.planId)?.name ?? "Imported backup")}</span></Show>
+                        <Show when={!database() || r.operation !== "backup"}><span class="backup-plan-name">{r.operation === "restore" ? (r.result.startsWith("Replaced ") ? "Replace data" : "Restore copy") : r.operation === "delete-volume" ? "Delete volume" : (plans().find((p) => p.id === r.planId)?.name ?? "Imported backup")}</span></Show>
                       </td>
                       <td>
                         <Status
@@ -1041,15 +1046,18 @@ export default function Backups(props: {
                     disabled={busy()}
                     onClick={() => void beginRestore(r)}
                   >
-                    Restore a copy
+                    Restore
                   </Button>
                 </Show>
               </div>
             </Show>
             <Show when={review()}>
               <form class="restore-review" onSubmit={restore}>
-                <h3>Restore a copy</h3>
+                <h3>Restore backup</h3>
                 <strong class="review-application">{props.application?.name}</strong>
+                <Show when={review()!.replace}>
+                  <SegmentedChoice label="Restore as" value={mode()} change={setMode} choices={[{ value: "replace", label: "Replace current data" }, { value: "copy", label: "New copy" }]} />
+                </Show>
                 <dl class="settings-group">
                   <div class="setting-row">
                     <dt>Source</dt>
@@ -1061,15 +1069,15 @@ export default function Backups(props: {
                   </div>
                   <div class="setting-row">
                     <dt>Existing data</dt>
-                    <dd>Preserved</dd>
+                    <dd>{replacing() ? "Kept as " + review()!.database + "_before_…" : "Preserved"}</dd>
                   </div>
                   <div class="setting-row">
                     <dt>Application switch</dt>
-                    <dd>Requires a separate change</dd>
+                    <dd>{replacing() ? "None, connections reopen on the restored data" : "Requires a separate change"}</dd>
                   </div>
                 </dl>
                 <div class="form-fields field-pairs restore-fields">
-                  <Show when={review()!.kind === "database"}>
+                  <Show when={review()!.kind === "database" && !replacing()}>
                     <div class="field"><label for="restore-target">New database</label>
                     <input
                       id="restore-target"
@@ -1133,7 +1141,7 @@ export default function Backups(props: {
                     variant="primary"
                     disabled={busy() || confirm() !== props.application?.name}
                   >
-                    {busy() ? "Restoring copy" : "Restore copy"}
+                    {busy() ? (replacing() ? "Replacing data" : "Restoring copy") : replacing() ? "Replace data" : "Restore copy"}
                   </Button>
                 </div>
               </form>

@@ -652,6 +652,10 @@ func candidateCrashed(c container.InspectResponse) error {
 	if stopped {
 		return fmt.Errorf("The application exited with code %d", c.State.ExitCode)
 	}
+	if c.State.ExitCode == 0 {
+		// Between restarts the current attempt has not exited yet.
+		return errors.New("The application keeps restarting")
+	}
 	return fmt.Errorf("The application keeps restarting (exit code %d)", c.State.ExitCode)
 }
 

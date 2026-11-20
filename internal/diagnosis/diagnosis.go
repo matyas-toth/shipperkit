@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"shipper/internal/deploy"
 	"shipper/internal/inventory"
@@ -154,7 +155,7 @@ var specificCauses = []struct {
 	needles []string
 	match   causeMatch
 }{
-	{[]string{"name or service not known", "no such host", "enotfound", "temporary failure in name resolution", "could not translate host name", "nodename nor servname"}, causeMatch{Code: "host_unresolved", Summary: "The application could not resolve a host it connects to. Check the hostname and connect both applications in Networking.", Confidence: "high"}},
+	{[]string{"name or service not known", "no such host", "enotfound", "temporary failure in name resolution", "could not translate host name", "nodename nor servname", "could not resolve host", "bad address"}, causeMatch{Code: "host_unresolved", Summary: "The application could not resolve a host it connects to. Check the hostname and connect both applications in Networking.", Confidence: "high"}},
 	{[]string{"econnrefused", "connection refused"}, causeMatch{Code: "connection_refused", Summary: "A service the application connects to refused the connection.", Confidence: "medium"}},
 	{[]string{"before start failed"}, causeMatch{Code: "before_start_failed", Summary: "The before start command failed, so the application never started.", Confidence: "high"}},
 }
@@ -471,6 +472,16 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 	}
 	if len(evidence) > 6 {
 		evidence = evidence[len(evidence)-6:]
+	}
+	// A failure line can carry a whole log tail; the full logs follow below.
+	for i, line := range evidence {
+		if len(line) > 240 {
+			cut := 240
+			for cut > 0 && !utf8.RuneStart(line[cut]) {
+				cut--
+			}
+			evidence[i] = line[:cut] + "…"
+		}
 	}
 	duration := int64(0)
 	if d.StartedAt > 0 {

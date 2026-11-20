@@ -216,6 +216,7 @@ test("reviewed database copy keeps existing data and requires the application na
             database: "appdb",
             service: "",
             volume: "",
+            replace: true,
           },
         });
       } else {
@@ -242,8 +243,15 @@ test("reviewed database copy keeps existing data and requires the application na
     })
     .click();
   await page
-    .getByRole("button", { name: "Restore a copy", exact: true })
+    .getByRole("button", { name: "Restore", exact: true })
     .click();
+  // Supported engines default to replacing the live data, keeping it aside.
+  await expect(page.getByText("Kept as appdb_before_…", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("New database", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Confirm application name", { exact: true }).fill("Website");
+  await expect(page.getByRole("button", { name: "Replace data", exact: true })).toBeEnabled();
+  await page.getByRole("radio", { name: "New copy", exact: true }).check();
+  await page.getByLabel("Confirm application name", { exact: true }).fill("");
   await expect(page.getByText("Preserved", { exact: true })).toBeVisible();
   await expect(page.getByLabel("New database", { exact: true })).toHaveValue(
     "appdb_recovered",
@@ -260,6 +268,7 @@ test("reviewed database copy keeps existing data and requires the application na
   await expect(page.locator(".restore-review")).toHaveCount(0);
   expect(submitted).toMatchObject({
     target: "appdb_recovered",
+    replace: false,
     confirm: "Website",
     revision: "fixture-review",
   });

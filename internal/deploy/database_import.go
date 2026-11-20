@@ -74,8 +74,22 @@ func (w *Worker) ImportDatabaseDump(ctx context.Context, app, target string, src
 	m := protection.Manifest{Kind: spec.Kind, Instance: runtime.Instance, Application: app, Engine: spec.Engine, Database: spec.Database, CreatedAt: time.Now().Unix(), Consistency: "Native dump import"}
 	files := map[string]string{"database.dump": raw}
 	if spec.Kind == "database" {
-		if spec.Engine == "postgres" && string(magic) != "PGDMP" {
-			return empty, errors.New("Upload a PostgreSQL custom-format dump created with pg_dump -Fc")
+		if spec.Engine == "postgres" && plainSQL(magic) {
+			// Plain pg_dump output is the most common export; prepare it for a
+			// scoped psql import instead of asking for a custom-format dump.
+			filtered := filepath.Join(work, "plain.sql")
+			out, e := os.OpenFile(filtered, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+			if e != nil {
+				return empty, e
+			}
+			e = filterPlainSQL(f, out)
+			if ce := out.Close(); e == nil {
+				e = ce
+			}
+			if e != nil {
+				return empty, e
+			}
+			files["database.dump"] = filtered
 		}
 		if spec.Engine == "mongodb" && !(magic[0] == 0x1f && magic[1] == 0x8b) {
 			return empty, errors.New("Upload a MongoDB archive created with mongodump --archive --gzip")

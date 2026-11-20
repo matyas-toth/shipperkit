@@ -262,8 +262,12 @@ func (w *Worker) protect(ctx context.Context, v *store.BackupRun) error {
 		if m.Service != v.Config.Service {
 			return errors.New("Choose the original database service")
 		}
-		v.Result = v.Config.Target
-		e = runtime.RestoreDatabase(ctx, d, v.Config, m, filepath.Join(work, "database.dump"))
+		if v.Config.Replace {
+			v.Result, e = runtime.ReplaceDatabase(ctx, d, v.Config, m, filepath.Join(work, "database.dump"), v.ID)
+		} else {
+			v.Result = v.Config.Target
+			e = runtime.RestoreDatabase(ctx, d, v.Config, m, filepath.Join(work, "database.dump"))
+		}
 		if e == nil {
 			v.VerifiedAt = time.Now().Unix()
 			source.VerifiedAt = v.VerifiedAt

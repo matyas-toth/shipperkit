@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"os"
+	"strings"
+
 	"shipper/internal/auth"
 	"shipper/internal/store"
 )
@@ -37,14 +39,38 @@ func (r *DockerRuntime) restoreNativeDatabase(ctx context.Context, id string, c 
 		if e = run(append([]string{"createdb", "--owner=" + role}, append(adminArgs, "--", c.Target)...), adminEnv, nil); e != nil {
 			return e
 		}
-		if e = run(append([]string{"pg_restore", "--exit-on-error", "--single-transaction", "--no-owner", "--no-acl", "--dbname=" + c.Target}, args...), env, f); e != nil {
+		// The new name was free, so a failed import leaves nothing behind.
+		imported := false
+		defer func() {
+			if !imported {
+				_ = run(append([]string{"dropdb", "--if-exists", "--force"}, append(adminArgs, "--", c.Target)...), adminEnv, nil)
+			}
+		}()
+		head := make([]byte, 5)
+		n, _ := io.ReadFull(f, head)
+		if _, e = f.Seek(0, 0); e != nil {
+			return e
+		}
+		if plainSQL(head[:n]) {
+			// Restricted mode refuses every psql client command, such as shell
+			// escapes or file access, for the rest of the untrusted script.
+			guard := strings.NewReader(`\restrict ` + auth.Token() + "\n")
+			e = run(append([]string{"psql", "--no-psqlrc", "--quiet", "--set=ON_ERROR_STOP=1", "--single-transaction", "--dbname=" + c.Target}, args...), env, io.MultiReader(guard, f))
+		} else {
+			e = run(append([]string{"pg_restore", "--exit-on-error", "--single-transaction", "--no-owner", "--no-acl", "--dbname=" + c.Target}, args...), env, f)
+		}
+		if e != nil {
 			return e
 		}
 		// Transfer imported objects to the database owner before removing the login.
 		if e = sql(c.Target, "REASSIGN OWNED BY "+role+" TO CURRENT_USER; ALTER DATABASE \""+c.Target+"\" OWNER TO CURRENT_USER"); e != nil {
 			return e
 		}
-		return sql(c.Target, "SELECT count(*) FROM information_schema.tables")
+		if e = sql(c.Target, "SELECT count(*) FROM information_schema.tables"); e != nil {
+			return e
+		}
+		imported = true
+		return nil
 	}
 	tool := "mysql"
 	if c.Engine == "mariadb" {

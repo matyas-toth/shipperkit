@@ -28,7 +28,9 @@ type BackupSpec struct {
 	Destination  string             `json:"destination"`
 	Keep         int                `json:"keep"`
 	Target       string             `json:"target,omitempty"`
-	Identity     string             `json:"identity,omitempty"`
+	// Replace restores over the live database, keeping its previous data.
+	Replace  bool   `json:"replace,omitempty"`
+	Identity string `json:"identity,omitempty"`
 }
 type BackupPlan struct {
 	ID            string     `json:"id"`

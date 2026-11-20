@@ -109,3 +109,24 @@ func TestDiagnosisServicesUsesObservationDetails(t *testing.T) {
 		t.Fatalf("unexpected service: %+v", items[0])
 	}
 }
+
+func TestSpecificCausesNameTheRootCause(t *testing.T) {
+	for _, tc := range []struct {
+		lines []string
+		code  string
+		want  string
+	}{
+		{[]string{"npm warn config production Use `--omit=dev` instead.", "Error: MongoDB error", "Kind: Server selection timeout: failed to lookup address information: Name or service not known", "before start failed: exit status 1"}, "host_unresolved", "Name or service not known"},
+		{[]string{"wget: bad address 'db-0123'"}, "host_unresolved", "bad address"},
+		{[]string{"Error: connect ECONNREFUSED 10.0.0.2:5432"}, "connection_refused", "ECONNREFUSED"},
+		{[]string{"npm warn deprecated thing", "Error: Cannot find module 'prisma'", "before start failed: exit status 1"}, "before_start_failed", "Cannot find module"},
+	} {
+		cause, detail, ok := specificCause(tc.lines)
+		if !ok || cause.Code != tc.code || !strings.Contains(detail, tc.want) {
+			t.Fatalf("%v: got %s %q", tc.lines, cause.Code, detail)
+		}
+	}
+	if line := errorLine([]string{"Error: real problem", "npm warn config production", "Datasource loaded"}); line != "Error: real problem" {
+		t.Fatalf("error line %q", line)
+	}
+}

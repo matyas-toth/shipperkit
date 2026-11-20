@@ -414,6 +414,12 @@ func (r *DockerRuntime) protectionExecDiagnostics(ctx context.Context, id string
 					reason = "Database authentication failed; update the backup connection credentials"
 				case strings.Contains(message, "ssl") || strings.Contains(message, "tls") || strings.Contains(message, "secure connection"):
 					reason = "Database TLS negotiation failed; review the connection TLS mode and trust material"
+				case strings.Contains(message, `invalid command \restrict`):
+					reason = "Update the database image to its latest minor version to import plain SQL dumps"
+				case strings.Contains(message, "backslash commands are restricted"):
+					reason = "The SQL dump contains psql commands; export it with pg_dump without client commands"
+				case strings.Contains(message, "psql:<stdin>") && strings.Contains(message, "error:"):
+					reason = "The SQL dump failed to apply; export one database with pg_dump and import it into the same or a newer PostgreSQL version"
 				case strings.Contains(message, "already exists"):
 					reason = "The recovery database already exists; choose a new name"
 				case strings.Contains(message, "permission denied") || strings.Contains(message, "privilege"):
