@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.33](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.32...v1.0.0-rc.33) (2026-11-20)
+
+
+### Bug Fixes
+
+* iron out networking, diagnosis, domains and lifecycle bugs before 1.0 ([#83](https://github.com/matyas-toth/shipperkit/issues/83)) ([c3219eb](https://github.com/matyas-toth/shipperkit/commit/c3219eb4b8215f8c0267cf3d1343b0b0c5ac09d1))
+
 ## [1.0.0-rc.32](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.31...v1.0.0-rc.32) (2026-11-20)
 
 
