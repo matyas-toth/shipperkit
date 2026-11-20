@@ -83,19 +83,77 @@ func (s *Server) serverAddress(r *http.Request, config deploy.ProxyConfig) strin
 	if ok && time.Now().Before(cached.expires) {
 		return cached.value
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 	value := ""
-	if ips, e := net.DefaultResolver.LookupNetIP(ctx, "ip", host); e == nil {
+	// Behind a CDN the hostname resolves to the CDN's edge, never to this server.
+	// Pointing app domains there would make every new application unreachable.
+	proxied := r.Header.Get("Cf-Ray") != "" || r.Header.Get("Cdn-Loop") != ""
+	if ips, e := net.DefaultResolver.LookupNetIP(ctx, "ip", host); e == nil && !proxied {
 		for _, ip := range ips {
-			if deploy.PublicAddress(ip) && (value == "" || ip.Is4()) {
+			if deploy.PublicAddress(ip) && !cdnAddress(ip) && (value == "" || ip.Is4()) {
 				value = ip.Unmap().String()
 			}
 		}
 	}
+	if value == "" && (proxied || r.Header.Get("X-Forwarded-For") != "") {
+		value = egressAddress(ctx)
+	}
 	addressCache.Lock()
 	addressCache.values[host] = cachedAddress{value: value, expires: time.Now().Add(5 * time.Minute)}
 	addressCache.Unlock()
+	return value
+}
+
+// cdnRanges are Cloudflare's published edge ranges. A dashboard hostname that
+// resolves into them is proxied, so its address says nothing about this server.
+var cdnRanges = func() []netip.Prefix {
+	prefixes := []netip.Prefix{}
+	for _, raw := range []string{"173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22", "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32"} {
+		prefixes = append(prefixes, netip.MustParsePrefix(raw))
+	}
+	return prefixes
+}()
+
+func cdnAddress(ip netip.Addr) bool {
+	ip = ip.Unmap()
+	for _, prefix := range cdnRanges {
+		if prefix.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+var egressCache = struct {
+	sync.Mutex
+	value   string
+	expires time.Time
+}{}
+
+// egressAddress asks the same address echo the installer uses for this
+// server's public IPv4 address. It is only consulted when the dashboard is
+// reached through a proxy and the address is otherwise unknown.
+var egressAddress = func(ctx context.Context) string {
+	egressCache.Lock()
+	defer egressCache.Unlock()
+	if time.Now().Before(egressCache.expires) {
+		return egressCache.value
+	}
+	value := ""
+	req, _ := http.NewRequestWithContext(ctx, "GET", "https://api.ipify.org", nil)
+	if res, e := http.DefaultClient.Do(req); e == nil {
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 64))
+		res.Body.Close()
+		if ip, e := netip.ParseAddr(strings.TrimSpace(string(body))); e == nil && res.StatusCode == 200 && deploy.PublicAddress(ip) && !cdnAddress(ip) {
+			value = ip.Unmap().String()
+		}
+	}
+	egressCache.value = value
+	egressCache.expires = time.Now().Add(time.Hour)
+	if value == "" {
+		egressCache.expires = time.Now().Add(time.Minute)
+	}
 	return value
 }
 
@@ -510,6 +568,7 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		}
 		old.AutoDeploy = current.Config.AutoDeploy
 		plan := deploy.PlanChanges(old, a.Config)
+		plan.Changes = s.describeConnections(r.Context(), plan.Changes, old.Networking, a.Config.Networking)
 		plan.Revision = s.db.ChangeRevision(current, a)
 		s.json(w, 200, plan)
 		return

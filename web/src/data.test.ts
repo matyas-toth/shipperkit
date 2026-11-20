@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { filterContainers, portLabel, statusOf, bytes, deploymentSeconds, formatDuration, applicationState } from "./data";
+import { filterContainers, portLabel, statusOf, bytes, deploymentSeconds, formatDuration, applicationState, methodLabel } from "./data";
 import type { Container, Deployment, Application } from "./types";
 const running: Container = { id: "abc", name: "API", image: "example/api:v1", state: "running", health: "", status: "Up", createdAt: 0, ports: [], managed: true };
 describe("inventory presentation", () => {
@@ -34,5 +34,9 @@ describe("deployment history", () => {
     expect(applicationState({...app,latestDeployment:{state:"building"} as Deployment})).toBe("building");
     expect(applicationState({...app,desiredState:"stopped",state:"degraded"})).toBe("stopped");
     expect(applicationState({...app,desiredState:"stopped",latestDeployment:{state:"starting"} as Deployment})).toBe("starting");
+  });
+  it("names the serving method after a stop or domain change", () => {
+    const app = { method:"auto",activeMethod:"railpack",containers:[],config:{},latestDeployment:{operation:"stop",resolvedMethod:""} } as unknown as Application;
+    expect(methodLabel(app)).toBe("Railpack");
   });
 });

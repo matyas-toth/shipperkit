@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/netip"
 	"regexp"
 	"strconv"
@@ -528,6 +529,12 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 		if !owned(info.Container.Config.Labels, r.Instance, d.ApplicationID) {
 			return errors.New("Candidate ownership check failed")
 		}
+		// A crash loop or a failing before start command never recovers on its own.
+		// Fail now instead of waiting out the whole startup window.
+		if failure := candidateCrashed(info.Container); failure != nil {
+			last = failure
+			break
+		}
 		if info.Container.State.Running {
 			if d.Config.StartupPolicy == "process" {
 				waiting := false
@@ -579,6 +586,10 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 			}
 			out, probeError := r.probeHTTP(deadline, target, ReleasePort(d), target, healthPath)
 			e = probeError
+			if e != nil && deadline.Err() == nil {
+				// The probe's own exit status means nothing to the reader.
+				e = fmt.Errorf("Nothing answered on port %d", ReleasePort(d))
+			}
 			if e == nil {
 				line, _, _ := strings.Cut(string(out), "\r\n")
 				parts := strings.Fields(line)
@@ -605,7 +616,7 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 	}
 	diagnostic, cancelDiagnostic := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
 	defer cancelDiagnostic()
-	if logs, e := r.Client.ContainerLogs(diagnostic, d.ContainerID, client.ContainerLogsOptions{ShowStderr: true, Tail: "4"}); e == nil {
+	if logs, e := r.Client.ContainerLogs(diagnostic, d.ContainerID, client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Tail: "12"}); e == nil {
 		defer logs.Close()
 		var output strings.Builder
 		writer := &logWriter{emit: func(line string) error {
@@ -622,6 +633,26 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 		}
 	}
 	return fmt.Errorf("The candidate did not pass its HTTP health check: %w", last)
+}
+
+// candidateCrashed reports a candidate that cannot become healthy: one that
+// keeps restarting, or one that exited under a policy that never restarts it.
+func candidateCrashed(c container.InspectResponse) error {
+	if c.State == nil || c.State.Running && c.RestartCount < 3 {
+		return nil
+	}
+	policy := container.RestartPolicyMode("")
+	if c.HostConfig != nil {
+		policy = c.HostConfig.RestartPolicy.Name
+	}
+	stopped := !c.State.Running && c.State.Status == "exited" && (policy == "" || policy == container.RestartPolicyDisabled)
+	if c.RestartCount < 3 && !stopped {
+		return nil
+	}
+	if stopped {
+		return fmt.Errorf("The application exited with code %d", c.State.ExitCode)
+	}
+	return fmt.Errorf("The application keeps restarting (exit code %d)", c.State.ExitCode)
 }
 
 // Routing references only the committed active release. All names and hosts have
@@ -745,6 +776,10 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, active map[string]store.Deployment) error {
 	if err := r.reconcileApplicationAliases(ctx, active); err != nil {
 		return err
+	}
+	// Cleanup is best effort; a leftover network never blocks routing.
+	if err := r.pruneOrphanNetworks(ctx, apps); err != nil {
+		slog.Warn("Orphaned network cleanup failed", "error", err)
 	}
 	config, e := r.EffectiveProxy(ctx)
 	if e != nil {
@@ -920,7 +955,62 @@ func (r *DockerRuntime) RemoveApplication(ctx context.Context, app string) error
 			return e
 		}
 	}
+	if e = r.removeEmptyNetworks(ctx, app); e != nil {
+		return e
+	}
 	return r.removeApplicationNetwork(ctx, app)
+}
+
+// removeEmptyNetworks removes the application's own networks other than its
+// private one, such as a Compose project's default network, once nothing uses
+// them. Deleting a Compose application otherwise leaves them behind.
+func (r *DockerRuntime) removeEmptyNetworks(ctx context.Context, app string) error {
+	list, e := r.Client.NetworkList(ctx, client.NetworkListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.application.id="+app)})
+	if e != nil {
+		return e
+	}
+	for _, n := range list.Items {
+		if n.Name == r.applicationNetwork(app) || !owned(n.Labels, r.Instance, app) {
+			continue
+		}
+		info, e := r.Client.NetworkInspect(ctx, n.ID, client.NetworkInspectOptions{})
+		if e != nil || len(info.Network.Containers) > 0 {
+			continue
+		}
+		if _, e = r.Client.NetworkRemove(ctx, n.ID, client.NetworkRemoveOptions{}); e != nil && !errdefs.IsNotFound(e) {
+			return e
+		}
+	}
+	return nil
+}
+
+// pruneOrphanNetworks removes networks of applications that no longer exist.
+// A private network another application still used at deletion time outlives
+// its application; it goes once only the proxy remains attached.
+func (r *DockerRuntime) pruneOrphanNetworks(ctx context.Context, apps []store.Application) error {
+	known := map[string]bool{}
+	for _, a := range apps {
+		known[a.ID] = true
+	}
+	list, e := r.Client.NetworkList(ctx, client.NetworkListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance)})
+	if e != nil {
+		return e
+	}
+	seen := map[string]bool{}
+	for _, n := range list.Items {
+		app := n.Labels["io.shipper.application.id"]
+		if app == "" || known[app] || seen[app] {
+			continue
+		}
+		seen[app] = true
+		if e = r.removeEmptyNetworks(ctx, app); e != nil {
+			return e
+		}
+		if e = r.removeApplicationNetwork(ctx, app); e != nil {
+			return e
+		}
+	}
+	return nil
 }
 
 func (r *DockerRuntime) probeHTTP(ctx context.Context, target string, port int, host, requestPath string) ([]byte, error) {

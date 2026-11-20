@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 
@@ -135,5 +136,20 @@ func TestApplicationDomainDefaultsFollowTheDashboardAddress(t *testing.T) {
 		if address != tc.address || appDomainSuffix(req, address) != tc.suffix {
 			t.Fatalf("%s: got %q and %q", tc.host, address, appDomainSuffix(req, address))
 		}
+	}
+}
+
+func TestProxiedDashboardNeverSuggestsTheCDNAddress(t *testing.T) {
+	previous := egressAddress
+	t.Cleanup(func() { egressAddress = previous })
+	egressAddress = func(context.Context) string { return "203.0.113.9" }
+	req := httptest.NewRequest("GET", "/api/proxy", nil)
+	req.Host = "proxied-dashboard.invalid"
+	req.Header.Set("Cf-Ray", "8f00000000000000-AMS")
+	if address := (&Server{}).serverAddress(req, deploy.ProxyConfig{}); address != "203.0.113.9" {
+		t.Fatalf("proxied dashboard address %q", address)
+	}
+	if !cdnAddress(netip.MustParseAddr("188.114.96.2")) || cdnAddress(netip.MustParseAddr("13.140.218.79")) {
+		t.Fatal("Cloudflare edge ranges are misclassified")
 	}
 }

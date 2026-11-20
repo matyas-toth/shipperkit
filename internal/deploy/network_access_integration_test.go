@@ -232,4 +232,25 @@ time.sleep(3600)`
 		t.Fatal("previous release was not restored", err)
 	}
 	t.Log("Failed fixed-port replacement restored the previous release")
+	// Deleting the target while the client is connected keeps its network for the
+	// client; once the client goes too, the orphaned network is pruned.
+	if err = r.RemoveApplication(ctx, b.ApplicationID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = r.Client.NetworkInspect(ctx, r.applicationNetwork(b.ApplicationID), client.NetworkInspectOptions{}); err != nil {
+		t.Fatal("connected client lost the deleted target's network", err)
+	}
+	if err = r.RemoveApplication(ctx, a.ApplicationID); err != nil {
+		t.Fatal(err)
+	}
+	if err = r.pruneOrphanNetworks(ctx, []store.Application{{ID: isolated.ApplicationID}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = r.Client.NetworkInspect(ctx, r.applicationNetwork(b.ApplicationID), client.NetworkInspectOptions{}); !errdefs.IsNotFound(err) {
+		t.Fatal("orphaned application network survived", err)
+	}
+	if _, err = r.Client.NetworkInspect(ctx, r.applicationNetwork(isolated.ApplicationID), client.NetworkInspectOptions{}); err != nil {
+		t.Fatal("pruning removed a live application's network", err)
+	}
+	t.Log("Orphaned application networks are pruned once no client remains")
 }

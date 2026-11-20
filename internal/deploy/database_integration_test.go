@@ -77,6 +77,10 @@ func TestDockerDatabaseConnectionBetweenApplications(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Promotion publishes the stable app-<id> name that connection strings use.
+		if err = r.reconcileApplicationAliases(ctx, map[string]store.Deployment{app: d}); err != nil {
+			t.Fatal(err)
+		}
 		return d
 	}
 	redis := store.Config{Method: "image", Image: image, StartupPolicy: "process", MemoryMB: 64, Volumes: []store.Volume{{Name: "data", Path: "/data"}}}

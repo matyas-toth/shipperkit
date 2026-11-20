@@ -105,6 +105,14 @@ function DeployToken(props: { applicationId: string }) {
             value={token()}
             autocomplete="off"
           />
+          <label for="deploy-command">Command</label>
+          <input
+            id="deploy-command"
+            class="input mono"
+            readonly
+            value={`curl -X POST -H "Authorization: Bearer ${token()}" ${location.origin}/api/v1/applications/${props.applicationId}/deploy`}
+            autocomplete="off"
+          />
         </Show>
       </div>
       <div class="form-actions">

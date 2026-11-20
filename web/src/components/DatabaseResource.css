@@ -211,6 +211,28 @@
   min-width: 0;
   font-size: 13px;
 }
+.database-connected-apps {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.database-connected-apps .fact-link {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 560;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.database-connected-apps .fact-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .database-container-fact > .mono {
   overflow: hidden;
   text-overflow: ellipsis;

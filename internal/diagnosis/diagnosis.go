@@ -148,6 +148,57 @@ func classifyFailure(logs []store.LogLine, d store.Deployment) causeMatch {
 	return causeMatch{Code: "unknown", Summary: "The deployment failed, but Shipper could not isolate the cause.", Confidence: "low", Index: len(logs) - 1}
 }
 
+// specificCauses name root causes that the generic readiness failure hides.
+// They are checked in order, most specific first.
+var specificCauses = []struct {
+	needles []string
+	match   causeMatch
+}{
+	{[]string{"name or service not known", "no such host", "enotfound", "temporary failure in name resolution", "could not translate host name", "nodename nor servname"}, causeMatch{Code: "host_unresolved", Summary: "The application could not resolve a host it connects to. Check the hostname and connect both applications in Networking.", Confidence: "high"}},
+	{[]string{"econnrefused", "connection refused"}, causeMatch{Code: "connection_refused", Summary: "A service the application connects to refused the connection.", Confidence: "medium"}},
+	{[]string{"before start failed"}, causeMatch{Code: "before_start_failed", Summary: "The before start command failed, so the application never started.", Confidence: "high"}},
+}
+
+func specificCause(lines []string) (causeMatch, string, bool) {
+	for _, cause := range specificCauses {
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := strings.ToLower(lines[i])
+			for _, needle := range cause.needles {
+				if strings.Contains(line, needle) {
+					detail := lines[i]
+					if cause.match.Code == "before_start_failed" {
+						// "exit status 1" says nothing; the command's own error comes first.
+						if found := errorLine(lines[:i]); found != "" {
+							detail = found
+						}
+					}
+					return cause.match, detail, true
+				}
+			}
+		}
+	}
+	return causeMatch{}, "", false
+}
+
+var errorWords = []string{"error", "fatal", "exception", "panic", "failed", "refused", "not known", "timeout", "timed out", "denied", "cannot", "unable", "not found"}
+
+// errorLine picks the newest line that reads like an error, skipping warnings,
+// so the detail is never an unrelated progress or warning line.
+func errorLine(lines []string) string {
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.ToLower(strings.TrimSpace(lines[i]))
+		if line == "" || strings.Contains(line, "warn") {
+			continue
+		}
+		for _, word := range errorWords {
+			if strings.Contains(line, word) {
+				return strings.TrimSpace(lines[i])
+			}
+		}
+	}
+	return ""
+}
+
 func evidenceWindow(logs []store.LogLine, index int, redact func(string) string) []string {
 	if index < 0 || len(logs) == 0 {
 		return []string{}
@@ -267,6 +318,12 @@ func diagnosisActions(app store.Application, d store.Deployment, cause string, s
 	case "healthcheck_failed", "container_exited", "readiness_failed", "port_mismatch", "oom_killed":
 		actions = append(actions, DiagnosisAction{ID: "logs", Label: "Open runtime logs", Kind: "navigate", Target: base + "?tab=logs"})
 		actions = append(actions, DiagnosisAction{ID: "environment", Label: "Open environment", Kind: "navigate", Target: base + "?tab=env"})
+	case "host_unresolved", "connection_refused":
+		actions = append(actions, DiagnosisAction{ID: "networking", Label: "Open networking", Kind: "navigate", Target: base + "?tab=networking"})
+		actions = append(actions, DiagnosisAction{ID: "environment", Label: "Open environment", Kind: "navigate", Target: base + "?tab=env"})
+	case "before_start_failed":
+		actions = append(actions, DiagnosisAction{ID: "logs", Label: "Open runtime logs", Kind: "navigate", Target: base + "?tab=logs"})
+		actions = append(actions, DiagnosisAction{ID: "settings", Label: "Open settings", Kind: "navigate", Target: base + "?tab=settings"})
 	case "disk_pressure":
 		actions = append(actions, DiagnosisAction{ID: "system", Label: "Open system", Kind: "navigate", Target: "/system"})
 	}
@@ -322,20 +379,38 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 		}
 	}
 	serviceDetail := ""
+	serviceLines := []string{}
 	for _, service := range serviceLogs {
-		for index := len(service.Lines) - 1; index >= 0; index-- {
-			value := strings.TrimSpace(redact(service.Lines[index]))
-			if value != "" {
-				serviceDetail = value
-				break
+		lines := []string{}
+		for _, line := range service.Lines {
+			if value := strings.TrimSpace(redact(line)); value != "" {
+				lines = append(lines, value)
 			}
 		}
-		if serviceDetail != "" {
-			break
+		serviceLines = append(serviceLines, lines...)
+		if serviceDetail == "" {
+			serviceDetail = errorLine(lines)
+		}
+		if serviceDetail == "" && len(lines) > 0 {
+			serviceDetail = lines[len(lines)-1]
 		}
 	}
 	if serviceDetail != "" {
 		detail = serviceDetail
+	}
+	deploymentLines := []string{}
+	for _, line := range logs {
+		deploymentLines = append(deploymentLines, strings.TrimSpace(redact(line.Line)))
+	}
+	specificEvidence := ""
+	if d.State == "failed" {
+		if cause, line, ok := specificCause(append(deploymentLines, serviceLines...)); ok {
+			match.Code, match.Summary, match.Confidence = cause.Code, cause.Summary, cause.Confidence
+			detail, specificEvidence = line, line
+		}
+	}
+	if len(detail) > 600 {
+		detail = detail[:600]
 	}
 	services := diagnosisServices(app, d, filtered, observations)
 	checks := diagnosisChecks(app, d, health, stage, services)
@@ -378,7 +453,7 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 	if len(filtered) == 0 {
 		unknowns = append(unknowns, "Container state was removed during cleanup; the deployment logs are the remaining evidence.")
 	}
-	if len(serviceLogs) == 0 && (match.Code == "healthcheck_failed" || match.Code == "container_exited" || match.Code == "readiness_failed" || match.Code == "oom_killed") {
+	if len(serviceLogs) == 0 && (match.Code == "healthcheck_failed" || match.Code == "container_exited" || match.Code == "readiness_failed" || match.Code == "oom_killed" || match.Code == "before_start_failed") {
 		unknowns = append(unknowns, "The failed service logs were not captured before cleanup; only the deployment output is available.")
 	}
 	evidence := evidenceWindow(logs, match.Index, redact)
@@ -390,6 +465,9 @@ func DiagnoseDeployment(ctx context.Context, db *store.Store, appID, deploymentI
 				evidence = append(evidence, value)
 			}
 		}
+	}
+	if specificEvidence != "" {
+		evidence = append(evidence, specificEvidence)
 	}
 	if len(evidence) > 6 {
 		evidence = evidence[len(evidence)-6:]

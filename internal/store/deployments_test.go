@@ -3,8 +3,10 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestQueueIsDurableExclusiveAndDomainScoped(t *testing.T) {
@@ -65,5 +67,45 @@ func TestQueueIsDurableExclusiveAndDomainScoped(t *testing.T) {
 	db.ReplaceInventory(ctx, []Container{{ID: "late-event", Name: "old-site", Managed: true, ApplicationID: a.ID, Ports: []Port{}}})
 	if _, e = db.Application(ctx, a.ID); e == nil {
 		t.Fatal("Docker event resurrected deleted application")
+	}
+}
+
+func TestFrequentTaskRunsNeverHideReleases(t *testing.T) {
+	db, e := Open(filepath.Join(t.TempDir(), "data"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	a := Application{ID: "app-1", Name: "Site", Config: StaticConfig{Repository: "https://github.com/example/site.git", PublishDirectory: ".", Routing: "files"}}
+	for i := 0; i < 3; i++ {
+		d, e := db.Enqueue(ctx, a, Deployment{ID: fmt.Sprintf("release-%d", i), Operation: "deploy"}, "", i == 0)
+		if e != nil {
+			t.Fatal(e)
+		}
+		d.State = "succeeded"
+		if e = db.SaveDeployment(ctx, d); e != nil {
+			t.Fatal(e)
+		}
+	}
+	for i := 0; i < 150; i++ {
+		if _, e = db.db.ExecContext(ctx, "INSERT INTO deployments(id,application_id,operation,state,config_json,created_at,application_name) VALUES (?,?,?,?,?,?,?)", fmt.Sprintf("run-%03d", i), a.ID, "task", "succeeded", "{}", time.Now().Unix()+int64(i)+1, a.Name); e != nil {
+			t.Fatal(e)
+		}
+	}
+	items, e := db.Deployments(ctx, a.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	releases, runs := 0, 0
+	for _, d := range items {
+		if d.Operation == "task" {
+			runs++
+		} else {
+			releases++
+		}
+	}
+	if releases != 3 || runs != 10 || items[0].ID != "run-149" || items[len(items)-1].Operation == "task" {
+		t.Fatalf("history kept %d releases and %d runs, first %s", releases, runs, items[0].ID)
 	}
 }

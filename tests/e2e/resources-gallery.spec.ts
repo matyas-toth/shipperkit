@@ -94,6 +94,8 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await page.goto("/applications/application-web?tab=networking");
   await shot(page, "networking-empty");
   await page.getByRole("button", { name: "Connect application", exact: true }).click();
+  const connection = page.getByLabel("Connected application 1", { exact: true });
+  await connection.selectOption({ index: 1 });
   await shot(page, "private-connection");
   await page.getByRole("button", { name: "Add port", exact: true }).click();
   await page.getByLabel("Public port", { exact: true }).fill("15432");

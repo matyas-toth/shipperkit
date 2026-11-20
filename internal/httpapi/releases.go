@@ -48,7 +48,9 @@ func (s *Server) rollbackRelease(w http.ResponseWriter, r *http.Request) {
 	next := target.Config
 	next.AutoDeploy = a.Config.AutoDeploy
 	if next.SourceID == "" || next.Method == "image" || next.Method == "inline" {
-		next.AutoDeploy = store.AutoDeploy{}
+		// Only switching it off is meaningful; resetting the other fields would
+		// list "Automatic deployments" as a change when nothing changes.
+		next.AutoDeploy.Enabled = false
 	}
 	next.Domains = nil
 	next.Domain = a.Config.Domain
@@ -63,6 +65,10 @@ func (s *Server) rollbackRelease(w http.ResponseWriter, r *http.Request) {
 	revision := s.db.ConfigRevision(a) + ":" + target.ID
 	if input.Review {
 		changes := deploy.PlanChanges(a.Config, next).Changes
+		// Each differing setting returns to the release's value.
+		for i := range changes {
+			changes[i] += " restored"
+		}
 		changes = append(changes, "Recorded image and runtime settings", "Current domains retained", "Persistent data retained", "Deployment migration hooks skipped")
 		s.json(w, 200, deploy.ChangePlan{Operation: "rollback", Changes: changes, Revision: revision})
 		return

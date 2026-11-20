@@ -2,7 +2,11 @@ package httpapi
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
+	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -36,19 +40,100 @@ func (s *Server) applicationNetworking(w http.ResponseWriter, r *http.Request) {
 	}
 	s.json(w, 200, map[string]any{"networking": a.Config.Networking, "host": "app-" + a.ID, "applications": available})
 }
+
+// privateHost matches the stable private names Shipper publishes for every
+// application, as they appear in copied connection strings and URLs.
+var privateHost = regexp.MustCompile(`\b(?:app|db)-([a-f0-9]{24})\b`)
+
+// linkReferencedApplications connects an application to every other
+// application its variables already address by private name. Pasting a copied
+// connection string is the intent to connect, so it works on the first deploy.
+func (s *Server) linkReferencedApplications(ctx context.Context, c *store.Config, application string) {
+	linked := map[string]bool{application: true}
+	for _, id := range c.Networking.Applications {
+		linked[id] = true
+	}
+	variables := append([]store.Variable{}, c.Variables...)
+	for _, service := range c.Services {
+		variables = append(variables, service.Variables...)
+	}
+	for _, v := range variables {
+		for _, match := range privateHost.FindAllStringSubmatch(v.Value, -1) {
+			id := match[1]
+			if linked[id] {
+				continue
+			}
+			linked[id] = true
+			if app, err := s.db.Application(ctx, id); err == nil && app.Managed() && app.State != "deleted" {
+				c.Networking.Applications = append(c.Networking.Applications, id)
+			}
+		}
+	}
+}
+
+// describeConnections names the applications a change connects or disconnects,
+// which a bare "Networking" entry hides, including links made automatically.
+func (s *Server) describeConnections(ctx context.Context, changes []string, before, after store.NetworkAccess) []string {
+	had := map[string]bool{}
+	for _, id := range before.Applications {
+		had[id] = true
+	}
+	has := map[string]bool{}
+	lines := []string{}
+	name := func(id string) string {
+		if app, err := s.db.Application(ctx, id); err == nil {
+			return app.Name
+		}
+		return "a deleted application"
+	}
+	for _, id := range after.Applications {
+		has[id] = true
+		if !had[id] {
+			lines = append(lines, "Connects privately to "+name(id))
+		}
+	}
+	for _, id := range before.Applications {
+		if !has[id] {
+			lines = append(lines, "Disconnects from "+name(id))
+		}
+	}
+	if len(lines) == 0 {
+		return changes
+	}
+	out := []string{}
+	for _, change := range changes {
+		// Ports still need the generic entry; connections are listed by name.
+		if change != "Networking" || !reflect.DeepEqual(before.Ports, after.Ports) {
+			out = append(out, change)
+		}
+	}
+	return append(out, lines...)
+}
+
 func (s *Server) validateNetworkingConfig(w http.ResponseWriter, c *store.Config, application string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	s.linkReferencedApplications(ctx, c, application)
 	if err := deploy.ValidateNetworkAccess(application, &c.Networking); err != nil {
 		s.problem(w, 422, "invalid_networking", err.Error())
 		return false
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	kept := []string{}
 	for _, id := range c.Networking.Applications {
 		app, err := s.db.Application(ctx, id)
-		if err != nil || !app.Managed() || app.State == "deleted" {
+		if errors.Is(err, sql.ErrNoRows) || err == nil && app.State == "deleted" {
+			// A deleted application's connection is dropped instead of blocking
+			// every later change to the applications that listed it.
+			continue
+		}
+		if err != nil || !app.Managed() {
 			s.problem(w, 422, "invalid_network_application", "Choose an application deployed by this Shipper instance")
 			return false
 		}
+		kept = append(kept, id)
+	}
+	if c.Networking.Applications != nil {
+		c.Networking.Applications = kept
 	}
 	for _, p := range c.Networking.Ports {
 		if c.Method != "compose" && p.Service != "" {

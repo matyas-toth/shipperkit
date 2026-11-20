@@ -214,6 +214,7 @@ func (s *Server) systemOperations(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, e)
 		return
 	}
+	facts = currentHealth(facts)
 	status, e := s.db.NotificationStatus(r.Context())
 	if e != nil {
 		s.internal(w, e)
@@ -228,6 +229,25 @@ func (s *Server) systemOperations(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.json(w, 200, map[string]any{"observedAt": time.Now().Unix(), "items": facts, "notifications": status, "sampleIntervalSeconds": 15, "maxContainersPerCycle": 32, "bootReadiness": boot, "host": host, "docker": s.monitor.Health()})
+}
+
+// currentHealth drops the outcome of a one-off proxy repair once a live proxy
+// check has run after it, so the health table never lists a second, stale Proxy.
+func currentHealth(facts []store.Observation) []store.Observation {
+	live := int64(0)
+	for _, fact := range facts {
+		if fact.Kind == "proxy" && fact.ID != "proxy-repair" && fact.ObservedAt > live {
+			live = fact.ObservedAt
+		}
+	}
+	out := make([]store.Observation, 0, len(facts))
+	for _, fact := range facts {
+		if fact.ID == "proxy-repair" && live > fact.ObservedAt {
+			continue
+		}
+		out = append(out, fact)
+	}
+	return out
 }
 func (s *Server) diagnostics(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")

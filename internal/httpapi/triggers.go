@@ -183,7 +183,8 @@ func (s *Server) tokenDeploy(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Revision string `json:"revision"`
 	}
-	if !s.decode(w, r, &input) {
+	// A bare POST from CI deploys the latest commit; a body is optional.
+	if !s.decodeOptional(w, r, &input) {
 		return
 	}
 	if input.Revision != "" && !regexp.MustCompile(`^(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$`).MatchString(input.Revision) {

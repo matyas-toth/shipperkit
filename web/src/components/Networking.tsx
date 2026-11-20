@@ -38,9 +38,10 @@ export default function Networking(props: {
   async function copyEndpoint() { if (!endpoint()) return; try { await navigator.clipboard.writeText(endpoint()); setCopiedEndpoint(true); setTimeout(() => setCopiedEndpoint(false), 1500); } catch {} }
   const target = () => props.host + (props.port ? ":" + props.port : "");
   const canConnect = () => available().length > 0;
+  // A new row starts empty so one click never connects whichever application
+  // happens to sort first.
   function connect() {
-    const next = available()[0];
-    if (next) update({ applications: [...connections(), next.id] });
+    if (available().length && !connections().includes("")) update({ applications: [...connections(), ""] });
   }
   return <div class="networking-settings">
     <section class="network-section" aria-labelledby="private-connections-title">
@@ -60,7 +61,8 @@ export default function Networking(props: {
           <label class="network-field">
             <span>Application</span>
             <select class="input" aria-label={"Connected application " + (index + 1)} value={applicationId()} onChange={e => update({ applications: connections().map((value, i) => i === index ? e.currentTarget.value : value) })}>
-              <Show when={!app(applicationId())}><option value={applicationId()}>{applicationId()}</option></Show>
+              <Show when={!applicationId()}><option value="" disabled>Choose application</option></Show>
+              <Show when={applicationId() && !app(applicationId())}><option value={applicationId()}>Deleted application</option></Show>
               <For each={applications().map(entry => entry.id).filter(id => id === applicationId() || !connections().includes(id))}>{id => <option value={id}>{app(id)?.name ?? id}</option>}</For>
             </select>
           </label>

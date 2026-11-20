@@ -2,7 +2,7 @@ import { Show, createMemo } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
 import { operationTime } from "../data";
-import type { Application, ApplicationDetail } from "../types";
+import type { Application, ApplicationDetail, Inventory } from "../types";
 import { Button, Status } from "./Controls";
 import { Icon } from "./Icon";
 import DatabaseConnection from "./DatabaseConnection";
@@ -33,6 +33,13 @@ export default function DatabaseOverview(props: {
   const latestRun = createMemo(() => [...(protection.data?.runs ?? [])].filter(run => run.kind === "database").sort((a, b) => b.createdAt - a.createdAt)[0]);
   const container = createMemo(() => props.application.containers.find(entry => entry.managed && entry.applicationId === props.application.id));
   const ports = () => props.application.config.networking?.ports ?? [];
+  // The connection string only resolves inside a private connection, in either
+  // direction, so the apps that can use it sit right beside it.
+  const inventory = createQuery(() => ({ queryKey: ["inventory"], queryFn: () => api<Inventory>("/applications"), staleTime: 60_000, reconcile: "id" }));
+  const connected = createMemo(() => {
+    const own = props.application.config.networking?.applications ?? [];
+    return (inventory.data?.items ?? []).filter(app => app.id !== props.application.id && (own.includes(app.id) || (app.config.networking?.applications ?? []).includes(props.application.id))).map(app => app.name);
+  });
   const address = () => (info()?.host ?? "app-" + props.application.id) + ":" + (info()?.port ?? 0);
   const preview = () => {
     const engine = database()?.engine;
@@ -71,6 +78,7 @@ export default function DatabaseOverview(props: {
       <dl class="settings-group database-facts">
         <div class="setting-row"><dt>Engine</dt><dd>{engineNames[database()?.engine ?? ""] ?? database()?.engine} {database()?.version}</dd></div>
         <div class="setting-row"><dt>Storage</dt><dd>Persistent volume</dd></div>
+        <Show when={database()?.engine !== "sqlite"}><div class="setting-row"><dt>Connected apps</dt><dd class="database-connected-apps"><button type="button" class="fact-link" onClick={props.openNetworking}>{connected().length ? connected().join(", ") : "Connect application"}</button></dd></div></Show>
         <div class="setting-row"><dt>Public access</dt><dd><span classList={{ "mono": ports().length > 0 }}>{publicAccess()}</span></dd></div>
         <Show when={container()}>{value => <div class="setting-row"><dt>Container</dt><dd class="database-container-fact"><span class="mono">{value().name}</span></dd></div>}</Show>
       </dl>

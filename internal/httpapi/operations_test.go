@@ -264,3 +264,18 @@ func TestOperationsCapabilitiesSourcesAndBoundReviews(t *testing.T) {
 		t.Fatal("Scoped full token could not edit its application", code, body)
 	}
 }
+
+func TestFinishedProxyRepairLeavesTheHealthTable(t *testing.T) {
+	facts := []store.Observation{
+		{ID: "proxy-repair", Kind: "proxy", State: "healthy", ObservedAt: 100},
+		{ID: "proxy", Kind: "proxy", State: "healthy", ObservedAt: 200},
+		{ID: "daemon", Kind: "daemon", State: "healthy", ObservedAt: 200},
+	}
+	if got := currentHealth(facts); len(got) != 2 || got[0].ID != "proxy" {
+		t.Fatalf("stale repair kept: %+v", got)
+	}
+	facts[0].ObservedAt = 300
+	if got := currentHealth(facts); len(got) != 3 {
+		t.Fatalf("recent repair outcome hidden: %+v", got)
+	}
+}

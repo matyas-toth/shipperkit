@@ -21,7 +21,7 @@ func TestDatabaseConnections(t *testing.T) {
 		{"valkey/valkey:8", "", "", "0", "redis", nil},
 	} {
 		t.Run(tc.image, func(t *testing.T) {
-			d := store.Deployment{ID: "release", ContainerID: "container", ResolvedMethod: "image", Config: store.Config{Method: "image", Image: tc.image}}
+			d := store.Deployment{ID: "release", ApplicationID: "database", ContainerID: "container", ResolvedMethod: "image", Config: store.Config{Method: "image", Image: tc.image}}
 			for name, value := range tc.env {
 				d.Config.Variables = append(d.Config.Variables, store.Variable{Name: name, Value: value, Scope: "runtime"})
 			}
@@ -34,7 +34,7 @@ func TestDatabaseConnections(t *testing.T) {
 				t.Fatal(err)
 			}
 			password, _ := u.User.Password()
-			if u.Scheme != tc.scheme || u.Hostname() != "site-release" || u.User.Username() != tc.user || password != tc.password || u.Path != "/"+tc.database || u.Fragment != "" {
+			if u.Scheme != tc.scheme || u.Hostname() != "app-database" || u.User.Username() != tc.user || password != tc.password || u.Path != "/"+tc.database || u.Fragment != "" {
 				t.Fatalf("Incorrect connection components for %s", tc.image)
 			}
 			if tc.scheme == "mongodb" && u.Query().Get("authSource") != "admin" {

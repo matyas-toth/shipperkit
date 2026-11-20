@@ -17,7 +17,8 @@ type DatabaseEndpoint struct {
 }
 
 // DatabaseEndpointFor uses the serving release, never an unapplied configuration.
-// The release alias already exists on the instance's shared Docker network.
+// The host is the application's stable private name, so a copied connection
+// string keeps working across redeploys of the database.
 func DatabaseEndpointFor(d store.Deployment) *DatabaseEndpoint {
 	if ReleaseMethod(d) != "image" || d.ID == "" || d.ContainerID == "" || d.TaskCommand != nil {
 		return nil
@@ -26,7 +27,7 @@ func DatabaseEndpointFor(d store.Deployment) *DatabaseEndpoint {
 	if engine == "" {
 		return nil
 	}
-	endpoint := &DatabaseEndpoint{Engine: engine, Host: "site-" + d.ID, Port: port}
+	endpoint := &DatabaseEndpoint{Engine: engine, Host: "app-" + d.ApplicationID, Port: port}
 	if d.Config.Database != nil {
 		endpoint.Host = "db-" + d.ApplicationID
 	}

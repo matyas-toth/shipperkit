@@ -40,7 +40,8 @@ export default function ApplicationNetworking(props: {
     }
     return "";
   };
-  const issues = () => (conflict() !== undefined ? 1 : 0) + (tlsInvalid() ? 1 : 0) + (portProblem() ? 1 : 0);
+  const unchosen = () => value().applications.includes("");
+  const issues = () => (conflict() !== undefined ? 1 : 0) + (tlsInvalid() ? 1 : 0) + (portProblem() ? 1 : 0) + (unchosen() ? 1 : 0);
   const changed = () => JSON.stringify(value()) !== JSON.stringify(original()) || tlsOn() !== !!savedTLS() || tlsHostname() !== savedTLS();
   createEffect(() => props.onDirty?.(changed()));
   onCleanup(() => props.onDirty?.(false));
@@ -89,7 +90,7 @@ export default function ApplicationNetworking(props: {
   });
   async function review(event: SubmitEvent) {
     event.preventDefault();
-    if (!changed() || saving() || props.busy || tlsInvalid() || portProblem()) return;
+    if (!changed() || saving() || props.busy || tlsInvalid() || portProblem() || unchosen()) return;
     setError(""); setConflict(undefined); setSaving(true);
     const note = summary().some(item => item.label === "Public ports")
       ? "The database becomes reachable from the internet. Connections drop while the ports switch."
@@ -117,7 +118,7 @@ export default function ApplicationNetworking(props: {
     <Show when={info.data && changed() && !saving()}><div class="form-actions network-review-bar">
       <Show when={changed()}><span class="network-unsaved-page"><span class="network-unsaved-dot" />You have unsaved changes</span></Show>
       <Show when={changed()}><Button variant="ghost" type="button" disabled={saving()} onClick={reset}>Revert</Button></Show>
-      <Show when={portProblem()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem()}</span></Show>
+      <Show when={portProblem() || unchosen()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem() || "Choose an application for each connection."}</span></Show>
       <Show when={conflict() !== undefined || tlsInvalid()}><button type="button" class="network-issue-count" onClick={() => document.querySelector<HTMLInputElement>(".network-field.is-conflict input, .network-tls .is-invalid")?.focus()}>{issues()} {issues() === 1 ? "issue" : "issues"}</button></Show>
       <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Saving" : "Save and redeploy"}</Button>
     </div></Show>

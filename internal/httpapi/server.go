@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -54,8 +55,8 @@ type Config struct {
 	Restart        func()
 }
 type Server struct {
-	terminalMu sync.Mutex
-	terminals map[string]*terminalSession
+	terminalMu      sync.Mutex
+	terminals       map[string]*terminalSession
 	github          *gitprovider.GitHub
 	db              *store.Store
 	monitor         *inventory.Monitor
@@ -424,6 +425,21 @@ func (s *Server) decode(w http.ResponseWriter, r *http.Request, v any) bool {
 		return false
 	}
 	return true
+}
+
+// decodeOptional accepts an empty body as an empty object.
+func (s *Server) decodeOptional(w http.ResponseWriter, r *http.Request, v any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, 256<<10)
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		s.problem(w, 400, "invalid_json", "The request body is invalid")
+		return false
+	}
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return true
+	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	return s.decode(w, r, v)
 }
 func validEmail(value string) bool {
 	p, err := mail.ParseAddress(value)

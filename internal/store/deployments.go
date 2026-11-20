@@ -225,7 +225,10 @@ func (s *Store) Deployment(ctx context.Context, id string) (Deployment, error) {
 	return s.scanDeployment(s.db.QueryRowContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE id=?", id))
 }
 func (s *Store) Deployments(ctx context.Context, appID string) ([]Deployment, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT "+deploymentColumns+" FROM deployments WHERE application_id=? ORDER BY created_at DESC,rowid DESC LIMIT 100", appID)
+	// Task runs have their own history. Only the latest few join the release
+	// history, so a frequent schedule never pushes releases, and with them the
+	// rollback targets, out of the list.
+	rows, err := s.db.QueryContext(ctx, "SELECT "+deploymentColumns+" FROM (SELECT * FROM (SELECT *,rowid AS position FROM deployments WHERE application_id=? AND operation<>'task' ORDER BY created_at DESC,rowid DESC LIMIT 100) UNION ALL SELECT * FROM (SELECT *,rowid AS position FROM deployments WHERE application_id=? AND operation='task' ORDER BY created_at DESC,rowid DESC LIMIT 10)) ORDER BY created_at DESC,position DESC", appID, appID)
 	if err != nil {
 		return nil, err
 	}
