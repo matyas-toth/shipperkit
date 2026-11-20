@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.31](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.30...v1.0.0-rc.31) (2026-11-20)
+
+
+### Bug Fixes
+
+* polish 1.0 flows, navigation and copy ([#79](https://github.com/matyas-toth/shipperkit/issues/79)) ([e505ce0](https://github.com/matyas-toth/shipperkit/commit/e505ce04cbf90ee077bc6627ba4a82220a59fabc))
+
 ## [1.0.0-rc.30](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.29...v1.0.0-rc.30) (2026-11-18)
 
 
