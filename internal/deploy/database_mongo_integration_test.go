@@ -98,7 +98,7 @@ func TestDockerManagedMongoReplicaSet(t *testing.T) {
 	}
 	deadline := time.Now().Add(2 * time.Minute)
 	for {
-		if _, e = mongosh(old.ContainerID, local(c), `db.items.insertOne({ name: "kept" })`); e == nil {
+		if _, e = mongosh(old.ContainerID, local(c), `db.items.insertOne({ name: "kept" }, { writeConcern: { w: 1, j: true } })`); e == nil {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -106,7 +106,8 @@ func TestDockerManagedMongoReplicaSet(t *testing.T) {
 		}
 		time.Sleep(time.Second)
 	}
-	if _, e = mongosh(old.ContainerID, local(c), `db.items.insertOne({ name: "rs.status" }); try { rs.status(); quit(1) } catch (e) {}`); e != nil {
+	// The container is removed without a graceful stop, so writes wait for the journal.
+	if _, e = mongosh(old.ContainerID, local(c), `db.items.insertOne({ name: "standalone" }, { writeConcern: { w: 1, j: true } }); try { rs.status(); quit(1) } catch (e) {}`); e != nil {
 		t.Fatal("legacy server already ran a replica set", e)
 	}
 	if e = r.removeOwned(ctx, old.ContainerID, app.ID); e != nil {
