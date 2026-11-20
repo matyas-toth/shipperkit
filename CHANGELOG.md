@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.32](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.31...v1.0.0-rc.32) (2026-11-20)
+
+
+### Bug Fixes
+
+* give domainless apps their private hostnames on both sides of a connection ([#81](https://github.com/matyas-toth/shipperkit/issues/81)) ([ebfae99](https://github.com/matyas-toth/shipperkit/commit/ebfae99a181350dff49691e9db6047dc9f79a5e0))
+
 ## [1.0.0-rc.31](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.30...v1.0.0-rc.31) (2026-11-20)
 
 
