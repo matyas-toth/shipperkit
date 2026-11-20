@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.34](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.33...v1.0.0-rc.34) (2026-11-20)
+
+
+### Features
+
+* run managed MongoDB as a replica set and add database settings ([#85](https://github.com/matyas-toth/shipperkit/issues/85)) ([9ac3c62](https://github.com/matyas-toth/shipperkit/commit/9ac3c6264963f6d4d77ad79d26e92b8d61238f08))
+
 ## [1.0.0-rc.33](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.32...v1.0.0-rc.33) (2026-11-20)
 
 
