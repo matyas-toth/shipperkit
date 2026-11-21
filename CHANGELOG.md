@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.36](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.35...v1.0.0-rc.36) (2026-11-21)
+
+
+### Features
+
+* anonymous usage reports and a telemetry dashboard ([#89](https://github.com/matyas-toth/shipperkit/issues/89)) ([5a7d05e](https://github.com/matyas-toth/shipperkit/commit/5a7d05e837098f638f6fea80f8d8b746b0ef7ab4))
+
 ## [1.0.0-rc.35](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.34...v1.0.0-rc.35) (2026-11-21)
 
 
