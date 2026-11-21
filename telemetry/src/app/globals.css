@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/* ShipperKit console tokens. DESIGN.md at the repository root explains them. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --color-shell: #070808;
+  --color-deep: #090a0a;
+  --color-page: #0f0f0f;
+  --color-background: #0f1010;
+  --color-surface: #161717;
+  --color-layer-02: #1f2020;
+  --color-layer-03: #292a2a;
+  --color-border: #2a2b2b;
+  --color-border-muted: #212222;
+  --color-page-border: #222423;
+  --color-text: #f1f1ee;
+  --color-secondary: #b6b6b1;
+  --color-muted: #9f9f9a;
+  --color-success: #7fdaa6;
+  --color-warning: #e8c07d;
+  --color-danger: #f08c90;
+
+  /* Categorical chart slots, validated for CVD separation on the surface. */
+  --color-series-1: #3987e5;
+  --color-series-2: #d95926;
+  --color-series-3: #199e70;
+  --color-series-4: #c98500;
+  --color-series-5: #d55181;
+  --color-series-6: #0ca30c;
+  --color-series-7: #9085e9;
+  --color-series-8: #e66767;
+
+  --radius-control: 7px;
+  --radius-card: 10px;
+  --radius-panel: 12px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-shell);
+  color: var(--color-text);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 450;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: #3987e566;
+}
+
+:focus-visible {
+  outline: 2px solid #f2f2f2b3;
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1b1c1c 0%, #232424 50%, #1b1c1c 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* Recharts focus rings fight the custom hover layer. */
+.recharts-wrapper,
+.recharts-surface {
+  outline: none;
+}

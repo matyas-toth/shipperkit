@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// One anonymous ShipperKit installation, keyed by its random telemetry id.
+/// Columns hold the latest report so dashboards aggregate without JSON scans.
+model Instance {
+  id           String    @id
+  firstSeenAt  DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt   DateTime  @default(now()) @map("last_seen_at")
+  reportCount  Int       @default(1) @map("report_count")
+  version      String
+  channel      String
+  install      String
+  os           String
+  arch         String
+  hostOs       String    @map("host_os")
+  docker       String
+  cpus         Int
+  memoryMb     Int       @map("memory_mb")
+  country      String?
+  applications Int
+  latest       Json
+  reports      Report[]
+  upgrades     Upgrade[]
+
+  @@index([lastSeenAt])
+  @@index([firstSeenAt])
+  @@map("instances")
+}
+
+model Report {
+  id         BigInt   @id @default(autoincrement())
+  instanceId String   @map("instance_id")
+  receivedAt DateTime @default(now()) @map("received_at")
+  version    String
+  payload    Json
+  instance   Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@index([receivedAt])
+  @@index([instanceId, receivedAt])
+  @@map("reports")
+}
+
+model Upgrade {
+  id          BigInt   @id @default(autoincrement())
+  instanceId  String   @map("instance_id")
+  fromVersion String   @map("from_version")
+  toVersion   String   @map("to_version")
+  at          DateTime @default(now())
+  instance    Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@index([at])
+  @@map("upgrades")
+}
