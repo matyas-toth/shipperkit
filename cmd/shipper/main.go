@@ -31,6 +31,7 @@ import (
 	"shipper/internal/inventory"
 	"shipper/internal/operations"
 	"shipper/internal/store"
+	"shipper/internal/telemetry"
 	"shipper/internal/ui"
 	"shipper/internal/updates"
 )
@@ -315,6 +316,25 @@ func run() error {
 			return host != nil && !host.Stale && host.UpdateReady
 		},
 	})
+	// Usage reports follow the same gate as updates: on for managed installs,
+	// off for source runs and tests, and always off with DO_NOT_TRACK.
+	telemetryAllowed := (os.Getenv("SHIPPER_TELEMETRY") == "1" || (os.Getenv("SHIPPER_MANAGED_INSTALL") == "1" && os.Getenv("SHIPPER_TELEMETRY") != "0")) && os.Getenv("DO_NOT_TRACK") != "1"
+	usage := telemetry.New(telemetry.Config{
+		Store: db, Version: version, Endpoint: env("SHIPPER_TELEMETRY_URL", telemetry.DefaultEndpoint),
+		Allowed: telemetryAllowed, Managed: os.Getenv("SHIPPER_MANAGED_INSTALL") == "1",
+		Platform: func() telemetry.Platform {
+			info := monitor.Health().Engine
+			return telemetry.Platform{HostOS: info.OS, Docker: info.Version, CPUs: info.CPUs, MemoryMB: info.Memory / (1 << 20)}
+		},
+		Updates: func() (string, bool) {
+			state := updateService.State()
+			return string(state.Channel), state.Auto
+		},
+		HTTPS: func(ctx context.Context) bool {
+			domain, _ := db.Setting(ctx, "dashboard_domain", "")
+			return domain != ""
+		},
+	})
 	operator := &operations.Service{DB: db, Docker: docker.Client(), Monitor: monitor, Instance: instance, DataDir: dataDir, DashboardURL: proxyConfig.DashboardURL, Publish: hub.Publish}
 	worker.Operations = operator.Run
 	worker.Maintenance = operator.ProcessMaintenance
@@ -329,6 +349,8 @@ func run() error {
 	go func() { defer close(monitorDone); monitor.Run(ctx) }()
 	updatesDone := make(chan struct{})
 	go func() { defer close(updatesDone); updateService.Run(ctx) }()
+	telemetryDone := make(chan struct{})
+	go func() { defer close(telemetryDone); usage.Run(ctx) }()
 	workerDone := make(chan struct{})
 	updateLock := filepath.Join(dataDir, "update.lock")
 	managed := os.Getenv("SHIPPER_MANAGED_INSTALL") == "1"
@@ -351,7 +373,7 @@ func run() error {
 		worker.Run(ctx)
 	}()
 	addr := env("SHIPPER_ADDR", "127.0.0.1:8080")
-	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator, Updates: updateService, Catalog: serviceCatalog, DataDir: dataDir, Restart: cancel}
+	apiConfig := httpapi.Config{PublicURL: publicURL, SetupToken: setupToken, Assets: ui.Handler(), Version: version, InstanceID: instance, Worker: worker, Proxy: proxyConfig, EffectiveProxy: dockerRuntime.EffectiveProxy, Operations: operator, Updates: updateService, Telemetry: usage, Catalog: serviceCatalog, DataDir: dataDir, Restart: cancel}
 	if !configured && os.Getenv("SHIPPER_SETUP_TOKEN") == "" {
 		apiConfig.SetupClaim = func() (string, error) { return auth.ReadSetupClaim(dataDir) }
 	}
@@ -375,6 +397,7 @@ func run() error {
 			cancel()
 			<-monitorDone
 			<-updatesDone
+			<-telemetryDone
 			<-workerDone
 			return err
 		}
@@ -388,6 +411,7 @@ func run() error {
 	_ = server.Shutdown(shutdownCtx)
 	<-monitorDone
 	<-updatesDone
+	<-telemetryDone
 	<-workerDone
 	return nil
 }

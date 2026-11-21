@@ -15,6 +15,7 @@ import Users from "../components/Users";
 import Authentication from "../components/Authentication";
 import Notifications from "../components/Notifications";
 import AccessTokens from "../components/AccessTokens";
+import Telemetry from "../components/Telemetry";
 
 type SettingsGroup = {
   id: string;
@@ -35,6 +36,7 @@ const instanceGroup: SettingsGroup = { id: "instance", label: "Instance", sectio
   { id: "tokens", label: "Access tokens", icon: "key" },
   { id: "notifications", label: "Notifications", icon: "mail" },
   { id: "updates", label: "Updates", icon: "refresh" },
+  { id: "usage", label: "Usage data", icon: "chart" },
   { id: "recovery", label: "Recovery", icon: "database" },
 ] };
 // Older links point at sections that were merged into another one.
@@ -82,6 +84,7 @@ export default function Settings() {
         <Show when={section() === "dashboard"}><DashboardSettings proxy={proxy.data} refresh={() => proxy.refetch()} /></Show>
         <Show when={section() === "notifications"}><Notifications /></Show>
         <Show when={section() === "tokens"}><AccessTokens /></Show>
+        <Show when={section() === "usage"}><Telemetry /></Show>
       </div>
     </div>
   </div>;

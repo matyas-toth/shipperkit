@@ -57,6 +57,7 @@ export const docGroups = [
       { slug: "api", label: "API", priority: "0.8", changefreq: "monthly" },
       { slug: "ports", label: "Ports", priority: "0.6", changefreq: "yearly" },
       { slug: "instance-variables", label: "Instance variables", priority: "0.6", changefreq: "monthly" },
+      { slug: "usage-data", label: "Usage data", priority: "0.6", changefreq: "monthly" },
     ],
   },
 ];

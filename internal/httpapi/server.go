@@ -31,6 +31,7 @@ import (
 	"shipper/internal/inventory"
 	"shipper/internal/operations"
 	"shipper/internal/store"
+	"shipper/internal/telemetry"
 	"shipper/internal/updates"
 )
 
@@ -49,6 +50,7 @@ type Config struct {
 	SetupClaim     func() (string, error)
 	Operations     *operations.Service
 	Updates        *updates.Service
+	Telemetry      *telemetry.Service
 	Catalog        *catalog.Manager
 	OAuth          *OAuthEndpoints
 	DataDir        string
@@ -202,6 +204,8 @@ func New(db *store.Store, monitor *inventory.Monitor, hub *events.Hub, cfg Confi
 				r.With(s.csrf, s.limit).Post("/catalog/refresh", s.refreshCatalog)
 				r.With(s.csrf, s.limit).Post("/updates/settings", s.saveUpdateSettings)
 				r.With(s.csrf, s.limit).Post("/updates/apply", s.applyUpdate)
+				r.Get("/telemetry", s.telemetryState)
+				r.With(s.csrf, s.limit).Post("/telemetry", s.saveTelemetry)
 			})
 		})
 		r.NotFound(func(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,40 @@
+---
+title: Usage data
+description: What the anonymous daily usage report contains, what it never contains, and how to turn it off from Settings or with an environment variable.
+---
+
+Managed installs send one small anonymous report a day. It tells the project how many installations are active, which versions and platforms they run, and which features are used. It helps decide what to support and what to fix first.
+
+## What a report contains
+
+- A random identifier created for usage reports only. It is not the instance ID used for containers or backups.
+- Shipper version, update channel, whether automatic updates are on, and whether the installer was used.
+- Host operating system name, Docker version, CPU core count, total memory, and architecture.
+- Counts: applications, services, domains, users, backup plans, scheduled tasks, access tokens, and deployments, failures, and rollbacks in the last 24 hours, plus the median deploy time.
+- Breakdowns by build method, source kind, database engine, catalog service, and connection kind. Only the enumerated kind is sent, never the value.
+- A list of features in use, such as backups, two-factor authentication, or automatic deploys.
+
+**Settings → Usage data → Report** shows the exact document the next report will send.
+
+## What a report never contains
+
+Names, hostnames, domains, repository URLs, commit hashes, image names, environment variables, secrets, email addresses, logs, or file contents. The receiving server does not store IP addresses. It keeps the two-letter country code that its CDN provides, if any.
+
+## Schedule
+
+The first report waits five to fifteen minutes after start, so short test runs and crash loops send nothing. After that, Shipper reports once every 24 hours. Failed deliveries retry with backoff and never block the dashboard or deployments.
+
+An installation counts as active while it keeps reporting. After three days without a report it counts as inactive.
+
+## Turn it off
+
+Open **Settings → Usage data** and switch off **Share anonymous usage data**. The change applies immediately.
+
+To turn it off for the whole host, set either variable in the control-plane environment and restart Shipper:
+
+```sh
+SHIPPER_TELEMETRY=0
+DO_NOT_TRACK=1
+```
+
+Source builds, local development, and tests never send reports unless `SHIPPER_TELEMETRY=1` is set.

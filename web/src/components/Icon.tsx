@@ -4,9 +4,9 @@ import { IconCube, IconSearch, IconRefresh, IconChevronRight, IconX, IconCopy, I
   IconAdjustmentsHorizontal, IconLogout, IconEye, IconPlug, IconDatabase, IconArrowUp, IconAlertTriangle,
   IconPlus, IconExternalLink, IconArrowLeft, IconBrandGit, IconWorld, IconFileCode, IconRocket, IconTrash,
   IconChevronDown, IconTerminal2, IconDots, IconPlayerPlay, IconPlayerPause, IconDownload, IconUpload, IconStack2, IconFolder, IconTextWrap, IconClock, IconPencil, IconUser, IconServer2, IconShieldCheck, IconLock, IconBolt, IconCpu, IconDeviceSdCard,
-  IconUsers, IconUsersGroup, IconKey, IconBrandGoogle, IconBrandGithub, IconBrandDiscord, IconShieldLock, IconId, IconMail } from "@tabler/icons-solidjs";
+  IconUsers, IconUsersGroup, IconKey, IconBrandGoogle, IconBrandGithub, IconBrandDiscord, IconShieldLock, IconId, IconMail, IconChartBar } from "@tabler/icons-solidjs";
 
-const icons = { box: IconCube, search: IconSearch, refresh: IconRefresh, chevron: IconChevronRight, close: IconX,
+const icons = { box: IconCube, chart: IconChartBar, search: IconSearch, refresh: IconRefresh, chevron: IconChevronRight, close: IconX,
   copy: IconCopy, check: IconCheck, edit: IconPencil, settings: IconSettings, sliders: IconAdjustmentsHorizontal, logout: IconLogout,
   eye: IconEye, plug: IconPlug, database: IconDatabase, arrow: IconArrowUp, warning: IconAlertTriangle,
   plus: IconPlus, external: IconExternalLink, back: IconArrowLeft, git: IconBrandGit, globe: IconWorld,

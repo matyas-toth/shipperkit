@@ -18,6 +18,9 @@ On a managed install, the installer writes `/etc/shipper/compose.yaml` and `/etc
 | `SHIPPER_SETUP_TOKEN` | Generated local file | Optional first-run capability of at least 32 characters. |
 | `SHIPPER_MANAGED_INSTALL` | unset | Marks a managed install and enables the host update helper. Set by the installer. |
 | `SHIPPER_UPDATES` | unset | `1` enables managed updates. `0` disables them even on a managed install. |
+| `SHIPPER_TELEMETRY` | unset | `1` enables anonymous usage reports. `0` disables them even on a managed install. See [Usage data](/docs/usage-data/). |
+| `SHIPPER_TELEMETRY_URL` | `https://telemetry.shipperkit.dev/api/v1/ingest` | Endpoint that receives usage reports. |
+| `DO_NOT_TRACK` | unset | `1` disables usage reports regardless of other settings. |
 
 ## Proxy and TLS
 
