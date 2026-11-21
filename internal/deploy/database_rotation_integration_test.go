@@ -56,7 +56,7 @@ func TestDockerDatabasePasswordRotation(t *testing.T) {
 		"mysql":      {"sh", "-c", `MYSQL_PWD="$CHECK" mysql --host=127.0.0.1 --user="$MYSQL_USER" --ssl-mode=REQUIRED --execute='SELECT 1' "$MYSQL_DATABASE"`},
 		"mariadb":    {"sh", "-c", `MYSQL_PWD="$CHECK" mariadb --host=127.0.0.1 --user="$MARIADB_USER" --ssl --ssl-verify-server-cert=0 --execute='SELECT 1' "$MARIADB_DATABASE"`},
 		"clickhouse": {"sh", "-c", `clickhouse-client --host=127.0.0.1 --user="$CLICKHOUSE_USER" --password="$CHECK" --query='SELECT 1'`},
-		"redis":      {"sh", "-c", `REDISCLI_AUTH="$CHECK" redis-cli --tls --cacert /shipper-tls/ca.crt -h 127.0.0.1 PING | grep -qx PONG`},
+		"redis":      {"sh", "-c", `REDISCLI_AUTH="$CHECK" redis-cli -h 127.0.0.1 PING | grep -qx PONG`},
 	}
 	for _, fixture := range []struct{ engine, version string }{{"postgresql", "18"}, {"mysql", "8.4"}, {"mariadb", "11.8"}, {"clickhouse", "25.3"}, {"redis", "8"}} {
 		t.Run(fixture.engine, func(t *testing.T) {
