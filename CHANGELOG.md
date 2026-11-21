@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.35](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.34...v1.0.0-rc.35) (2026-11-21)
+
+
+### Features
+
+* add Join Discord links to the landing page, docs, and dashboard ([#87](https://github.com/matyas-toth/shipperkit/issues/87)) ([ae9612c](https://github.com/matyas-toth/shipperkit/commit/ae9612caeff471e010beaea4a2893f4067f5784a))
+
 ## [1.0.0-rc.34](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.33...v1.0.0-rc.34) (2026-11-20)
 
 
