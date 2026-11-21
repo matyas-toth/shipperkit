@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0-rc.37](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.36...v1.0.0-rc.37) (2026-11-21)
+
+
+### Features
+
+* one private network, plain database strings and public database domains ([#93](https://github.com/matyas-toth/shipperkit/issues/93)) ([a4531b9](https://github.com/matyas-toth/shipperkit/commit/a4531b93dd37f28947eb35f0755f93a35c5bda63))
+
+
+### Bug Fixes
+
+* let the telemetry dashboard write its Next.js cache ([#91](https://github.com/matyas-toth/shipperkit/issues/91)) ([e931881](https://github.com/matyas-toth/shipperkit/commit/e9318818f01d73897baf8376e18485a43c770cf8))
+
 ## [1.0.0-rc.36](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.35...v1.0.0-rc.36) (2026-11-21)
 
 
