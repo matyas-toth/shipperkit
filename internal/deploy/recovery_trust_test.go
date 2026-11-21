@@ -43,7 +43,7 @@ func TestInstanceRecoveryPreservesDatabaseTrustAndLocalFiles(t *testing.T) {
 	}
 	defer cli.Close()
 	runtime := &DockerRuntime{Client: cli, Instance: instance, DataDir: dir}
-	original, err := runtime.databaseCertificate("audit-db", "db.example.test")
+	original, err := runtime.databaseCertificate("audit-db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestInstanceRecoveryPreservesDatabaseTrustAndLocalFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	recovered := &DockerRuntime{DataDir: target}
-	replacement, err := recovered.databaseCertificate("audit-db", "db.example.test")
+	replacement, err := recovered.databaseCertificate("audit-db")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestInstanceRecoveryPreservesDatabaseTrustAndLocalFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = cert.Verify(x509.VerifyOptions{Roots: roots, DNSName: "db.example.test"}); err != nil {
+	if _, err = cert.Verify(x509.VerifyOptions{Roots: roots, DNSName: "db-audit-db"}); err != nil {
 		t.Fatal("original client trust no longer works", err)
 	}
 	restored, err := store.Open(target)
@@ -110,12 +110,12 @@ func TestInstanceRecoveryPreservesDatabaseTrustAndLocalFiles(t *testing.T) {
 
 func TestDatabaseTrustRecoveryRejectsInvalidIdentities(t *testing.T) {
 	runtime := &DockerRuntime{DataDir: t.TempDir()}
-	files, err := runtime.databaseCertificate("valid", "")
+	files, err := runtime.databaseCertificate("valid")
 	if err != nil {
 		t.Fatal(err)
 	}
 	valid := databaseTrust{Application: "valid", Certificate: files["ca.crt"], Key: files["ca.key"]}
-	other, err := runtime.databaseCertificate("other", "")
+	other, err := runtime.databaseCertificate("other")
 	if err != nil {
 		t.Fatal(err)
 	}

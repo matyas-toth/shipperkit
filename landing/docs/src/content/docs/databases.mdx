@@ -1,0 +1,57 @@
+---
+title: Databases
+description: Connect applications to a managed database with a plain connection string, serve PostgreSQL, Redis and MongoDB on a public domain with a Let's Encrypt certificate, and publish raw ports when you need them.
+---
+
+Shipper runs PostgreSQL, MySQL, MariaDB, MongoDB, Redis, ClickHouse and SQLite as managed databases. Every application and database on an instance shares one private network, so connecting an application to a database is a copy and a paste.
+
+## Connect an application
+
+1. Open the database and copy **Connection string** on Overview.
+2. Paste it into the application's environment, usually as `DATABASE_URL` or `REDIS_URL`.
+3. Deploy the application.
+
+There is nothing to link and no certificate to install. The string addresses the database by its private name, `db-<id>`, which stays the same across redeploys:
+
+| Engine | Private connection string |
+| --- | --- |
+| PostgreSQL | `postgresql://app:…@db-<id>:5432/app` |
+| MySQL, MariaDB | `mysql://app:…@db-<id>:3306/app` |
+| MongoDB | `mongodb://app:…@db-<id>:27017/app?authSource=admin&replicaSet=rs0` |
+| Redis | `redis://default:…@db-<id>:6379/0` |
+| ClickHouse | `clickhouse://app:…@db-<id>:9000/app` |
+
+Every driver accepts these strings as they are, including Node's `pg`, Prisma, Drizzle, `mysql2`, `ioredis` and `psycopg`.
+
+MySQL 8 only accepts a password over a plain connection when it is encrypted with the server's RSA key. Most drivers handle this themselves or use TLS. Java's JDBC driver needs `allowPublicKeyRetrieval=true`, and the `mysql` command line client needs `--get-server-public-key` when TLS is off.
+
+Traffic on the private network never leaves the server. Containers run without the capabilities needed to sniff or spoof a neighbour's traffic, and the database password is still required. PostgreSQL, MySQL and MariaDB keep offering TLS to clients that ask for it, so an existing string with `sslmode=require` keeps working.
+
+Any application on the instance can reach any database on the private network. The password is what protects it, so keep it in a secret variable.
+
+## Connect from outside the server
+
+PostgreSQL, Redis and MongoDB can answer on a public domain. Shipper's proxy terminates TLS with a Let's Encrypt certificate for that domain and forwards the connection over the private network.
+
+1. Point an `A` record for the domain, such as `db.example.com`, at the server.
+2. Open the database's **Networking** tab, enter the domain under **Public domain** and save.
+3. Open the engine's port in your firewall.
+4. On Overview, switch **Connection string** to **Public** and copy it.
+
+| Engine | Port | Public connection string |
+| --- | --- | --- |
+| PostgreSQL | `5432` | `postgresql://app:…@db.example.com:5432/app?sslmode=require` |
+| Redis | `6379` | `rediss://default:…@cache.example.com:6379/0` |
+| MongoDB | `27017` | `mongodb://app:…@mongo.example.com:27017/app?authSource=admin&directConnection=true&tls=true` |
+
+The certificate is publicly trusted, so drivers that verify it, such as Node's `pg`, connect without extra configuration. Several databases of the same engine share the engine's port, and the proxy tells them apart by the domain the client sends during the TLS handshake (SNI).
+
+`redis-cli` only sends SNI when asked: add `--sni cache.example.com`. PostgreSQL clients older than version 14 do not send SNI and need the published port below.
+
+MySQL, MariaDB and ClickHouse negotiate TLS inside their own protocol, which a proxy cannot terminate. Reach them from outside through a published port.
+
+## Published ports
+
+**Networking → Advanced → Published ports** maps a host port straight to the database container, without the proxy. Use it for a VPN or Tailscale address, an SSH tunnel bound to `127.0.0.1`, an old client without SNI, or MySQL and MariaDB. Traffic on a published port is not encrypted by Shipper.
+
+A published port cannot reuse the port of a public domain, and only one application can publish a given port.

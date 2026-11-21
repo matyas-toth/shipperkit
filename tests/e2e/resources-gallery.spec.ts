@@ -48,18 +48,11 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   let name = "Production database";
   const release = () => ({ ...original.activeDeployment, config, resolvedMethod: "image", runtimePort: config.port });
   const application = () => ({ ...original.application, name, sourceKind: "image", method: "image", activeMethod: "image", sourceRef: config.image, config, domains: [], containers: [{ ...original.application.containers[0], name: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), applicationId: "application-web", managed: true, state: "running", health: "healthy", image: config.image }] });
-  await page.route("**/api/applications/application-web", r => r.fulfill({ json: { application: application(), activeDeployment: release(), deployments: [release()], database: { engine: config.database.engine, host: "app-application-web", port: config.port } } }));
-  await page.route("**/api/applications/application-web/database/connection", r => r.fulfill({ json: { uri: "postgresql://app:gallery-password@app-application-web:5432/app?sslmode=require", deploymentId: release().id } }));
+  await page.route("**/api/applications/application-web", r => r.fulfill({ json: { application: application(), activeDeployment: release(), deployments: [release()], database: { engine: config.database.engine, host: "db-application-web", port: config.port } } }));
+  await page.route("**/api/applications/application-web/database/connection", r => r.fulfill({ json: { uri: r.request().postDataJSON()?.public ? "postgresql://app:gallery-password@db.example.com:5432/app?sslmode=require" : "postgresql://app:gallery-password@db-application-web:5432/app", deploymentId: release().id } }));
   await page.route("**/api/applications/application-web/diagnostics", r => r.fulfill({ json: { checks: [], observations: [], changesSinceServing: [], unknowns: [], servingRelease: release(), latestOperation: release(), durationSeconds: 14 } }));
   await page.route("**/api/applications/application-web/incidents", r => r.fulfill({ json: { items: [] } }));
-  await page.route("**/api/applications/application-web/networking", r => r.fulfill({ json: {
-    networking: { applications: [], ports: [] },
-    host: "app-application-web",
-    applications: [
-      { id: "application-atlas", name: "Atlas API", host: "app-application-atlas" },
-      { id: "application-api", name: "API", host: "app-application-api" },
-    ],
-  } }));
+  await page.route("**/api/applications/application-web/networking", r => r.fulfill({ json: { networking: { ports: [] }, host: "db-application-web" } }));
   await page.route("**/api/applications/application-web/changes", r => r.fulfill({ json: {
     operation: "recreate", changes: ["Networking"], revision: "resource-gallery-network",
     downtime: "Public ports switch during replacement",
@@ -93,20 +86,16 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await shot(page, "database-backups");
   await page.goto("/applications/application-web?tab=networking");
   await shot(page, "networking-empty");
-  await page.getByRole("button", { name: "Connect application", exact: true }).click();
-  const connection = page.getByLabel("Connected application 1", { exact: true });
-  await connection.selectOption({ index: 1 });
-  await shot(page, "private-connection");
-  await page.getByRole("button", { name: "Add port", exact: true }).click();
-  await page.getByLabel("Public port", { exact: true }).fill("15432");
-  await page.getByLabel("Container port", { exact: true }).fill("5432");
-  await page.getByRole("switch", { name: "Public TLS", exact: true }).click();
-  await page.getByLabel("TLS hostname", { exact: true }).fill("db.example.com");
-  await shot(page, "public-database-tls");
+  await page.getByLabel("Domain", { exact: true }).fill("db.example.com");
+  await shot(page, "public-domain");
   await page.getByRole("button", { name: "Save and redeploy", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await shot(page, "review-network-change");
   await page.getByRole("button", { name: "Keep editing", exact: true }).click();
+  await page.getByText("Advanced", { exact: true }).click();
+  await page.getByRole("button", { name: "Add port", exact: true }).click();
+  await page.getByLabel("Public port", { exact: true }).fill("15432");
+  await page.getByLabel("Container port", { exact: true }).fill("5432");
   await page.getByRole("button", { name: "Add port", exact: true }).click();
   await page.getByLabel("Protocol", { exact: true }).last().selectOption("udp");
   await page.getByLabel("Public port", { exact: true }).last().fill("19000");
@@ -116,6 +105,17 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await page.getByRole("button", { name: "Save and redeploy", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("already in use");
   await shot(page, "port-conflict");
+  await page.unroute("**/api/applications/application-web/changes");
+  config = { ...presets.postgresql, database: { ...presets.postgresql.database, domain: "db.example.com" } };
+  await page.goto("/applications/application-web");
+  await expect(page.getByText("db.example.com:5432", { exact: true })).toBeVisible();
+  await page.getByRole("radio", { name: "Public", exact: true }).check();
+  await expect(page.locator(".database-connection-preview")).toContainText("db.example.com:5432/app?sslmode=require");
+  await shot(page, "overview-public-domain");
+  await page.goto("/applications/application-web?tab=networking");
+  await expect(page.getByLabel("Domain", { exact: true })).toHaveValue("db.example.com");
+  await shot(page, "networking-public-domain");
+  config = presets.postgresql;
   await page.route("**/api/applications/application-web/terminal", r => r.fulfill({ json: { id: "gallery-terminal", ticket: "gallery-ticket", expiresAt: Math.floor(Date.now()/1000)+900 } }));
   await page.route("**/api/applications/application-web/terminal/*/revoke", r => r.fulfill({ json: { revoked: true } }));
   let terminalSocket: any;

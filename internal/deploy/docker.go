@@ -148,6 +148,7 @@ func (r *DockerRuntime) ensureProxy(ctx context.Context) error {
 	} else {
 		return e
 	}
+	databases := []string{}
 	inspected, e := r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{})
 	if e == nil {
 		if !owned(inspected.Container.Config.Labels, r.Instance, "") || inspected.Container.Config.Labels["io.shipper.infrastructure"] != "proxy" {
@@ -166,6 +167,9 @@ func (r *DockerRuntime) ensureProxy(ctx context.Context) error {
 			}
 			if _, e = r.Client.ContainerRemove(ctx, inspected.Container.ID, client.ContainerRemoveOptions{Force: true}); e != nil {
 				return e
+			}
+			if kept := inspected.Container.Config.Labels[proxyDatabasesLabel]; kept != "" {
+				databases = strings.Split(kept, ",")
 			}
 		} else {
 			if e = r.restoreACME(ctx, r.proxy()); e != nil {
@@ -187,9 +191,87 @@ func (r *DockerRuntime) ensureProxy(ctx context.Context) error {
 	} else if !errdefs.IsNotFound(e) {
 		return e
 	}
+	return r.createProxy(ctx, volume, databases)
+}
+
+// proxyDatabasesLabel records which database entrypoints a proxy listens on.
+const proxyDatabasesLabel = "io.shipper.proxy.databases"
+
+// proxyDatabasesFailedLabel records a set of entrypoints the proxy could not
+// listen on and when, as "postgresql,redis@1700000000", so later routing does
+// not restart the proxy for the same set again right away.
+const proxyDatabasesFailedLabel = "io.shipper.proxy.databases-failed"
+
+const proxyDatabasesRetry = 10 * time.Minute
+
+// ensureProxyDatabases recreates the proxy when the set of engines with a
+// public database domain changes, since Traefik binds entrypoints at start.
+// Certificates and routes live on the proxy volume and survive. If the new
+// proxy cannot start, the previous entrypoints come back so web traffic flows,
+// and the error fails the deployment that asked for the new set.
+func (r *DockerRuntime) ensureProxyDatabases(ctx context.Context, databases []string) error {
+	inspected, e := r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{})
+	if e != nil {
+		return e
+	}
+	labels := inspected.Container.Config.Labels
+	if !owned(labels, r.Instance, "") || labels["io.shipper.infrastructure"] != "proxy" {
+		return errors.New("Proxy ownership check failed")
+	}
+	previous, want := labels[proxyDatabasesLabel], strings.Join(databases, ",")
+	if previous == want {
+		return nil
+	}
+	if failed, at, ok := strings.Cut(labels[proxyDatabasesFailedLabel], "@"); ok && failed == want {
+		if seconds, err := strconv.ParseInt(at, 10, 64); err == nil && time.Since(time.Unix(seconds, 0)) < proxyDatabasesRetry {
+			return nil
+		}
+	}
 	if e = r.pull(ctx, TraefikImage, func(string) {}); e != nil {
 		return e
 	}
+	if _, e = r.Client.ContainerRemove(ctx, inspected.Container.ID, client.ContainerRemoveOptions{Force: true}); e != nil {
+		return e
+	}
+	volume := r.prefix() + "-proxy-data"
+	if e = r.startProxy(ctx, volume, databases, ""); e != nil {
+		if _, err := r.Client.ContainerRemove(ctx, r.proxy(), client.ContainerRemoveOptions{Force: true}); err != nil && !errdefs.IsNotFound(err) {
+			return errors.Join(e, err)
+		}
+		restore := []string{}
+		if previous != "" {
+			restore = strings.Split(previous, ",")
+		}
+		failed := want + "@" + strconv.FormatInt(time.Now().Unix(), 10)
+		if err := r.startProxy(ctx, volume, restore, failed); err != nil {
+			return errors.Join(e, err)
+		}
+		return fmt.Errorf("The proxy could not listen on a database domain's port: %w", e)
+	}
+	return nil
+}
+
+// startProxy creates the proxy on the instance's edge and private networks and
+// starts it on the routes already on its volume.
+func (r *DockerRuntime) startProxy(ctx context.Context, volume string, databases []string, failed string) error {
+	id, e := r.newProxy(ctx, volume, databases, failed)
+	if e != nil {
+		return e
+	}
+	if e = r.ensurePrivateNetwork(ctx); e != nil {
+		return e
+	}
+	if e = r.restoreACME(ctx, id); e != nil {
+		return e
+	}
+	if _, e = r.prepareACMEFile(ctx, id); e != nil {
+		return e
+	}
+	_, e = r.Client.ContainerStart(ctx, id, client.ContainerStartOptions{})
+	return e
+}
+
+func (r *DockerRuntime) newProxy(ctx context.Context, volume string, databases []string, failed string) (string, error) {
 	args := []string{"--entrypoints.web.address=:8080", "--entrypoints.websecure.address=:8443", "--entrypoints.traefik.address=:9000", "--providers.file.directory=/data/dynamic", "--providers.file.watch=true", "--providers.providersThrottleDuration=100ms", "--api.insecure=true", "--api.dashboard=false", "--ping=true", "--log.level=ERROR"}
 	if r.Config.ACMEEmail != "" {
 		args = append(args, "--certificatesresolvers.letsencrypt.acme.email="+r.Config.ACMEEmail, "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json", "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web")
@@ -199,10 +281,37 @@ func (r *DockerRuntime) ensureProxy(ctx context.Context) error {
 	}
 	ip, e := netip.ParseAddr(r.Config.BindIP)
 	if e != nil {
-		return e
+		return "", e
 	}
 	bindings := network.PortMap{network.MustParsePort("8080/tcp"): []network.PortBinding{{HostIP: ip, HostPort: strconv.Itoa(r.Config.HTTPPort)}}, network.MustParsePort("8443/tcp"): []network.PortBinding{{HostIP: ip, HostPort: strconv.Itoa(r.Config.HTTPSPort)}}}
-	created, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: r.proxy(), Config: &container.Config{Image: TraefikImage, Cmd: args, User: "65532:65532", Labels: r.labels("", ""), ExposedPorts: exposedPorts(bindings)}, HostConfig: &container.HostConfig{PortBindings: bindings, ReadonlyRootfs: true, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, Mounts: []mount.Mount{{Type: mount.TypeVolume, Source: volume, Target: "/data"}}, RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: container.Resources{Memory: 128 << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(128))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {}}}})
+	for _, engine := range databases {
+		port := store.DatabaseDomainPorts[engine]
+		if port == 0 {
+			continue
+		}
+		number := strconv.Itoa(port)
+		args = append(args, "--entrypoints."+engine+".address=:"+number)
+		bindings[network.MustParsePort(number+"/tcp")] = []network.PortBinding{{HostIP: ip, HostPort: number}}
+	}
+	labels := r.labels("", "")
+	labels[proxyDatabasesLabel] = strings.Join(databases, ",")
+	if failed != "" {
+		labels[proxyDatabasesFailedLabel] = failed
+	}
+	created, e := r.Client.ContainerCreate(ctx, client.ContainerCreateOptions{Name: r.proxy(), Config: &container.Config{Image: TraefikImage, Cmd: args, User: "65532:65532", Labels: labels, ExposedPorts: exposedPorts(bindings)}, HostConfig: &container.HostConfig{PortBindings: bindings, ReadonlyRootfs: true, CapDrop: []string{"ALL"}, SecurityOpt: []string{"no-new-privileges:true"}, Mounts: []mount.Mount{{Type: mount.TypeVolume, Source: volume, Target: "/data"}}, RestartPolicy: container.RestartPolicy{Name: "unless-stopped"}, Resources: container.Resources{Memory: 128 << 20, NanoCPUs: 1e9, PidsLimit: ptr(int64(128))}, LogConfig: container.LogConfig{Type: "json-file", Config: map[string]string{"max-size": "5m", "max-file": "2"}}}, NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: map[string]*network.EndpointSettings{r.network(): {}}}})
+	if e != nil {
+		return "", e
+	}
+	return created.ID, nil
+}
+
+// createProxy is the first start of a proxy, which seeds its watched routes
+// directory before Traefik reads it.
+func (r *DockerRuntime) createProxy(ctx context.Context, volume string, databases []string) error {
+	if e := r.pull(ctx, TraefikImage, func(string) {}); e != nil {
+		return e
+	}
+	id, e := r.newProxy(ctx, volume, databases, "")
 	if e != nil {
 		return e
 	}
@@ -210,16 +319,16 @@ func (r *DockerRuntime) ensureProxy(ctx context.Context) error {
 	initialRoutes := Routes(nil, nil)
 	r.dashboardRoute(initialRoutes)
 	initial, _ := json.Marshal(initialRoutes)
-	if e = r.copy(ctx, created.ID, "/data", map[string][]byte{"./": nil, "dynamic/": nil, "dynamic/routes.yaml": initial}); e != nil {
+	if e = r.copy(ctx, id, "/data", map[string][]byte{"./": nil, "dynamic/": nil, "dynamic/routes.yaml": initial}); e != nil {
 		return e
 	}
-	if e = r.restoreACME(ctx, created.ID); e != nil {
+	if e = r.restoreACME(ctx, id); e != nil {
 		return e
 	}
-	if _, e = r.prepareACMEFile(ctx, created.ID); e != nil {
+	if _, e = r.prepareACMEFile(ctx, id); e != nil {
 		return e
 	}
-	_, e = r.Client.ContainerStart(ctx, created.ID, client.ContainerStartOptions{})
+	_, e = r.Client.ContainerStart(ctx, id, client.ContainerStartOptions{})
 	return e
 }
 
@@ -783,7 +892,59 @@ func Routes(apps []store.Application, active map[string]store.Deployment) map[st
 	if len(services) > 0 {
 		httpConfig["services"] = services
 	}
-	return map[string]any{"http": httpConfig}
+	out := map[string]any{"http": httpConfig}
+	if tcp := databaseRoutes(apps, active); tcp != nil {
+		out["tcp"] = tcp
+		// libpq 17 and later offer the "postgresql" ALPN protocol and Go's TLS
+		// server refuses a client whose offer it shares nothing with. Browsers
+		// still get h2 or HTTP/1.1, which come first.
+		out["tls"] = map[string]any{"options": map[string]any{"default": map[string]any{"alpnProtocols": []string{"h2", "http/1.1", "acme-tls/1", "postgresql"}}}}
+	}
+	return out
+}
+
+// databaseRoutes serves each database with a public domain on its engine's
+// standard port. The proxy terminates TLS with the domain's Let's Encrypt
+// certificate, including PostgreSQL's in-protocol upgrade, and forwards plain
+// traffic to the release over the private network.
+func databaseRoutes(apps []store.Application, active map[string]store.Deployment) map[string]any {
+	routers := map[string]any{}
+	services := map[string]any{}
+	for _, a := range apps {
+		d, ok := active[a.ID]
+		if !ok || d.ID == "" || d.Config.Database == nil || d.Config.Database.Domain == "" {
+			continue
+		}
+		engine := d.Config.Database.Engine
+		if store.DatabaseDomainPorts[engine] == 0 {
+			continue
+		}
+		key := "db-" + a.ID
+		routers[key] = map[string]any{"rule": "HostSNI(`" + d.Config.Database.Domain + "`)", "entryPoints": []string{engine}, "service": key, "tls": map[string]any{"certResolver": "letsencrypt"}}
+		services[key] = map[string]any{"loadBalancer": map[string]any{"servers": []any{map[string]string{"address": "site-" + d.ID + ":" + strconv.Itoa(ReleasePort(d))}}}}
+	}
+	if len(routers) == 0 {
+		return nil
+	}
+	return map[string]any{"routers": routers, "services": services}
+}
+
+// proxyDatabases lists, in a fixed order, the engines whose standard port the
+// proxy must listen on for the active databases' public domains.
+func proxyDatabases(apps []store.Application, active map[string]store.Deployment) []string {
+	used := map[string]bool{}
+	for _, a := range apps {
+		if d, ok := active[a.ID]; ok && d.ID != "" && d.Config.Database != nil && d.Config.Database.Domain != "" {
+			used[d.Config.Database.Engine] = true
+		}
+	}
+	engines := []string{}
+	for _, engine := range []string{"postgresql", "redis", "mongodb"} {
+		if used[engine] {
+			engines = append(engines, engine)
+		}
+	}
+	return engines
 }
 
 func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, active map[string]store.Deployment) error {
@@ -791,6 +952,9 @@ func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, ac
 		return err
 	}
 	// Cleanup is best effort; a leftover network never blocks routing.
+	if err := r.retireApplicationNetworks(ctx); err != nil {
+		slog.Warn("Retiring per-application networks failed", "error", err)
+	}
 	if err := r.pruneOrphanNetworks(ctx, apps); err != nil {
 		slog.Warn("Orphaned network cleanup failed", "error", err)
 	}
@@ -800,6 +964,11 @@ func (r *DockerRuntime) Routes(ctx context.Context, apps []store.Application, ac
 	}
 	resolved := *r
 	resolved.Config = config
+	// A port the proxy cannot take fails the deploy that asked for it, which
+	// rolls back. Web traffic keeps flowing on the restored proxy.
+	if e = resolved.ensureProxyDatabases(ctx, proxyDatabases(apps, active)); e != nil {
+		return e
+	}
 	configuration := Routes(apps, active)
 	resolved.dashboardRoute(configuration)
 	data, e := json.Marshal(configuration)

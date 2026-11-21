@@ -30,17 +30,6 @@ export default function DatabaseOperations(props: { application: Application; op
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
-  async function downloadCA() {
-    setBusy(true); setError("");
-    try {
-      const response = await fetch("/api" + base() + "/ca", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-CSRF-Token": auth.session()?.csrfToken ?? "" }, body: "{}" });
-      if (!response.ok) { const body = await response.json(); throw new Error(body.error?.message ?? body.message ?? "CA download failed"); }
-      const url = URL.createObjectURL(await response.blob()), link = document.createElement("a");
-      link.href = url; link.download = "database-ca.crt"; link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { setError((e as Error).message); }
-    finally { setBusy(false); }
-  }
   async function importDump(event: SubmitEvent) {
     event.preventDefault();
     if (!file() || busy()) return;
@@ -71,11 +60,6 @@ export default function DatabaseOperations(props: { application: Application; op
       <Show when={supportsImport()}>
         <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void showImport()}>
           <Icon name="upload" /><span>{importLabel()}</span>
-        </button>
-      </Show>
-      <Show when={props.application.config.database?.tlsHostname}>
-        <button type="button" class="database-operation" disabled={busy() || !props.application.activeDeploymentId} onClick={() => void downloadCA()}>
-          <Icon name="download" /><span>Download CA</span>
         </button>
       </Show>
     </div>

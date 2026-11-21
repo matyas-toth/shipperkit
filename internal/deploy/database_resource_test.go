@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"strings"
 	"bytes"
 	"context"
 	"crypto/x509"
@@ -47,7 +48,7 @@ func TestDatabaseResourcePresets(t *testing.T) {
 					t.Fatal(e)
 				}
 				parsed, e := url.Parse(uri)
-				if e != nil || parsed.Scheme != "rediss" || parsed.Hostname() != "db-resource" {
+				if e != nil || parsed.Scheme != "redis" || parsed.Hostname() != "db-resource" {
 					t.Fatal(uri, e)
 				}
 				password, _ := parsed.User.Password()
@@ -105,9 +106,102 @@ func TestDatabaseResourceEngineConnections(t *testing.T) {
 	if raw, e := DatabaseURI(d); e != nil || raw != "sqlite:///home/sqlite/app.db" {
 		t.Fatal(raw, e)
 	}
-	c.Database.TLSHostname = "db.example.test"
+	c.Database.Domain = "db.example.test"
 	if e = ValidateDatabaseResource(c); e == nil {
-		t.Fatal("SQLite accepted public TLS")
+		t.Fatal("SQLite accepted a public domain")
+	}
+}
+
+func TestDatabaseConnectionStrings(t *testing.T) {
+	cases := []struct {
+		engine, version, private, public, legacy string
+	}{
+		{"postgresql", "18", "postgresql://app:%s@db-resource:5432/app", "postgresql://app:%s@db.example.test:5432/app?sslmode=require", "postgresql://app:%s@db-resource:5432/app?sslmode=require"},
+		{"redis", "8", "redis://default:%s@db-resource:6379/0", "rediss://default:%s@db.example.test:6379/0", "rediss://default:%s@db-resource:6379/0"},
+		{"mongodb", "8", "mongodb://app:%s@db-resource:27017/app?authSource=admin&replicaSet=rs0", "mongodb://app:%s@db.example.test:27017/app?authSource=admin&directConnection=true&tls=true", "mongodb://app:%s@db-resource:27017/app?authSource=admin&replicaSet=rs0"},
+	}
+	for _, tc := range cases {
+		c, e := DatabaseResourceConfig(tc.engine, tc.version)
+		if e != nil {
+			t.Fatal(e)
+		}
+		password := ""
+		for _, v := range c.Variables {
+			if v.Secret {
+				password = url.UserPassword("x", v.Value).String()[2:]
+			}
+		}
+		d := store.Deployment{ID: "release", ApplicationID: "resource", ContainerID: "container", Config: c, ResolvedMethod: "image"}
+		if _, e = DatabaseConnectionURI(d, DatabaseAccess{Public: true}); e == nil {
+			t.Fatal(tc.engine, "public string without a domain")
+		}
+		d.Config.Database.Domain = "db.example.test"
+		if e = ValidateDatabaseResource(d.Config); e != nil {
+			t.Fatal(tc.engine, e)
+		}
+		for _, check := range []struct {
+			access DatabaseAccess
+			want   string
+		}{{DatabaseAccess{}, tc.private}, {DatabaseAccess{Public: true}, tc.public}, {DatabaseAccess{LegacyTLS: true}, tc.legacy}} {
+			got, e := DatabaseConnectionURI(d, check.access)
+			if want := strings.Replace(check.want, "%s", password, 1); e != nil || got != want {
+				t.Fatalf("%s %+v\n got %s\nwant %s (%v)", tc.engine, check.access, got, want, e)
+			}
+		}
+	}
+	for _, engine := range []string{"mysql", "mariadb"} {
+		version := map[string]string{"mysql": "8.4", "mariadb": "11.8"}[engine]
+		c, _ := DatabaseResourceConfig(engine, version)
+		c.Database.Domain = "db.example.test"
+		if e := ValidateDatabaseResource(c); e == nil {
+			t.Fatal(engine, "accepted a domain the proxy cannot terminate")
+		}
+	}
+	c, _ := DatabaseResourceConfig("postgresql", "18")
+	for _, domain := range []string{"DB.example.test", "db", "db..example.test", "-db.example.test"} {
+		c.Database.Domain = domain
+		if e := ValidateDatabaseResource(c); e == nil {
+			t.Fatal("accepted domain", domain)
+		}
+	}
+	c.Database.Domain = "db.example.test"
+	c.Networking.Ports = []store.PublishedPort{{Protocol: "tcp", BindIP: "0.0.0.0", HostPort: 5432, ContainerPort: 5432}}
+	if e := ValidateDatabaseResource(c); e == nil || !strings.Contains(e.Error(), "Port 5432 serves the public domain") {
+		t.Fatal("published the domain's port", e)
+	}
+}
+
+func TestDatabaseDomainRoutes(t *testing.T) {
+	postgres, _ := DatabaseResourceConfig("postgresql", "18")
+	postgres.Database.Domain = "pg.example.test"
+	redis, _ := DatabaseResourceConfig("redis", "8")
+	redis.Database.Domain = "cache.example.test"
+	private, _ := DatabaseResourceConfig("mongodb", "8")
+	apps := []store.Application{{ID: "pg"}, {ID: "cache"}, {ID: "mongo"}}
+	active := map[string]store.Deployment{
+		"pg":    {ID: "release-pg", ApplicationID: "pg", Config: postgres, RuntimePort: 5432},
+		"cache": {ID: "release-cache", ApplicationID: "cache", Config: redis, RuntimePort: 6379},
+		"mongo": {ID: "release-mongo", ApplicationID: "mongo", Config: private, RuntimePort: 27017},
+	}
+	if got := proxyDatabases(apps, active); strings.Join(got, ",") != "postgresql,redis" {
+		t.Fatal("entrypoints", got)
+	}
+	tcp, _ := Routes(apps, active)["tcp"].(map[string]any)
+	routers, _ := tcp["routers"].(map[string]any)
+	services, _ := tcp["services"].(map[string]any)
+	if len(routers) != 2 || len(services) != 2 {
+		t.Fatal("routes", tcp)
+	}
+	pg := routers["db-pg"].(map[string]any)
+	if pg["rule"] != "HostSNI(`pg.example.test`)" || pg["entryPoints"].([]string)[0] != "postgresql" || pg["tls"].(map[string]any)["certResolver"] != "letsencrypt" {
+		t.Fatal("postgres router", pg)
+	}
+	server := services["db-cache"].(map[string]any)["loadBalancer"].(map[string]any)["servers"].([]any)[0].(map[string]string)
+	if server["address"] != "site-release-cache:6379" {
+		t.Fatal("redis service", server)
+	}
+	if _, ok := Routes(nil, nil)["tcp"]; ok {
+		t.Fatal("tcp routes without databases")
 	}
 }
 func TestDatabaseResourceBackupPlans(t *testing.T) {
@@ -132,7 +226,7 @@ func TestDatabaseResourceBackupPlans(t *testing.T) {
 }
 func TestDatabaseResourceNativeTLSIdentity(t *testing.T) {
 	r := DockerRuntime{DataDir: t.TempDir()}
-	files, e := r.databaseCertificate("resource", "db.example.test")
+	files, e := r.databaseCertificate("resource")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -143,7 +237,7 @@ func TestDatabaseResourceNativeTLSIdentity(t *testing.T) {
 	}
 	roots := x509.NewCertPool()
 	roots.AppendCertsFromPEM(files["ca.crt"])
-	for _, host := range []string{"db-resource", "app-resource", "localhost", "127.0.0.1", "db.example.test"} {
+	for _, host := range []string{"db-resource", "app-resource", "localhost", "127.0.0.1"} {
 		if _, e = cert.Verify(x509.VerifyOptions{Roots: roots, DNSName: host}); e != nil {
 			t.Fatal(host, e)
 		}
@@ -151,7 +245,7 @@ func TestDatabaseResourceNativeTLSIdentity(t *testing.T) {
 	if _, e = cert.Verify(x509.VerifyOptions{Roots: roots, DNSName: "other.example.test"}); e == nil {
 		t.Fatal("incorrect hostname accepted")
 	}
-	next, e := r.databaseCertificate("resource", "next.example.test")
+	next, e := r.databaseCertificate("resource")
 	if e != nil || string(next["ca.crt"]) != string(files["ca.crt"]) {
 		t.Fatal("CA changed across releases", e)
 	}
@@ -159,7 +253,7 @@ func TestDatabaseResourceNativeTLSIdentity(t *testing.T) {
 	if info, e := os.Stat(root); e != nil || !info.IsDir() {
 		t.Fatal(e)
 	}
-	if _, e = r.databaseCertificate("../escape", ""); e == nil {
+	if _, e = r.databaseCertificate("../escape"); e == nil {
 		t.Fatal("unsafe TLS directory")
 	}
 }

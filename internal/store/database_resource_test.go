@@ -24,8 +24,8 @@ func TestDatabaseTransitionPreservesInitialization(t *testing.T) {
 		t.Fatal("initialization password edit allowed")
 	}
 	changed = old
-	changed.Database = &DatabaseResource{Engine: "postgresql", Version: "18", TLSHostname: "db.example.test"}
+	changed.Database = &DatabaseResource{Engine: "postgresql", Version: "18", Domain: "db.example.test"}
 	if e := ValidateDatabaseTransition(old, changed); e != nil {
-		t.Fatal("safe TLS hostname change rejected", e)
+		t.Fatal("safe domain change rejected", e)
 	}
 }

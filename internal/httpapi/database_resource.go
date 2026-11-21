@@ -14,7 +14,6 @@ import (
 
 func (s *Server) databaseResourceRoutes(r chi.Router) {
 	r.With(s.csrf, s.limit).Post("/database-resources/prepare", s.prepareDatabaseResource)
-	r.With(s.csrf, s.limit).Post("/applications/{id}/database/ca", s.databaseCA)
 	r.With(s.csrf, s.limit).Post("/applications/{id}/database/import", s.importDatabaseDump)
 	r.With(s.csrf, s.limit).Post("/applications/{id}/database/password", s.rotateDatabasePassword)
 }
@@ -35,35 +34,6 @@ func (s *Server) prepareDatabaseResource(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	s.json(w, 200, map[string]any{"config": config})
-}
-func (s *Server) databaseCA(w http.ResponseWriter, r *http.Request) {
-	a, e := s.db.Application(r.Context(), chi.URLParam(r, "id"))
-	if e != nil {
-		s.resourceError(w, e)
-		return
-	}
-	if a.Config.Database == nil {
-		s.problem(w, 422, "invalid_database", "Choose a managed database")
-		return
-	}
-	if s.cfg.Worker == nil {
-		s.problem(w, 503, "unavailable", "Database protection is unavailable")
-		return
-	}
-	runtime, ok := s.cfg.Worker.Runtime.(*deploy.DockerRuntime)
-	if !ok {
-		s.problem(w, 503, "unavailable", "Docker is unavailable")
-		return
-	}
-	ca, e := runtime.DatabaseCA(a.ID)
-	if e != nil {
-		s.problem(w, 409, "ca_unavailable", "Deploy the database before downloading its CA")
-		return
-	}
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "application/x-pem-file")
-	w.Header().Set("Content-Disposition", `attachment; filename="database-ca.crt"`)
-	w.Write(ca)
 }
 func (s *Server) importDatabaseDump(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")

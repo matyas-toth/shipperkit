@@ -103,7 +103,7 @@ test("managed database settings show credentials and rotate the password", async
   await page.route("**/api/applications/application-web", route => route.fulfill({ json: { application: database(), deployments: [release()], activeDeployment: release(), database: { engine: config.database.engine, host: "db-application-web", port: config.port } } }));
   await page.route("**/api/applications", async route => {
     const body = await (await route.fetch()).json();
-    body.items = [...body.items.filter((item: any) => item.id !== "application-web"), { ...database(), id: "application-web" }, { ...body.items[0], id: "application-store", name: "Storefront", config: { ...body.items[0].config, networking: { applications: ["application-web"], ports: [] } } }];
+    body.items = [...body.items.filter((item: any) => item.id !== "application-web"), { ...database(), id: "application-web" }];
     await route.fulfill({ json: body });
   });
   const rotations: any[] = [];
@@ -122,7 +122,7 @@ test("managed database settings show credentials and rotate the password", async
   await expect(page.getByRole("button", { name: "Save and redeploy" })).toBeHidden();
   await pane.getByRole("button", { name: "Rotate", exact: true }).click();
   const dialog = page.getByRole("alertdialog", { name: "Rotate the database password?" });
-  await expect(dialog).toContainText("Storefront keeps the old password");
+  await expect(dialog).toContainText("Applications using the current connection string lose access until you paste the new one.");
   await dialog.getByRole("button", { name: "Rotate and redeploy" }).click();
   await expect(page).toHaveURL(/tab=deployments.*deployment=rotation-release|deployment=rotation-release.*tab=deployments/);
   expect(rotations).toEqual([{ review: true }, { revision: "rotation-review" }]);
@@ -203,15 +203,14 @@ test("background refetches keep chosen select values", async ({ page }) => {
     await page.waitForTimeout(1200);
   };
   const shown = (select: import("@playwright/test").Locator) => select.evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent);
-  await page.route("**/api/applications/application-web/networking", route => route.fulfill({ json: { networking: { applications: [], ports: [] }, host: "app-application-web", applications: [
-    { id: "a1", name: "Alpha", host: "app-a1" }, { id: "b2", name: "Beta", host: "app-b2" }, { id: "c3", name: "Gamma", host: "app-c3" }] } }));
+  await page.route("**/api/applications/application-web/networking", route => route.fulfill({ json: { networking: { ports: [] }, host: "app-application-web" } }));
   await page.goto("/applications/application-web?tab=networking");
-  await page.getByRole("button", { name: "Connect application", exact: true }).first().click();
-  const connected = page.getByLabel("Connected application 1", { exact: true });
-  await connected.selectOption("c3");
+  await page.getByRole("button", { name: "Add port", exact: true }).first().click();
+  const bind = page.getByLabel("Bind", { exact: true });
+  await bind.selectOption("127.0.0.1");
   await refresh();
-  await expect(connected).toHaveValue("c3");
-  expect(await shown(connected)).toBe("Gamma");
+  await expect(bind).toHaveValue("127.0.0.1");
+  expect(await shown(bind)).toBe("Loopback (127.0.0.1)");
   await page.goto("/settings#tokens");
   await page.getByRole("button", { name: "Create token", exact: true }).click();
   const application = page.getByLabel("Application", { exact: true });

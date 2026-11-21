@@ -501,10 +501,8 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 			return errors.New("Choose a Compose service for each public port")
 		}
 	}
-	for _, app := range append([]string{d.ApplicationID}, d.Config.Networking.Applications...) {
-		if e := r.ensureApplicationNetwork(ctx, app); e != nil {
-			return e
-		}
+	if e := r.ensurePrivateNetwork(ctx); e != nil {
+		return e
 	}
 	d.ResolvedMethod = "compose"
 	d.Services = ComposeServices(p, d.Config)
@@ -557,10 +555,7 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 		}
 		p.Networks[key] = n
 	}
-	p.Networks["shipper_edge"] = ct.NetworkConfig{Name: r.applicationNetwork(d.ApplicationID), External: true}
-	for _, app := range d.Config.Networking.Applications {
-		p.Networks["shipper_link_"+app] = ct.NetworkConfig{Name: r.applicationNetwork(app), External: true}
-	}
+	p.Networks["shipper_edge"] = ct.NetworkConfig{Name: r.privateNetwork(), External: true}
 	files := map[string][]byte{}
 	fileMount := func(source, target string, readonly bool) (ct.ServiceVolumeConfig, error) {
 		abs, e := checkedFile(repository, source)
@@ -757,9 +752,6 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 			svc.Networks = map[string]*ct.ServiceNetworkConfig{}
 		}
 		svc.Networks["shipper_edge"] = &ct.ServiceNetworkConfig{Aliases: composeServiceAliases(*d, name)}
-		for _, app := range d.Config.Networking.Applications {
-			svc.Networks["shipper_link_"+app] = &ct.ServiceNetworkConfig{}
-		}
 		for _, summary := range d.Services {
 			if summary.Name == name && summary.Port > 0 {
 				if svc.Networks == nil {

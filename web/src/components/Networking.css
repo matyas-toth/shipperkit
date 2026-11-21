@@ -93,12 +93,6 @@
 .network-host-cell .network-host {
   flex: 1;
 }
-.network-connection-row .network-host {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
 .network-remove {
   height: 36px;
   padding: 0 10px;
@@ -160,27 +154,6 @@
   margin-left: auto;
   flex: none;
 }
-.network-connection-head {
-  display: grid;
-  grid-template-columns: minmax(180px, 360px) minmax(180px, 1fr) 72px;
-  gap: 12px;
-  padding: 0 0 8px;
-  border-bottom: 0.5px solid var(--border-muted);
-  color: var(--muted);
-  font-size: 13px;
-}
-.network-connection-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 360px) minmax(180px, 1fr) 72px;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 0.5px solid var(--border-muted);
-}
-.network-connection-row:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
 .network-field {
   display: grid;
   min-width: 0;
@@ -241,9 +214,6 @@
   color: var(--text);
 }
 @media (max-width: 800px) {
-  .network-connection-row {
-    grid-template-columns: minmax(0, 1fr) 40px;
-  }
   .network-row-actions .icon-button,
   .network-host-cell .icon-button {
     width: 40px;
@@ -280,40 +250,6 @@
 .network-port-list:not(.has-service) .network-port-row {
   grid-template-columns: minmax(88px, 0.8fr) minmax(150px, 1.1fr) minmax(100px, 1fr) minmax(130px, 1.2fr) 72px;
 }
-.network-tls {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
-  padding: 12px;
-  border: 0.5px solid var(--border-muted);
-  border-radius: 6px;
-  background: var(--background);
-}
-.network-tls-heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text);
-}
-.network-tls-heading .icon {
-  width: 18px;
-  height: 18px;
-  color: var(--muted);
-}
-.network-tls-state {
-  margin-left: auto;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--layer-02);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 540;
-  line-height: 18px;
-}
-.network-tls-state.on {
-  background: #86ddb21f;
-  color: var(--success);
-}
 .network-unsaved-page {
   display: flex;
   align-items: center;
@@ -339,66 +275,11 @@
 .network-issue-count:hover {
   color: var(--text);
 }
-.network-tls-state.pending {
-  background: #edca8b1f;
-  color: var(--warning);
-}
-.network-switch {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 30px;
-  margin-left: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-size: 12px;
-  cursor: pointer;
-}
-.network-switch-track {
-  position: relative;
-  width: 30px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--layer-02);
-  box-shadow: inset 0 0 0 1px var(--border);
-  transition: background-color 120ms ease, box-shadow 120ms ease;
-}
-.network-switch-track > span {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--muted);
-  transition: transform 120ms ease, background-color 120ms ease;
-}
-.network-switch[aria-checked="true"] {
-  color: var(--text);
-}
-.network-switch[aria-checked="true"] .network-switch-track {
-  background: #86ddb22e;
-  box-shadow: inset 0 0 0 1px #86ddb266;
-}
-.network-switch[aria-checked="true"] .network-switch-track > span {
-  transform: translateX(12px);
-  background: var(--success);
-}
-.network-switch:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
 .network-tls-body {
   display: grid;
   grid-template-columns: minmax(220px, 420px) minmax(180px, 1fr);
   align-items: start;
   gap: 16px;
-}
-.network-tls .form-fields {
-  max-width: 420px;
 }
 .network-tls-endpoint {
   display: grid;
@@ -409,9 +290,6 @@
 .network-tls-endpoint > span {
   color: var(--muted);
   font-size: 12px;
-}
-.network-tls-endpoint.is-conflict code {
-  color: var(--danger);
 }
 .network-tls-endpoint code {
   color: var(--text);
@@ -430,13 +308,82 @@
   height: 32px;
   flex: none;
 }
-.network-tls .form-fields .input {
+.network-tls-body .form-fields {
+  display: grid;
+  gap: 4px;
+  max-width: 420px;
+}
+.network-tls-body .form-fields .input {
   margin-bottom: 0;
   font-size: 14px;
 }
-.network-tls .form-fields .input.is-invalid {
+.network-tls-body .form-fields .input.is-invalid {
   border-color: var(--danger);
   box-shadow: inset 0 0 0 1px var(--danger);
+}
+.network-tls-body .network-field-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 16px;
+}
+.network-tls-body .network-field-error .icon {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+.network-tls-endpoint {
+  align-self: center;
+}
+.network-private {
+  padding-block: 12px;
+}
+.network-private .network-heading {
+  justify-content: space-between;
+}
+.network-private .network-host {
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.network-advanced {
+  min-width: 0;
+}
+.network-advanced > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  color: var(--secondary);
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+}
+.network-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+.network-advanced > summary:hover {
+  color: var(--text);
+}
+.network-advanced > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.network-advanced > summary .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+  transition: transform 120ms ease;
+}
+.network-advanced[open] > summary .icon {
+  transform: rotate(90deg);
+}
+.network-advanced[open] > summary {
+  margin-bottom: 12px;
 }
 .network-hint {
   display: flex;
@@ -492,34 +439,14 @@
     width: 100%;
     margin-left: 0;
   }
-  .network-connection-head,
   .network-port-head {
     display: none;
   }
-  .network-connection-row {
-    grid-template-columns: minmax(0, 1fr) 36px;
-    align-items: end;
-    gap: 8px;
-    padding: 12px 0;
-  }
-  .network-connection-row .network-field {
-    grid-column: 1;
-  }
-  .network-connection-row .network-field > span,
   .network-field > span {
     display: block;
     margin-bottom: 4px;
     color: var(--muted);
     font-size: 11px;
-  }
-  .network-connection-row .network-host {
-    grid-column: 1;
-    grid-row: 2;
-  }
-  .network-connection-row .network-row-actions {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    align-self: center;
   }
   .network-port-list.has-service .network-port-row,
   .network-port-list:not(.has-service) .network-port-row {
@@ -541,9 +468,6 @@
     grid-column: 2;
     justify-self: end;
     align-self: end;
-  }
-  .network-tls {
-    padding: 12px;
   }
   .network-tls-body {
     grid-template-columns: minmax(0, 1fr);

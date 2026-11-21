@@ -211,12 +211,12 @@
   min-width: 0;
   font-size: 13px;
 }
-.database-connected-apps {
+.database-public-access {
   display: flex;
   justify-content: flex-end;
   min-width: 0;
 }
-.database-connected-apps .fact-link {
+.database-public-access .fact-link {
   max-width: 100%;
   padding: 0;
   border: 0;
@@ -229,7 +229,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.database-connected-apps .fact-link:hover {
+.database-public-access .fact-link:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -472,4 +472,21 @@
   gap: 8px;
   min-height: 28px;
   font-weight: 440;
+}
+.database-connection-head .segmented-choice {
+  grid-column: auto;
+  padding: 2px;
+}
+.database-connection-head .segmented-choice legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.database-connection-head .segmented-choice label {
+  min-height: 26px;
+  padding: 2px 10px;
+  font-size: 12px;
 }

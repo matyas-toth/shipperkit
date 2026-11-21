@@ -1,11 +1,11 @@
 import { useSearchParams } from "@solidjs/router";
 import "./DatabaseResource.css";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { Show, createMemo, createSignal } from "solid-js";
-import { api, post } from "../api";
+import { useQueryClient } from "@tanstack/solid-query";
+import { Show, createSignal } from "solid-js";
+import { post } from "../api";
 import { useAuth } from "../context";
 import { databaseIdentity } from "../data";
-import type { Application, Deployment, Inventory, StaticConfig } from "../types";
+import type { Application, Deployment, StaticConfig } from "../types";
 import { Button, ConfirmDialog } from "./Controls";
 
 // Credentials and engine options of a managed database. The user and database
@@ -17,11 +17,6 @@ export default function DatabaseSettings(props: { application: Application; conf
   const [rotating, setRotating] = createSignal(false);
   const engine = () => props.application.config.database?.engine;
   const identity = () => databaseIdentity(props.application.config);
-  const inventory = createQuery(() => ({ queryKey: ["inventory"], queryFn: () => api<Inventory>("/applications"), staleTime: 60_000, reconcile: "id" }));
-  const connected = createMemo(() => {
-    const own = props.application.config.networking?.applications ?? [];
-    return (inventory.data?.items ?? []).filter(app => app.id !== props.application.id && (own.includes(app.id) || (app.config.networking?.applications ?? []).includes(props.application.id))).map(app => app.name);
-  });
   async function rotate() {
     const path = `/applications/${props.application.id}/database/password`;
     const review = await post<{ revision: string }>(path, { review: true }, auth.session()?.csrfToken);
@@ -29,9 +24,7 @@ export default function DatabaseSettings(props: { application: Application; conf
     await client.invalidateQueries({ queryKey: ["applications", props.application.id] });
     setSearch({ tab: "deployments", deployment: d.id, section: undefined });
   }
-  const consequence = () => connected().length
-    ? `${connected().join(", ")} ${connected().length === 1 ? "keeps" : "keep"} the old password until you paste the new connection string into ${connected().length === 1 ? "its" : "their"} environment.`
-    : "Applications using the current connection string lose access until you paste the new one.";
+  const consequence = () => "Applications using the current connection string lose access until you paste the new one.";
   return <div class="database-settings">
     <dl class="settings-group">
       <Show when={identity()}>{value => <>

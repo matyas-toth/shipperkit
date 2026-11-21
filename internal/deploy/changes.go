@@ -80,6 +80,8 @@ func comparisonConfig(c store.Config) store.Config {
 	c.Domain = ""
 	c.HTTPS = false
 	c.Domains = nil
+	// Applications share one private network; older releases' links mean nothing.
+	c.Networking.Applications = nil
 	sort.Slice(c.Variables, func(i, j int) bool { return c.Variables[i].Name < c.Variables[j].Name })
 	sort.Slice(c.Services, func(i, j int) bool { return c.Services[i].Name < c.Services[j].Name })
 	sort.Slice(c.Hooks, func(i, j int) bool {

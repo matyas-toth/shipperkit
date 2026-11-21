@@ -2,11 +2,9 @@ package httpapi
 
 import (
 	"context"
-	"database/sql"
-	"errors"
+	"fmt"
 	"net/http"
-	"reflect"
-	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -27,118 +25,34 @@ func (s *Server) applicationNetworking(w http.ResponseWriter, r *http.Request) {
 		s.problem(w, 422, "unmanaged_application", "Networking requires an application deployed by Shipper")
 		return
 	}
-	apps, err := s.db.Applications(r.Context())
-	if err != nil {
-		s.internal(w, err)
-		return
+	// Every application shares one private network, so its stable name is all
+	// another application needs to reach it.
+	host := "app-" + a.ID
+	if a.Config.Database != nil {
+		host = "db-" + a.ID
 	}
-	available := []map[string]string{}
-	for _, other := range apps {
-		if other.Managed() && other.ID != a.ID && other.State != "deleted" {
-			available = append(available, map[string]string{"id": other.ID, "name": other.Name, "host": "app-" + other.ID})
-		}
-	}
-	s.json(w, 200, map[string]any{"networking": a.Config.Networking, "host": "app-" + a.ID, "applications": available})
-}
-
-// privateHost matches the stable private names Shipper publishes for every
-// application, as they appear in copied connection strings and URLs.
-var privateHost = regexp.MustCompile(`\b(?:app|db)-([a-f0-9]{24})\b`)
-
-// linkReferencedApplications connects an application to every other
-// application its variables already address by private name. Pasting a copied
-// connection string is the intent to connect, so it works on the first deploy.
-func (s *Server) linkReferencedApplications(ctx context.Context, c *store.Config, application string) {
-	linked := map[string]bool{application: true}
-	for _, id := range c.Networking.Applications {
-		linked[id] = true
-	}
-	variables := append([]store.Variable{}, c.Variables...)
-	for _, service := range c.Services {
-		variables = append(variables, service.Variables...)
-	}
-	for _, v := range variables {
-		for _, match := range privateHost.FindAllStringSubmatch(v.Value, -1) {
-			id := match[1]
-			if linked[id] {
-				continue
-			}
-			linked[id] = true
-			if app, err := s.db.Application(ctx, id); err == nil && app.Managed() && app.State != "deleted" {
-				c.Networking.Applications = append(c.Networking.Applications, id)
-			}
-		}
-	}
-}
-
-// describeConnections names the applications a change connects or disconnects,
-// which a bare "Networking" entry hides, including links made automatically.
-func (s *Server) describeConnections(ctx context.Context, changes []string, before, after store.NetworkAccess) []string {
-	had := map[string]bool{}
-	for _, id := range before.Applications {
-		had[id] = true
-	}
-	has := map[string]bool{}
-	lines := []string{}
-	name := func(id string) string {
-		if app, err := s.db.Application(ctx, id); err == nil {
-			return app.Name
-		}
-		return "a deleted application"
-	}
-	for _, id := range after.Applications {
-		has[id] = true
-		if !had[id] {
-			lines = append(lines, "Connects privately to "+name(id))
-		}
-	}
-	for _, id := range before.Applications {
-		if !has[id] {
-			lines = append(lines, "Disconnects from "+name(id))
-		}
-	}
-	if len(lines) == 0 {
-		return changes
-	}
-	out := []string{}
-	for _, change := range changes {
-		// Ports still need the generic entry; connections are listed by name.
-		if change != "Networking" || !reflect.DeepEqual(before.Ports, after.Ports) {
-			out = append(out, change)
-		}
-	}
-	return append(out, lines...)
+	s.json(w, 200, map[string]any{"networking": a.Config.Networking, "host": host})
 }
 
 func (s *Server) validateNetworkingConfig(w http.ResponseWriter, c *store.Config, application string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	s.linkReferencedApplications(ctx, c, application)
 	if err := deploy.ValidateNetworkAccess(application, &c.Networking); err != nil {
 		s.problem(w, 422, "invalid_networking", err.Error())
 		return false
 	}
-	kept := []string{}
-	for _, id := range c.Networking.Applications {
-		app, err := s.db.Application(ctx, id)
-		if errors.Is(err, sql.ErrNoRows) || err == nil && app.State == "deleted" {
-			// A deleted application's connection is dropped instead of blocking
-			// every later change to the applications that listed it.
-			continue
-		}
-		if err != nil || !app.Managed() {
-			s.problem(w, 422, "invalid_network_application", "Choose an application deployed by this Shipper instance")
-			return false
-		}
-		kept = append(kept, id)
-	}
-	if c.Networking.Applications != nil {
-		c.Networking.Applications = kept
-	}
+	c.Networking.Applications = nil
 	for _, p := range c.Networking.Ports {
 		if c.Method != "compose" && p.Service != "" {
 			s.problem(w, 422, "invalid_network_service", "Service ports require a Compose application")
 			return false
+		}
+	}
+	domain, domainPort := "", 0
+	if c.Database != nil {
+		c.Database.Domain = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(c.Database.Domain)), ".")
+		if c.Database.Domain != "" {
+			domain, domainPort = c.Database.Domain, store.DatabaseDomainPorts[c.Database.Engine]
 		}
 	}
 	// Pending desired configurations also reserve ports, closing the interval
@@ -148,6 +62,9 @@ func (s *Server) validateNetworkingConfig(w http.ResponseWriter, c *store.Config
 		s.internal(w, err)
 		return false
 	}
+	// The proxy already listens on the engine's port while another database of
+	// the same engine has a domain, so only the first one needs a free port.
+	proxyListens := false
 	for _, app := range apps {
 		if app.ID == application || app.State == "deleted" {
 			continue
@@ -157,7 +74,22 @@ func (s *Server) validateNetworkingConfig(w http.ResponseWriter, c *store.Config
 			configurations = append(configurations, app.LatestDeployment.Config)
 		}
 		for _, other := range configurations {
+			otherPort := 0
+			if other.Database != nil && other.Database.Domain != "" {
+				otherPort = store.DatabaseDomainPorts[other.Database.Engine]
+				if domain != "" && otherPort == domainPort {
+					proxyListens = true
+					if other.Database.Domain == domain {
+						s.problem(w, 409, "domain_in_use", "Another database already uses this domain")
+						return false
+					}
+				}
+			}
 			for _, bound := range other.Networking.Ports {
+				if domain != "" && bound.HostPort == domainPort && bound.Protocol == "tcp" {
+					s.problem(w, 409, "port_in_use", fmt.Sprintf("Port %d is published by %s. Remove it there to serve this domain", domainPort, app.Name))
+					return false
+				}
 				for _, port := range c.Networking.Ports {
 					if bound.HostPort == port.HostPort && bound.Protocol == port.Protocol {
 						s.problem(w, 409, "port_in_use", "The public port is reserved by another application")
@@ -165,9 +97,19 @@ func (s *Server) validateNetworkingConfig(w http.ResponseWriter, c *store.Config
 					}
 				}
 			}
+			for _, port := range c.Networking.Ports {
+				if otherPort != 0 && port.HostPort == otherPort && port.Protocol == "tcp" {
+					s.problem(w, 409, "port_in_use", fmt.Sprintf("Port %d serves the public domain of %s", otherPort, app.Name))
+					return false
+				}
+			}
 		}
 	}
-	if len(c.Networking.Ports) > 0 {
+	ports := c.Networking.Ports
+	if domain != "" && domainPort != 0 && !proxyListens {
+		ports = append(append([]store.PublishedPort{}, ports...), store.PublishedPort{Protocol: "tcp", BindIP: "0.0.0.0", HostPort: domainPort, ContainerPort: domainPort})
+	}
+	if len(ports) > 0 {
 		if s.cfg.Worker == nil {
 			s.problem(w, 503, "networking_unavailable", "Networking requires an available Docker runtime")
 			return false
@@ -177,7 +119,7 @@ func (s *Server) validateNetworkingConfig(w http.ResponseWriter, c *store.Config
 			s.problem(w, 503, "networking_unavailable", "Networking requires an available Docker runtime")
 			return false
 		}
-		if err := runtime.ValidatePublishedPorts(ctx, application, c.Networking.Ports); err != nil {
+		if err := runtime.ValidatePublishedPorts(ctx, application, ports); err != nil {
 			s.problem(w, 409, "port_unavailable", err.Error())
 			return false
 		}

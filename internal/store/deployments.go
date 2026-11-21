@@ -65,7 +65,7 @@ func (s *Store) Enqueue(ctx context.Context, a Application, d Deployment, reques
 		}
 	}
 	if d.Operation != "delete" && d.Operation != "task" {
-		if err := s.checkNetworkClaims(ctx, tx, a.ID, a.Config.Networking); err != nil {
+		if err := s.checkNetworkClaims(ctx, tx, a.ID, a.Config); err != nil {
 			return d, err
 		}
 	}

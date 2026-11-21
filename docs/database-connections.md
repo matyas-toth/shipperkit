@@ -1,38 +1,36 @@
-## Database image connections
+## Database connections
 
-A deployed official PostgreSQL, MySQL, MariaDB, MongoDB, Redis or Valkey image
-shows **Connection string** on Overview. **Copy** fetches the URI without revealing
-it on screen; the eye control reveals it for inspection. Credentials are requested
-only by those actions, through the same secret-access boundary as environment
-variable reveals. Ordinary application responses contain only engine, host and port.
-Compose applications and unrecognized/custom images do not show this control.
+Every application and managed database on an instance joins one private Docker
+network, `shipper-<instance>-private`. A release answers on it as `app-<id>` and,
+for databases, `db-<id>`, once it is promoted; candidates only answer their
+release name, `site-<release>`. The proxy is the only infrastructure container
+on the network. Releases created by earlier versions joined a network per
+application; routing moves them onto the shared network and removes the old one.
 
-Managed database resources support PostgreSQL, MySQL, MariaDB, MongoDB,
-ClickHouse and SQLite. PostgreSQL, MySQL, MariaDB, MongoDB and ClickHouse use a
-private host and port. SQLite uses a file URI on its persistent data volume:
-`sqlite:///home/sqlite/app.db`. SQLite has no public networking or TLS surface;
-attach its data volume to an application that needs local file access.
+**Connection string** on a database's Overview copies the private string, which
+is plain for every engine (no `sslmode`, `redis://` rather than `rediss://`).
+PostgreSQL, MySQL and MariaDB still offer TLS with the instance's private CA, so
+strings that ask for it keep working, but none require it. Redis is plain only.
+A container created before this change carries no `io.shipper.database.transport`
+label and still requires TLS, so its connection string and Redis backups keep the
+TLS form until the database is deployed again.
 
-The URI addresses the active release's `site-<release-id>` alias on the instance's
-shared Docker network, using its resolved container port. Other single-container
-Shipper apps and Compose services attached to the edge network can use it in their
-runtime environment. No host database port is opened. This is an internal Docker
-address, not an address for a laptop or another server. Copy the current URI after
-a replacement deployment or rollback; each release has its own address.
+PostgreSQL, Redis and MongoDB can also answer on a public domain
+(`config.database.domain`). Traefik binds the engine's standard port (5432, 6379,
+27017) only while an active database of that engine has a domain, terminates TLS
+with the domain's Let's Encrypt certificate, routes by SNI and forwards plain
+traffic to `site-<release>`. Changing the set of engines recreates the proxy on
+its volume; if the new proxy cannot bind a port, the previous one is restored.
+MySQL, MariaDB and ClickHouse negotiate TLS in-protocol and stay on published
+ports. `POST /applications/{id}/database/connection` with `{"public": true}`
+returns the public string.
 
 Credentials follow the official image's runtime initialization variables and
-defaults. PostgreSQL defaults its user/database to `postgres`; MongoDB root users
-use `authSource=admin`; MariaDB uses a MySQL-compatible URI. Redis/Valkey default
-to database 0 without credentials. Custom start commands, file-based secrets and
-Redis authentication/configuration mounts require manual connection details rather
-than guessed passwords. Images do not apply changed initialization credentials to
-an existing data directory; keep saved variables aligned with the database's actual
-users and passwords.
+defaults. Custom start commands, file-based secrets and Redis authentication or
+configuration mounts require manual connection details rather than guessed
+passwords.
 
-Recognized database images receive only the directory ownership and user-switching
-capabilities their official entrypoints need (`CHOWN`, `DAC_OVERRIDE`, `FOWNER`,
-`SETGID`, `SETUID`). Other capabilities stay dropped, `no-new-privileges` stays
-on, and unrelated images and task containers keep their existing restrictions.
-Run `npm run test:database` for the opt-in real Docker connection round trip.
-It creates isolated Redis and PostgreSQL application pairs, verifies their URIs across the shared network
-without a public port, and removes only its labeled containers, volumes and network.
+Run `npm run test:database` for the opt-in real Docker connection round trip, and
+`SHIPPER_TEST_NETWORKING=1 go test -run TestDockerNetworkingAcceptance ./internal/deploy`
+for the shared network, the retirement of per-application networks and public
+domains through the proxy.

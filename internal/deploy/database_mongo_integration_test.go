@@ -121,7 +121,7 @@ func TestDockerManagedMongoReplicaSet(t *testing.T) {
 	if e = r.reconcileApplicationAliases(ctx, map[string]store.Deployment{app.ID: d}); e != nil {
 		t.Fatal(e)
 	}
-	consumerConfig := store.Config{Method: "image", Image: c.Image, StartupPolicy: "process", StartCommand: "sleep 900", Networking: store.NetworkAccess{Applications: []string{app.ID}}}
+	consumerConfig := store.Config{Method: "image", Image: c.Image, StartupPolicy: "process", StartCommand: "sleep 900"}
 	consumer := store.Deployment{ID: auth.Token()[:24], ApplicationID: auth.Token()[:24], Config: consumerConfig, ImageID: c.Image, ResolvedMethod: "image"}
 	if consumer.ContainerID, e = r.Start(ctx, consumer); e != nil {
 		t.Fatal(e)

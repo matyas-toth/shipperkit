@@ -80,7 +80,7 @@ func TestPublishedPortsAreDeclaredToOlderDockerAPIs(t *testing.T) {
 		case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/containers/json"):
 			w.Write([]byte(`[]`))
 		case r.Method == "GET" && strings.Contains(r.URL.Path, "/networks/"):
-			json.NewEncoder(w).Encode(map[string]any{"Id": "network", "Labels": map[string]string{"io.shipper.instance": instance, "io.shipper.application.id": app}})
+			json.NewEncoder(w).Encode(map[string]any{"Id": "network", "Labels": map[string]string{"io.shipper.instance": instance, "io.shipper.resource": "private-network"}})
 		case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/containers/create"):
 			var request container.CreateRequest
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {

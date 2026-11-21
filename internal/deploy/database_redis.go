@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"github.com/moby/moby/client"
 	"shipper/internal/protection"
 	"shipper/internal/store"
 	"strconv"
@@ -84,7 +85,12 @@ func (r *DockerRuntime) DumpRedisVolume(ctx context.Context, d store.Deployment,
 	defer raw.Close()
 	password := databaseEnvironment(d.Config)["REDIS_PASSWORD"]
 	var diagnostic cappedBuffer
-	if e = r.protectionExecDiagnostics(ctx, id, []string{"redis-cli", "--tls", "--cacert", "/shipper-tls/ca.crt", "-h", "127.0.0.1", "--rdb", "-"}, []string{"REDISCLI_AUTH=" + password}, nil, &limitFile{w: raw}, &diagnostic); e != nil {
+	command := []string{"redis-cli", "-h", "127.0.0.1", "--rdb", "-"}
+	if info, err := r.Client.ContainerInspect(ctx, id, client.ContainerInspectOptions{}); err == nil && info.Container.Config != nil && info.Container.Config.Labels[DatabaseTransportLabel] == "" {
+		// Created before private connections became plain; it listens with TLS only.
+		command = []string{"redis-cli", "--tls", "--cacert", "/shipper-tls/ca.crt", "-h", "127.0.0.1", "--rdb", "-"}
+	}
+	if e = r.protectionExecDiagnostics(ctx, id, command, []string{"REDISCLI_AUTH=" + password}, nil, &limitFile{w: raw}, &diagnostic); e != nil {
 		return e
 	}
 	size, e := finishRedisSnapshot(raw, diagnostic.String())

@@ -2,11 +2,12 @@ import { Show, createMemo } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
 import { databaseIdentity, operationTime } from "../data";
-import type { Application, ApplicationDetail, Inventory } from "../types";
+import type { Application, ApplicationDetail } from "../types";
 import { Button, Status } from "./Controls";
 import { Icon } from "./Icon";
 import DatabaseConnection from "./DatabaseConnection";
 import DatabaseOperations from "./DatabaseOperations";
+import { domainPorts } from "./Networking";
 import "./DatabaseResource.css";
 
 type BackupPlan = { id: string; name: string; enabled: boolean; schedule: string; nextAt: number; config: { kind: string } };
@@ -33,26 +34,24 @@ export default function DatabaseOverview(props: {
   const latestRun = createMemo(() => [...(protection.data?.runs ?? [])].filter(run => run.kind === "database").sort((a, b) => b.createdAt - a.createdAt)[0]);
   const container = createMemo(() => props.application.containers.find(entry => entry.managed && entry.applicationId === props.application.id));
   const ports = () => props.application.config.networking?.ports ?? [];
-  // The connection string only resolves inside a private connection, in either
-  // direction, so the apps that can use it sit right beside it.
-  const inventory = createQuery(() => ({ queryKey: ["inventory"], queryFn: () => api<Inventory>("/applications"), staleTime: 60_000, reconcile: "id" }));
-  const connected = createMemo(() => {
-    const own = props.application.config.networking?.applications ?? [];
-    return (inventory.data?.items ?? []).filter(app => app.id !== props.application.id && (own.includes(app.id) || (app.config.networking?.applications ?? []).includes(props.application.id))).map(app => app.name);
-  });
+  // The serving release decides where the public domain answers.
+  const domain = () => active()?.config.database?.domain ?? "";
   const address = () => (info()?.host ?? "app-" + props.application.id) + ":" + (info()?.port ?? 0);
-  const preview = () => {
+  // Mirrors the strings the server builds: plain inside the server, TLS on the domain.
+  const connectionString = (open: boolean) => {
     const engine = database()?.engine;
     if (!engine || !info()) return undefined;
     if (engine === "sqlite") return "sqlite:///home/sqlite/app.db";
-    const scheme = engine === "postgresql" ? "postgresql" : engine === "mongodb" ? "mongodb" : engine === "clickhouse" ? "clickhouse" : engine === "redis" ? "rediss" : "mysql";
+    const scheme = engine === "postgresql" ? "postgresql" : engine === "mongodb" ? "mongodb" : engine === "clickhouse" ? "clickhouse" : engine === "redis" ? (open ? "rediss" : "redis") : "mysql";
     const identity = databaseIdentity(props.application.config);
     const user = engine === "redis" ? "default" : identity?.user ?? "app";
     const path = engine === "redis" ? "0" : identity?.database ?? "app";
-    const query = engine === "postgresql" ? "?sslmode=require" : engine === "mongodb" ? "?authSource=admin&replicaSet=rs0" : "";
-    return scheme + "://" + user + ":••••@" + address() + "/" + path + query;
+    const query = engine === "mongodb" ? (open ? "?authSource=admin&directConnection=true&tls=true" : "?authSource=admin&replicaSet=rs0") : open && engine === "postgresql" ? "?sslmode=require" : "";
+    const host = open ? domain() + ":" + domainPorts[engine] : address();
+    return scheme + "://" + user + ":••••@" + host + "/" + path + query;
   };
-  const publicAccess = () => database()?.engine === "sqlite" ? "File volume" : ports().length ? ports().map(port => port.hostPort + "/" + port.protocol + " → " + port.containerPort).join(", ") : "No public ports";
+  const publicDomain = () => !!domain() && !!domainPorts[database()?.engine ?? ""];
+  const publicAccess = () => database()?.engine === "sqlite" ? "File volume" : [publicDomain() ? domain() + ":" + domainPorts[database()!.engine] : "", ...ports().map(port => port.hostPort + "/" + port.protocol + " → " + port.containerPort)].filter(Boolean).join(", ") || "None";
   const lastBackup = () => {
     const run = latestRun();
     if (!run) return "";
@@ -71,7 +70,7 @@ export default function DatabaseOverview(props: {
   return <div class="database-overview">
     <div class="database-overview-primary">
       <Show when={active() && info()} fallback={<div class="database-connection database-connection-empty"><Icon name="database" /><span>Deploy the database to generate its connection string.</span></div>}>
-        <DatabaseConnection applicationId={props.application.id} deploymentId={String(active()!.id)} preview={preview()} />
+        <DatabaseConnection applicationId={props.application.id} deploymentId={String(active()!.id)} preview={connectionString(false)} publicPreview={publicDomain() ? connectionString(true) : undefined} />
       </Show>
       <DatabaseOperations application={props.application} openTerminal={props.openTerminal} />
     </div>
@@ -79,8 +78,7 @@ export default function DatabaseOverview(props: {
       <dl class="settings-group database-facts">
         <div class="setting-row"><dt>Engine</dt><dd>{engineNames[database()?.engine ?? ""] ?? database()?.engine} {database()?.version}</dd></div>
         <div class="setting-row"><dt>Storage</dt><dd>Persistent volume</dd></div>
-        <Show when={database()?.engine !== "sqlite"}><div class="setting-row"><dt>Connected apps</dt><dd class="database-connected-apps"><button type="button" class="fact-link" onClick={props.openNetworking}>{connected().length ? connected().join(", ") : "Connect application"}</button></dd></div></Show>
-        <div class="setting-row"><dt>Public access</dt><dd><span classList={{ "mono": ports().length > 0 }}>{publicAccess()}</span></dd></div>
+        <div class="setting-row"><dt>Public access</dt><dd class="database-public-access"><Show when={database()?.engine !== "sqlite"} fallback={publicAccess()}><button type="button" class="fact-link" classList={{ mono: publicAccess() !== "None" }} onClick={props.openNetworking}>{publicAccess()}</button></Show></dd></div>
         <Show when={container()}>{value => <div class="setting-row"><dt>Container</dt><dd class="database-container-fact"><span class="mono">{value().name}</span></dd></div>}</Show>
       </dl>
     </aside>

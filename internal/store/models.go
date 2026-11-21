@@ -185,11 +185,18 @@ type StaticConfig struct {
 	Services         []ServiceConfig `json:"services"`
 }
 type DatabaseResource struct {
-	Engine      string `json:"engine"`
-	Version     string `json:"version"`
-	TLSHostname string `json:"tlsHostname,omitempty"`
-	Cache       bool   `json:"cache,omitempty"`
+	Engine  string `json:"engine"`
+	Version string `json:"version"`
+	// Domain is the public hostname the proxy serves the database on, with a
+	// Let's Encrypt certificate, at the engine's standard port.
+	Domain string `json:"domain,omitempty"`
+	Cache  bool   `json:"cache,omitempty"`
 }
+
+// DatabaseDomainPorts lists the engines the proxy can serve on a public domain
+// and the standard port each one listens on. MySQL and MariaDB negotiate TLS
+// inside their own protocol, which a TCP proxy cannot terminate.
+var DatabaseDomainPorts = map[string]int{"postgresql": 5432, "redis": 6379, "mongodb": 27017}
 type ServiceConfig struct {
 	Runtime        RuntimePolicy `json:"runtime"`
 	Name           string        `json:"name"`

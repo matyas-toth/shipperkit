@@ -568,7 +568,6 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		}
 		old.AutoDeploy = current.Config.AutoDeploy
 		plan := deploy.PlanChanges(old, a.Config)
-		plan.Changes = s.describeConnections(r.Context(), plan.Changes, old.Networking, a.Config.Networking)
 		plan.Revision = s.db.ChangeRevision(current, a)
 		s.json(w, 200, plan)
 		return

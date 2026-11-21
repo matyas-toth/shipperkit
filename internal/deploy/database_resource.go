@@ -3,7 +3,7 @@ package deploy
 import (
 	"context"
 	"errors"
-	"net"
+	"fmt"
 	"regexp"
 	"shipper/internal/auth"
 	"shipper/internal/store"
@@ -145,8 +145,10 @@ func databaseEnvironment(c store.Config) map[string]string {
 	}
 	return m
 }
+// databaseTLSCapable engines keep offering TLS inside the private network, so
+// clients that ask for it still get it. None of them require it.
 func databaseTLSCapable(engine string) bool {
-	return engine == "postgresql" || engine == "mysql" || engine == "mariadb" || engine == "redis"
+	return engine == "postgresql" || engine == "mysql" || engine == "mariadb"
 }
 func ValidateDatabaseResource(c store.Config) error {
 	if c.Database == nil {
@@ -165,12 +167,18 @@ func ValidateDatabaseResource(c store.Config) error {
 	if c.Database.Cache && c.Database.Engine != "redis" {
 		return errors.New("Only Redis databases run as a cache")
 	}
-	host := c.Database.TLSHostname
-	if host != "" && !databaseTLSCapable(c.Database.Engine) {
-		return errors.New("This database engine does not expose TLS through Shipper")
-	}
-	if host != "" && net.ParseIP(host) == nil && (!regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9.-]{0,251}[a-zA-Z0-9])?$`).MatchString(host) || strings.Contains(host, "..")) {
-		return errors.New("Enter a database TLS hostname or IP address")
+	if domain := c.Database.Domain; domain != "" {
+		if store.DatabaseDomainPorts[c.Database.Engine] == 0 {
+			return errors.New("MySQL, MariaDB and ClickHouse connect from outside through a published port")
+		}
+		if domain != strings.ToLower(domain) || len(domain) > 253 || !domainPattern.MatchString(domain) {
+			return errors.New("Enter a domain such as db.example.com")
+		}
+		for _, p := range c.Networking.Ports {
+			if p.Protocol == "tcp" && p.HostPort == store.DatabaseDomainPorts[c.Database.Engine] {
+				return fmt.Errorf("Port %d serves the public domain. Remove it from published ports", p.HostPort)
+			}
+		}
 	}
 	env := databaseEnvironment(c)
 	for _, v := range preset.Variables {

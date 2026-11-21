@@ -6,14 +6,12 @@ import (
 	"context"
 	"github.com/moby/moby/client"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
 	"shipper/internal/auth"
 	"shipper/internal/engine"
 	"shipper/internal/events"
 	"shipper/internal/store"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -66,15 +64,6 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 			if e != nil {
 				t.Fatal(e)
 			}
-			listener, err := net.Listen("tcp", "127.0.0.1:0")
-			if err != nil {
-				t.Fatal(err)
-			}
-			publicPort := listener.Addr().(*net.TCPAddr).Port
-			listener.Close()
-			const publicHost = "database-public.test"
-			c.Database.TLSHostname = publicHost
-			c.Networking.Ports = []store.PublishedPort{{Protocol: "tcp", BindIP: "0.0.0.0", HostPort: publicPort, ContainerPort: c.Port}}
 			if e = ValidateBuild(&c); e != nil {
 				t.Fatal(e)
 			}
@@ -107,24 +96,15 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 				t.Fatal(e)
 			}
 			t.Cleanup(func() { _ = r.removeOwned(context.Background(), d.ContainerID, app.ID) })
-			clientConfig := store.Config{Method: "image", Image: c.Image, StartupPolicy: "process", StartCommand: "sleep 900", Networking: store.NetworkAccess{Applications: []string{app.ID}}}
+			if r.DatabaseLegacyTLS(ctx, d) {
+				t.Fatal("a new database still requires TLS on the private network")
+			}
+			// Any application reaches the database by name over the shared
+			// private network, with nothing to connect and no CA to install.
+			clientConfig := store.Config{Method: "image", Image: c.Image, StartupPolicy: "process", StartCommand: "sleep 900"}
 			consumer := store.Deployment{ID: auth.Token()[:24], ApplicationID: auth.Token()[:24], Config: clientConfig, ImageID: c.Image, ResolvedMethod: "image"}
 			consumer.ContainerID, e = r.Start(ctx, consumer)
 			if e != nil {
-				t.Fatal(e)
-			}
-			// The bridge gateway reaches host-published ports on Linux as well as
-			// Docker Desktop. Only this disposable client receives the test alias.
-			consumerInfo, e := r.Client.ContainerInspect(ctx, consumer.ContainerID, client.ContainerInspectOptions{})
-			if e != nil {
-				t.Fatal(e)
-			}
-			endpoint := consumerInfo.Container.NetworkSettings.Networks[r.applicationNetwork(consumer.ApplicationID)]
-			if endpoint == nil || !endpoint.Gateway.IsValid() {
-				t.Fatal("Client bridge gateway is unavailable")
-			}
-			hosts := strings.NewReader(endpoint.Gateway.String() + " " + publicHost + "\n")
-			if _, e = r.execInput(ctx, consumer.ContainerID, []string{"sh", "-c", "cat >> /etc/hosts"}, nil, hosts); e != nil {
 				t.Fatal(e)
 			}
 			defer func() {
@@ -132,26 +112,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 				defer stop()
 				_ = r.removeOwned(clean, consumer.ContainerID, consumer.ApplicationID)
 				_ = r.removeOwned(clean, d.ContainerID, app.ID)
-				for _, networkApp := range []string{consumer.ApplicationID, app.ID} {
-					networkName := r.applicationNetwork(networkApp)
-					info, err := r.Client.NetworkInspect(clean, networkName, client.NetworkInspectOptions{})
-					if err == nil && owned(info.Network.Labels, r.Instance, networkApp) {
-						_, _ = r.Client.NetworkRemove(clean, networkName, client.NetworkRemoveOptions{})
-					}
-				}
 			}()
-			ca, e := r.DatabaseCA(app.ID)
-			if e != nil {
-				t.Fatal(e)
-			}
-			var b bytes.Buffer
-			tw := tar.NewWriter(&b)
-			tw.WriteHeader(&tar.Header{Name: "ca.crt", Mode: 0644, Size: int64(len(ca))})
-			tw.Write(ca)
-			tw.Close()
-			if _, e = r.Client.CopyToContainer(ctx, consumer.ContainerID, client.CopyToContainerOptions{DestinationPath: "/", Content: &b}); e != nil {
-				t.Fatal(e)
-			}
 			env := databaseEnvironment(c)
 			host := "db-" + app.ID
 			query := func(database, sql string, tls bool) (string, error) {
@@ -159,11 +120,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 				defer stop()
 				var args, vars []string
 				if fixture.engine == "redis" {
-					args = []string{"redis-cli", "-h", host, "--no-auth-warning", "--raw"}
-					if tls {
-						args = append(args, "--tls", "--cacert", "/ca.crt", "--sni", host)
-					}
-					args = append(args, strings.Fields(sql)...)
+					args = append([]string{"redis-cli", "-h", host, "--no-auth-warning", "--raw"}, strings.Fields(sql)...)
 					vars = []string{"REDISCLI_AUTH=" + env["REDIS_PASSWORD"]}
 				} else {
 					spec, _ := DatabaseBackupSpec(d)
@@ -176,11 +133,11 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 						}
 					}
 					if fixture.engine == "postgresql" {
-						mode := "verify-full"
+						mode := "require"
 						if !tls {
 							mode = "disable"
 						}
-						vars = append(vars, "PGSSLMODE="+mode, "PGSSLROOTCERT=/ca.crt")
+						vars = append(vars, "PGSSLMODE="+mode)
 						args = append([]string{"psql", "-qAt", "--no-psqlrc", "--set=ON_ERROR_STOP=1", "--dbname=" + database, "--command=" + sql}, args...)
 					} else {
 						tool := "mysql"
@@ -190,19 +147,23 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 						for i, v := range args {
 							if strings.HasPrefix(v, "--ssl-mode=") {
 								if tls {
-									args[i] = "--ssl-mode=VERIFY_IDENTITY"
+									args[i] = "--ssl-mode=REQUIRED"
 								} else {
+									// caching_sha2_password sends the password over a plain
+									// connection only RSA-encrypted with the server's key.
 									args[i] = "--ssl-mode=DISABLED"
+									if fixture.engine == "mysql" {
+										args = append(args, "--get-server-public-key")
+									}
 								}
 							}
 						}
-						if tls {
-							args = append(args, "--ssl-ca=/ca.crt")
-							if fixture.engine == "mariadb" {
-								args = append(args, "--ssl-verify-server-cert")
+						if fixture.engine == "mariadb" {
+							if tls {
+								args = append(args, "--ssl", "--skip-ssl-verify-server-cert")
+							} else {
+								args = append(args, "--skip-ssl")
 							}
-						} else if fixture.engine == "mariadb" {
-							args = append(args, "--skip-ssl")
 						}
 						args = append([]string{tool, "--batch", "--skip-column-names"}, append(args, database, "--execute="+sql)...)
 					}
@@ -215,76 +176,55 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 				ping = "PING"
 			}
 			for deadline := time.Now().Add(4 * time.Minute); ; {
-				_, e = query("app", ping, true)
+				_, e = query("app", ping, false)
 				if e == nil {
 					break
 				}
 				if time.Now().After(deadline) {
 					_ = r.Logs(ctx, app.ID, d.ContainerID, 40, func(line string) error { t.Log(line); return nil })
-					t.Fatal("TLS readiness", e)
+					t.Fatal("plain private connection", e)
 				}
 				time.Sleep(time.Second)
 			}
-			if _, e = query("app", ping, false); e == nil {
-				t.Fatal("plaintext database connection was accepted")
+			if fixture.engine != "redis" {
+				// Clients that still ask for TLS, such as sslmode=require, keep working.
+				if out, err := query("app", ping, true); err != nil {
+					t.Fatal("TLS private connection", out, err)
+				}
 			}
 			if e = r.Healthy(ctx, d); e != nil {
 				t.Fatal("native engine health", e)
-			}
-			publicArgs, publicEnv := []string{}, []string{}
-			if fixture.engine == "redis" {
-				publicArgs = []string{"redis-cli", "--tls", "--cacert", "/ca.crt", "--sni", publicHost, "-h", publicHost, "-p", strconv.Itoa(publicPort), "--raw", "PING"}
-				publicEnv = []string{"REDISCLI_AUTH=" + env["REDIS_PASSWORD"]}
-			} else {
-				spec, _ := DatabaseBackupSpec(d)
-				spec.Port = publicPort
-				publicArgs, publicEnv = dbArgs(spec)
-				for i, v := range publicArgs {
-					if strings.HasPrefix(v, "--host=") {
-						publicArgs[i] = "--host=" + publicHost
-					}
-				}
-				if fixture.engine == "postgresql" {
-					publicArgs = append([]string{"psql", "--no-psqlrc", "--dbname=app", "-qAtc", "SELECT 1"}, publicArgs...)
-					publicEnv = append(publicEnv, "PGSSLMODE=verify-full", "PGSSLROOTCERT=/ca.crt")
-				} else {
-					tool := "mysql"
-					if fixture.engine == "mariadb" {
-						tool = "mariadb"
-						publicArgs = append(publicArgs, "--ssl-verify-server-cert")
-					}
-					for i, v := range publicArgs {
-						if strings.HasPrefix(v, "--ssl-mode=") {
-							publicArgs[i] = "--ssl-mode=VERIFY_IDENTITY"
-						}
-					}
-					publicArgs = append([]string{tool}, append(publicArgs, "--ssl-ca=/ca.crt", "app", "--execute=SELECT 1")...)
-				}
-			}
-			if output, err := r.execEnv(ctx, consumer.ContainerID, publicArgs, publicEnv); err != nil {
-				t.Fatal("public native TLS client", string(output), err)
 			}
 
 			uri, uriErr := DatabaseURI(d)
 			if uriErr != nil {
 				t.Fatal(uriErr)
 			}
+			if strings.Contains(uri, "sslmode") || strings.HasPrefix(uri, "rediss:") {
+				t.Fatal("private connection string asks for TLS", uri)
+			}
 			if fixture.engine == "postgresql" {
-				out, err := r.execEnv(ctx, consumer.ContainerID, []string{"psql", uri, "-qAtc", "CREATE TEMP TABLE shipper_application_write (id integer); INSERT INTO shipper_application_write VALUES(42); SELECT id FROM shipper_application_write"}, []string{"PGSSLROOTCERT=/ca.crt"})
+				out, err := r.execEnv(ctx, consumer.ContainerID, []string{"psql", uri, "-qAtc", "CREATE TEMP TABLE shipper_application_write (id integer); INSERT INTO shipper_application_write VALUES(42); SELECT id FROM shipper_application_write"}, nil)
 				if err != nil || strings.TrimSpace(string(out)) != "42" {
 					t.Fatal("generated URI application read/write", string(out), err)
+				}
+			}
+			if fixture.engine == "redis" {
+				out, err := r.execEnv(ctx, consumer.ContainerID, []string{"redis-cli", "-u", uri, "--no-auth-warning", "--raw", "PING"}, nil)
+				if err != nil || strings.TrimSpace(string(out)) != "PONG" {
+					t.Fatal("generated URI", string(out), err)
 				}
 			}
 			if fixture.engine == "mysql" || fixture.engine == "mariadb" {
 				prefix := "MYSQL_"
 				tool := "mysql"
-				verify := []string{"--ssl-mode=VERIFY_IDENTITY"}
+				plain := []string{"--ssl-mode=DISABLED", "--get-server-public-key"}
 				if fixture.engine == "mariadb" {
 					prefix = "MARIADB_"
 					tool = "mariadb"
-					verify = []string{"--ssl", "--ssl-verify-server-cert"}
+					plain = []string{"--skip-ssl"}
 				}
-				args := append([]string{tool, "--host=" + host, "--user=" + env[prefix+"USER"], "--ssl-ca=/ca.crt", "--batch", "--skip-column-names"}, verify...)
+				args := append([]string{tool, "--host=" + host, "--user=" + env[prefix+"USER"], "--batch", "--skip-column-names"}, plain...)
 				args = append(args, "app", "--execute=CREATE TEMPORARY TABLE shipper_application_write (id integer); INSERT INTO shipper_application_write VALUES(42); SELECT id FROM shipper_application_write")
 				out, err := r.execEnv(ctx, consumer.ContainerID, args, []string{"MYSQL_PWD=" + env[prefix+"PASSWORD"]})
 				if err != nil || strings.TrimSpace(string(out)) != "42" {
@@ -377,7 +317,7 @@ func TestDockerManagedDatabaseResources(t *testing.T) {
 					if e = r.Healthy(ctx, copy); e != nil {
 						t.Fatal("Restored Redis readiness", e)
 					}
-					copyOutput, err := r.execEnv(ctx, copy.ContainerID, []string{"redis-cli", "--tls", "--cacert", "/shipper-tls/ca.crt", "-h", "127.0.0.1", "--raw", "GET", "shipper_key"}, []string{"REDISCLI_AUTH=" + env["REDIS_PASSWORD"]})
+					copyOutput, err := r.execEnv(ctx, copy.ContainerID, []string{"redis-cli", "-h", "127.0.0.1", "--raw", "GET", "shipper_key"}, []string{"REDISCLI_AUTH=" + env["REDIS_PASSWORD"]})
 					if err != nil || strings.TrimSpace(string(copyOutput)) != "persisted" {
 						t.Fatal("Restored Redis data", err)
 					}

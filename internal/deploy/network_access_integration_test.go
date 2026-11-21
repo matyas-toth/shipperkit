@@ -116,52 +116,50 @@ time.sleep(3600)`
 		t.Fatalf("UDP %q %v", data[:n], err)
 	}
 	t.Log("External TCP and UDP clients reached reviewed published ports")
-	consumer := func(connect bool) store.Deployment {
-		a := store.Deployment{ID: auth.Token()[:24], ApplicationID: auth.Token()[:24], ApplicationName: "Network client", ImageID: image, ResolvedMethod: "image", Config: store.Config{Method: "image", Image: image, StartupPolicy: "process", StartCommand: "sleep 3600"}}
-		if connect {
-			a.Config.Networking.Applications = []string{b.ApplicationID}
-		}
-		a.ContainerID, err = r.Start(ctx, a)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return a
+	// Every application joins one private network, so any application reaches
+	// another by its stable name with nothing to connect first.
+	a := store.Deployment{ID: auth.Token()[:24], ApplicationID: auth.Token()[:24], ApplicationName: "Network client", ImageID: image, ResolvedMethod: "image", Config: store.Config{Method: "image", Image: image, StartupPolicy: "process", StartCommand: "sleep 3600"}}
+	a.ContainerID, err = r.Start(ctx, a)
+	if err != nil {
+		t.Fatal(err)
 	}
-	a, isolated := consumer(true), consumer(false)
 	command := []string{"python", "-c", fmt.Sprintf("import socket; s=socket.create_connection(('app-%s',9003),3); print(s.recv(64).decode())", b.ApplicationID)}
 	out, err := r.exec(ctx, a.ContainerID, command)
 	if err != nil || !strings.Contains(string(out), "shipper-tcp") {
 		t.Fatalf("private connection: %s %v", out, err)
 	}
-	targetInfo, inspectError := r.Client.ContainerInspect(ctx, b.ContainerID, client.ContainerInspectOptions{})
-	if inspectError != nil {
-		t.Fatal(inspectError)
-	}
-	targetIP := targetInfo.Container.NetworkSettings.Networks[r.applicationNetwork(b.ApplicationID)].IPAddress.String()
-	isolationCommand := []string{"python", "-c", fmt.Sprintf("import socket; s=socket.create_connection((%q,9003),2); print(s.recv(64).decode())", targetIP)}
-	if out, err = r.exec(ctx, isolated.ContainerID, isolationCommand); err == nil {
-		t.Fatalf("unconnected application reached private target IP: %s", out)
-	}
-	dnsContext, dnsCancel := context.WithTimeout(ctx, 3*time.Second)
-	if out, err = r.exec(dnsContext, isolated.ContainerID, command); err == nil {
-		dnsCancel()
-		t.Fatalf("unconnected application resolved private alias: %s", out)
-	}
-	dnsCancel()
-	t.Log("Connected application resolves the stable alias; unconnected application cannot resolve or reach it")
-	// A database usually holds the link to the application it serves, so the
-	// linked side must resolve the linking application's stable names as well.
-	if err = r.reconcileApplicationAliases(ctx, map[string]store.Deployment{a.ApplicationID: a}); err != nil {
+	if err = r.reconcileApplicationAliases(ctx, map[string]store.Deployment{a.ApplicationID: a, b.ApplicationID: b}); err != nil {
 		t.Fatal(err)
 	}
 	for _, host := range []string{"app-" + a.ApplicationID, "db-" + a.ApplicationID} {
 		if out, err = r.exec(ctx, b.ContainerID, []string{"python", "-c", fmt.Sprintf("import socket; print(socket.gethostbyname(%q))", host)}); err != nil {
-			t.Fatalf("linked application did not resolve %s: %s %v", host, out, err)
+			t.Fatalf("application did not resolve %s: %s %v", host, out, err)
 		}
 	}
-	if out, err = r.exec(ctx, a.ContainerID, command); err != nil || !strings.Contains(string(out), "shipper-tcp") {
-		t.Fatalf("private connection after alias reconciliation: %s %v", out, err)
+	t.Log("Applications reach each other by stable name on the shared private network")
+	// Earlier versions gave each application its own network. Routing moves
+	// releases onto the private network, then retires the old one.
+	legacy := r.applicationNetwork(b.ApplicationID)
+	labels := r.labels(b.ApplicationID, "")
+	labels["io.shipper.resource"] = "network"
+	if _, err = r.Client.NetworkCreate(ctx, legacy, client.NetworkCreateOptions{Driver: "bridge", Labels: labels}); err != nil {
+		t.Fatal(err)
 	}
+	for _, id := range []string{a.ContainerID, b.ContainerID, r.proxy()} {
+		if _, err = r.Client.NetworkConnect(ctx, legacy, client.NetworkConnectOptions{Container: id}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = r.retireApplicationNetworks(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = r.Client.NetworkInspect(ctx, legacy, client.NetworkInspectOptions{}); !errdefs.IsNotFound(err) {
+		t.Fatal("per-application network survived", err)
+	}
+	if out, err = r.exec(ctx, a.ContainerID, command); err != nil || !strings.Contains(string(out), "shipper-tcp") {
+		t.Fatalf("private connection after retiring the old network: %s %v", out, err)
+	}
+	t.Log("Per-application networks of earlier versions are retired without losing a connection")
 	// Port claims include unmanaged and stopped Docker containers.
 	unmanagedPort := free()
 	foreignInstance := auth.Token()
@@ -182,9 +180,6 @@ time.sleep(3600)`
 	conflict.Config.Networking = store.NetworkAccess{Ports: []store.PublishedPort{{Protocol: "tcp", BindIP: "127.0.0.1", HostPort: unmanagedPort, ContainerPort: 9001}}}
 	if _, err = r.Start(ctx, conflict); err == nil {
 		t.Fatal("claimed stopped unmanaged container port")
-	}
-	if _, err = r.Client.NetworkInspect(ctx, r.applicationNetwork(conflict.ApplicationID), client.NetworkInspectOptions{}); !errdefs.IsNotFound(err) {
-		t.Fatal("conflict mutated application network", err)
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -232,25 +227,151 @@ time.sleep(3600)`
 		t.Fatal("previous release was not restored", err)
 	}
 	t.Log("Failed fixed-port replacement restored the previous release")
-	// Deleting the target while the client is connected keeps its network for the
-	// client; once the client goes too, the orphaned network is pruned.
+	databaseDomainAcceptance(ctx, t, r, free)
 	if err = r.RemoveApplication(ctx, b.ApplicationID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = r.Client.NetworkInspect(ctx, r.applicationNetwork(b.ApplicationID), client.NetworkInspectOptions{}); err != nil {
-		t.Fatal("connected client lost the deleted target's network", err)
+	if out, err = r.exec(ctx, a.ContainerID, command); err == nil {
+		t.Fatalf("deleted application still answered: %s", out)
 	}
-	if err = r.RemoveApplication(ctx, a.ApplicationID); err != nil {
+}
+
+// databaseDomainAcceptance serves a managed PostgreSQL and Redis on public
+// domains through the proxy. The proxy terminates TLS, PostgreSQL's in-protocol
+// upgrade included, and routes by SNI, while the databases themselves only
+// see plain connections on the private network.
+func databaseDomainAcceptance(ctx context.Context, t *testing.T, r *DockerRuntime, free func() int) {
+	t.Helper()
+	ports := map[string]int{}
+	for engine, port := range store.DatabaseDomainPorts {
+		ports[engine] = port
+	}
+	t.Cleanup(func() {
+		for engine, port := range ports {
+			store.DatabaseDomainPorts[engine] = port
+		}
+	})
+	apps := []store.Application{}
+	active := map[string]store.Deployment{}
+	hosts := map[string]string{"postgresql": "orders.shipper.test", "redis": "cache.shipper.test"}
+	for _, engine := range []string{"postgresql", "redis"} {
+		// The engines' standard ports may be busy on a developer machine.
+		store.DatabaseDomainPorts[engine] = free()
+		version := map[string]string{"postgresql": "18", "redis": "8"}[engine]
+		c, err := DatabaseResourceConfig(engine, version)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.Database.Domain = hosts[engine]
+		if err = ValidateBuild(&c); err != nil {
+			t.Fatal(err)
+		}
+		if err = r.pull(ctx, c.Image, func(line string) { t.Log(line) }); err != nil {
+			t.Fatal(err)
+		}
+		d := store.Deployment{ID: auth.Token()[:24], ApplicationID: auth.Token()[:24], ApplicationName: engine, Config: c, ImageID: c.Image, ResolvedMethod: "image", RuntimePort: c.Port}
+		if d.ContainerID, err = r.Start(ctx, d); err != nil {
+			t.Fatal(err)
+		}
+		if err = r.Healthy(ctx, d); err != nil {
+			t.Fatal(engine, err)
+		}
+		apps = append(apps, store.Application{ID: d.ApplicationID, Name: engine})
+		active[d.ApplicationID] = d
+	}
+	if err := r.Routes(ctx, apps, active); err != nil {
 		t.Fatal(err)
 	}
-	if err = r.pruneOrphanNetworks(ctx, []store.Application{{ID: isolated.ApplicationID}}); err != nil {
+	proxy, err := r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{})
+	if err != nil || proxy.Container.Config.Labels[proxyDatabasesLabel] != "postgresql,redis" {
+		t.Fatal("proxy did not open the database entrypoints", err)
+	}
+	address := ""
+	if endpoint := proxy.Container.NetworkSettings.Networks[r.privateNetwork()]; endpoint != nil {
+		address = endpoint.IPAddress.String()
+	}
+	if address == "" {
+		t.Fatal("proxy is not on the private network")
+	}
+	for _, d := range active {
+		engine := d.Config.Database.Engine
+		consumer := store.Deployment{ID: auth.Token()[:24], ApplicationID: auth.Token()[:24], ImageID: d.ImageID, ResolvedMethod: "image", Config: store.Config{Method: "image", Image: d.ImageID, StartupPolicy: "process", StartCommand: "sleep 900"}}
+		if consumer.ContainerID, err = r.Start(ctx, consumer); err != nil {
+			t.Fatal(err)
+		}
+		// Stand in for public DNS: the domain resolves to the proxy.
+		if _, err = r.execInput(ctx, consumer.ContainerID, []string{"sh", "-c", "cat >> /etc/hosts"}, nil, strings.NewReader(address+" "+hosts[engine]+"\n")); err != nil {
+			t.Fatal(err)
+		}
+		uri, err := DatabaseConnectionURI(d, DatabaseAccess{Public: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var command []string
+		want := "1"
+		if engine == "postgresql" {
+			command = []string{"psql", uri, "-qAtc", "SELECT 1"}
+		} else {
+			// The test proxy has no ACME account, so it serves its default
+			// certificate. Unlike Redis drivers, redis-cli sends SNI only on request.
+			command = []string{"redis-cli", "-u", uri, "--sni", hosts[engine], "--insecure", "--no-auth-warning", "--raw", "PING"}
+			want = "PONG"
+		}
+		var out []byte
+		for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(time.Second) {
+			if out, err = r.exec(ctx, consumer.ContainerID, command); err == nil && strings.TrimSpace(string(out)) == want {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s through its public domain: %s %v", engine, out, err)
+			}
+		}
+		if engine == "postgresql" {
+			// Without TLS there is no SNI, so the proxy cannot route the connection.
+			plain := strings.Replace(uri, "sslmode=require", "sslmode=disable", 1)
+			if out, err = r.exec(ctx, consumer.ContainerID, []string{"psql", plain, "-qAtc", "SELECT 1"}); err == nil {
+				t.Fatalf("plain connection through the public domain: %s", out)
+			}
+		}
+	}
+	t.Log("PostgreSQL and Redis answer on their public domains through the proxy")
+	for id, d := range active {
+		d.Config.Database.Domain = ""
+		active[id] = d
+	}
+	if err = r.Routes(ctx, apps, active); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = r.Client.NetworkInspect(ctx, r.applicationNetwork(b.ApplicationID), client.NetworkInspectOptions{}); !errdefs.IsNotFound(err) {
-		t.Fatal("orphaned application network survived", err)
+	if proxy, err = r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{}); err != nil || proxy.Container.Config.Labels[proxyDatabasesLabel] != "" {
+		t.Fatal("proxy kept database entrypoints without domains", err)
 	}
-	if _, err = r.Client.NetworkInspect(ctx, r.applicationNetwork(isolated.ApplicationID), client.NetworkInspectOptions{}); err != nil {
-		t.Fatal("pruning removed a live application's network", err)
+	t.Log("Removing the last domain closes the database entrypoints")
+	// A port the proxy cannot take fails the routing change, restores the
+	// previous proxy and is not retried right away by later routing.
+	busy, err := net.Listen("tcp", r.Config.BindIP+":0")
+	if err != nil {
+		t.Fatal(err)
 	}
-	t.Log("Orphaned application networks are pruned once no client remains")
+	defer busy.Close()
+	store.DatabaseDomainPorts["postgresql"] = busy.Addr().(*net.TCPAddr).Port
+	for id, d := range active {
+		if d.Config.Database.Engine == "postgresql" {
+			d.Config.Database.Domain = hosts["postgresql"]
+			active[id] = d
+		}
+	}
+	if err = r.Routes(ctx, apps, active); err == nil {
+		t.Fatal("proxy claimed a port another process holds")
+	}
+	proxy, err = r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{})
+	if err != nil || !proxy.Container.State.Running || proxy.Container.Config.Labels[proxyDatabasesLabel] != "" || !strings.HasPrefix(proxy.Container.Config.Labels[proxyDatabasesFailedLabel], "postgresql@") {
+		t.Fatal("previous proxy was not restored", err)
+	}
+	if err = r.Routes(ctx, apps, active); err != nil {
+		t.Fatal("later routing retried the failed entrypoints", err)
+	}
+	if again, err := r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{}); err != nil || again.Container.ID != proxy.Container.ID {
+		t.Fatal("proxy restarted again for the same failed entrypoints", err)
+	}
+	t.Log("A busy database port fails the change once and keeps the proxy serving")
 }

@@ -420,8 +420,10 @@ trusted certificate metadata. It never accepts an arbitrary target URL.
 
 `GET /api/applications/{id}` includes nullable `database: { engine, host, port }`
 metadata for a recognized active database image, without a URI or credentials.
-`POST /api/applications/{id}/database/connection` accepts `{}` and returns
-`{ uri, deploymentId }` with `Cache-Control: no-store`. It requires the owner
+`POST /api/applications/{id}/database/connection` accepts `{}` or
+`{"public": true}` and returns `{ uri, deploymentId }` with `Cache-Control: no-store`.
+The default is the plain private string for the shared network; `public` returns
+the TLS string for the managed database's public domain, or 422 without one. It requires the owner
 session and CSRF header. The `/api/v1` equivalent requires the `secrets` capability
 for that application. The URI comes from the active deployment, including while
 newer application settings are unapplied. No active release returns 409;

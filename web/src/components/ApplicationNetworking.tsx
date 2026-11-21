@@ -1,16 +1,17 @@
 import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { api } from "../api";
-import type { Application, NetworkAccess, NetworkingInfo, PublishedPort, ReviewSummaryItem, Service, StaticConfig } from "../types";
+import type { Application, NetworkAccess, NetworkingInfo, ProxyConfig, PublishedPort, ReviewSummaryItem, Service, StaticConfig } from "../types";
 import { Button, ErrorNotice } from "./Controls";
 import { Icon } from "./Icon";
-import Networking from "./Networking";
+import Networking, { domainPorts } from "./Networking";
 
-const empty = (): NetworkAccess => ({ applications: [], ports: [] });
 // Copies keep edits independent of the refetched application data.
-const normalize = (value?: NetworkAccess | null): NetworkAccess => ({ applications: [...(value?.applications ?? [])], ports: (value?.ports ?? []).map(port => ({ ...port })) });
+const normalize = (value?: NetworkAccess | null): NetworkAccess => ({ ports: (value?.ports ?? []).map(port => ({ ...port })) });
 const portLabel = (port: PublishedPort) => port.hostPort + "/" + port.protocol + " to container port " + port.containerPort + " on " + (port.bindIP === "0.0.0.0" ? "all interfaces" : port.bindIP === "127.0.0.1" ? "loopback" : port.bindIP);
 const samePort = (a: PublishedPort, b: PublishedPort) => a.protocol === b.protocol && a.hostPort === b.hostPort && a.containerPort === b.containerPort && a.bindIP === b.bindIP;
+const domainPattern = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/;
+const cleanDomain = (value: string) => value.trim().toLowerCase().replace(/\.$/, "");
 
 export default function ApplicationNetworking(props: {
   application: Application;
@@ -20,15 +21,22 @@ export default function ApplicationNetworking(props: {
   onDirty?: (value: boolean) => void;
 }) {
   const info = createQuery(() => ({ queryKey: ["applications", props.application.id, "networking"], queryFn: () => api<NetworkingInfo>(`/applications/${props.application.id}/networking`), reconcile: "id" }));
+  const proxy = createQuery(() => ({ queryKey: ["proxy"], queryFn: () => api<ProxyConfig>("/proxy") }));
   const [value, setValue] = createSignal<NetworkAccess>(normalize(props.application.config.networking));
-  const [tlsHostname, setTlsHostname] = createSignal(props.application.config.database?.tlsHostname ?? "");
-  const [tlsOn, setTlsOn] = createSignal(!!props.application.config.database?.tlsHostname);
+  const savedDomain = () => props.application.config.database?.domain ?? "";
+  const [domain, setDomain] = createSignal(savedDomain());
   const [error, setError] = createSignal("");
   const [saving, setSaving] = createSignal(false);
   const [conflict, setConflict] = createSignal<number>();
+  const engine = () => props.application.config.database?.engine ?? "";
+  const domainPort = () => domainPorts[engine()];
   const original = () => normalize(props.application.config.networking);
-  const savedTLS = () => props.application.config.database?.tlsHostname ?? "";
-  const tlsInvalid = () => tlsOn() && !tlsHostname().trim();
+  const domainError = () => {
+    const next = cleanDomain(domain());
+    if (next && !domainPattern.test(next)) return "Enter a domain such as db.example.com.";
+    if (next && value().ports.some(port => port.protocol === "tcp" && port.hostPort === domainPort())) return `Port ${domainPort()} serves this domain. Remove it from published ports.`;
+    return "";
+  };
   const portProblem = () => {
     const list = value().ports;
     for (const port of list) {
@@ -40,9 +48,8 @@ export default function ApplicationNetworking(props: {
     }
     return "";
   };
-  const unchosen = () => value().applications.includes("");
-  const issues = () => (conflict() !== undefined ? 1 : 0) + (tlsInvalid() ? 1 : 0) + (portProblem() ? 1 : 0) + (unchosen() ? 1 : 0);
-  const changed = () => JSON.stringify(value()) !== JSON.stringify(original()) || tlsOn() !== !!savedTLS() || tlsHostname() !== savedTLS();
+  const issues = () => (conflict() !== undefined ? 1 : 0) + (domainError() ? 1 : 0) + (portProblem() ? 1 : 0);
+  const changed = () => JSON.stringify(value()) !== JSON.stringify(original()) || cleanDomain(domain()) !== savedDomain();
   createEffect(() => props.onDirty?.(changed()));
   onCleanup(() => props.onDirty?.(false));
   function update(next: NetworkAccess) {
@@ -50,15 +57,13 @@ export default function ApplicationNetworking(props: {
     setError("");
     setConflict(undefined);
   }
-  function toggleTLS(on: boolean) {
-    setTlsOn(on);
-    if (!on) setTlsHostname("");
+  function changeDomain(next: string) {
+    setDomain(next);
     setError("");
   }
   function reset() {
     setValue(normalize(props.application.config.networking));
-    setTlsHostname(savedTLS());
-    setTlsOn(!!savedTLS());
+    setDomain(savedDomain());
     setError("");
     setConflict(undefined);
   }
@@ -66,37 +71,33 @@ export default function ApplicationNetworking(props: {
     const before = original();
     const after = value();
     const items: ReviewSummaryItem[] = [];
-    const name = (id: string) => info.data?.applications.find(entry => entry.id === id)?.name ?? id;
-    const added = after.applications.filter(id => !before.applications.includes(id));
-    const removed = before.applications.filter(id => !after.applications.includes(id));
-    if (added.length || removed.length) {
-      items.push({ label: "Private connections", value: [added.length ? "Add " + added.map(name).join(", ") : "", removed.length ? "Remove " + removed.map(name).join(", ") : ""].filter(Boolean).join(". ") });
+    const previous = savedDomain();
+    const next = cleanDomain(domain());
+    if (next !== previous) {
+      const target = (host: string) => host + ":" + domainPort();
+      items.push({ label: "Public domain", value: !previous ? "Serve on " + target(next) : !next ? "Stop serving " + target(previous) : target(previous) + " to " + target(next) });
     }
-    const addedPorts = after.ports.filter(port => !before.ports.some(previous => samePort(previous, port)));
-    const removedPorts = before.ports.filter(port => !after.ports.some(next => samePort(port, next)));
+    const addedPorts = after.ports.filter(port => !before.ports.some(existing => samePort(existing, port)));
+    const removedPorts = before.ports.filter(port => !after.ports.some(candidate => samePort(port, candidate)));
     if (addedPorts.length || removedPorts.length) {
       items.push({ label: "Public ports", value: [addedPorts.length ? "Map " + addedPorts.map(portLabel).join(", ") : "", removedPorts.length ? "Remove " + removedPorts.map(portLabel).join(", ") : ""].filter(Boolean).join(". ") });
     }
-    if (addedPorts.length) {
-      items.push({ label: "Firewall", value: "Required: open " + addedPorts.map(port => port.hostPort + "/" + port.protocol).join(", ") + " on the host firewall" });
-    }
-    const previousTLS = savedTLS();
-    const nextTLS = tlsOn() ? tlsHostname().trim() : "";
-    if (nextTLS !== previousTLS) {
-      const value = !previousTLS && nextTLS ? "Enable TLS for " + nextTLS : previousTLS && !nextTLS ? "Disable TLS for " + previousTLS : previousTLS + " to " + nextTLS;
-      items.push({ label: "TLS hostname", value });
-    }
+    const opened = addedPorts.map(port => port.hostPort + "/" + port.protocol);
+    if (next && !previous) opened.unshift(domainPort() + "/tcp");
+    if (opened.length) items.push({ label: "Firewall", value: "Required: open " + opened.join(", ") + " on the host firewall" });
     return items;
   });
   async function review(event: SubmitEvent) {
     event.preventDefault();
-    if (!changed() || saving() || props.busy || tlsInvalid() || portProblem() || unchosen()) return;
+    if (!changed() || saving() || props.busy || issues() > 0) return;
     setError(""); setConflict(undefined); setSaving(true);
-    const note = summary().some(item => item.label === "Public ports")
-      ? "The database becomes reachable from the internet. Connections drop while the ports switch."
-      : "Data is preserved; connections drop while the network changes.";
+    const exposed = summary().some(item => item.label === "Public ports" || item.label === "Public domain" && cleanDomain(domain()));
+    const note = exposed
+      ? "The database becomes reachable from the internet. Connections drop while it restarts."
+      : "Data is preserved; connections drop while the database restarts.";
+    const config = props.application.config;
     try {
-      await props.save({ ...props.application.config, networking: value(), database: props.application.config.database ? { ...props.application.config.database, tlsHostname: tlsOn() ? tlsHostname().trim() : undefined } : undefined }, summary(), note);
+      await props.save({ ...config, networking: value(), database: config.database ? { ...config.database, domain: cleanDomain(domain()) || undefined } : undefined }, summary(), config.database ? note : undefined);
     } catch (e) {
       const message = (e as Error).message;
       setError(message);
@@ -109,17 +110,16 @@ export default function ApplicationNetworking(props: {
     <Show when={info.error}><ErrorNotice message={info.error!.message} retry={() => void info.refetch()} /></Show>
     <Show when={info.data} fallback={<Show when={!info.error}><span class="loading-line" aria-label="Loading networking" /></Show>}>
       <fieldset disabled={props.busy || saving()} class="creation-fields">
-        <Networking value={value()} change={update} applicationId={props.application.id} services={props.services}
-          applications={info.data!.applications} host={info.data!.host} name={props.application.name} port={props.application.config.port} database={!!props.application.config.database} tlsCapable={["postgresql", "mysql", "mariadb", "redis"].includes(props.application.config.database?.engine ?? "")}
-          tlsHostname={tlsHostname()} changeTLS={setTlsHostname} conflictPort={conflict()} tlsOn={tlsOn()} changeTLSOn={toggleTLS} tlsInvalid={tlsInvalid()} />
+        <Networking value={value()} change={update} host={info.data!.host} port={props.application.config.port} services={props.services} conflictPort={conflict()}
+          engine={domainPort() ? engine() : undefined} domain={domain()} changeDomain={changeDomain} domainError={domainError()} publicAddress={proxy.data?.publicAddress} />
       </fieldset>
     </Show>
     <Show when={error() && conflict() === undefined}><ErrorNotice message={error()} /></Show>
     <Show when={info.data && changed() && !saving()}><div class="form-actions network-review-bar">
-      <Show when={changed()}><span class="network-unsaved-page"><span class="network-unsaved-dot" />You have unsaved changes</span></Show>
-      <Show when={changed()}><Button variant="ghost" type="button" disabled={saving()} onClick={reset}>Revert</Button></Show>
-      <Show when={portProblem() || unchosen()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem() || "Choose an application for each connection."}</span></Show>
-      <Show when={conflict() !== undefined || tlsInvalid()}><button type="button" class="network-issue-count" onClick={() => document.querySelector<HTMLInputElement>(".network-field.is-conflict input, .network-tls .is-invalid")?.focus()}>{issues()} {issues() === 1 ? "issue" : "issues"}</button></Show>
+      <span class="network-unsaved-page"><span class="network-unsaved-dot" />You have unsaved changes</span>
+      <Button variant="ghost" type="button" disabled={saving()} onClick={reset}>Revert</Button>
+      <Show when={portProblem()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem()}</span></Show>
+      <Show when={conflict() !== undefined || domainError()}><button type="button" class="network-issue-count" onClick={() => document.querySelector<HTMLInputElement>(".network-field.is-conflict input, .networking-settings .input.is-invalid")?.focus()}>{issues()} {issues() === 1 ? "issue" : "issues"}</button></Show>
       <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Saving" : "Save and redeploy"}</Button>
     </div></Show>
   </form>;

@@ -14,7 +14,10 @@ import (
 	"testing"
 )
 
-func TestDeletedApplicationReleasesOnlyItsUnusedNetwork(t *testing.T) {
+// Applications used to get a network each. Every release now joins the shared
+// private network first, so an old one is emptied and removed, never another
+// instance's.
+func TestRetiredApplicationNetworkIsEmptiedAndRemoved(t *testing.T) {
 	for _, test := range []struct {
 		name, endpoint string
 		foreign        bool
@@ -23,7 +26,7 @@ func TestDeletedApplicationReleasesOnlyItsUnusedNetwork(t *testing.T) {
 	}{
 		{name: "empty", remove: true},
 		{name: "proxy only", endpoint: "proxy", remove: true, disconnect: true},
-		{name: "connected application", endpoint: "consumer"},
+		{name: "connected application", endpoint: "consumer", remove: true, disconnect: true},
 		{name: "foreign network", foreign: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -76,12 +79,10 @@ func TestNetworkAccessValidation(t *testing.T) {
 	if err := ValidateNetworkAccess(app, &valid); err != nil {
 		t.Fatal(err)
 	}
-	if valid.Ports[0].Protocol != "tcp" || valid.Ports[0].BindIP != "0.0.0.0" {
+	if valid.Ports[0].Protocol != "tcp" || valid.Ports[0].BindIP != "0.0.0.0" || valid.Applications != nil {
 		t.Fatal(valid)
 	}
 	for _, bad := range []store.NetworkAccess{
-		{Applications: []string{app}}, {Applications: []string{"host"}},
-		{Applications: []string{"222222222222222222222222", "222222222222222222222222"}},
 		{Ports: []store.PublishedPort{{Protocol: "sctp", HostPort: 10000, ContainerPort: 1}}},
 		{Ports: []store.PublishedPort{{Protocol: "tcp", BindIP: "host", HostPort: 10000, ContainerPort: 1}}},
 		{Ports: []store.PublishedPort{{Protocol: "tcp", HostPort: 80, ContainerPort: 1}}},

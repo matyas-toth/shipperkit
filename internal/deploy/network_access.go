@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -16,20 +15,14 @@ import (
 	"shipper/internal/store"
 )
 
-var applicationNetworkID = regexp.MustCompile(`^[a-f0-9]{24}$`)
-
 func ValidateNetworkAccess(application string, access *store.NetworkAccess) error {
-	if len(access.Applications) > 64 || len(access.Ports) > 64 {
-		return errors.New("Networking is limited to 64 applications and 64 ports")
+	if len(access.Ports) > 64 {
+		return errors.New("Networking is limited to 64 ports")
 	}
+	// Every application shares one private network, so older clients' list of
+	// connected applications has nothing left to do.
+	access.Applications = nil
 	seen := map[string]bool{}
-	for _, id := range access.Applications {
-		if !applicationNetworkID.MatchString(id) || id == application || seen[id] {
-			return errors.New("Choose each other application once")
-		}
-		seen[id] = true
-	}
-	seen = map[string]bool{}
 	for i := range access.Ports {
 		p := &access.Ports[i]
 		p.Protocol = strings.ToLower(strings.TrimSpace(p.Protocol))
@@ -134,6 +127,14 @@ func (r *DockerRuntime) ValidatePublishedPorts(ctx context.Context, application 
 	return nil
 }
 
+// privateNetwork is the one network every application and database joins.
+// They reach each other by their stable names, app-<id> and db-<id>, and the
+// proxy reaches every release through it. Containers run without NET_RAW, so
+// none of them can sniff or spoof a neighbour's traffic on the bridge.
+func (r *DockerRuntime) privateNetwork() string { return r.prefix() + "-private" }
+
+// applicationNetwork is the per-application network releases joined before
+// every application shared one. Routing retires it once nothing needs it.
 func (r *DockerRuntime) applicationNetwork(app string) string { return r.prefix() + "-app-" + app }
 
 func (r *DockerRuntime) removeApplicationNetwork(ctx context.Context, app string) error {
@@ -148,49 +149,54 @@ func (r *DockerRuntime) removeApplicationNetwork(ctx context.Context, app string
 	if !owned(info.Network.Labels, r.Instance, app) {
 		return errors.New("Application network ownership check failed")
 	}
-	if len(info.Network.Containers) > 0 {
-		proxy, err := r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{})
-		if errdefs.IsNotFound(err) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if !owned(proxy.Container.Config.Labels, r.Instance, "") || proxy.Container.Config.Labels["io.shipper.infrastructure"] != "proxy" {
-			return errors.New("Proxy ownership check failed")
-		}
-		// Other applications may still have a reviewed connection to this network.
-		// Their endpoints must survive deletion of the target application's runtime.
-		for id := range info.Network.Containers {
-			if id != proxy.Container.ID {
-				return nil
-			}
-		}
-		if _, err = r.Client.NetworkDisconnect(ctx, name, client.NetworkDisconnectOptions{Container: proxy.Container.ID}); err != nil {
+	for id := range info.Network.Containers {
+		if _, err = r.Client.NetworkDisconnect(ctx, name, client.NetworkDisconnectOptions{Container: id, Force: true}); err != nil && !errdefs.IsNotFound(err) {
 			return err
 		}
 	}
 	_, err = r.Client.NetworkRemove(ctx, name, client.NetworkRemoveOptions{})
+	if errdefs.IsNotFound(err) {
+		return nil
+	}
 	return err
 }
 
-func (r *DockerRuntime) ensureApplicationNetwork(ctx context.Context, app string) error {
-	name := r.applicationNetwork(app)
+// retireApplicationNetworks removes the per-application networks of earlier
+// versions. Routing calls it after every active release has joined the
+// private network under its stable names, so no connection depends on them.
+func (r *DockerRuntime) retireApplicationNetworks(ctx context.Context) error {
+	list, err := r.Client.NetworkList(ctx, client.NetworkListOptions{Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.resource=network")})
+	if err != nil {
+		return err
+	}
+	for _, n := range list.Items {
+		app := n.Labels["io.shipper.application.id"]
+		if app == "" || n.Name != r.applicationNetwork(app) {
+			continue
+		}
+		if err = r.removeApplicationNetwork(ctx, app); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *DockerRuntime) ensurePrivateNetwork(ctx context.Context) error {
+	name := r.privateNetwork()
 	info, err := r.Client.NetworkInspect(ctx, name, client.NetworkInspectOptions{})
 	if err == nil {
-		if !owned(info.Network.Labels, r.Instance, app) {
-			return errors.New("Application network ownership check failed")
+		if !owned(info.Network.Labels, r.Instance, "") || info.Network.Labels["io.shipper.resource"] != "private-network" {
+			return errors.New("The private network name is already in use")
 		}
 	} else if errdefs.IsNotFound(err) {
-		labels := r.labels(app, "")
-		labels["io.shipper.resource"] = "network"
-		if _, err = r.Client.NetworkCreate(ctx, name, client.NetworkCreateOptions{Driver: "bridge", Labels: labels}); err != nil {
+		labels := map[string]string{"io.shipper.instance": r.Instance, "io.shipper.resource": "private-network"}
+		if _, err = r.Client.NetworkCreate(ctx, name, client.NetworkCreateOptions{Driver: "bridge", Labels: labels}); err != nil && !errdefs.IsConflict(err) {
 			return err
 		}
 	} else {
 		return err
 	}
-	// The proxy is the only infrastructure container allowed onto private app networks.
+	// The proxy is the only infrastructure container on the private network.
 	proxy, err := r.Client.ContainerInspect(ctx, r.proxy(), client.ContainerInspectOptions{})
 	if errdefs.IsNotFound(err) {
 		return nil
@@ -210,18 +216,11 @@ func (r *DockerRuntime) ensureApplicationNetwork(ctx context.Context, app string
 	return err
 }
 func (r *DockerRuntime) applicationEndpoints(ctx context.Context, d store.Deployment) (map[string]*network.EndpointSettings, error) {
-	endpoints := map[string]*network.EndpointSettings{}
-	for _, app := range append([]string{d.ApplicationID}, d.Config.Networking.Applications...) {
-		if err := r.ensureApplicationNetwork(ctx, app); err != nil {
-			return nil, err
-		}
-		endpoint := &network.EndpointSettings{}
-		if app == d.ApplicationID {
-			endpoint.Aliases = []string{"site-" + d.ID}
-		}
-		endpoints[r.applicationNetwork(app)] = endpoint
+	if err := r.ensurePrivateNetwork(ctx); err != nil {
+		return nil, err
 	}
-	return endpoints, nil
+	// A candidate answers only its release name until it is promoted.
+	return map[string]*network.EndpointSettings{r.privateNetwork(): {Aliases: []string{"site-" + d.ID}}}, nil
 }
 func publishedBindings(ports []store.PublishedPort) network.PortMap {
 	bindings := network.PortMap{}
@@ -300,6 +299,12 @@ func (r *DockerRuntime) RestoreNetworkCutover(ctx context.Context, d store.Deplo
 // Reconcile stable private names only after durable traffic promotion. Candidate
 // containers keep release-specific names while readiness checks run.
 func (r *DockerRuntime) reconcileApplicationAliases(ctx context.Context, active map[string]store.Deployment) error {
+	if len(active) > 0 {
+		if err := r.ensurePrivateNetwork(ctx); err != nil {
+			return err
+		}
+	}
+	name := r.privateNetwork()
 	for app, d := range active {
 		if ReleaseMethod(d) == "compose" {
 			if err := r.reconcileComposeNetworks(ctx, d); err != nil {
@@ -310,10 +315,6 @@ func (r *DockerRuntime) reconcileApplicationAliases(ctx context.Context, active 
 		if d.ContainerID == "" {
 			continue
 		}
-		if err := r.ensureApplicationNetwork(ctx, app); err != nil {
-			return err
-		}
-		name := r.applicationNetwork(app)
 		info, err := r.Client.ContainerInspect(ctx, d.ContainerID, client.ContainerInspectOptions{})
 		if err != nil {
 			return err
@@ -324,36 +325,20 @@ func (r *DockerRuntime) reconcileApplicationAliases(ctx context.Context, active 
 		if !owned(info.Container.Config.Labels, r.Instance, app) {
 			return errors.New("Application network ownership check failed")
 		}
-		// A connection puts both applications on the same bridge network, so the
-		// stable names are published on every network the release joins. Either
-		// side can then reach the other, whichever application holds the link.
-		networks := []string{name}
-		for _, target := range d.Config.Networking.Applications {
-			if err := r.ensureApplicationNetwork(ctx, target); err != nil {
-				return err
-			}
-			networks = append(networks, r.applicationNetwork(target))
-		}
 		if info.Container.NetworkSettings.Networks[r.network()] != nil {
 			if _, err := r.Client.NetworkDisconnect(ctx, r.network(), client.NetworkDisconnectOptions{Container: d.ContainerID}); err != nil {
 				return err
 			}
 		}
-		for _, link := range networks {
-			aliases := []string{"app-" + app, "db-" + app}
-			if link == name {
-				aliases = append([]string{"site-" + d.ID}, aliases...)
-			}
-			endpoint := info.Container.NetworkSettings.Networks[link]
+		endpoint := info.Container.NetworkSettings.Networks[name]
+		if endpoint == nil || !hasStableAlias(endpoint.Aliases, app) {
 			if endpoint != nil {
-				if hasStableAlias(endpoint.Aliases, app) {
-					continue
-				}
-				if _, err = r.Client.NetworkDisconnect(ctx, link, client.NetworkDisconnectOptions{Container: d.ContainerID}); err != nil {
+				if _, err = r.Client.NetworkDisconnect(ctx, name, client.NetworkDisconnectOptions{Container: d.ContainerID}); err != nil {
 					return err
 				}
 			}
-			if _, err = r.Client.NetworkConnect(ctx, link, client.NetworkConnectOptions{Container: d.ContainerID, EndpointConfig: &network.EndpointSettings{Aliases: aliases}}); err != nil {
+			aliases := []string{"site-" + d.ID, "app-" + app, "db-" + app}
+			if _, err = r.Client.NetworkConnect(ctx, name, client.NetworkConnectOptions{Container: d.ContainerID, EndpointConfig: &network.EndpointSettings{Aliases: aliases}}); err != nil {
 				return err
 			}
 		}
@@ -373,21 +358,16 @@ func (r *DockerRuntime) reconcileApplicationAliases(ctx context.Context, active 
 			if old.Container.NetworkSettings == nil {
 				continue
 			}
-			for _, link := range networks {
-				ep := old.Container.NetworkSettings.Networks[link]
-				if ep == nil || !hasStableAlias(ep.Aliases, app) {
-					continue
-				}
-				if _, e = r.Client.NetworkDisconnect(ctx, link, client.NetworkDisconnectOptions{Container: c.ID}); e != nil {
-					return e
-				}
-				endpoint := &network.EndpointSettings{}
-				if link == name {
-					endpoint.Aliases = []string{"site-" + c.Labels["io.shipper.deployment.id"]}
-				}
-				if _, e = r.Client.NetworkConnect(ctx, link, client.NetworkConnectOptions{Container: c.ID, EndpointConfig: endpoint}); e != nil {
-					return e
-				}
+			ep := old.Container.NetworkSettings.Networks[name]
+			if ep == nil || !hasStableAlias(ep.Aliases, app) {
+				continue
+			}
+			if _, e = r.Client.NetworkDisconnect(ctx, name, client.NetworkDisconnectOptions{Container: c.ID}); e != nil {
+				return e
+			}
+			release := &network.EndpointSettings{Aliases: []string{"site-" + c.Labels["io.shipper.deployment.id"]}}
+			if _, e = r.Client.NetworkConnect(ctx, name, client.NetworkConnectOptions{Container: c.ID, EndpointConfig: release}); e != nil {
+				return e
 			}
 		}
 	}
@@ -404,7 +384,7 @@ func hasStableAlias(aliases []string, app string) bool {
 }
 
 func (r *DockerRuntime) reconcileComposeNetworks(ctx context.Context, d store.Deployment) error {
-	if err := r.ensureApplicationNetwork(ctx, d.ApplicationID); err != nil {
+	if err := r.ensurePrivateNetwork(ctx); err != nil {
 		return err
 	}
 	items, err := r.composeContainers(ctx, d.ApplicationID)
@@ -422,19 +402,9 @@ func (r *DockerRuntime) reconcileComposeNetworks(ctx context.Context, d store.De
 		if info.Container.NetworkSettings == nil {
 			continue
 		}
-		for _, app := range append([]string{d.ApplicationID}, d.Config.Networking.Applications...) {
-			if err := r.ensureApplicationNetwork(ctx, app); err != nil {
-				return err
-			}
-			name := r.applicationNetwork(app)
-			if info.Container.NetworkSettings.Networks[name] != nil {
-				continue
-			}
-			endpoint := &network.EndpointSettings{}
-			if app == d.ApplicationID {
-				endpoint.Aliases = composeServiceAliases(d, c.Labels["com.docker.compose.service"])
-			}
-			if _, err = r.Client.NetworkConnect(ctx, name, client.NetworkConnectOptions{Container: c.ID, EndpointConfig: endpoint}); err != nil {
+		if info.Container.NetworkSettings.Networks[r.privateNetwork()] == nil {
+			endpoint := &network.EndpointSettings{Aliases: composeServiceAliases(d, c.Labels["com.docker.compose.service"])}
+			if _, err = r.Client.NetworkConnect(ctx, r.privateNetwork(), client.NetworkConnectOptions{Container: c.ID, EndpointConfig: endpoint}); err != nil {
 				return err
 			}
 		}
@@ -484,16 +454,10 @@ func (r *DockerRuntime) reuseComposeNetworking(ctx context.Context, d store.Depl
 			delete(networks, key)
 		}
 	}
-	for _, app := range append([]string{d.ApplicationID}, d.Config.Networking.Applications...) {
-		if err := r.ensureApplicationNetwork(ctx, app); err != nil {
-			return err
-		}
-		key := "shipper_link_" + app
-		if app == d.ApplicationID {
-			key = "shipper_edge"
-		}
-		networks[key] = map[string]any{"name": r.applicationNetwork(app), "external": true}
+	if err := r.ensurePrivateNetwork(ctx); err != nil {
+		return err
 	}
+	networks["shipper_edge"] = map[string]any{"name": r.privateNetwork(), "external": true}
 	plan.Project["networks"] = networks
 	for name, raw := range services {
 		svc, ok := raw.(map[string]any)
@@ -510,9 +474,6 @@ func (r *DockerRuntime) reuseComposeNetworking(ctx context.Context, d store.Depl
 			}
 		}
 		attachments["shipper_edge"] = map[string]any{"aliases": composeServiceAliases(d, name)}
-		for _, app := range d.Config.Networking.Applications {
-			attachments["shipper_link_"+app] = map[string]any{}
-		}
 		svc["networks"] = attachments
 		delete(svc, "ports")
 		ports := []any{}

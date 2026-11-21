@@ -36,14 +36,7 @@ func (r *DockerRuntime) databaseTLSRoot(app string) (string, error) {
 	}
 	return filepath.Join(r.DataDir, "database-tls", app), nil
 }
-func (r *DockerRuntime) DatabaseCA(app string) ([]byte, error) {
-	root, e := r.databaseTLSRoot(app)
-	if e != nil {
-		return nil, e
-	}
-	return os.ReadFile(filepath.Join(root, "ca.crt"))
-}
-func (r *DockerRuntime) databaseCertificate(app, hostname string) (map[string][]byte, error) {
+func (r *DockerRuntime) databaseCertificate(app string) (map[string][]byte, error) {
 	root, e := r.databaseTLSRoot(app)
 	if e != nil {
 		return nil, e
@@ -99,13 +92,6 @@ func (r *DockerRuntime) databaseCertificate(app, hostname string) (map[string][]
 		return nil, e
 	}
 	server := &x509.Certificate{SerialNumber: databaseSerial(), Subject: pkix.Name{CommonName: "db-" + app}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().AddDate(1, 0, 0), DNSNames: []string{"db-" + app, "app-" + app, "localhost"}, IPAddresses: []net.IP{net.ParseIP("127.0.0.1")}, KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
-	if hostname != "" {
-		if ip := net.ParseIP(hostname); ip != nil {
-			server.IPAddresses = append(server.IPAddresses, ip)
-		} else {
-			server.DNSNames = append(server.DNSNames, hostname)
-		}
-	}
 	der, e := x509.CreateCertificate(rand.Reader, server, ca, &serverKey.PublicKey, key)
 	if e != nil {
 		return nil, e
@@ -116,6 +102,15 @@ func (r *DockerRuntime) databaseCertificate(app, hostname string) (map[string][]
 	}
 	return map[string][]byte{"ca.crt": certPEM, "server.crt": pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), "server.key": pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})}, nil
 }
+// DatabaseTransportLabel marks managed database containers whose clients
+// connect over the private network without TLS. Containers created before it
+// existed still require TLS until their next deployment.
+const DatabaseTransportLabel = "io.shipper.database.transport"
+
+// configureDatabaseTLS starts managed databases so private clients connect
+// with a plain connection string. PostgreSQL, MySQL and MariaDB still offer
+// TLS to clients that ask for it, so older strings with sslmode=require keep
+// working. Public traffic is encrypted by the proxy, never by the database.
 func (r *DockerRuntime) configureDatabaseTLS(ctx context.Context, d store.Deployment, c *container.Config) error {
 	if d.Config.Database == nil || d.TaskCommand != nil {
 		return nil
@@ -123,44 +118,55 @@ func (r *DockerRuntime) configureDatabaseTLS(ctx context.Context, d store.Deploy
 	if e := ValidateDatabaseResource(d.Config); e != nil {
 		return e
 	}
-	if !databaseTLSCapable(d.Config.Database.Engine) {
-		return nil
-	}
-	c.Entrypoint = nil // Keep the official entrypoint's initialization and privilege drop.
 	health := ""
-
 	switch d.Config.Database.Engine {
 	case "postgresql":
-		health = `PGPASSWORD="$POSTGRES_PASSWORD" PGSSLMODE=require psql --host=127.0.0.1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" -qAtc 'SELECT 1' >/dev/null`
+		health = `PGPASSWORD="$POSTGRES_PASSWORD" psql --host=127.0.0.1 --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" -qAtc 'SELECT 1' >/dev/null`
 		c.Cmd = []string{"postgres", "-c", "ssl=on", "-c", "ssl_cert_file=/shipper-tls/server.crt", "-c", "ssl_key_file=/shipper-tls/server.key", "-c", "ssl_ca_file=/shipper-tls/ca.crt", "-c", "hba_file=/shipper-tls/pg_hba.conf"}
 	case "mysql", "mariadb":
-		health = `MYSQL_PWD="$MYSQL_PASSWORD" mysql --host=127.0.0.1 --user="$MYSQL_USER" --ssl-mode=REQUIRED --execute='SELECT 1' "$MYSQL_DATABASE" >/dev/null`
-		if d.Config.Database.Engine == "mariadb" {
-			health = `MYSQL_PWD="$MARIADB_PASSWORD" mariadb --host=127.0.0.1 --user="$MARIADB_USER" --ssl --ssl-verify-server-cert=0 --execute='SELECT 1' "$MARIADB_DATABASE" >/dev/null`
-		}
+		health = `MYSQL_PWD="$MYSQL_PASSWORD" mysql --host=127.0.0.1 --user="$MYSQL_USER" --execute='SELECT 1' "$MYSQL_DATABASE" >/dev/null`
 		binary := "mysqld"
 		if d.Config.Database.Engine == "mariadb" {
+			health = `MYSQL_PWD="$MARIADB_PASSWORD" mariadb --host=127.0.0.1 --user="$MARIADB_USER" --skip-ssl --execute='SELECT 1' "$MARIADB_DATABASE" >/dev/null`
 			binary = "mariadbd"
 		}
-		c.Cmd = []string{binary, "--ssl-ca=/shipper-tls/ca.crt", "--ssl-cert=/shipper-tls/server.crt", "--ssl-key=/shipper-tls/server.key", "--require-secure-transport=ON"}
+		c.Cmd = []string{binary, "--ssl-ca=/shipper-tls/ca.crt", "--ssl-cert=/shipper-tls/server.crt", "--ssl-key=/shipper-tls/server.key"}
 	case "redis":
-		health = `REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --tls --cacert /shipper-tls/ca.crt -h 127.0.0.1 PING | grep -qx PONG`
-		c.Cmd = []string{"redis-server", "--appendonly", "yes", "--port", "0", "--tls-port", "6379", "--tls-cert-file", "/shipper-tls/server.crt", "--tls-key-file", "/shipper-tls/server.key", "--tls-ca-cert-file", "/shipper-tls/ca.crt", "--tls-auth-clients", "no", "--requirepass", databaseEnvironment(d.Config)["REDIS_PASSWORD"]}
-		c.Cmd = append(c.Cmd, redisCacheArgs(d.Config)...)
+		health = `REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h 127.0.0.1 PING | grep -qx PONG`
+		c.Cmd = append([]string{"redis-server", "--appendonly", "yes", "--requirepass", databaseEnvironment(d.Config)["REDIS_PASSWORD"]}, redisCacheArgs(d.Config)...)
+	default:
+		c.Labels[DatabaseTransportLabel] = "plain"
+		return nil
 	}
+	c.Labels[DatabaseTransportLabel] = "plain"
+	c.Entrypoint = nil // Keep the official entrypoint's initialization and privilege drop.
 	c.Healthcheck = &container.HealthConfig{Test: []string{"CMD-SHELL", health}, Interval: 2 * time.Second, Timeout: 5 * time.Second, Retries: 3, StartPeriod: 240 * time.Second}
 	return nil
+}
+
+// DatabaseLegacyTLS reports a managed database container that still requires
+// TLS on the private network because it was created before plain connections.
+func (r *DockerRuntime) DatabaseLegacyTLS(ctx context.Context, d store.Deployment) bool {
+	if d.Config.Database == nil || d.ContainerID == "" || (d.Config.Database.Engine != "postgresql" && d.Config.Database.Engine != "redis") {
+		return false
+	}
+	info, e := r.Client.ContainerInspect(ctx, d.ContainerID, client.ContainerInspectOptions{})
+	if e != nil || info.Container.Config == nil {
+		return false
+	}
+	return info.Container.Config.Labels[DatabaseTransportLabel] == ""
 }
 func (r *DockerRuntime) seedDatabaseTLS(ctx context.Context, d store.Deployment, id string) error {
 	if d.Config.Database == nil || d.TaskCommand != nil || !databaseTLSCapable(d.Config.Database.Engine) {
 		return nil
 	}
-	files, e := r.databaseCertificate(d.ApplicationID, d.Config.Database.TLSHostname)
+	files, e := r.databaseCertificate(d.ApplicationID)
 	if e != nil {
 		return e
 	}
 	if d.Config.Database.Engine == "postgresql" {
-		files["pg_hba.conf"] = []byte("local all all trust\nhostssl all all all scram-sha-256\nhostnossl all all all reject\n")
+		// "host" matches TLS and plain connections alike.
+		files["pg_hba.conf"] = []byte("local all all trust\nhost all all all scram-sha-256\n")
 	}
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)

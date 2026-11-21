@@ -2,26 +2,35 @@ import { Show, createSignal, onCleanup } from "solid-js";
 import { post } from "../api";
 import { useAuth } from "../context";
 import { mediaQuery } from "../media";
+import { SegmentedChoice } from "./Choices";
 import { Button, ErrorNotice, IconButton } from "./Controls";
 
-export default function DatabaseConnection(props: { applicationId: string; deploymentId: string; preview?: string }) {
+type Scope = "private" | "public";
+const scopes = [{ value: "private", label: "Private" }, { value: "public", label: "Public" }] as const;
+
+export default function DatabaseConnection(props: { applicationId: string; deploymentId: string; preview?: string; publicPreview?: string }) {
   const auth = useAuth();
   const compact = mediaQuery("(width < 640px)");
   const [uri, setURI] = createSignal(""), [busy, setBusy] = createSignal(false), [copied, setCopied] = createSignal(false), [error, setError] = createSignal("");
+  const [scope, setScope] = createSignal<Scope>("private");
+  const shown = () => scope() === "public" && props.publicPreview ? props.publicPreview : props.preview;
   const parts = () => {
     try {
-      const value = new URL(props.preview ?? "");
+      const value = new URL(shown() ?? "");
       if (value.protocol === "sqlite:") return { file: value.pathname, host: "", user: "", database: "", tls: "" };
-      return { file: "", host: value.host, database: value.pathname.replace(/^\//, "") || "default", user: decodeURIComponent(value.username) || "default", tls: value.searchParams.get("sslmode") ?? (value.protocol === "rediss:" ? "Required" : "") };
+      const tls = value.searchParams.get("sslmode") ?? (value.protocol === "rediss:" || value.searchParams.get("tls") === "true" ? "require" : "");
+      return { file: "", host: value.host, database: value.pathname.replace(/^\//, "") || "default", user: decodeURIComponent(value.username) || "default", tls };
     } catch { return undefined; }
   };
-  const scope = () => (props.preview ?? "").startsWith("sqlite:") ? "Local file" : "Private network";
   let mounted = true, timer: ReturnType<typeof setTimeout> | undefined;
   onCleanup(() => { mounted = false; clearTimeout(timer); });
+  function choose(next: Scope) {
+    setScope(next); setURI(""); setError("");
+  }
   async function load(copy: boolean) {
     setBusy(true); setError("");
     try {
-      const result = await post<{ uri: string; deploymentId: string }>(`/applications/${props.applicationId}/database/connection`, {}, auth.session()?.csrfToken);
+      const result = await post<{ uri: string; deploymentId: string }>(`/applications/${props.applicationId}/database/connection`, scope() === "public" ? { public: true } : {}, auth.session()?.csrfToken);
       if (!mounted) return;
       if (result.deploymentId !== props.deploymentId) throw new Error("The database release changed; refresh the application");
       if (copy) {
@@ -40,16 +49,20 @@ export default function DatabaseConnection(props: { applicationId: string; deplo
     finally { if (mounted) setBusy(false); }
   }
   return <section class="database-connection" aria-label="Database connection">
-    <div class="database-connection-head"><h2>Connection string</h2><span>{scope()}</span></div>
+    <div class="database-connection-head"><h2>Connection string</h2>
+      <Show when={props.publicPreview} fallback={<span>{(props.preview ?? "").startsWith("sqlite:") ? "Local file" : "Private network"}</span>}>
+        <SegmentedChoice label="Network" value={scope()} choices={scopes} change={choose} />
+      </Show>
+    </div>
     <div class="database-connection-controls">
-      <Show when={props.preview} fallback={<><input id="database-connection-string" class="input mono" aria-label="Connection string" readonly type={uri() ? "text" : "password"} value={uri() || "connection-string"} autocomplete="off" spellcheck={false} /><IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
+      <Show when={shown()} fallback={<><input id="database-connection-string" class="input mono" aria-label="Connection string" readonly type={uri() ? "text" : "password"} value={uri() || "connection-string"} autocomplete="off" spellcheck={false} /><IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
         <Show when={compact()} fallback={<><div class="database-connection-field">
-          <code class="database-connection-preview mono" aria-label="Connection string">{uri() || props.preview}</code>
+          <code class="database-connection-preview mono" aria-label="Connection string">{uri() || shown()}</code>
         </div>
         <IconButton icon="eye" label={uri() ? "Hide connection string" : "Reveal connection string"} disabled={busy()} onClick={() => uri() ? setURI("") : void load(false)} /></>}>
           <dl class="database-connection-parts" aria-label="Connection string">
             <Show when={parts()?.file} fallback={<>
-              <div><dt>Host</dt><dd class="mono">{parts()?.host ?? props.preview}</dd></div>
+              <div><dt>Host</dt><dd class="mono">{parts()?.host ?? shown()}</dd></div>
               <div><dt>User</dt><dd class="mono">{parts()?.user ?? "default"}</dd></div>
               <div><dt>Database</dt><dd class="mono">{parts()?.database ?? "default"}</dd></div>
               <Show when={parts()?.tls}><div><dt>TLS</dt><dd>{parts()!.tls === "require" ? "Required" : parts()!.tls}</dd></div></Show>

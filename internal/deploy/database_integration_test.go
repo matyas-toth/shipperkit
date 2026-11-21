@@ -85,9 +85,7 @@ func TestDockerDatabaseConnectionBetweenApplications(t *testing.T) {
 	}
 	redis := store.Config{Method: "image", Image: image, StartupPolicy: "process", MemoryMB: 64, Volumes: []store.Volume{{Name: "data", Path: "/data"}}}
 	redisApp := auth.Token()[:24]
-	consumerConfig := redis
-	consumerConfig.Networking.Applications = []string{redisApp}
-	database, other := start(redisApp, redis, 6379), start(auth.Token()[:24], consumerConfig, 6379)
+	database, other := start(redisApp, redis, 6379), start(auth.Token()[:24], redis, 6379)
 	uri, err := DatabaseURI(database)
 	if err != nil {
 		t.Fatal(err)
@@ -128,9 +126,7 @@ func TestDockerDatabaseConnectionBetweenApplications(t *testing.T) {
 	}
 	postgres := store.Config{Method: "image", Image: postgresImage, StartupPolicy: "process", MemoryMB: 128, Volumes: []store.Volume{{Name: "data", Path: "/var/lib/postgresql/data"}}, Variables: []store.Variable{{Name: "POSTGRES_PASSWORD", Value: "fixture@password:/?#%", Secret: true, Scope: "runtime"}, {Name: "POSTGRES_DB", Value: "shop", Scope: "runtime"}}}
 	postgresApp := auth.Token()[:24]
-	postgresClient := postgres
-	postgresClient.Networking.Applications = []string{postgresApp}
-	sqlDatabase, sqlClient := start(postgresApp, postgres, 5432), start(auth.Token()[:24], postgresClient, 5432)
+	sqlDatabase, sqlClient := start(postgresApp, postgres, 5432), start(auth.Token()[:24], postgres, 5432)
 	sqlURI, err := DatabaseURI(sqlDatabase)
 	if err != nil {
 		t.Fatal(err)

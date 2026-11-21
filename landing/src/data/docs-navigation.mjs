@@ -20,6 +20,7 @@ export const docGroups = [
       { slug: "sources", label: "Sources", priority: "0.8", changefreq: "monthly" },
       { slug: "builds", label: "Builds and checks", priority: "0.8", changefreq: "monthly" },
       { slug: "domains", label: "Domains", priority: "0.8", changefreq: "monthly" },
+      { slug: "databases", label: "Databases", priority: "0.8", changefreq: "monthly" },
       { slug: "tls", label: "HTTPS and certificates", priority: "0.8", changefreq: "monthly" },
       { slug: "environment", label: "Environment variables", priority: "0.8", changefreq: "monthly" },
       { slug: "secrets", label: "Secrets", priority: "0.8", changefreq: "monthly" },

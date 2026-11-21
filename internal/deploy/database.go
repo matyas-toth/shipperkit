@@ -97,10 +97,30 @@ func databaseCapabilities(d store.Deployment) []string {
 	return caps
 }
 
+// DatabaseAccess chooses which connection string DatabaseConnectionURI builds.
+type DatabaseAccess struct {
+	// Public addresses the database through its domain instead of the private network.
+	Public bool
+	// LegacyTLS keeps the TLS-only string of a container created before private
+	// connections became plain, until the database is deployed again.
+	LegacyTLS bool
+}
+
+// DatabaseURI is the private connection string other applications paste as is.
 func DatabaseURI(d store.Deployment) (string, error) {
+	return DatabaseConnectionURI(d, DatabaseAccess{})
+}
+
+func DatabaseConnectionURI(d store.Deployment, access DatabaseAccess) (string, error) {
 	endpoint := DatabaseEndpointFor(d)
 	if endpoint == nil {
 		return "", errors.New("This release is not a supported database image")
+	}
+	if access.Public {
+		if d.Config.Database == nil || d.Config.Database.Domain == "" || store.DatabaseDomainPorts[d.Config.Database.Engine] == 0 {
+			return "", errors.New("Add a public domain to connect from outside the server")
+		}
+		endpoint.Host, endpoint.Port = d.Config.Database.Domain, store.DatabaseDomainPorts[d.Config.Database.Engine]
 	}
 	if d.Config.Database != nil && endpoint.Engine == "sqlite" {
 		return "sqlite:///home/sqlite/app.db", nil
@@ -197,13 +217,24 @@ func DatabaseURI(d store.Deployment) (string, error) {
 			u.User = url.User(user)
 		}
 	}
-	if d.Config.Database != nil {
-		if endpoint.Engine == "postgresql" {
+	// Inside the server the string stays plain, which every driver accepts as
+	// is. The public domain is TLS through the proxy with a Let's Encrypt
+	// certificate, which "require" asks for without pinning a CA.
+	if access.Public || access.LegacyTLS {
+		switch endpoint.Engine {
+		case "postgresql":
 			u.RawQuery = "sslmode=require"
-		}
-		if endpoint.Engine == "redis" {
+		case "redis":
 			u.Scheme = "rediss"
 		}
+	}
+	if access.Public && endpoint.Engine == "mongodb" {
+		// Replica set discovery would hand outside clients the members' private names.
+		query := u.Query()
+		query.Del("replicaSet")
+		query.Set("tls", "true")
+		query.Set("directConnection", "true")
+		u.RawQuery = query.Encode()
 	}
 	u.Path = "/" + database
 	u.RawPath = "/" + url.PathEscape(database)
