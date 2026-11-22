@@ -66,7 +66,15 @@ func (s *Server) validateNetworkingConfig(w http.ResponseWriter, c *store.Config
 	// the same engine has a domain, so only the first one needs a free port.
 	proxyListens := false
 	for _, app := range apps {
-		if app.ID == application || app.State == "deleted" {
+		if app.ID == application {
+			// The database already serving a domain is the reason the proxy holds the port.
+			if domain != "" && app.ActiveDeploymentID != "" {
+				serving, e := s.db.Deployment(ctx, app.ActiveDeploymentID)
+				proxyListens = proxyListens || e == nil && serving.Config.Database != nil && serving.Config.Database.Domain != "" && store.DatabaseDomainPorts[serving.Config.Database.Engine] == domainPort
+			}
+			continue
+		}
+		if app.State == "deleted" {
 			continue
 		}
 		configurations := []store.Config{app.Config}

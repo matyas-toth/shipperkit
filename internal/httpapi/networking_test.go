@@ -21,7 +21,18 @@ func TestSharedNetworkIgnoresLinksAndClaimsDatabaseDomains(t *testing.T) {
 	if _, err = db.Enqueue(ctx, database, store.Deployment{ID: "database-release", Operation: "deploy"}, "", true); err != nil {
 		t.Fatal(err)
 	}
+	if err = db.SetActive(ctx, database.ID, "database-release"); err != nil {
+		t.Fatal(err)
+	}
 	s := &Server{db: db}
+	// The proxy holds 5432 for this database's own domain, so changing anything
+	// else on it must not try to reserve the port again.
+	own := database.Config
+	own.Database = &store.DatabaseResource{Engine: "postgresql", Version: "18", Domain: "db.example.test"}
+	own.MemoryMB = 256
+	if recorder := httptest.NewRecorder(); !s.validateNetworkingConfig(recorder, &own, database.ID) {
+		t.Fatalf("the serving domain blocked its own database: %d %s", recorder.Code, recorder.Body.String())
+	}
 	// Older clients still send the applications they connected. Every
 	// application shares one network, so the list is dropped.
 	c := store.Config{Networking: store.NetworkAccess{Applications: []string{database.ID}}}
