@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.39](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.38...v1.0.0-rc.39) (2026-11-22)
+
+
+### Bug Fixes
+
+* let a database with a public domain be redeployed and changed ([#96](https://github.com/matyas-toth/shipperkit/issues/96)) ([0d0f99c](https://github.com/matyas-toth/shipperkit/commit/0d0f99caaadcc81caf942d84cc02bdcd193e23d8))
+
 ## [1.0.0-rc.38](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.37...v1.0.0-rc.38) (2026-11-22)
 
 
