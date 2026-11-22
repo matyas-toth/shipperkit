@@ -100,15 +100,17 @@ func (r *DockerRuntime) RetainedVolumeApplication(ctx context.Context, name stri
 	return app, r.checkVolumeSource(ctx, app, name)
 }
 func (r *DockerRuntime) cleanBackupHelpers(ctx context.Context) error {
-	items, e := r.Client.ContainerList(ctx, client.ContainerListOptions{All: true, Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.infrastructure=backup-helper")})
-	if e != nil {
-		return e
-	}
-	for _, c := range items.Items {
-		app := c.Labels["io.shipper.application.id"]
-		if app != "" && owned(c.Labels, r.Instance, app) && c.Labels["io.shipper.infrastructure"] == "backup-helper" {
-			if e = r.removeOwned(ctx, c.ID, app); e != nil {
-				return e
+	for _, kind := range []string{"backup-helper", "port-probe"} {
+		items, e := r.Client.ContainerList(ctx, client.ContainerListOptions{All: true, Filters: make(client.Filters).Add("label", "io.shipper.instance="+r.Instance).Add("label", "io.shipper.infrastructure="+kind)})
+		if e != nil {
+			return e
+		}
+		for _, c := range items.Items {
+			app := c.Labels["io.shipper.application.id"]
+			if app != "" && owned(c.Labels, r.Instance, app) && c.Labels["io.shipper.infrastructure"] == kind {
+				if e = r.removeOwned(ctx, c.ID, app); e != nil {
+					return e
+				}
 			}
 		}
 	}

@@ -390,6 +390,9 @@ Config adds `sourceId`, `repositoryId`, `autoDeploy:{enabled,paths,supersede}`,
 `inlineDockerfile` with `inlineKeep` retention metadata. Deployment responses add
 `digest` and `cancelRequested`; `cancelled` is terminal. Auto-deploy-only changes
 use a reviewed `configure` operation without rebuilding or recreating containers.
+A change to a database's `database.domain` alone plans as `route` and runs as a
+`route` operation: the serving release keeps its containers and only the proxy
+routes change.
 
 ## Routing and recorded recovery (0.7)
 

@@ -406,6 +406,9 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			w.log(d, "Application domains updated")
 			return nil
 		}
+		if d.Operation == "route" {
+			return w.route(ctx, &d)
+		}
 		if d.Operation == "start" || d.Operation == "stop" || d.Operation == "restart" {
 			if e := w.stage(ctx, &d, "operating"); e != nil {
 				return e
@@ -650,6 +653,10 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				return e
 			}
 		}
+		w.reusePortGuess(ctx, &d)
+		if e := w.addImageVolumes(ctx, &d); e != nil {
+			return e
+		}
 		if e := w.prepareStartup(ctx, &d); e != nil {
 			return e
 		}
@@ -676,7 +683,17 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			return e
 		}
 		w.log(d, "Checking the candidate HTTP response")
-		if e = w.Runtime.Healthy(ctx, d); e != nil {
+		e = w.Runtime.Healthy(ctx, d)
+		var moved *PortDetected
+		if errors.As(e, &moved) {
+			w.log(d, fmt.Sprintf("Nothing answered on port %d, but the application listens on port %d; using it", moved.From, moved.To))
+			d.RuntimePort = moved.To
+			if e = w.stage(ctx, &d, "checking"); e != nil {
+				return e
+			}
+			e = w.Runtime.Healthy(ctx, d)
+		}
+		if e != nil {
 			return e
 		}
 		if e = w.stage(ctx, &d, "promoting"); e != nil {

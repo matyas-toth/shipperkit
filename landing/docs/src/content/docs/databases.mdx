@@ -44,7 +44,7 @@ PostgreSQL, Redis and MongoDB can answer on a public domain. Shipper's proxy ter
 | Redis | `6379` | `rediss://default:…@cache.example.com:6379/0` |
 | MongoDB | `27017` | `mongodb://app:…@mongo.example.com:27017/app?authSource=admin&directConnection=true&tls=true` |
 
-The certificate is publicly trusted, so drivers that verify it, such as Node's `pg`, connect without extra configuration. Several databases of the same engine share the engine's port, and the proxy tells them apart by the domain the client sends during the TLS handshake (SNI).
+Adding, changing or removing the domain only changes the proxy's routes, so the database keeps running and its private connections stay up. The certificate is publicly trusted, so drivers that verify it, such as Node's `pg`, connect without extra configuration. Several databases of the same engine share the engine's port, and the proxy tells them apart by the domain the client sends during the TLS handshake (SNI).
 
 `redis-cli` only sends SNI when asked: add `--sni cache.example.com`. PostgreSQL clients older than version 14 do not send SNI and need the published port below.
 

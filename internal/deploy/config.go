@@ -233,14 +233,20 @@ func ValidateBuild(c *store.Config) error {
 		if p != v.Path || !strings.HasPrefix(p, "/") || len(p) > 256 || paths[p] || strings.ContainsAny(p, "\\\r\n\x00:") {
 			return errors.New("Enter unique absolute container paths for volumes")
 		}
-		for _, blocked := range []string{"/", "/proc", "/sys", "/dev", "/etc", "/usr", "/bin", "/sbin", "/var/run"} {
-			if p == blocked || (blocked != "/" && strings.HasPrefix(p, blocked+"/")) {
-				return errors.New("Volumes cannot replace system directories or Docker sockets")
-			}
+		if systemVolumePath(p) {
+			return errors.New("Volumes cannot replace system directories or Docker sockets")
 		}
 		paths[p] = true
 	}
 	return nil
+}
+func systemVolumePath(p string) bool {
+	for _, blocked := range []string{"/", "/proc", "/sys", "/dev", "/etc", "/usr", "/bin", "/sbin", "/var/run"} {
+		if p == blocked || (blocked != "/" && strings.HasPrefix(p, blocked+"/")) {
+			return true
+		}
+	}
+	return false
 }
 func NormalizeDomains(input []store.Domain) ([]store.Domain, error) {
 	if len(input) > 32 {

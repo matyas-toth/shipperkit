@@ -28,6 +28,7 @@ export function GitConnectionFields(props: {
             props.change("repositoryId", 0);
             props.change("branch", "");
             props.change("sourceId", e.currentTarget.value);
+            props.change("autoDeploy", { enabled: !!e.currentTarget.value, paths: [], supersede: true });
           }}>
             <option value="">Public Git repository</option>
             <For each={connections.data?.items.filter(c => c.kind !== "registry")}>{c => <option value={c.id}>{c.name}</option>}</For>

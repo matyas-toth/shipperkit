@@ -88,7 +88,7 @@ test("capture database networking and terminal surfaces", async ({ page }) => {
   await shot(page, "networking-empty");
   await page.getByLabel("Domain", { exact: true }).fill("db.example.com");
   await shot(page, "public-domain");
-  await page.getByRole("button", { name: "Save and redeploy", exact: true }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await shot(page, "review-network-change");
   await page.getByRole("button", { name: "Keep editing", exact: true }).click();

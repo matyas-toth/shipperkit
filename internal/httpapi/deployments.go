@@ -592,6 +592,17 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 	if operation == "apply" && deploy.PlanChanges(current.Config, a.Config).Operation == "metadata" {
 		operation = "configure"
 	}
+	if operation == "apply" && current.ActiveDeploymentID != "" {
+		// Compare with the serving release: only a domain change on top of it can
+		// skip the restart.
+		if release, e := s.db.Deployment(r.Context(), current.ActiveDeploymentID); e == nil && release.State == "succeeded" {
+			old := release.Config
+			old.AutoDeploy = a.Config.AutoDeploy
+			if deploy.PlanChanges(old, a.Config).Operation == "route" {
+				operation = "route"
+			}
+		}
+	}
 	s.enqueue(w, r, a, operation, false, input.NoCache)
 }
 func (s *Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
@@ -744,7 +755,9 @@ func (s *Server) checkDomain(w http.ResponseWriter, r *http.Request) {
 		domain.CertificateExpiresAt = cert.NotAfter.Unix()
 		domain.CertificateIssuer = cert.Issuer.CommonName
 	}
-	if (res.StatusCode < 200 || res.StatusCode >= 400) && !(domain.Maintenance && res.StatusCode == 503) || res.Header.Get("X-Shipper-Deployment") != d.ID {
+	// The header proves the route reaches this release; the application's own
+	// status, such as 404 on /, says nothing about the domain.
+	if (res.StatusCode < 200 || res.StatusCode >= 500) && !(domain.Maintenance && res.StatusCode == 503) || res.Header.Get("X-Shipper-Deployment") != d.ID {
 		respond("route_error", fmt.Sprintf("The domain is not serving this deployment (HTTP %d)", res.StatusCode))
 		return
 	}

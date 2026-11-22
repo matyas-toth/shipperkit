@@ -81,6 +81,6 @@ export interface Command { shell: string; argv?: string[]; service: string; dire
 export interface Hook { stage: "before_deploy" | "before_start" | "after_deploy" | "before_stop"; command: Command }
 export interface SavedTask { id: string; applicationId: string; name: string; command: Command; enabled: boolean; schedule: string; timezone: string; overlap: "skip" | "queue"; missed: "skip" | "once"; nextAt: number }
 export interface TaskRun { id: string; deploymentId: string; stage: string; state: string; command: Command; containerId: string; execId: string; exitCode: number; error: string; startedAt: number; finishedAt: number }
-export interface ChangePlan { effects?:string[]; downtime?:string; operation: "none" | "recreate" | "rebuild" | "metadata" | "rollback"; changes: string[]; revision: string }
+export interface ChangePlan { effects?:string[]; downtime?:string; operation: "none" | "recreate" | "rebuild" | "metadata" | "route" | "rollback"; changes: string[]; revision: string }
 
 export interface Connection {username?:string;allowPrivate?:boolean;id:string;name:string;kind:"github_app"|"github_token"|"registry";host:string;updatedAt:number}

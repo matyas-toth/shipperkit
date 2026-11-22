@@ -161,6 +161,15 @@ export default function NewApplication() {
       setConfig("sourceId", id); setSourcePanel(false);
     });
   }
+  // A connected repository deploys on push by default. Switching off stays off
+  // until the connection changes.
+  let pushSource = config.sourceId ?? "";
+  createEffect(() => {
+    const id = config.sourceId ?? "";
+    if (id === pushSource) return;
+    pushSource = id;
+    setConfig("autoDeploy", { ...(config.autoDeploy ?? emptyConfig().autoDeploy), enabled: !!id });
+  });
   function change(k: keyof StaticConfig, value: unknown) { setConfig(k, value as never); }
   function go(next: Step) {
     setError("");

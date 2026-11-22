@@ -11,7 +11,11 @@ This is the shortest supported path from a running control plane to a live appli
 - A project with a `Dockerfile`, a supported language manifest, or a static `index.html`.
 - A hostname with an A record pointing at the server, if you want public HTTPS.
 
-The application must listen on `0.0.0.0`, not `127.0.0.1`. Shipper can infer the port from an explicit setting, the runtime `PORT` variable, a sole image `EXPOSE`, or the default `3000`. Static Apache sites listen on `8080` inside the container.
+The application must listen on `0.0.0.0`, not `127.0.0.1`. Shipper takes the port from an explicit setting, the runtime `PORT` variable, a sole image `EXPOSE`, or the default `3000`. When nobody set a port and nothing answers on that one, Shipper looks at the ports the container listens on, uses the one it finds and records it in the deployment log. Later deploys start from that port. Static Apache sites listen on `8080` inside the container.
+
+Any HTTP answer below 500 on `/` counts as healthy, so an API that returns `404` or `401` at its root still deploys. A custom health path such as `/health` must return `2xx` or `3xx`.
+
+Paths an image declares with `VOLUME`, such as `/data`, are kept on persistent volumes. They appear under **Volumes** after the first deploy and keep their data across redeploys.
 
 ## Deploy from a Git repository
 
@@ -126,7 +130,7 @@ Open the failed deployment. **Show failed step** takes you to the exact stage an
 
 - The app listens on `127.0.0.1` instead of `0.0.0.0`.
 - The container port is wrong.
-- The health path returns a non-2xx response.
+- A custom health path returns an error, or `/` returns a `5xx` response.
 - A required environment variable is missing at build time.
 - DNS does not resolve to this server.
 - Port 80 or 443 is blocked.

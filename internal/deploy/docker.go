@@ -639,6 +639,10 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 	defer stop()
 	var last error
 	stable := time.Now()
+	began, nextScan := time.Now(), time.Time{}
+	guessed := PortGuessed(d) && d.ContainerID != ""
+	scanner := &portScanner{r: r, d: d}
+	defer scanner.close()
 	for deadline.Err() == nil {
 		info, e := r.Client.ContainerInspect(deadline, d.ContainerID, client.ContainerInspectOptions{})
 		if e != nil {
@@ -707,13 +711,24 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 			if e != nil && deadline.Err() == nil {
 				// The probe's own exit status means nothing to the reader.
 				e = fmt.Errorf("Nothing answered on port %d", ReleasePort(d))
+				// Nobody chose this port. Once the application has had a moment to
+				// bind, look at what it actually listens on instead of waiting out
+				// the whole startup window.
+				if guessed && time.Since(began) >= 2*time.Second && time.Now().After(nextScan) {
+					nextScan = time.Now().Add(2 * time.Second)
+					if listening, err := scanner.ports(deadline); err == nil {
+						if port := choosePort(listening, ReleasePort(d)); port > 0 {
+							return &PortDetected{From: ReleasePort(d), To: port}
+						}
+					}
+				}
 			}
 			if e == nil {
 				line, _, _ := strings.Cut(string(out), "\r\n")
 				parts := strings.Fields(line)
 				if len(parts) > 1 {
 					code, _ := strconv.Atoi(parts[1])
-					if code >= 200 && code < 400 && (info.Container.State.Health == nil || string(info.Container.State.Health.Status) != "unhealthy") {
+					if healthyStatus(code, healthPath) && (info.Container.State.Health == nil || string(info.Container.State.Health.Status) != "unhealthy") {
 						return nil
 					}
 					e = fmt.Errorf("Health endpoint returned HTTP %d", code)
@@ -1199,6 +1214,15 @@ func (r *DockerRuntime) probeHTTP(ctx context.Context, target string, port int, 
 	request := "GET " + requestPath + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n"
 	return r.execPipe(ctx, r.proxy(), []string{"nc", "-w", "3", target, strconv.Itoa(port)}, nil, strings.NewReader(request), false)
 }
+
+// healthyStatus accepts any answer below 500 on the default path: an API that
+// returns 404 or 401 at / is still up. A dedicated health path must succeed.
+func healthyStatus(code int, healthPath string) bool {
+	if healthPath == "" || healthPath == "/" {
+		return code >= 200 && code < 500
+	}
+	return code >= 200 && code < 400
+}
 func (r *DockerRuntime) ProbeLocal(ctx context.Context, d store.Deployment) (bool, error) {
 	requestPath := "/"
 	for _, domain := range d.Config.Domains {
@@ -1226,7 +1250,7 @@ func (r *DockerRuntime) ProbeLocal(ctx context.Context, d store.Deployment) (boo
 			maintenance = domain.Maintenance
 		}
 	}
-	if code != 200 && (code < 300 || code > 399) && !(maintenance && code == 503) {
+	if (code < 200 || code >= 500) && !(maintenance && code == 503) {
 		return false, nil
 	}
 	for _, line := range lines[1:] {

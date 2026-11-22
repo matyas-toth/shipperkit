@@ -9,12 +9,12 @@ import { variableScopeLabel, variableSignature } from "../env";
 
 const operationNames: Record<ChangePlan["operation"], string> = {
   rollback: "Roll back", metadata: "Update settings", rebuild: "Rebuild and deploy",
-  recreate: "Recreate using the current image", none: "No changes",
+  recreate: "Recreate using the current image", route: "Update routing", none: "No changes",
 };
 
 const confirmNames: Record<ChangePlan["operation"], string> = {
   rollback: "Roll back", metadata: "Save settings", rebuild: "Rebuild and deploy",
-  recreate: "Recreate application", none: "Apply changes",
+  recreate: "Recreate application", route: "Save", none: "Apply changes",
 };
 
 const executionFacts = (command: Command): [string, string][] => [

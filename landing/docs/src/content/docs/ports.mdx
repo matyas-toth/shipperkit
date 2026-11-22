@@ -39,7 +39,7 @@ Outbound HTTPS is required for updates. A host that cannot reach GHCR and the se
 | `8780` | Docker host, default manual install | Traefik HTTP published port |
 | `8743` | Docker host, default manual install | Traefik HTTPS published port |
 | `8080` | Application container, static Apache | Apache inside a static site container |
-| `3000` | Application container, default | Runtime port when nothing else is declared |
+| `3000` | Application container, default | Runtime port when nothing else is declared, until Shipper finds the port the application listens on |
 
 A managed install publishes Traefik on 80 and 443. A manual install defaults to 8780 and 8743. `SHIPPER_PROXY_BIND` controls the host address Traefik binds to.
 

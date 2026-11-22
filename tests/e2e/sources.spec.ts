@@ -305,7 +305,7 @@ test("connections, private repository selection, immutable queue controls and im
   });
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByText("Automatic deployments", { exact: true }).click();
-  await page.getByLabel("Deploy on push", { exact: true }).check();
+  await expect(page.getByLabel("Deploy on push", { exact: true })).toBeChecked();
   await page.getByRole("button", { name: "Review deployment", exact: true }).click();
   await expect(page.locator(".creation-review")).toContainText("Dockerfile (automatic)");
   await page.getByRole("button", { name: "Deploy", exact: true }).click();

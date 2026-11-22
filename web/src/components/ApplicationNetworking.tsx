@@ -49,7 +49,10 @@ export default function ApplicationNetworking(props: {
     return "";
   };
   const issues = () => (conflict() !== undefined ? 1 : 0) + (domainError() ? 1 : 0) + (portProblem() ? 1 : 0);
-  const changed = () => JSON.stringify(value()) !== JSON.stringify(original()) || cleanDomain(domain()) !== savedDomain();
+  const portsChanged = () => JSON.stringify(value()) !== JSON.stringify(original());
+  const changed = () => portsChanged() || cleanDomain(domain()) !== savedDomain();
+  // A public domain is a proxy route, so changing only the domain keeps the database running.
+  const routeOnly = () => !!props.application.config.database && !portsChanged();
   createEffect(() => props.onDirty?.(changed()));
   onCleanup(() => props.onDirty?.(false));
   function update(next: NetworkAccess) {
@@ -92,9 +95,11 @@ export default function ApplicationNetworking(props: {
     if (!changed() || saving() || props.busy || issues() > 0) return;
     setError(""); setConflict(undefined); setSaving(true);
     const exposed = summary().some(item => item.label === "Public ports" || item.label === "Public domain" && cleanDomain(domain()));
-    const note = exposed
-      ? "The database becomes reachable from the internet. Connections drop while it restarts."
-      : "Data is preserved; connections drop while the database restarts.";
+    const note = routeOnly()
+      ? exposed ? "The database becomes reachable from the internet." : undefined
+      : exposed
+        ? "The database becomes reachable from the internet. Connections drop while it restarts."
+        : "Data is preserved; connections drop while the database restarts.";
     const config = props.application.config;
     try {
       await props.save({ ...config, networking: value(), database: config.database ? { ...config.database, domain: cleanDomain(domain()) || undefined } : undefined }, summary(), config.database ? note : undefined);
@@ -115,12 +120,13 @@ export default function ApplicationNetworking(props: {
       </fieldset>
     </Show>
     <Show when={error() && conflict() === undefined}><ErrorNotice message={error()} /></Show>
+    <Show when={props.application.latestDeployment?.operation === "route" && props.application.latestDeployment.state === "failed" && !changed()}><ErrorNotice message={props.application.latestDeployment!.error} /></Show>
     <Show when={info.data && changed() && !saving()}><div class="form-actions network-review-bar">
       <span class="network-unsaved-page"><span class="network-unsaved-dot" />You have unsaved changes</span>
       <Button variant="ghost" type="button" disabled={saving()} onClick={reset}>Revert</Button>
       <Show when={portProblem()}><span class="network-review-block" role="alert"><Icon name="warning" />{portProblem()}</span></Show>
       <Show when={conflict() !== undefined || domainError()}><button type="button" class="network-issue-count" onClick={() => document.querySelector<HTMLInputElement>(".network-field.is-conflict input, .networking-settings .input.is-invalid")?.focus()}>{issues()} {issues() === 1 ? "issue" : "issues"}</button></Show>
-      <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Saving" : "Save and redeploy"}</Button>
+      <Button type="submit" variant="primary" disabled={!changed() || props.busy || saving() || issues() > 0}>{saving() ? "Saving" : routeOnly() ? "Save" : "Save and redeploy"}</Button>
     </div></Show>
   </form>;
 }

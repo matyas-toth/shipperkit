@@ -59,7 +59,7 @@ export function methodLabel(app: import("./types").Application) {
   // a domain change that resolved nothing.
   return methods[app.method] ?? methods[app.activeMethod ?? ""] ?? methods[app.latestDeployment?.resolvedMethod ?? ""] ?? (app.method === "auto" ? "Automatic" : app.containers.some(c => c.project) ? "Compose" : "Docker");
 }
-export function deploymentLabel(d: import("./types").Deployment) { if(d.state==="cloning"&&d.config.localSource)return "Loading files";return d.state !== "succeeded" ? statusLabel(d.state) : ({ rollback: "Rolled back", deploy: "Deployed", domains: "Domains updated", start: "Started", stop: "Stopped", restart: "Restarted", delete: "Deleted", apply: "Applied", task: "Task completed", service_start:"Service started",service_stop:"Service stopped",service_restart:"Service restarted" }[d.operation] ?? "Completed"); }
+export function deploymentLabel(d: import("./types").Deployment) { if(d.state==="cloning"&&d.config.localSource)return "Loading files";return d.state !== "succeeded" ? statusLabel(d.state) : ({ rollback: "Rolled back", deploy: "Deployed", domains: "Domains updated", route: "Routing updated", configure: "Settings updated", start: "Started", stop: "Stopped", restart: "Restarted", delete: "Deleted", apply: "Applied", task: "Task completed", service_start:"Service started",service_stop:"Service stopped",service_restart:"Service restarted" }[d.operation] ?? "Completed"); }
 const operatorTime = new Intl.DateTimeFormat(undefined, {
   month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });

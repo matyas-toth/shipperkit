@@ -187,6 +187,9 @@ func PlanChanges(old, next store.Config) ChangePlan {
 	if reflect.DeepEqual(oldWithoutAuto, nextWithoutAuto) && !reflect.DeepEqual(old.AutoDeploy, next.AutoDeploy) {
 		p.Operation = "metadata"
 	}
+	if routingOnly(oldWithoutAuto, nextWithoutAuto) {
+		p.Operation = "route"
+	}
 	if reflect.DeepEqual(old, next) {
 		p.Operation = "none"
 	}
@@ -197,7 +200,23 @@ func PlanChanges(old, next store.Config) ChangePlan {
 		p.Effects = []string{"Keep workloads unchanged"}
 		p.Downtime = "No workload restart"
 	}
+	if p.Operation == "route" {
+		p.Effects = []string{"Keep the database running", "Update the proxy route for the public domain"}
+		p.Downtime = "No database restart"
+	}
 	return p
+}
+
+// routingOnly reports a change the proxy applies by itself: a database's public
+// domain is a proxy route, so changing it never needs a new container.
+func routingOnly(old, next store.Config) bool {
+	if old.Database == nil || next.Database == nil || old.Database.Domain == next.Database.Domain {
+		return false
+	}
+	a, b := *old.Database, *next.Database
+	a.Domain, b.Domain = "", ""
+	old.Database, next.Database = &a, &b
+	return reflect.DeepEqual(old, next)
 }
 func (r *DockerRuntime) ReuseCompose(ctx context.Context, d *store.Deployment, previous store.Deployment) error {
 	if e := r.ValidatePublishedPorts(ctx, d.ApplicationID, d.Config.Networking.Ports); e != nil {

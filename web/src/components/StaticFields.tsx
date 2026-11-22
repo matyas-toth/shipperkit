@@ -43,6 +43,7 @@ export default function StaticFields(props: ConfigFields & { applicationId: stri
     if (source() !== "git") changeSource("git");
     if (props.config.sourceId === id) return;
     props.change("repository", ""); props.change("repositoryId", 0); props.change("branch", ""); props.change("sourceId", id);
+    props.change("autoDeploy", { enabled: true, paths: [], supersede: true });
   }
   const files = () => source() === "git" || source() === "local";
   function build(method: StaticConfig["method"]) {
