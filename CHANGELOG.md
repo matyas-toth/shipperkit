@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.38](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.37...v1.0.0-rc.38) (2026-11-22)
+
+
+### Bug Fixes
+
+* make first deploys, image data and database domains work by default ([#94](https://github.com/matyas-toth/shipperkit/issues/94)) ([9d66d9d](https://github.com/matyas-toth/shipperkit/commit/9d66d9d481024f90063b5357cb3bde8619061103))
+
 ## [1.0.0-rc.37](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.36...v1.0.0-rc.37) (2026-11-21)
 
 
