@@ -93,9 +93,10 @@ recovery; it does not currently clean up retained project networks or file volum
 Relative build contexts, Dockerfiles, `env_file`, configs, secrets, YAML anchors,
 dependencies, health checks, internal networks, and named volumes are supported.
 Repository bind mounts and Compose configs/secrets are copied into release-owned
-Docker volumes with subpath mounts. This works with a remote daemon and inside
-the packaged control plane without mounting its filesystem into application
-containers. Repository directory mounts are release snapshots; use named volumes
+Docker volumes with subpath mounts. An inline config whose `mode` lets its owner
+execute it, such as an entrypoint script, is copied as executable. This works
+with a remote daemon and inside the packaged control plane without mounting its
+filesystem into application containers. Repository directory mounts are release snapshots; use named volumes
 for mutable persistent data. Updates replace those snapshots.
 
 Referenced paths must be regular files or directories inside the Git checkout

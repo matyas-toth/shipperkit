@@ -26,9 +26,10 @@ A library deployment is a normal Compose application:
 - A deployed library application gets a service console with access
   credentials, endpoints, documentation and generated settings.
 
-Templates that need host access, a Docker socket or local configuration files
-are marked **Advanced**. They remain selectable, but should be reviewed before
-deploying.
+Files a template provides, such as a configuration file or an entrypoint
+script, are deployed as read-only Compose configs with their contents unchanged.
+Templates that need host access or a Docker socket are marked **Advanced**. They
+remain selectable, but should be reviewed before deploying.
 
 ## Configuration fields
 

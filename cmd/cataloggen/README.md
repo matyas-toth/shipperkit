@@ -7,10 +7,18 @@ Builds `internal/catalog/catalog.json` from Coolify's generated
 go run ./cmd/cataloggen -source service-templates.json -out internal/catalog/catalog.json
 ```
 
-The generator converts Coolify service variables into Shipper fields, replaces
-host bind mounts with named volumes where possible, removes unsupported host
-options, escapes container-side shell interpolation, derives a main service and
-HTTP port, and marks templates that still need host resources as advanced.
+The current manifest was generated from Coolify commit
+`5c42313f2d9de23924abbd9df148ca2b5cfaa1ec`:
+
+```sh
+curl -fLO https://raw.githubusercontent.com/coollabsio/coolify/5c42313f2d9de23924abbd9df148ca2b5cfaa1ec/templates/service-templates.json
+```
+
+The generator converts Coolify service variables into Shipper fields, turns files
+a template writes inline into Compose configs, replaces other host bind mounts
+with named volumes, removes unsupported host options, escapes container-side
+shell interpolation, derives a main service and HTTP port, and marks templates
+that still need host resources as advanced.
 
 See [Service Library](../../docs/service-library.md) and
 [attribution](../../internal/catalog/ATTRIBUTION.md).

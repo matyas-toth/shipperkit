@@ -283,14 +283,16 @@ func TestDockerComposeApplications(t *testing.T) {
 		t.Fatal("Delete removed persistent volume", e)
 	}
 	t.Log("Deploying pasted Compose without a repository")
-	a = store.Application{ID: auth.Token()[:24], Name: "Pasted fixture", Config: store.Config{Method: "compose", ComposeSource: "paste", RootDirectory: ".", ComposeYAML: "services:\n  web:\n    image: " + ApacheImage + "\n    expose: ['80']\n    configs: [{source: web-page, target: /usr/local/apache2/htdocs/index.html}]\n  api:\n    image: " + ApacheImage + "\n    expose: ['80']\n    configs: [{source: api-page, target: /usr/local/apache2/htdocs/index.html}]\nconfigs:\n  web-page: {content: Web service}\n  api-page: {content: API service}\n"}}
+	a = store.Application{ID: auth.Token()[:24], Name: "Pasted fixture", Config: store.Config{Method: "compose", ComposeSource: "paste", RootDirectory: ".", ComposeYAML: "services:\n  web:\n    image: " + ApacheImage + "\n    expose: ['80']\n    configs: [{source: web-page, target: /usr/local/apache2/htdocs/index.html}]\n  api:\n    image: " + ApacheImage + "\n    expose: ['80']\n    entrypoint: [/start.sh]\n    configs: [{source: api-start, target: /start.sh, mode: 493}]\nconfigs:\n  web-page: {content: Web service}\n  api-start: {content: \"#!/bin/sh\\necho API service > /usr/local/apache2/htdocs/index.html\\nexec httpd-foreground\\n\"}\n"}}
 	a.Config.Domains = []store.Domain{{ID: "web", Service: "web", Hostname: a.ID + ".localhost", Primary: true}, {ID: "api", Service: "api", Hostname: "api-" + a.ID + ".localhost", Primary: true}}
 	run("deploy", true, "succeeded")
 	if !strings.Contains(request("/"), "Web service") {
 		t.Fatal("Pasted Compose did not serve")
 	}
+	// The api service starts from an inline script, which only runs when its
+	// config mode marks it executable.
 	if !strings.Contains(request("/", "api-"+a.ID+".localhost"), "API service") {
-		t.Fatal("Per-service domain reached the wrong backend")
+		t.Fatal("Per-service domain reached the wrong backend, or the executable config did not run")
 	}
 
 }

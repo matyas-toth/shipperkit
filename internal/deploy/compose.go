@@ -557,6 +557,9 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 	}
 	p.Networks["shipper_edge"] = ct.NetworkConfig{Name: r.privateNetwork(), External: true}
 	files := map[string][]byte{}
+	// executable holds the inline configs whose mode lets the owner run them,
+	// such as a template's entrypoint script.
+	executable := map[string]bool{}
 	fileMount := func(source, target string, readonly bool) (ct.ServiceVolumeConfig, error) {
 		abs, e := checkedFile(repository, source)
 		if e != nil {
@@ -701,6 +704,7 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 					content = p.Environment[def.Environment]
 				}
 				files[key] = []byte(content)
+				executable[key] = f.Mode != nil && *f.Mode&0o100 != 0
 				mask = append(mask, content)
 				v = ct.ServiceVolumeConfig{Type: "volume", Source: "shipper_files", Target: target, ReadOnly: true, Volume: &ct.ServiceVolumeVolume{Subpath: key, NoCopy: true}}
 			}
@@ -788,7 +792,7 @@ func (r *DockerRuntime) PrepareCompose(ctx context.Context, d *store.Deployment,
 	if len(files) > 0 {
 		volume := r.composeProject(d.ApplicationID) + "-files-" + d.ID
 		p.Volumes["shipper_files"] = ct.VolumeConfig{Name: volume, External: true}
-		if e = r.composeFiles(ctx, d, volume, files); e != nil {
+		if e = r.composeFiles(ctx, d, volume, files, executable); e != nil {
 			return e
 		}
 	}
@@ -868,7 +872,7 @@ func collectComposeFiles(root, key string, files map[string][]byte) error {
 		return e
 	})
 }
-func (r *DockerRuntime) composeFiles(ctx context.Context, d *store.Deployment, volume string, files map[string][]byte) error {
+func (r *DockerRuntime) composeFiles(ctx context.Context, d *store.Deployment, volume string, files map[string][]byte, executable map[string]bool) error {
 	labels := r.labels(d.ApplicationID, d.ID)
 	labels["io.shipper.infrastructure"] = "compose-files"
 	if v, e := r.Client.VolumeInspect(ctx, volume, client.VolumeInspectOptions{}); e == nil {
@@ -911,6 +915,9 @@ func (r *DockerRuntime) composeFiles(ctx context.Context, d *store.Deployment, v
 	for _, k := range keys {
 		v := all[k]
 		h := &tar.Header{Name: k, Mode: 0644, Size: int64(len(v))}
+		if executable[k] {
+			h.Mode = 0755
+		}
 		if strings.HasSuffix(k, "/") {
 			h.Typeflag = tar.TypeDir
 			h.Mode = 0755

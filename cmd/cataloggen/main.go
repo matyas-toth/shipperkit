@@ -166,9 +166,9 @@ func main() {
 		return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
 	})
 	m := manifest{
-		Version:   "2026.11.15",
+		Version:   "2026.11.23",
 		Source:    "Coolify service templates and Shipper curated services",
-		Generated: "2026-11-15",
+		Generated: "2026-11-23",
 		Services:  items,
 	}
 	data, err := json.MarshalIndent(m, "", "  ")
@@ -200,6 +200,7 @@ func convert(id string, t sourceTemplate) (service, error) {
 	if len(rawServices) == 0 {
 		return service{}, errors.New("no services")
 	}
+	fixTemplate(id, doc)
 	transformed, fields, domains, mainService, port, support, note, err := transform(doc)
 	if err != nil {
 		return service{}, err
@@ -269,6 +270,29 @@ func convert(id string, t sourceTemplate) (service, error) {
 	}, nil
 }
 
+// fixTemplate adjusts templates whose upstream files cannot work as read-only
+// Compose configs. Filebrowser writes its database to a file the template
+// binds empty, so the database moves to a volume.
+func fixTemplate(id string, doc map[string]any) {
+	if id != "filebrowser" {
+		return
+	}
+	services, _ := doc["services"].(map[string]any)
+	svc, _ := services["filebrowser"].(map[string]any)
+	if svc == nil {
+		return
+	}
+	volumes, _ := svc["volumes"].([]any)
+	for i, raw := range volumes {
+		if v, ok := raw.(map[string]any); ok && v["target"] == "/database.db" {
+			volumes[i] = map[string]any{"type": "volume", "source": "filebrowser-database", "target": "/database"}
+			if env, ok := svc["environment"].([]any); ok {
+				svc["environment"] = append(env, "FB_DATABASE=/database/filebrowser.db")
+			}
+		}
+	}
+}
+
 type variableRef struct {
 	fallback string
 	required bool
@@ -320,9 +344,9 @@ func transform(doc map[string]any) (map[string]any, []field, []domain, string, i
 		return nil, nil, nil, "", 0, "advanced", "This template needs more than 32 services", errors.New("too many services")
 	}
 	// First pass: remove host-only and unsupported service options. A pasted
-	// Compose file cannot read repository files, so file binds become volumes
-	// and the library marks the template as needing manual review.
-	fileBinds := false
+	// Compose file cannot read repository files, so a file the template writes
+	// inline becomes a Compose config and every other bind becomes a volume.
+	files := []fileConfig{}
 	for name, raw := range rawServices {
 		svc, _ := raw.(map[string]any)
 		if svc == nil {
@@ -370,7 +394,7 @@ func transform(doc map[string]any) (map[string]any, []field, []domain, string, i
 		if volumes, ok := svc["volumes"].([]any); ok {
 			clean := make([]any, 0, len(volumes))
 			for index, raw := range volumes {
-				volume := cleanVolume(name, raw, index, &advanced, &fileBinds)
+				volume := cleanVolume(name, raw, index, &advanced, &files)
 				if volume != nil {
 					clean = append(clean, volume)
 				}
@@ -434,6 +458,25 @@ func transform(doc map[string]any) (map[string]any, []field, []domain, string, i
 	fields, domains := buildFields(rawServices, refs)
 	mainService, port := pickMain(rawServices, fields)
 	escapeRuntimeStrings(out, refs)
+	// File contents reach the container verbatim, so every $ is escaped and no
+	// reference inside them becomes a field.
+	if len(files) > 0 {
+		configs := map[string]any{}
+		for _, f := range files {
+			svc, _ := rawServices[f.Service].(map[string]any)
+			if svc == nil {
+				continue
+			}
+			entry := map[string]any{"source": f.Name, "target": f.Target}
+			if strings.HasPrefix(f.Content, "#!") {
+				entry["mode"] = 0o755
+			}
+			list, _ := svc["configs"].([]any)
+			svc["configs"] = append(list, entry)
+			configs[f.Name] = map[string]any{"content": strings.ReplaceAll(f.Content, "$", "$$")}
+		}
+		out["configs"] = configs
+	}
 	for i := range fields {
 		if fields[i].Kind == "domain" {
 			if fields[i].Service == "" {
@@ -451,13 +494,9 @@ func transform(doc map[string]any) (map[string]any, []field, []domain, string, i
 	}
 	support := "ready"
 	note := ""
-	if fileBinds || len(advanced) > 0 {
+	if len(advanced) > 0 {
 		support = "advanced"
-		reasons := append([]string{}, advanced...)
-		if fileBinds {
-			reasons = append(reasons, "local configuration files")
-		}
-		note = "Needs " + humanJoin(unique(reasons)) + " after deploy"
+		note = "Needs " + humanJoin(unique(advanced)) + " after deploy"
 	} else if len(fields) > 24 {
 		support = "advanced"
 		note = fmt.Sprintf("Review %d configuration fields before deploying", len(fields))
@@ -609,10 +648,10 @@ func normalizeEnvironment(serviceName string, svc map[string]any) {
 				if !found {
 					val = magicValue(key)
 				}
-				env[strings.TrimSpace(key)] = expandMagic(val)
+				env[strings.TrimSpace(key)] = environmentValue(val)
 			case map[string]any:
 				for k, v := range row {
-					env[k] = expandMagic(fmt.Sprint(v))
+					env[k] = environmentValue(fmt.Sprint(v))
 				}
 			}
 		}
@@ -622,11 +661,24 @@ func normalizeEnvironment(serviceName string, svc map[string]any) {
 				env[key] = magicValue(key)
 				continue
 			}
-			env[key] = expandMagic(fmt.Sprint(value))
+			env[key] = environmentValue(fmt.Sprint(value))
 		}
 	}
 	svc["environment"] = env
 }
+
+// environmentValue expands Coolify's magic variables. A value that is only
+// $NAME is a setting Coolify lets the user fill in. Docker never expands it,
+// so it becomes an optional field instead of reaching the app as literal text.
+func environmentValue(value string) string {
+	value = expandMagic(value)
+	if m := bareVariable.FindStringSubmatch(value); m != nil {
+		return "${" + m[1] + ":-}"
+	}
+	return value
+}
+
+var bareVariable = regexp.MustCompile(`^\$([A-Za-z_][A-Za-z0-9_]*)$`)
 
 func magicValue(key string) string {
 	switch {
@@ -669,7 +721,13 @@ func expandMagic(value string) string {
 	return out.String()
 }
 
-func cleanVolume(service string, raw any, index int, advanced *[]string, fileBinds *bool) any {
+// fileConfig is a file a template writes inline. It becomes a Compose config,
+// because a named volume mounted on a file path is an empty directory.
+type fileConfig struct {
+	Service, Name, Target, Content string
+}
+
+func cleanVolume(service string, raw any, index int, advanced *[]string, files *[]fileConfig) any {
 	switch value := raw.(type) {
 	case string:
 		parts := strings.Split(value, ":")
@@ -681,19 +739,30 @@ func cleanVolume(service string, raw any, index int, advanced *[]string, fileBin
 		if len(parts) > 2 {
 			mode = parts[2]
 		}
-		return convertSource(source, target, mode, service, index, advanced, fileBinds)
+		return convertSource(source, target, mode, service, index, advanced, false)
 	case map[string]any:
 		target, _ := value["target"].(string)
 		source, _ := value["source"].(string)
 		kind, _ := value["type"].(string)
+		directory := value["is_directory"] == true || value["isDirectory"] == true
 		delete(value, "is_directory")
+		delete(value, "isDirectory")
 		delete(value, "create_host_path")
+		if content, ok := value["content"]; ok && !directory && target != "" {
+			text := ""
+			if content != nil {
+				text = fmt.Sprint(content)
+			}
+			*files = append(*files, fileConfig{Service: service, Name: strings.ReplaceAll(service, "_", "-") + "-file-" + strconv.Itoa(index), Target: target, Content: text})
+			return nil
+		}
+		delete(value, "content")
 		if kind == "bind" {
 			mode := ""
 			if readOnly, _ := value["read_only"].(bool); readOnly {
 				mode = "ro"
 			}
-			return convertSource(source, target, mode, service, index, advanced, fileBinds)
+			return convertSource(source, target, mode, service, index, advanced, directory)
 		}
 		if kind == "tmpfs" {
 			return value
@@ -706,14 +775,14 @@ func cleanVolume(service string, raw any, index int, advanced *[]string, fileBin
 			if readOnly, _ := value["read_only"].(bool); readOnly {
 				mode = "ro"
 			}
-			return convertSource(source, target, mode, service, index, advanced, fileBinds)
+			return convertSource(source, target, mode, service, index, advanced, directory)
 		}
 		return value
 	}
 	return nil
 }
 
-func convertSource(source, target, mode, service string, index int, advanced *[]string, fileBinds *bool) any {
+func convertSource(source, target, mode, service string, index int, advanced *[]string, directory bool) any {
 	if source == "" {
 		return namedVolume(service, index, target, mode)
 	}
@@ -728,11 +797,10 @@ func convertSource(source, target, mode, service string, index int, advanced *[]
 		return nil
 	}
 	if strings.HasPrefix(source, "./") || strings.HasPrefix(source, "../") || strings.HasPrefix(source, "/") {
-		// A file-like source cannot be materialized from a pasted Compose
-		// document. Keep the mount as a named volume so the service can start,
-		// and flag the template for a review of its configuration.
-		if likelyFile(source) {
-			*fileBinds = true
+		// A file bound without contents cannot be created here, and a volume
+		// in its place would be an empty directory. The image's own copy is used.
+		if !directory && fileSource.MatchString(source) {
+			return nil
 		}
 		return namedVolume(service, index, target, mode)
 	}
@@ -763,20 +831,8 @@ func isHostAccess(source string) bool {
 	return false
 }
 
-func likelyFile(source string) bool {
-	base := source
-	if index := strings.LastIndex(base, "/"); index >= 0 {
-		base = base[index+1:]
-	}
-	if strings.Contains(base, ".") {
-		return true
-	}
-	switch base {
-	case "docker-compose.yml", "compose.yaml", "compose.yml", "Dockerfile", "entrypoint.sh", "config", "data":
-		return true
-	}
-	return false
-}
+// fileSource matches a bind source that names a single file.
+var fileSource = regexp.MustCompile(`(?i)[^/]\.(toml|ya?ml|json|conf|cfg|ini|env|js|ts|php|xml|sh|txt|lua|py|properties|rb|pem|key|crt|htpasswd|sqlite3?|db|sql|css|html)$`)
 
 func buildFields(services map[string]any, refs map[string]variableRef) ([]field, []domain) {
 	fields := []field{}
