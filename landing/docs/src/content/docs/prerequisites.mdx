@@ -3,13 +3,14 @@ title: Prerequisites
 description: Supported hosts, resources, Docker requirements, ports, DNS, and base tools for a Shipper installation.
 ---
 
-Shipper runs on one dedicated Ubuntu 24.04 x86-64 server with systemd. The installer prepares that host, starts the control plane, and leaves application workloads alone.
+Shipper runs on one dedicated server with systemd, running Ubuntu 22.04 or 24.04, or Debian 12 or 13, on x86-64 or ARM64. The installer prepares that host, starts the control plane, and leaves application workloads alone.
 
 ## Supported host
 
 | Item | Requirement |
 | --- | --- |
-| Operating system | Ubuntu 24.04, x86-64, systemd |
+| Operating system | Ubuntu 22.04 or 24.04, or Debian 12 or 13, with systemd |
+| Architecture | x86-64 or ARM64 |
 | Access | Root shell, or `sudo` |
 | Memory | At least 1 GiB RAM |
 | Disk | At least 8 GiB free in `/var/lib` |
@@ -20,7 +21,7 @@ Shipper runs on one dedicated Ubuntu 24.04 x86-64 server with systemd. The insta
 
 These are bootstrap thresholds, not workload sizing. Application images, build caches, and database volumes need their own capacity planning.
 
-The managed installer supports Ubuntu 24.04 on x86-64 only. Other distributions and ARM hosts need a manual installation and are not covered by the installer's repair or update path.
+Other distributions, other releases and 32-bit hosts need a manual installation and are not covered by the installer's repair or update path.
 
 ## Docker
 

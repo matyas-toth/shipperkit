@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 
 function Deploy1() {
   const steps = [
-    ["01", "Install", "Run one command on a fresh Ubuntu server and open your dashboard."],
+    ["01", "Install", "Run one command on a fresh Ubuntu or Debian server and open your dashboard."],
     ["02", "Connect", "Pick a local folder, a repo, an image, or a Compose file."],
     ["03", "Deploy", "Get a live HTTPS URL, readable logs, and a release you can restore."],
   ] as const;
@@ -60,13 +60,13 @@ function Deploy2() {
           <div>
             <SectionIntro
               title={<>One command to your first deploy.</>}
-              body="Install Shipper on a fresh Ubuntu host, claim the dashboard, and point it at your code. The installer handles the proxy and the plumbing."
+              body="Install Shipper on a fresh Ubuntu or Debian host, claim the dashboard, and point it at your code. The installer handles the proxy and the plumbing."
             />
             <div className="mt-9">
               <ActionPrimary href="#get-shipper" />
             </div>
             <div className="mt-8 space-y-4">
-              <Check>Fresh Ubuntu 24.04 host.</Check>
+              <Check>Fresh Ubuntu or Debian host.</Check>
               <Check>A domain when you are ready for public HTTPS.</Check>
               <Check>Five minutes before the first release.</Check>
             </div>

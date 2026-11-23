@@ -52,7 +52,14 @@ fi
 printf '\n%sShipper installer%s\n' "$bold" "$reset"
 [[ $(uname -s) == Linux && -r /etc/os-release ]] || die 'This installer requires Linux'
 . /etc/os-release
-[[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 24.04 && $(uname -m) == x86_64 ]] || die 'Use Ubuntu 24.04 on x86-64'
+supported='Use Ubuntu 22.04 or 24.04, or Debian 12 or 13, on x86-64 or ARM64'
+case "${ID:-} ${VERSION_ID:-}" in
+  'ubuntu 22.04'|'ubuntu 24.04'|'debian 12'|'debian 13') ;;
+  *) die "$supported";;
+esac
+[[ -n ${VERSION_CODENAME:-} ]] && command -v dpkg >/dev/null || die "$supported"
+arch=$(dpkg --print-architecture)
+[[ $arch == amd64 || $arch == arm64 ]] || die "$supported"
 [[ $EUID == 0 && -d /run/systemd/system ]] || die 'Run as root on a systemd host'
 command -v flock >/dev/null && command -v ss >/dev/null || die 'Install util-linux and iproute2 first'
 installed=false
@@ -133,7 +140,7 @@ if [[ ! $public_ip =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 [[ -n $public_ip ]] || public_ip='<server-ip>'
 printf '\n%sInstall plan%s\n' "$bold" "$reset"
-info "Host        Ubuntu 24.04 x86-64"
+info "Host        ${PRETTY_NAME:-$ID $VERSION_ID} $arch"
 if [[ $engine == install ]]; then
   info "Docker      install from the signed repository"
 else
@@ -159,18 +166,18 @@ fi
 if [[ $engine == install ]]; then
   stage 'Installing Docker from the signed repository'
   install -d -m 0755 /etc/apt/keyrings
-  curl -fsSL --proto '=https' --retry 3 https://download.docker.com/linux/ubuntu/gpg -o "$state/docker.asc"
+  curl -fsSL --proto '=https' --retry 3 "https://download.docker.com/linux/$ID/gpg" -o "$state/docker.asc"
   if [[ -e /etc/apt/keyrings/shipper-docker.asc ]]; then
     cmp -s "$state/docker.asc" /etc/apt/keyrings/shipper-docker.asc || die 'Existing repository key differs'
   else
     install -m 0644 "$state/docker.asc" /etc/apt/keyrings/shipper-docker.asc
   fi
-  cat >"$state/docker.sources" <<'APT'
+  cat >"$state/docker.sources" <<APT
 Types: deb
-URIs: https://download.docker.com/linux/ubuntu
-Suites: noble
+URIs: https://download.docker.com/linux/$ID
+Suites: $VERSION_CODENAME
 Components: stable
-Architectures: amd64
+Architectures: $arch
 Signed-By: /etc/apt/keyrings/shipper-docker.asc
 APT
   if [[ -e /etc/apt/sources.list.d/shipper-docker.sources ]]; then

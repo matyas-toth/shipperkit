@@ -1,10 +1,11 @@
 # Managed Linux installation
 
-The 1.0 beta targets one dedicated Ubuntu 24.04 x86-64 server with systemd. It
+The installer targets one dedicated systemd server running Ubuntu 22.04 or 24.04,
+or Debian 12 or 13, on x86-64 or ARM64. It
 checks for at least 1 GiB RAM and 8 GiB free in `/var/lib`. These are bootstrap
 thresholds, not workload sizing guidance. Docker Engine API 1.48 or newer, Compose
 and Buildx are required. The installer can install missing Docker from the
-[signed Docker package repository](https://docs.docker.com/engine/install/ubuntu/).
+[signed Docker package repository](https://docs.docker.com/engine/install/).
 
 Use the published installer. The default one-liner installs the newest published
 release without arguments, then prints the public IP and port to open:

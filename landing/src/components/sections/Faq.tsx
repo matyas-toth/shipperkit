@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const faqs = [
   {
     q: "What do I need to get started?",
-    a: "A supported Ubuntu server and a project to deploy. The installer handles Docker and the proxy. A domain is only needed when you want public HTTPS.",
+    a: "A supported Ubuntu or Debian server and a project to deploy. The installer handles Docker and the proxy. A domain is only needed when you want public HTTPS.",
   },
   {
     q: "Does it work with my stack?",

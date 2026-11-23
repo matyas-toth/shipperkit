@@ -32,7 +32,7 @@ monitor. A 503 is a valid verified response for deliberate maintenance mode.
 
 ## Dashboard and instance HTTPS
 
-The managed Ubuntu installer now starts without a domain. It binds the control
+The managed installer now starts without a domain. It binds the control
 plane on `0.0.0.0:8080`, prints `http://<public-ip>:8080`, and lets the first
 administrator claim the instance or use the setup token in
 `/var/lib/shipper/setup-token`. Allow TCP 80, 443 and 8080 through the provider

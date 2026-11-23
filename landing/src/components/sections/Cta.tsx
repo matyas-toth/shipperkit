@@ -60,7 +60,7 @@ function Cta2() {
               Your first deploy is one command away.
             </h2>
             <p className="mt-6 max-w-[48ch] text-[17px] leading-[1.7] text-[#a5a6a0]">
-              Install on a fresh Ubuntu server, claim the dashboard, and ship a
+              Install on a fresh Ubuntu or Debian server, claim the dashboard, and ship a
               project you already have. No platform account and no card.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
@@ -171,7 +171,7 @@ function Cta5() {
                 From zero to live, without the setup tax.
               </h2>
               <p className="mt-5 max-w-[44ch] text-[17px] leading-[1.7] text-[#a5a6a0]">
-                Install on a fresh Ubuntu host, connect a source, and review the
+                Install on a fresh Ubuntu or Debian host, connect a source, and review the
                 first release before it takes traffic.
               </p>
             </div>
@@ -214,7 +214,7 @@ function Cta6() {
           </div>
           <div className="rounded-2xl border border-white/[0.12] bg-[#080909] p-8 md:p-10">
             <div className="mono space-y-4 text-[14px] leading-[1.8]">
-              <div className="text-[#85867f]"># one supported Ubuntu host</div>
+              <div className="text-[#85867f]"># a fresh Ubuntu or Debian host</div>
               <div className="flex items-start gap-2">
                 <span className="text-[#85867f]">$ </span>
                 <TerminalInstall className="text-[#ecece7]" />

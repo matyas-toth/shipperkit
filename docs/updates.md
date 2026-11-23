@@ -88,7 +88,7 @@ under Updates.
 - Only the control plane is restarted. Application workloads are not part of
   the control-plane compose project.
 
-The helper is installed only by the managed Ubuntu installer. Local development
+The helper is installed only by the managed installer. Local development
 installations keep the update controls disabled.
 
 ## Limits

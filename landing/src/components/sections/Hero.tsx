@@ -249,7 +249,7 @@ function Hero3() {
                 <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
                 GitHub
               </a>
-              <span>Ubuntu 24.04</span>
+              <span>Ubuntu or Debian</span>
               <span>5-minute install</span>
               <span>Open source · MIT</span>
             </div>
@@ -260,7 +260,7 @@ function Hero3() {
                 <HugeiconsIcon icon={GithubIcon} size={15} strokeWidth={1.7} />
                 GitHub
               </a>
-              <span className="text-[14px] text-[#8d8e88]">Ubuntu 24.04</span>
+              <span className="text-[14px] text-[#8d8e88]">Ubuntu or Debian</span>
               <span className="text-[14px] text-[#8d8e88]">5-minute install</span>
               <span className="text-[14px] text-[#8d8e88]">Open source · MIT</span>
             </div>
@@ -297,7 +297,7 @@ function Hero4() {
               One command puts your app on your server.
             </h1>
             <p className="mt-7 max-w-[50ch] text-[18px] leading-[1.7] text-[#a9aaa4]">
-              Install on a fresh Ubuntu box, claim your dashboard, and deploy from a
+              Install on a fresh Ubuntu or Debian box, claim your dashboard, and deploy from a
               folder, a repo, or an image. Your first release can be live before your
               coffee cools.
             </p>
@@ -330,7 +330,7 @@ function Hero4() {
               </div>
               <div className="p-6 md:p-8">
                 <div className="mono space-y-3 text-[14px] leading-[1.85]">
-                  <div className="text-[#85867f]"># one supported Ubuntu host</div>
+                  <div className="text-[#85867f]"># a fresh Ubuntu or Debian host</div>
                   <div className="flex items-start gap-2">
                     <span className="text-[#85867f]">$ </span>
                     <TerminalInstall className="text-[#ecece7]" />

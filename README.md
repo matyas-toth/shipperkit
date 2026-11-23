@@ -23,13 +23,13 @@
 
 ## Install
 
-Run this on a fresh Ubuntu 24.04 server:
+Run this on a fresh Ubuntu or Debian server:
 
 ```sh
 curl -fsSL https://shipperkit.dev/install.sh | sudo bash
 ```
 
-Open the address it prints, paste the setup token and create your account. The server needs 1 GiB of RAM and ports 80, 443 and 8080 open. See the [prerequisites](https://shipperkit.dev/docs/prerequisites/) for the details.
+Open the address it prints, paste the setup token and create your account. The installer supports Ubuntu 22.04 and 24.04 and Debian 12 and 13 on x86-64 or ARM64, with 1 GiB of RAM and ports 80, 443 and 8080 open. See the [prerequisites](https://shipperkit.dev/docs/prerequisites/) for the details.
 
 ![Applications in the Shipper dashboard](.github/assets/applications.png)
 
