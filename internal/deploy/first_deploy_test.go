@@ -120,3 +120,31 @@ func TestPublicDomainChangeIsRoutingOnly(t *testing.T) {
 		t.Fatal("database settings other than the domain still recreate the database")
 	}
 }
+
+func TestDatabaseDeployLogsNameItsAddresses(t *testing.T) {
+	c, e := DatabaseResourceConfig("postgresql", "18")
+	if e != nil {
+		t.Fatal(e)
+	}
+	d := store.Deployment{ApplicationID: "orders", Config: c}
+	if got := checkingMessage(d); got != "Checking that the new release keeps running" {
+		t.Fatalf("a database is not checked over HTTP: %q", got)
+	}
+	if got := databaseAddresses(d); len(got) != 1 || got[0] != "The database answers privately on db-orders:5432" {
+		t.Fatalf("private address %q", got)
+	}
+	d.Config.Database.Domain = "db.example.test"
+	if got := databaseAddresses(d); len(got) != 2 || got[1] != "The database answers publicly on db.example.test:5432" {
+		t.Fatalf("public address %q", got)
+	}
+	sqlite, e := DatabaseResourceConfig("sqlite", "3.50")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if got := databaseAddresses(store.Deployment{ApplicationID: "files", Config: sqlite}); len(got) != 1 || got[0] != "The database is running" {
+		t.Fatalf("sqlite %q", got)
+	}
+	if got := checkingMessage(store.Deployment{Config: store.Config{Method: "image", Image: "nginx"}}); got != "Checking the candidate HTTP response" {
+		t.Fatalf("web check %q", got)
+	}
+}

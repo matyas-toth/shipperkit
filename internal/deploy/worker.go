@@ -682,7 +682,7 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 		if e = w.stage(ctx, &d, "checking"); e != nil {
 			return e
 		}
-		w.log(d, "Checking the candidate HTTP response")
+		w.log(d, checkingMessage(d))
 		e = w.Runtime.Healthy(ctx, d)
 		var moved *PortDetected
 		if errors.As(e, &moved) {
@@ -724,7 +724,11 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 			}
 			return e
 		}
-		if d.Config.Domain != "" {
+		if d.Config.Database != nil {
+			for _, line := range databaseAddresses(d) {
+				w.log(d, line)
+			}
+		} else if d.Config.Domain != "" {
 			w.log(d, "Application is serving at "+d.Config.Domain)
 			if d.Config.HTTPS && !slices.ContainsFunc(d.PreviousDomains, func(p store.Domain) bool { return p.Hostname == d.Config.Domain && p.HTTPS }) {
 				w.log(d, "Requesting an HTTPS certificate for "+d.Config.Domain+"; visits can fail until it is issued, usually within a minute")

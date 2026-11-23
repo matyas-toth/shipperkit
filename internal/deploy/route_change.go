@@ -43,10 +43,36 @@ func (w *Worker) route(ctx context.Context, d *store.Deployment) error {
 		return e
 	}
 	if next == "" {
-		w.log(*d, "The database no longer answers on "+previous)
+		w.log(*d, "The database no longer answers publicly on "+previous)
 		return nil
 	}
 	port := strconv.Itoa(store.DatabaseDomainPorts[d.Config.Database.Engine])
-	w.log(*d, "The database answers on "+next+":"+port)
+	w.log(*d, "The database answers publicly on "+next+":"+port)
 	return nil
+}
+
+// checkingMessage names the check a release is about to pass. Databases and
+// workers only have to keep running; everything else has to answer HTTP.
+func checkingMessage(d store.Deployment) string {
+	if d.Config.StartupPolicy == "process" {
+		return "Checking that the new release keeps running"
+	}
+	return "Checking the candidate HTTP response"
+}
+
+// databaseAddresses lists where a database release answers: always on the
+// private network, and on its public domain when it has one.
+func databaseAddresses(d store.Deployment) []string {
+	port := d.Config.Port
+	if d.RuntimePort > 0 {
+		port = d.RuntimePort
+	}
+	if port == 0 {
+		return []string{"The database is running"}
+	}
+	lines := []string{"The database answers privately on db-" + d.ApplicationID + ":" + strconv.Itoa(port)}
+	if d.Config.Database.Domain != "" && store.DatabaseDomainPorts[d.Config.Database.Engine] != 0 {
+		lines = append(lines, "The database answers publicly on "+d.Config.Database.Domain+":"+strconv.Itoa(store.DatabaseDomainPorts[d.Config.Database.Engine]))
+	}
+	return lines
 }
