@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.40](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.39...v1.0.0-rc.40) (2026-11-23)
+
+
+### Bug Fixes
+
+* say where a database answers in its deploy log ([#98](https://github.com/matyas-toth/shipperkit/issues/98)) ([b41bfd3](https://github.com/matyas-toth/shipperkit/commit/b41bfd375ce0d5ce5379164bb994360cf2a0df6c))
+
 ## [1.0.0-rc.39](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.38...v1.0.0-rc.39) (2026-11-22)
 
 
