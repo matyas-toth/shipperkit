@@ -960,12 +960,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Supabase Minio username",
-          "kind": "text",
+          "label": "Supabase Minio access key",
+          "kind": "password",
           "group": "access",
-          "default": "supabaseminio",
           "service": "supabase-minio",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SMTP_ADMIN_EMAIL",
@@ -3245,12 +3246,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Plane Minio username",
-          "kind": "text",
+          "label": "Plane Minio access key",
+          "kind": "password",
           "group": "access",
-          "default": "planeminio",
           "service": "plane-minio",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SERVICE_USER_POSTGRES",
@@ -4797,18 +4799,18 @@
       ],
       "logomark": "MI",
       "logo": "/service-logos/minio.svg",
-      "documentation": "https://min.io/docs/minio/container/index.html",
+      "documentation": "https://silo.pgsty.com/docs/",
       "source": "shipper",
       "featured": true,
       "mainService": "minio",
       "port": 9001,
       "healthPath": "/",
       "support": "ready",
-      "compose": "services:\n  minio:\n    image: minio/minio:RELEASE.2025-02-07T23-21-09Z\n    command: [\"server\", \"/data\", \"--console-address\", \":9001\"]\n    environment:\n      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}\n      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}\n    volumes:\n      - type: volume\n        source: minio-data\n        target: /data\n    healthcheck:\n      test: [\"CMD\", \"mc\", \"ready\", \"local\"]\n      interval: 10s\n      timeout: 5s\n      retries: 10\nvolumes:\n  minio-data:",
+      "compose": "services:\n  minio:\n    image: pgsty/silo:RELEASE.2026-10-15T00-00-00Z\n    command: [\"server\", \"/data\", \"--console-address\", \":9001\"]\n    environment:\n      MINIO_ROOT_USER: ${MINIO_ROOT_USER}\n      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}\n    volumes:\n      - type: volume\n        source: minio-data\n        target: /data\n    healthcheck:\n      test: [\"CMD\", \"mc\", \"ready\", \"local\"]\n      interval: 10s\n      timeout: 5s\n      retries: 10\nvolumes:\n  minio-data:",
       "services": [
         {
           "name": "minio",
-          "image": "minio/minio:RELEASE.2025-02-07T23-21-09Z",
+          "image": "pgsty/silo:RELEASE.2026-10-15T00-00-00Z",
           "role": "Application"
         }
       ],
@@ -4816,10 +4818,11 @@
         {
           "key": "MINIO_ROOT_USER",
           "label": "Access key",
-          "kind": "text",
+          "kind": "password",
           "group": "access",
-          "default": "minioadmin",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "MINIO_ROOT_PASSWORD",
@@ -5398,12 +5401,13 @@
         },
         {
           "key": "SERVICE_USER_RUSTFS",
-          "label": "Rustfs username",
-          "kind": "text",
+          "label": "Rustfs access key",
+          "kind": "password",
           "group": "access",
-          "default": "rustfs",
           "service": "rustfs",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SMTP_HOST",
@@ -5918,12 +5922,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Minio username",
-          "kind": "text",
+          "label": "Minio access key",
+          "kind": "password",
           "group": "access",
-          "default": "minio",
           "service": "minio",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SERVICE_USER_POSTGRES",
@@ -7625,12 +7630,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Minio Service username",
-          "kind": "text",
+          "label": "Minio Service access key",
+          "kind": "password",
           "group": "access",
-          "default": "minioservice",
           "service": "minio-service",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         }
       ],
       "domains": [
@@ -8109,12 +8115,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Minio username",
-          "kind": "text",
+          "label": "Minio access key",
+          "kind": "password",
           "group": "access",
-          "default": "minio",
           "service": "minio",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SERVICE_USER_POSTGRES",
@@ -13412,12 +13419,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Minio username",
-          "kind": "text",
+          "label": "Minio access key",
+          "kind": "password",
           "group": "access",
-          "default": "minio",
           "service": "minio",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SERVICE_USER_POSTGRES",
@@ -14009,7 +14017,7 @@
           "label": "Postgres DB",
           "kind": "text",
           "group": "configuration",
-          "default": "chatwoot"
+          "default": "postgres"
         },
         {
           "key": "QRCODE_LIMIT",
@@ -17290,12 +17298,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Minio username",
-          "kind": "text",
+          "label": "Minio access key",
+          "kind": "password",
           "group": "access",
-          "default": "minio",
           "service": "minio",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SERVICE_USER_POSTGRESQL",
@@ -18117,12 +18126,13 @@
         },
         {
           "key": "SERVICE_USER_GARAGE",
-          "label": "Garage username",
-          "kind": "text",
+          "label": "Garage access key",
+          "kind": "password",
           "group": "access",
-          "default": "garage",
           "service": "garage",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         }
       ]
     },
@@ -33957,12 +33967,13 @@
         },
         {
           "key": "SERVICE_USER_MINIO",
-          "label": "Minio username",
-          "kind": "text",
+          "label": "Minio access key",
+          "kind": "password",
           "group": "access",
-          "default": "minio",
           "service": "minio",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         },
         {
           "key": "SERVICE_USER_POSTGRES",
@@ -38591,11 +38602,12 @@
         },
         {
           "key": "SERVICE_USER_S3",
-          "label": "Username",
-          "kind": "text",
+          "label": "Access key",
+          "kind": "password",
           "group": "access",
-          "default": "admin",
-          "required": true
+          "required": true,
+          "secret": true,
+          "generate": "hex"
         }
       ],
       "domains": [

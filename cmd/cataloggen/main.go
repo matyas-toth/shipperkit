@@ -455,7 +455,7 @@ func transform(doc map[string]any) (map[string]any, []field, []domain, string, i
 			refs[name] = previous
 		}
 	})
-	fields, domains := buildFields(rawServices, refs)
+	fields, domains := buildFields(rawServices, refs, accessKeyUsers(rawServices))
 	mainService, port := pickMain(rawServices, fields)
 	escapeRuntimeStrings(out, refs)
 	// File contents reach the container verbatim, so every $ is escaped and no
@@ -834,7 +834,31 @@ func isHostAccess(source string) bool {
 // fileSource matches a bind source that names a single file.
 var fileSource = regexp.MustCompile(`(?i)[^/]\.(toml|ya?ml|json|conf|cfg|ini|env|js|ts|php|xml|sh|txt|lua|py|properties|rb|pem|key|crt|htpasswd|sqlite3?|db|sql|css|html)$`)
 
-func buildFields(services map[string]any, refs map[string]variableRef) ([]field, []domain) {
+// accessKeyUsers lists the SERVICE_USER_ variables a template uses as an
+// access key. Those are credentials, not names: Garage rejects a key shorter
+// than 8 characters, and a readable default like "minio" is guessable.
+func accessKeyUsers(services map[string]any) map[string]bool {
+	users := map[string]bool{}
+	for _, raw := range services {
+		svc, _ := raw.(map[string]any)
+		env, _ := svc["environment"].(map[string]any)
+		for key, value := range env {
+			if !accessKeyName.MatchString(key) {
+				continue
+			}
+			for _, match := range varReference.FindAllStringSubmatch(fmt.Sprint(value), -1) {
+				if strings.HasPrefix(match[1], "SERVICE_USER_") {
+					users[match[1]] = true
+				}
+			}
+		}
+	}
+	return users
+}
+
+var accessKeyName = regexp.MustCompile(`(?i)ACCESS_?KEY|KEY_ID|MINIO_ROOT_USER`)
+
+func buildFields(services map[string]any, refs map[string]variableRef, accessKeys map[string]bool) ([]field, []domain) {
 	fields := []field{}
 	domains := []domain{}
 	seen := map[string]bool{}
@@ -877,6 +901,13 @@ func buildFields(services map[string]any, refs map[string]variableRef) ([]field,
 			add(field{Key: name, Label: secretLabel(name, "SERVICE_PASSWORD_64_"), Kind: "password", Group: "access", Secret: true, Generate: "hex", Required: true})
 		case strings.HasPrefix(name, "SERVICE_PASSWORD_"):
 			add(field{Key: name, Label: secretLabel(name, "SERVICE_PASSWORD_"), Kind: "password", Group: "access", Secret: true, Generate: "password", Required: true})
+		case strings.HasPrefix(name, "SERVICE_USER_") && accessKeys[name]:
+			service, _ := resolveService(name, "SERVICE_USER_", services)
+			label := "Access key"
+			if service != "" {
+				label = displayName(service) + " access key"
+			}
+			add(field{Key: name, Label: label, Kind: "password", Group: "access", Service: service, Secret: true, Generate: "hex", Required: true})
 		case strings.HasPrefix(name, "SERVICE_USER_"):
 			service, _ := resolveService(name, "SERVICE_USER_", services)
 			value := "admin"

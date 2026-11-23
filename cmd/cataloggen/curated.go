@@ -257,14 +257,14 @@ volumes:
 		},
 		{
 			ID: "minio", Name: "MinIO", Description: "S3-compatible object storage for backups and media.",
-			Category: "Storage", Tags: []string{"s3", "storage", "objects"}, Docs: "https://min.io/docs/minio/container/index.html",
+			Category: "Storage", Tags: []string{"s3", "storage", "objects"}, Docs: "https://silo.pgsty.com/docs/",
 			Main: "minio", Port: 9001, Support: "ready",
 			Compose: `services:
   minio:
-    image: minio/minio:RELEASE.2025-02-07T23-21-09Z
+    image: pgsty/silo:RELEASE.2026-10-15T00-00-00Z
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - type: volume
@@ -279,7 +279,7 @@ volumes:
   minio-data:
 `,
 			Fields: []field{
-				{Key: "MINIO_ROOT_USER", Label: "Access key", Kind: "text", Group: "access", Default: "minioadmin", Required: true},
+				{Key: "MINIO_ROOT_USER", Label: "Access key", Kind: "password", Group: "access", Secret: true, Generate: "hex", Required: true},
 				{Key: "MINIO_ROOT_PASSWORD", Label: "Secret key", Kind: "password", Group: "access", Secret: true, Generate: "password", Required: true},
 			},
 			Domains: []domain{{Service: "minio", Port: 9001, Primary: true}},

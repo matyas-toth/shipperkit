@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -95,6 +96,42 @@ func TestCatalogConfigFilesAreVerbatim(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("%s does not mount %s", tc.id, tc.target)
+		}
+	}
+}
+
+// An access key is a credential. Garage rejects one shorter than 8
+// characters, and a readable default such as "minio" is guessable, so every
+// access key a template takes from a field is generated.
+func TestCatalogGeneratesAccessKeys(t *testing.T) {
+	accessKey := regexp.MustCompile(`(?i)ACCESS_?KEY|KEY_ID|MINIO_ROOT_USER`)
+	reference := regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_]*)`)
+	for _, service := range Embedded().Services {
+		generated := map[string]bool{}
+		fields := map[string]bool{}
+		for _, field := range service.Fields {
+			fields[field.Key] = true
+			generated[field.Key] = field.Generate != ""
+		}
+		var doc struct {
+			Services map[string]struct {
+				Environment map[string]any `yaml:"environment"`
+			} `yaml:"services"`
+		}
+		if err := yaml.Unmarshal([]byte(service.Compose), &doc); err != nil {
+			t.Fatalf("%s: %v", service.ID, err)
+		}
+		for name, svc := range doc.Services {
+			for key, value := range svc.Environment {
+				if !accessKey.MatchString(key) {
+					continue
+				}
+				for _, match := range reference.FindAllStringSubmatch(fmt.Sprint(value), -1) {
+					if fields[match[1]] && strings.Contains(match[1], "USER") && !generated[match[1]] {
+						t.Errorf("%s/%s takes %s from %s, which is not generated", service.ID, name, key, match[1])
+					}
+				}
+			}
 		}
 	}
 }
