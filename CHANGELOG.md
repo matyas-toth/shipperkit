@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.0-rc.41](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.40...v1.0.0-rc.41) (2026-11-23)
+
+
+### Bug Fixes
+
+* generate S3 access keys in library templates and move MinIO to Silo ([#102](https://github.com/matyas-toth/shipperkit/issues/102)) ([fecc671](https://github.com/matyas-toth/shipperkit/commit/fecc6710bf859d966798f587be05d8e93a8bebe4))
+* ship service library template files as Compose configs ([#100](https://github.com/matyas-toth/shipperkit/issues/100)) ([59cb6bf](https://github.com/matyas-toth/shipperkit/commit/59cb6bfe1fd1980b670fcc1dc76e07023a855004))
+
 ## [1.0.0-rc.40](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.39...v1.0.0-rc.40) (2026-11-23)
 
 
