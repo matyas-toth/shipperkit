@@ -8,7 +8,7 @@ the public IP and 8080, and stores the dashboard domain under Settings. Settings
 is grouped into Account and Server scopes. Collaboration and provider sign-in
 shipped in Shipper 1.0.0 Beta 2 (`1.0.0-rc.23`).
 
-The [Coolify parity audit](../feature_parity.md) tracks eventual capability breadth.
+The [Coolify parity audit](feature-parity.md) tracks eventual capability breadth.
 A smaller, dependable 1.0 takes priority over completing every parity milestone.
 The [VPS test lab](vps-test-plan.md) and [account/authentication contract](authentication.md)
 record the real-system acceptance resources and the implemented access model.
@@ -766,6 +766,6 @@ single-server product keeps the same small operational footprint.
 
 A planned field or adapter is not completion. Each capability needs a support
 boundary and an acceptance scenario, linked by its F-ID in
-[feature_parity.md](../feature_parity.md). Preserve the Q-ID QoL register as phases
+[feature-parity.md](feature-parity.md). Preserve the Q-ID QoL register as phases
 ship. Re-audit a pinned Coolify release before claiming current parity, and keep
 native workflows, partial support and Compose workarounds distinct.

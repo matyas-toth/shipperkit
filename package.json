@@ -2,7 +2,13 @@
   "name": "shipper",
   "version": "1.0.0-rc.41",
   "private": true,
-  "description": "A lightweight self-hosted application platform",
+  "description": "Deploy apps, databases and self-hosted services to your own server",
+  "homepage": "https://shipperkit.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matyas-toth/shipperkit.git"
+  },
+  "bugs": "https://github.com/matyas-toth/shipperkit/issues",
   "license": "MIT",
   "engines": {
     "node": ">=22.12.0"

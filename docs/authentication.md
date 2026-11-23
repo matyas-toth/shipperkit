@@ -7,7 +7,7 @@ and offline owner recovery. Managed installations claim the first owner through
 configured independently in Settings. GitHub repository access is a separate
 integration. The current prerelease is **Shipper 1.0.0 Beta 2**
 (`1.0.0-rc.23`). See [installation and recovery](installation.md), the
-[roadmap](roadmap.md) and the [security boundary](../SECURITY.md).
+[roadmap](roadmap.md) and the [security model](security.md).
 
 ## Accounts are provisioned by administrators
 

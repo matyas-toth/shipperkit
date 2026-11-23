@@ -1,53 +1,98 @@
-# Shipper
+<p align="center">
+  <a href="https://shipperkit.dev"><img src=".github/assets/logo.svg" width="72" height="72" alt=""></a>
+</p>
 
-[![CI](https://github.com/matyas-toth/shipperkit/actions/workflows/ci.yml/badge.svg)](https://github.com/matyas-toth/shipperkit/actions/workflows/ci.yml)
-[![Release](https://github.com/matyas-toth/shipperkit/actions/workflows/release.yml/badge.svg)](https://github.com/matyas-toth/shipperkit/actions/workflows/release.yml)
+<h1 align="center">ShipperKit</h1>
 
-A lightweight, self-hosted application platform built with Go, SolidJS, and SQLite.
+<p align="center">
+  Deploy apps, databases and self-hosted services to your own server, with HTTPS, rollbacks and backups built in.
+</p>
 
-Deploy local projects, public/private GitHub repositories, direct images,
-inline Dockerfiles or Compose applications. Configure lifecycle commands and
-scheduled tasks, automate signed push deployments, review configuration changes,
-and restore recorded releases. Dockerfile, Railpack and static Apache builds
-share the same application model.
+<p align="center">
+  <a href="https://github.com/matyas-toth/shipperkit/releases"><img src="https://img.shields.io/github/v/release/matyas-toth/shipperkit?include_prereleases&label=release" alt="Latest release"></a>
+  <a href="https://github.com/matyas-toth/shipperkit/actions/workflows/ci.yml"><img src="https://github.com/matyas-toth/shipperkit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/matyas-toth/shipperkit" alt="MIT license"></a>
+  <a href="https://discord.shipperkit.dev"><img src="https://img.shields.io/badge/chat-Discord-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+</p>
 
-Add collaborators without a separate team hierarchy. Shipper supports one
-implicit workspace with Admin, Developer and Viewer roles, administrator-issued
-accounts, Email and password, Google, GitHub and Discord sign-in, verified-email
-identity linking and Shipper's own TOTP enforcement.
+<p align="center">
+  <a href="https://shipperkit.dev">Website</a> ·
+  <a href="https://shipperkit.dev/docs/">Docs</a> ·
+  <a href="https://discord.shipperkit.dev">Discord</a>
+</p>
 
-New applications use a guided source, configuration and review flow. Automatic
-build selection recommends a method after inspecting the source. Workers skip
-HTTP settings, and Compose previews show services and their route targets.
-Review with defaults skips the configuration step when no overrides are needed.
+## Install
 
-Service logs, editable environments, domain routing, health checks, persistent
-volumes, and application lifecycle controls are available from the dashboard.
-Compose builds finish before updates begin, and failed startup attempts restore
-the previous pinned container configuration where possible. Persistent data is
-retained. Encrypted instance recovery, local/S3 backup plans, cold-volume archives
-and PostgreSQL/MySQL/MariaDB restore copies are available. Release rollback and
-data recovery remain separate operations.
-System diagnostics, quiet transition notifications, reviewed retention/proxy
-repair, scoped operations tokens and a focused CLI share the same application
-model. The dashboard remains a complete manual workflow. See
-[operations and local deployments](docs/operations.md).
-See [backups and recovery](docs/backups.md), [Compose operations](docs/compose.md) and [commands and tasks](docs/commands.md).
-The [feature parity audit](feature_parity.md) compares Coolify capabilities and
-sets the next [phases and milestones](docs/roadmap.md).
-The 1.0 beta adds [administrator-provisioned collaboration and provider sign-in](docs/authentication.md)
-on top of the [managed Ubuntu installer](docs/installation.md), automatic HTTPS
-and personal TOTP. The installer runs without arguments, opens the first-run
-dashboard on `http://<public-ip>:8080`, and leaves the dashboard domain to
-**Settings → Dashboard**. The current prerelease is **Shipper 1.0.0 Beta 2**
-(`1.0.0-rc.23`). See [release acceptance](docs/release-acceptance.md) for what
-has been verified and what remains before the stable release.
+Run this on a fresh Ubuntu 24.04 server:
 
-## Run locally
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash
+```
 
-Requirements: Go 1.27.4+, Node.js 22.12+ (24 LTS recommended), and a running Docker
-Engine or Docker Desktop using Linux containers. Native development also needs
-Git 2.36+ and Docker CLI with Buildx and Compose; the production image includes them.
+Open the address it prints, paste the setup token and create your account. The server needs 1 GiB of RAM and ports 80, 443 and 8080 open. See the [prerequisites](https://shipperkit.dev/docs/prerequisites/) for the details.
+
+![Applications in the Shipper dashboard](.github/assets/applications.png)
+
+## Features
+
+### Deploy from anywhere
+
+Paste a Git URL, pick a private GitHub repository, upload a local folder or run a container image, Dockerfile or Compose file. Shipper works out how to build it, and a push to your branch deploys it again.
+
+![Deploying a new application](.github/assets/deploy.png)
+
+### Releases that fail safely
+
+A failed build never goes live. The previous release keeps serving while you read the exact line that broke, and any earlier release can be restored.
+
+![A failed deployment next to the release that is still serving](.github/assets/releases.png)
+
+### Service Library
+
+Deploy n8n, Immich, Supabase, Grafana, Uptime Kuma and 360 more services from a searchable library, with their secrets generated for you.
+
+![The Service Library](.github/assets/service-library.png)
+
+### Managed databases
+
+Run PostgreSQL, MySQL, MariaDB, MongoDB, Redis, ClickHouse or SQLite with a ready connection string, credential rotation and scheduled backups. Databases stay on the private network until you give them a public domain.
+
+![A managed MongoDB database](.github/assets/databases.png)
+
+### Backups and recovery
+
+Back up databases and volumes on a schedule to the server or any S3-compatible storage, restore a backup as a separate copy, and recover the whole instance from an encrypted archive.
+
+![Backup schedules and history](.github/assets/backups.png)
+
+### Built for agents
+
+The [`shipper` CLI](cli/README.md) and scoped tokens let you or your coding agent deploy, read logs and diagnose failures without SSH access to the server. Every command has a `--json` form.
+
+```sh
+shipper deploy . --name store --domain store.example.com
+shipper logs store --follow
+shipper doctor store
+```
+
+### And the rest
+
+- Automatic HTTPS from Let's Encrypt, with aliases and redirects
+- Live logs, a browser terminal, environment variables and scheduled tasks
+- Teammates with Admin, Developer and Viewer roles, Google, GitHub and Discord sign-in, and two-factor authentication
+- Updates from the dashboard that never take your applications down
+
+## Support
+
+Ask questions and share what you built on [Discord](https://discord.shipperkit.dev). Report bugs and request features in [GitHub issues](https://github.com/matyas-toth/shipperkit/issues), and report vulnerabilities privately as described in the [security policy](SECURITY.md).
+
+---
+
+## Development
+
+Shipper is a Go control plane with a SolidJS dashboard. It keeps its state in SQLite, runs workloads through Docker and routes traffic with Traefik.
+
+You need Go 1.27.4+, Node.js 22.12+ and Docker with Buildx and Compose.
 
 ```sh
 npm ci
@@ -55,251 +100,27 @@ npm ci --prefix web
 npm run dev
 ```
 
-Open [localhost:5173](http://127.0.0.1:5173).
-Read the first-run setup token from `.shipper/setup-token`, then create your
-administrator account. The token is a local capability and is never exposed by
-the API. On Windows, use `Get-Content .shipper/setup-token`.
+Open [localhost:5173](http://127.0.0.1:5173) and claim the instance with the token in `.shipper/setup-token`.
 
-The Go executable is compiled before the dev runner starts. Frontend edits
-hot-reload; restart `npm run dev` after Go changes. `SHIPPER_GO` can point to a Go
-executable outside PATH. The runner also recognizes the local Shipper tool cache.
-
-The SDK uses Docker's default socket or `DOCKER_HOST`, `DOCKER_TLS_VERIFY`, and
-`DOCKER_CERT_PATH`. It does not automatically read CLI Docker contexts.
-If Docker Desktop's default named pipe is unavailable on Windows:
-
-```powershell
-$env:DOCKER_HOST = 'npipe:////./pipe/dockerDesktopLinuxEngine'
-npm run dev
-```
-
-## Run the embedded application
-
-```sh
-npm run build
-./bin/shipper
-```
-
-On Windows run `./bin/shipper.exe`. Open
-[localhost:8080](http://127.0.0.1:8080).
-This serves the compiled SPA from the Go executable with no Node server.
-
-## Docker development package
-
-```sh
-docker compose up --build -d
-docker compose exec shipper cat /data/setup-token
-```
-
-Open [localhost:8080](http://127.0.0.1:8080) and use that setup token.
-On Linux, set `DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)` before starting
-Compose so the non-root process can access the socket. On Docker Desktop the
-default socket group generally works.
-
-The image runs as UID/GID 65532, drops Linux capabilities, has a read-only root
-filesystem, and stores metadata in the `shipper-data` volume.
-A Docker socket still grants host-level control even when its mount uses `:ro`.
-Keep the dashboard private. Run integration tests on a disposable Docker host.
-Shipper's mutations check application and instance ownership before removing
-containers. It never adopts unrelated workloads or removes application volumes.
-
-`docker compose down` stops Shipper without removing its metadata volume or
-application data. Avoid `down -v` unless you deliberately want to erase Shipper's
-administrator and metadata.
-
-## Configuration
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `SHIPPER_ADDR` | `127.0.0.1:8080` | HTTP listener |
-| `SHIPPER_DATA_DIR` | `.shipper` | Private SQLite and setup-token directory |
-| `SHIPPER_PUBLIC_URL` | Request origin | Optional canonical origin for manual installs, e.g. `https://shipper.example.com`, without a trailing slash. Managed installs store the dashboard domain in Settings. |
-| `SHIPPER_DASHBOARD_UPSTREAM` | unset | `auto` for packaged dashboard HTTPS, or an explicit Docker-reachable HTTP origin |
-| `SHIPPER_SETUP_TOKEN` | Generated local file | Optional first-run capability of at least 32 characters |
-| `DOCKER_HOST` | SDK platform default | Unix socket, Windows named pipe, or TLS-protected TCP |
-| `DOCKER_TLS_VERIFY` | unset | Must be `1` for TCP connections |
-| `DOCKER_CERT_PATH` | SDK default | Docker TLS certificates |
-| `SHIPPER_PORT` | `8080` | Compose host port |
-| `DOCKER_GID` | `0` | Compose supplementary group for the Docker socket |
-| `SHIPPER_PROXY_BIND` | `127.0.0.1` | Address on the Docker host for Traefik's published ports |
-| `SHIPPER_HTTP_PORT` | `8780` | Traefik HTTP port on the Docker host |
-| `SHIPPER_HTTPS_PORT` | `8743` | Traefik HTTPS port on the Docker host |
-| `SHIPPER_ACME_EMAIL` | unset | Enable the Let's Encrypt resolver for custom domains |
-| `SHIPPER_ACME_CA` | Let's Encrypt production | Optional ACME directory, including staging |
-| `SHIPPER_CATALOG_URL` | Repository manifest | Service Library manifest URL, or `off` to disable remote updates |
-
-When putting Shipper behind an HTTPS reverse proxy, set `SHIPPER_PUBLIC_URL` to
-its exact external origin. This fixes the canonical origin used by OAuth callbacks
-and origin checks. Session cookies become Secure on HTTPS requests regardless.
-Forwarded host headers are intentionally not trusted. The default loopback listener is
-for local operation. Traefik is provisioned lazily for the first deployment or
-dashboard domain in manual setups.
-
-For a dedicated Ubuntu 24.04 x86-64 VPS, run:
-
-```sh
-curl -fsSL https://shipperkit.dev/install.sh | sudo bash
-```
-
-The installer prints the dashboard address and port, and stores the dashboard
-domain in Settings. The same script can be run from a checked-out repository or a
-verified local image archive. See [managed installation, updates, and recovery](docs/installation.md)
-and [releases, CI and staging](docs/releases.md).
-
-## What the dashboard shows
-
-The application is the primary object. Its containers and deployment history
-live in its detail screen. A Compose stack can have several containers without
-becoming several applications. Legacy ownership discovery recognizes:
-
-```yaml
-labels:
-  io.shipper.managed: "true"
-  io.shipper.application.id: "a-stable-application-id"
-```
-
-New resources also carry `io.shipper.instance` and `io.shipper.deployment.id`.
-The instance identity is persisted in SQLite. Another Shipper installation's
-resources are excluded; legacy discovered records remain inspectable but cannot
-be redeployed or deleted through the deployment pipeline.
-
-SQLite retains a stable application record if its container disappears.
-Container state, health, and application-level state are separate. A disconnected
-daemon leaves the last complete inventory visible with an explicit warning.
-Reconnects and periodic reconciliation repair missed Docker events.
-
-The inventory window is virtualized, and search/status filters run locally.
-Selecting an application opens Overview, Deployments, Logs, Domains, .env, Tasks, and Settings.
-Container inspection uses a drawer. Navigation retains the query cache and shell.
-Settings separates **Account settings** from **Server settings**. Account holds the
-signed-in profile and personal 2FA. Server holds Instance, Dashboard, Connections,
-Recovery and Access policy; the instance-wide 2FA requirement lives under Access
-policy and the canonical dashboard hostname lives under Dashboard.
-
-## Deploy an application
-
-Connect GitHub in **Settings → Connections** to choose private repositories, or enter a public HTTPS
-Git URL in **New application**. Direct images and inline Dockerfiles are also
-available. See [sources and deployment triggers](docs/sources.md). Select a branch or use
-the remote default, and choose **Deploy**. Automatic mode prefers a root Dockerfile,
-then a supported language manifest through Railpack, then a plain `index.html`.
-The deployment records the resolved method. Explicit method selection overrides
-this choice. Configuration supports a repository subdirectory, commands, health
-path, memory limit, and container port. Variables can be supplied before the first
-deployment and later through the .env tab.
-
-The [Service Library](docs/service-library.md) deploys a maintained template
-without a repository. Choose a service, fill its generated fields and continue
-through the same review. The application keeps its own Compose snapshot, so a
-later catalog update never changes a running service.
-
-Static sites can deploy an existing publish directory directly or run an optional
-Node build before Apache packaging. Dockerfile install/build steps belong in the
-Dockerfile. Railpack detects its toolchain and accepts command overrides. A runtime
-must listen on `0.0.0.0`; the port comes from the explicit setting, runtime `PORT`,
-a sole image EXPOSE declaration, or 3000. Apache uses 8080 internally.
-
-A local application gets `http://<application-id>.localhost:8780`. **Redeploy**
-builds the current branch. The adjacent actions menu supports an uncached rebuild,
-start, stop, and restart. **Deployments** records build and routing operations;
-**Logs** streams runtime output separately. **Settings** saves a new name without
-redeploying and uses **Review changes** then **Apply changes**. Runtime-only edits reuse the active
-image where the saved model can represent them safely. **Redeploy** always fetches
-and builds the source again.
-
-**Domains** supports up to 32 hostnames with independent HTTPS and verification,
-one primary hostname, and optional aliases redirected to it. Root domains can add
-`www` automatically. **Save domains** only updates routing. HTTPS requires an ACME
-email, public DNS, and reachable ports; local addresses use HTTP. See
-[database image connections](docs/database-connections.md),
-[updates](docs/updates.md), [application operations](docs/full-applications.md)
-and [static site operations](docs/static-sites.md).
-
-See [routing, VPS HTTPS and recorded release recovery](docs/routing-and-releases.md)
-for path routing, maintenance, certificate diagnostics, runtime limits and rollback.
-
-## Password recovery
-
-Run from the same data directory as the running instance, or set
-`SHIPPER_DATA_DIR` to its data directory:
-
-```sh
-./bin/shipper reset-password
-# Docker:
-docker compose exec shipper shipper reset-password
-```
-
-Enter the administrator email and the new password in the interactive terminal.
-The password is not echoed or accepted as a command-line argument. Recovery
-revokes every existing session. Protect backups as credentials.
-
-## Validation
+Before opening a pull request, run:
 
 ```sh
 npm run check
 npm test
 node scripts/go.mjs vet ./...
 npm run build
-npx playwright install chromium
-npm run test:e2e
-npm run test:docker
-npm run test:deploy
-npm run test:full
-npm run test:compose
-npm run test:tasks
-# After building shipper:local:
-npm run test:package
 ```
 
-- Go tests cover setup races, session persistence/revocation, CSRF/origin checks,
-  ownership, health aggregation, stale snapshots, event fan-out, and the official
-  Docker SDK against an isolated API fixture.
-- Browser tests start an isolated instance and a Docker API fixture over a local
-  socket. They do not connect to your real Docker daemon.
-- `test:docker` is an opt-in real-engine smoke test. It builds Shipper, creates a
-  uniquely labeled BusyBox fixture, checks live state/SSE and restart persistence,
-  and removes only that exact fixture after checking its test ownership label.
-  It never removes volumes or unrelated containers.
+| Read | For |
+| --- | --- |
+| [Contributing](CONTRIBUTING.md) | Workflow, checks and writing rules |
+| [Development](docs/development.md) | Configuration, the Docker package and the integration suites |
+| [Architecture](docs/architecture.md) | How the control plane, deploy engine and proxy fit together |
+| [API](docs/api.md) | The v1 API used by the dashboard, the CLI and agents |
+| [Design](DESIGN.md) | The dashboard's design system |
+| [Releases](docs/releases.md) | CI, release-please, staging and the installer channels |
+| [All docs](docs/README.md) | Every developer document |
 
-Run the real-engine smoke test on a disposable Docker host. A second Shipper
-instance watching that same host can discover its ownership-labeled fixture
-and retain a missing-application record after the fixture is removed.
+## License
 
-`test:deploy` exercises public Git, real Apache and Traefik, routing modes,
-`.htaccess`, trusted local TLS, failed deployment preservation, proxy restart,
-and scoped deletion. Local TLS uses a generated trust anchor; public ACME issuance
-requires a reachable test domain and is a separate operator check.
-
-`test:package` runs the built image with disposable data, tests the authenticated
-API and public Git pipeline, verifies the domain from inside the container,
-restarts the control plane, and checks failed-redeploy preservation and deletion.
-It removes only this run's explicitly labeled test resources.
-
-`test:full` runs real BuildKit Dockerfile and Railpack deployments, build secret
-mounts, encrypted variable round trips, multi-domain routing without replacement,
-failed-build preservation, runtime logs, and lifecycle actions. It removes only
-resources carrying its random instance identity.
-
-`test:tasks` verifies first-deploy PostgreSQL migrations, actual Docker startup
-hooks, image reuse, service dependency controls, job recovery after reopening the
-store, and argument-list execution in an image without a shell. Test resources
-carry a unique instance identity.
-
-Browser screenshots and test data go to the system temporary directory.
-Production data and generated builds are ignored by Git.
-
-## Project
-
-See [architecture](docs/architecture.md), the [API contract](docs/api.md),
-[releases and staging](docs/releases.md), [updates](docs/updates.md),
-[contributing](CONTRIBUTING.md), [security](SECURITY.md), and
-[phase status](docs/roadmap.md). The public documentation site is built from
-`landing/docs` with Astro Starlight and served at `/docs`. The interface is based on the measured
-[design reference](DESIGN.md), with the concise-copy rules in
-[AGENTS.md](AGENTS.md).
-
-The project is MIT licensed. Release assets, including the parameterless
-one-line installer, are published on GitHub Releases. The public
-`shipperkit.dev/install.sh` redirect is the supported entry point once the
-domain is configured.
-
+ShipperKit is [MIT licensed](LICENSE). The Service Library is generated from Coolify's templates under the Apache 2.0 license. See [third-party notices](THIRD_PARTY_NOTICES.md).

@@ -1,55 +1,79 @@
 # Contributing
 
-Start with [README.md](README.md) and [docs/architecture.md](docs/architecture.md).
-Keep changes scoped to a working phase. Preserve application-first workflows,
-the measured design system, and the concise-copy rules in AGENTS.md.
+Thanks for helping with ShipperKit. Bug fixes, docs improvements and Service Library fixes are welcome as pull requests. For a new feature or a larger change, open an issue or ask on [Discord](https://discord.shipperkit.dev) first so we can agree on the approach before you write it.
 
-## Development
+By taking part you agree to follow the [code of conduct](CODE_OF_CONDUCT.md).
 
-Use Go 1.26+, Node 22.12+, Git 2.36+, and Docker CLI/Buildx/Compose for full builds
-and opt-in real-engine tests.
-Install dependencies with `npm ci` and `npm ci --prefix web`.
-Run `npm run dev` for the backend and frontend together.
+## Set up
 
-Before opening a pull request, run `npm run check`, `npm test`,
-`node scripts/go.mjs vet ./...`, and `npm run build`.
-For UI changes, also run `npm run test:e2e` and inspect desktop/mobile rendering.
-Run `npm run test:docker` when Docker integration changes.
-Run `npm run test:deploy` on a disposable Docker host when orchestration, Apache,
-or Traefik behavior changes. Public ACME tests require dedicated reachable DNS;
-the local suite verifies TLS against its own generated trust anchor.
-Run `npm run test:full` for BuildKit/Railpack or runtime configuration changes,
-`npm run test:compose` for Compose orchestration, and `npm run test:package`
-after building the production image. Run heavy Docker suites sequentially on
-Docker Desktop to avoid competing cold-build and database-startup deadlines. Run `npm run test:tasks` for lifecycle/task,
-startup-hook, scheduler or command-recovery changes. Run `npm run test:sources`
-for direct-image/inline workflows, source identity and recorded-image recovery.
-Run `npm run test:backups` for archive, database, volume, S3, recovery or protection-queue
-changes. It uses isolated database fixtures and verifies actual read/write behavior.
-Direct Go builds need
-`go generate ./internal/startup` before `go build` to include Linux helpers.
+You need Go 1.27.4+, Node.js 22.12+, Git 2.36+ and Docker with Buildx and Compose.
 
-Go code is formatted with gofmt. Keep exported APIs narrow, use contexts for
-operations, and test security, ownership, persistence, and failure behavior.
-Use ordinary SQL migrations rather than changing a previously shipped migration.
-No secrets, local database files, generated frontend bundles, or screenshots
-belong in a pull request.
+```sh
+npm ci
+npm ci --prefix web
+npm run dev
+```
 
-Describe the concrete behavior change, the checks you ran, and any limitations.
-Do not claim deployment or performance guarantees without reproducible evidence.
+[Development](docs/development.md) covers configuration, the Docker package and the integration suites. [Architecture](docs/architecture.md) explains how the pieces fit together.
 
-## Pull requests and releases
+## Make a change
 
-Do not push feature work directly to `master`. Create a branch, open a pull
-request and let CI run. Use a conventional squash title such as `feat:`,
-`fix:`, `perf:`, `refactor:`, `docs:`, `test:` or `chore:`.
+1. Create a branch from `master`.
+2. Keep the change focused on one behavior.
+3. Add or update tests for what you changed, especially for security, ownership, persistence and failure handling.
+4. Update the docs when behavior changes. Developer docs live in `docs/`, user docs in `landing/docs`.
+5. Run the checks below and open a pull request.
 
-`release-please` uses those titles to open a version PR with the changelog and
-version bump. Merging the version PR tags the release and publishes the image,
-installer assets and latest installer channel. See
-[releases, CI and staging](docs/releases.md) for the pipeline, required checks,
-staging secrets and the `shipperkit.dev` redirect.
+Pull requests are squash merged. Use a [Conventional Commits](https://www.conventionalcommits.org/) title such as `feat: …`, `fix: …`, `perf: …`, `refactor: …`, `docs: …`, `test: …` or `chore: …`, because release-please builds the changelog and the next version from it. Mark breaking changes with `!`.
 
-A live preview should use a separate host or preview instance. Do not run a
-second control plane against the same Docker socket on the staging host.
+## Checks
 
+Every pull request runs these:
+
+```sh
+npm run check
+npm test
+node scripts/go.mjs vet ./...
+npm run build
+```
+
+Run the suites that match what you touched. The Docker suites need a disposable Docker host, and on Docker Desktop they should run one at a time.
+
+| Change | Run |
+| --- | --- |
+| Dashboard UI | `npm run test:e2e`, and check desktop and mobile widths |
+| Docker inventory or events | `npm run test:docker` |
+| Builds, routing, Apache or Traefik | `npm run test:deploy` and `npm run test:full` |
+| Compose | `npm run test:compose` |
+| Startup hooks or scheduled tasks | `npm run test:tasks` |
+| Sources, images or inline Dockerfiles | `npm run test:sources` |
+| Backups and recovery | `npm run test:backups` |
+| The production image | `docker build -t shipper:local .` then `npm run test:package` |
+| The CLI | `npm run check --prefix cli` and `npm test --prefix cli` |
+
+In the pull request, describe the behavior change, the checks you ran and anything you could not verify. Don't claim a guarantee without evidence someone else can reproduce.
+
+## Guidelines
+
+- Format Go with `gofmt`, keep exported APIs narrow and pass contexts through operations.
+- Add a new SQL migration instead of editing one that has shipped.
+- Never commit secrets, local databases, build output or screenshots from your own runs.
+- `internal/catalog/catalog.json` is generated. Change `cmd/cataloggen` and regenerate it as its [README](cmd/cataloggen/README.md) describes.
+- Perceived speed is not negotiable. Keep cached data on screen while it refreshes, and keep the shell and navigation instant.
+- Every change should leave the experience better for users, for developers and for agents that drive Shipper.
+
+### Writing
+
+These rules apply to every piece of UI copy, and to docs as well:
+
+- Cut taglines, eyebrows, supplementary text, helper text and secondary labels. If a screen needs them to make sense, fix the layout.
+- Don't write staccato sentences, and don't use em-dashes.
+- Follow the [design system](DESIGN.md) for layout, type and color.
+
+## Releases
+
+Merging to `master` updates a release-please pull request. Merging that pull request tags the release and publishes the image, the installer and the CLI. See [releases](docs/releases.md) for the pipeline and staging.
+
+## License
+
+Contributions are released under the [MIT license](LICENSE).

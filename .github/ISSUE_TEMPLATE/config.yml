@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://discord.shipperkit.dev
+    about: Get help with installing or using ShipperKit on Discord.
+  - name: Read the docs
+    url: https://shipperkit.dev/docs/
+    about: Installation, deployments, domains, backups and recovery.
+  - name: Report a vulnerability
+    url: https://github.com/matyas-toth/shipperkit/security/advisories/new
+    about: Report security issues privately, never in a public issue.

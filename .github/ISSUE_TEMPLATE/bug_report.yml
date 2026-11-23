@@ -1,0 +1,50 @@
+name: Bug report
+description: Something in ShipperKit doesn't work as it should.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown on the System page.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installation
+      options:
+        - Managed installer
+        - Manual Docker install
+        - Running from source
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Click …
+    validations:
+      required: true
+  - type: textarea
+    id: diagnosis
+    attributes:
+      label: Diagnosis and logs
+      description: For a failing app, open its diagnosis and use Copy diagnosis. Remove secrets and domains you don't want to share.
+      render: text
+  - type: input
+    id: host
+    attributes:
+      label: Server
+      description: Operating system, CPU architecture and Docker version.
+      placeholder: Ubuntu 24.04, x86-64, Docker 29.1

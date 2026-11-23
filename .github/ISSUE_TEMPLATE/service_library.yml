@@ -1,0 +1,33 @@
+name: Service Library problem
+description: A service from the library fails to deploy or doesn't work after deploying.
+labels: [bug]
+title: "Service Library: "
+body:
+  - type: input
+    id: service
+    attributes:
+      label: Service
+      placeholder: Garage
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown on the System page.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: Which step failed, and any settings you changed from the defaults.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnosis
+    attributes:
+      label: Diagnosis and logs
+      description: Open the app's diagnosis and use Copy diagnosis, or paste the failing service's logs. Remove secrets first.
+      render: text

@@ -1,4 +1,4 @@
-## Database connections
+# Database connections
 
 Every application and managed database on an instance joins one private Docker
 network, `shipper-<instance>-private`. A release answers on it as `app-<id>` and,

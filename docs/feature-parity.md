@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-02, Europe/Budapest.  
 **Shipper baseline:** version `0.4.0`, commit `5831782a85a2431cc30baa9e07f72524c72103a7`, including Phases 1–4.  
-**Shipper implementation update:** 2026-11-05, Phase 10 / `1.0.0-rc.5`; the original comparison baseline above remains pinned. See [release acceptance](docs/release-acceptance.md) and [operations](docs/operations.md).
+**Shipper implementation update:** 2026-11-05, Phase 10 / `1.0.0-rc.5`; the original comparison baseline above remains pinned. See [release acceptance](release-acceptance.md) and [operations](operations.md).
 **Planning update:** 2026-11-04, expanded VPS provisioning/server care, mandatory P9.5 interaction design and guided cron scheduling. These are planned work, not added implementation claims. Automatic first-admin ACME setup, built-in certificate lifecycle, the offered Contabo/domain lab and admin-provisioned provider/2FA policy are specified in the linked roadmap/contracts.
 **Human/agent workflow update:** 2026-11-05, the lightweight dashboard now shares diagnostic evidence, scoped operations and immutable local-project deployment with the focused Go CLI. Narrow SSH bootstrap is available for the supported Ubuntu profile. Full CLI/MCP coverage and broader adapters remain planned. These implementation updates are not new Coolify audit findings.
 **Coolify baseline:** release tag `v4.6.0`, commit `0becfba9113063336b09860579627fd218cb3fc4`.  
@@ -52,7 +52,7 @@ use Shipper. External agents can generate ordinary Dockerfiles/Compose and use
 the same validated operations. Shipper owns deterministic execution, verification
 and recovery. A large catalog is optional, while reliable database/storage
 operations still need declared consistency and restore support. Preserve the
-existing parity backlog alongside this direction; see [the roadmap](docs/roadmap.md).
+existing parity backlog alongside this direction; see [the roadmap](roadmap.md).
 
 The latest request broadens the original post-MVP scope. Remote servers, provider
 integrations, richer access control, and legacy compatibility are therefore
@@ -210,7 +210,7 @@ limits are part of the reference, not requirements to exceed accidentally.
 | ID | Coolify capability | Shipper now | Shipper approach and completion target | Evidence |
 | --- | --- | --- | --- | --- |
 | F68 | Secure admin setup, password sessions and recovery | **Present** for a single-admin installation | Preserve capability-based bootstrap, CSRF, session checks and local recovery; add account/session management. **P10** extends this. | [D33], [L04] |
-| F69 | Invitations, team separation and roles | **Missing** | One implicit workspace; admins provision email/optional temporary password and role in Settings. No public signup or OAuth account creation. Optional workspaces later. **P11**, see [authentication contract](docs/authentication.md). | [D33], [C14] |
+| F69 | Invitations, team separation and roles | **Missing** | One implicit workspace; admins provision email/optional temporary password and role in Settings. No public signup or OAuth account creation. Optional workspaces later. **P11**, see [authentication contract](authentication.md). | [D33], [C14] |
 | F70 | OAuth sign-in, OIDC SSO, 2FA and passkeys | **Missing** | **P10:** personal and instance-enforced Shipper TOTP/recovery. **P11:** independently enabled password/Google/GitHub/Discord login, admin-provisioned accounts and verified-email linking to stable provider identities. Passkeys/general OIDC later; source connections remain separate. | [D33], [C14] |
 | F71 | Security/configuration audit events | **Partial** | Deployment history exists; extend a bounded audit stream to credentials, auth, config, terminal, data and server actions. **P5–P11** | [D33], [C14] |
 | F72 | Scoped REST API tokens, IP restrictions and machine-readable operations | **Partial** | Scoped expiring/revocable tokens, allowlisted versioned operations, structured errors, idempotent review/apply and watch/cursor resources ship in 0.9.0. IP restrictions and broader coverage remain later breadth. **P9** | [D34], [C15], [L04] |
@@ -358,7 +358,7 @@ logs do not leak a saved secret; desktop/mobile remain fast and uncluttered.
 **1.0 core implemented in 0.6.0:** GitHub App/token connections and repository/ref
 selection, encrypted credentials, signed push deployment with durable coalescing,
 path filters, cancellation/pinned retry, scoped deploy tokens, direct images,
-registry authentication and inline Dockerfiles. See [sources](docs/sources.md).
+registry authentication and inline Dockerfiles. See [sources](sources.md).
 Protocol, isolated Docker and browser tests pass. Real GitHub installation and
 public delivery remain an external acceptance check. The breadth milestones below
 remain the parity target; GitLab/SSH, publishing and PR previews are not shipped.
@@ -409,7 +409,7 @@ data; an image-only application needs no Git or Compose knowledge.
 configuration, certificate diagnostics, per-domain path/header/compression and
 maintenance controls, per-service runtime limits and reviewed recorded-release
 recovery. Current domains/data are retained and deployment migration hooks skipped.
-See [routing and releases](docs/routing-and-releases.md) for supported behavior and
+See [routing and releases](routing-and-releases.md) for supported behavior and
 verification. Public ACME issuance/renewal still needs the Phase 10 VPS gate.
 The breadth milestones below remain open, including wildcard/custom certificates,
 raw proxy configuration, specialist networking and broad Compose compatibility.
@@ -510,7 +510,7 @@ CPU/memory/restart/OOM observations, layered checks, pause/export logs, stable
 Compose log subscriptions, optional webhook/TLS SMTP outbox, reviewed retention
 and proxy repair, scoped expiring tokens, focused CLI and immutable local sources.
 Source snapshots participate in recovery; automation credentials/policies are
-restricted on restore. The [operations boundary](docs/operations.md) declares
+restricted on restore. The [operations boundary](operations.md) declares
 network prerequisite checks, conservative image retention, source quotas and
 unsupported host/protocol checks. Real VPS/mail-provider performance/acceptance
 continues in P10. Detailed later parity below is not marked complete.
@@ -594,7 +594,7 @@ same contract; neither dashboard nor automation requires an embedded model.
 
 The full CLI targets above and MCP adapter are later breadth through P13; this
 focused workflow is the P9.4 release requirement and ships in 0.9.0; see the
-[command/source contract](docs/operations.md).
+[command/source contract](operations.md).
 
 **1.0 exit checks:** deploy, wait, inspect a failure and retry through the scoped
 API and focused CLI, including a local project without browser/Git setup. Exercise
@@ -613,7 +613,7 @@ CLI/MCP operate through the same permissions and durable results.
 using DESIGN.md and the current identity. Shared components can ship alongside
 P8/P9, including scheduling for backups; this gate completes the cross-flow pass.
 The detailed acceptance contract is in
-[the roadmap](docs/roadmap.md#phase-95-ui-refactor-and-guided-scheduling-mandatory-before-10).
+[the roadmap](roadmap.md#phase-95-ui-refactor-and-guided-scheduling-mandatory-before-10).
 
 - Choice cards, adaptive forms, service summaries, diagnostic/status panels and
   consequence-focused review components replace the overuse of monotone lists.
@@ -701,7 +701,7 @@ installer, followed by scoped management access. This is not P12 fleet managemen
 - Use the offered disposable 8 GB Contabo VPS and 3–4 test domains once access
   arrives, reinstalling only the authorized host across declared distributions.
   Record actual architecture/versions, DNS changes and redacted off-host evidence;
-  see [the VPS test plan](docs/vps-test-plan.md). Access is not supplied yet.
+  see [the VPS test plan](vps-test-plan.md). Access is not supplied yet.
 - Exercise real GitHub onboarding/private checkout/public signed pushes/revocation
   and first-admin ACME setup without manual config, multi-domain/service/www trusted
   issuance, genuine renewal, DNS/address/firewall failures and persisted CA state.
@@ -716,7 +716,7 @@ installer, followed by scoped management access. This is not P12 fleet managemen
 - Restrict incomplete password-change/enrollment/factor sessions at API/stream and
   UI level. Preserve the gate for P11 OAuth, distinguish machine automation from
   personal access and include audited offline owner recovery; see
-  [the account contract](docs/authentication.md).
+  [the account contract](authentication.md).
 - Finish account/session and privileged-execution review, release/API/schema notes,
   support matrices, examples and emergency SSH/provider-console recovery docs.
 - Pass P9.5 and measured idle CPU/RAM, API/navigation/event latency and log/build
@@ -741,7 +741,7 @@ outages, fleets and full Coolify breadth remain outside the 1.0 promise.
 
 **Outcome:** one account and factor policy across enabled login methods, with
 administrator-controlled admission and no new hierarchy for solo users. See the
-[authentication contract](docs/authentication.md) for the detailed state model,
+[authentication contract](authentication.md) for the detailed state model,
 provider-specific setup instructions and proposed callback URLs.
 
 **P11.1: admission and identity**
@@ -961,7 +961,7 @@ Additional providers/previews, specialist Docker/Compose/proxy controls, every
 database adapter, broad portability, full CLI/MCP, file browser, collector/channel/
 traffic breadth and Phases 11–14 remain later parity. Phase 10 does not promise
 universal Linux administration or provider-outage recovery. Preserve all detailed
-milestone IDs and support declarations. See [the roadmap](docs/roadmap.md).
+milestone IDs and support declarations. See [the roadmap](roadmap.md).
 
 | Checkpoint | Required result | Claims that must remain limited |
 | --- | --- | --- |
@@ -998,22 +998,22 @@ correct lifecycle ordering, or safe credentials.
 
 ### Shipper implementation evidence
 
-- [L01]: [Single-container operations](docs/full-applications.md),
-  [configuration](internal/deploy/config.go), [builder](internal/deploy/build.go),
-  [runtime](internal/deploy/docker.go), [runtime actions](internal/deploy/runtime.go).
-- [L02]: [Compose operations](docs/compose.md),
-  [reference-loader/CLI boundary](internal/deploy/compose.go),
-  [Compose worker](internal/deploy/compose_worker.go),
-  [service UI](web/src/components/Services.tsx).
-- [L03]: [Durable worker](internal/deploy/worker.go),
-  [deployment store](internal/store/deployments.go),
-  [Compose recovery tests](internal/deploy/compose_worker_test.go),
-  [real Compose tests](internal/deploy/compose_integration_test.go),
-  [browser checks](tests/e2e/foundation.spec.ts).
-- [L04]: [API routes](internal/httpapi/server.go),
-  [models](internal/store/models.go), [API documentation](docs/api.md),
-  [packaging](Dockerfile), [security boundary](SECURITY.md),
-  [roadmap](docs/roadmap.md).
+- [L01]: [Single-container operations](full-applications.md),
+  [configuration](../internal/deploy/config.go), [builder](../internal/deploy/build.go),
+  [runtime](../internal/deploy/docker.go), [runtime actions](../internal/deploy/runtime.go).
+- [L02]: [Compose operations](compose.md),
+  [reference-loader/CLI boundary](../internal/deploy/compose.go),
+  [Compose worker](../internal/deploy/compose_worker.go),
+  [service UI](../web/src/components/Services.tsx).
+- [L03]: [Durable worker](../internal/deploy/worker.go),
+  [deployment store](../internal/store/deployments.go),
+  [Compose recovery tests](../internal/deploy/compose_worker_test.go),
+  [real Compose tests](../internal/deploy/compose_integration_test.go),
+  [browser checks](../tests/e2e/foundation.spec.ts).
+- [L04]: [API routes](../internal/httpapi/server.go),
+  [models](../internal/store/models.go), [API documentation](api.md),
+  [packaging](../Dockerfile), [security model](security.md),
+  [roadmap](roadmap.md).
 
 The Shipper status assessment is a static review of these files and the recorded
 tests, not a new execution of the application test suites during this audit.
