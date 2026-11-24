@@ -4,20 +4,17 @@ import "@/styles/global.css";
 interface Props {
   title?: string;
   description?: string;
-  image?: string;
   noindex?: boolean;
 }
 
 const {
-  title = "ShipperKit: Deploy your apps to your own server",
-  description = "Install Shipper on the server you already own. Deploy from a repo, folder, image, or Compose file, with HTTPS, logs, rollbacks, backups, and agent access included.",
-  image = "/og.png",
+  title = "ShipperKit: Deploy apps to your own server",
+  description = "Shipper turns a Linux server into a hosting platform. Deploy apps, databases and self-hosted services with HTTPS, rollbacks and backups built in.",
   noindex = false,
 } = Astro.props;
-
 const site = Astro.site ?? new URL("https://shipperkit.dev");
 const canonical = new URL(Astro.url.pathname, site);
-const imageURL = new URL(image, site);
+const image = new URL("/og.png", site);
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -26,7 +23,7 @@ const structuredData = {
   operatingSystem: "Linux",
   description,
   url: "https://shipperkit.dev/",
-  image: imageURL.href,
+  image: image.href,
   license: "https://opensource.org/license/mit",
   isAccessibleForFree: true,
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -39,7 +36,7 @@ const structuredData = {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#050606" />
+    <meta name="theme-color" content="#080808" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content={description} />
     <meta name="author" content="Shipper" />
@@ -54,16 +51,17 @@ const structuredData = {
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical.href} />
-    <meta property="og:image" content={imageURL.href} />
+    <meta property="og:image" content={image.href} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Shipper self-hosted deployment console" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={imageURL.href} />
+    <meta name="twitter:image" content={image.href} />
     <title>{title}</title>
     <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
+    <script is:inline>document.documentElement.classList.add("js");</script>
   </head>
   <body>
     <a
@@ -72,36 +70,37 @@ const structuredData = {
     >
       Skip to content
     </a>
-    <div class="page-grain" aria-hidden="true"></div>
     <main id="main">
       <slot />
     </main>
     <script>
-      const labels = new WeakMap();
+      // Eased-out reveals as sections scroll in. Elements opt in with data-reveal.
+      const seen = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            entry.target.classList.add("is-in");
+            seen.unobserve(entry.target);
+          }
+        },
+        { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
+      );
+      const watch = () => document.querySelectorAll("[data-reveal]:not(.is-in)").forEach((el) => seen.observe(el));
+      watch();
+      // React islands hydrate after this runs, so pick up anything they add.
+      new MutationObserver(watch).observe(document.body, { childList: true, subtree: true });
 
-      function fallbackCopy(value: string) {
-        const area = document.createElement("textarea");
-        area.value = value;
-        area.setAttribute("readonly", "true");
-        area.style.position = "fixed";
-        area.style.opacity = "0";
-        document.body.appendChild(area);
-        area.select();
-        const copy = (document as Document & { execCommand?: (command: string) => boolean }).execCommand;
-        copy?.call(document, "copy");
-        area.remove();
-      }
-
+      const labels = new WeakMap<Element, string>();
       document.addEventListener("click", async (event) => {
-        const trigger = (event.target as HTMLElement | null)?.closest("[data-copy]") as HTMLElement | null;
+        const trigger = (event.target as HTMLElement | null)?.closest("[data-copy]");
         if (!trigger) return;
         const value = trigger.getAttribute("data-copy") ?? "";
-        const label = trigger.querySelector("[data-copy-label]") as HTMLElement | null;
+        const label = trigger.querySelector("[data-copy-label]");
         if (label && !labels.has(trigger)) labels.set(trigger, label.textContent ?? "Copy");
         try {
           await navigator.clipboard.writeText(value);
         } catch {
-          fallbackCopy(value);
+          return;
         }
         trigger.setAttribute("data-copied", "true");
         if (label) label.textContent = "Copied";

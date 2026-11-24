@@ -1,14 +1,8 @@
 ---
 import Base from "@/layouts/Base.astro";
-import PageBody from "@/components/PageBody.astro";
-import { landingPages } from "@/data/variants";
-
-const page = landingPages.find((item) => item.id === "03") ?? landingPages[0];
+import Home from "@/components/Home.astro";
 ---
 
-<Base
-  title="ShipperKit: Deploy your apps to your own server"
-  description="Install Shipper on the server you already own. Deploy from a repo, folder, image, or Compose file, with HTTPS, logs, rollbacks, backups, and agent access included."
->
-  <PageBody page={page} />
+<Base>
+  <Home />
 </Base>

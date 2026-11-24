@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/* Static building blocks shared by every variant. Nothing here hydrates:
+/* Static building blocks for the landing page. Nothing here hydrates:
    copy buttons use the page-level data-copy handler and menus use <details>. */
 
 export const LINKS = {
@@ -160,14 +160,6 @@ export function Ctas({ className = "", center = false }: { className?: string; c
   );
 }
 
-export function Shot({ name, alt, className = "", eager = false }: { name: string; alt: string; className?: string; eager?: boolean }) {
-  return (
-    <div className={`shot ${className}`}>
-      <img src={`/media/shots/${name}.webp`} alt={alt} width={1440} height={900} loading={eager ? "eager" : "lazy"} decoding="async" />
-    </div>
-  );
-}
-
 export function Reveal({ children, d = 0, kind, className = "", as: Tag = "div" }: { children: ReactNode; d?: number; kind?: "blur" | "scale"; className?: string; as?: "div" | "li" | "section" | "article" }) {
   return (
     <Tag data-reveal={kind ?? ""} className={className} style={{ ["--d" as string]: d }}>
@@ -234,29 +226,6 @@ export function Facts({ className = "", divided = true }: { className?: string; 
         </Reveal>
       ))}
     </dl>
-  );
-}
-
-export function LogoMarquee({ className = "" }: { className?: string }) {
-  const logos = [
-    ["n8n", "n8n.png"], ["Immich", "immich.svg"], ["Supabase", "supabase.svg"], ["Grafana", "grafana.svg"], ["Uptime Kuma", "uptime-kuma.svg"],
-    ["Ghost", "ghost.svg"], ["Nextcloud", "nextcloud.svg"], ["Gitea", "gitea.svg"], ["MinIO", "minio.svg"], ["PocketBase", "pocketbase.svg"],
-    ["Umami", "umami.svg"], ["Vaultwarden", "vaultwarden.svg"], ["Jellyfin", "jellyfin.svg"], ["Outline", "outline.svg"], ["Metabase", "metabase.svg"],
-    ["Directus", "directus.svg"], ["WordPress", "wordpress.svg"], ["Mattermost", "mattermost.svg"], ["Open WebUI", "open-webui.svg"], ["Plane", "plane.svg"],
-  ];
-  const row = logos.map(([name, file]) => (
-    <span key={name} className="flex shrink-0 items-center gap-2.5 px-6 text-[14px] text-ink-2">
-      <img src={`/media/logos/${file}`} alt="" className="size-6 object-contain" loading="lazy" />
-      {name}
-    </span>
-  ));
-  return (
-    <div className={`relative overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)] ${className}`}>
-      <div className="marquee">
-        {row}
-        <span aria-hidden className="flex">{row}</span>
-      </div>
-    </div>
   );
 }
 

@@ -1,13 +1,10 @@
 # Shipper landing
 
-The conversion surface for Shipper. Astro renders the page, React owns the section
-components, coss UI provides the interactive primitives, Hugeicons supplies the icon
-set, and Tailwind carries the design system.
+The homepage and documentation site for Shipper. Astro renders the page, a few
+React islands carry the interactive parts, and Tailwind carries the styles.
 
-The page is built around one job: get a solo developer or small team to install
-Shipper on a server they already own. The visual language stays close to the
-product console, but the composition is louder: oversized display type, a hero
-product shot, hairlines, ASCII texture, and one strong idea per section.
+The page has one job: get someone to install Shipper on a server they own. It
+follows the console's design language and the writing rules in `AGENTS.md`.
 
 ## Run
 
@@ -70,22 +67,48 @@ channel, updated by the release workflow after each versioned release, so the
 one-liner always resolves to the newest Main installer. The landing itself uses
 `https://shipperkit.dev` in every install command.
 
-## First visit
+## Structure
 
-The homepage opens with the Shipper mark on a dark field. The mark pulses for about
-1.5 seconds, dissolves into the page through its own silhouette, and that window
-eases into a 20 degree zoom until it clears the viewport. The page itself never
-moves, only the mask boundary.
+```text
+landing/
+  src/
+    pages/index.astro        the homepage
+    components/Home.astro    the page composition
+    components/Closing.astro questions, final install section and footer
+    components/parts.tsx     static parts: nav, install bar, features, FAQ, footer, copy
+    components/widgets.tsx   interactive islands: the screenshot tour and the CLI
+    components/Dither.tsx    WebGL dither for the brand footage
+    layouts/Base.astro       head, SEO, scroll reveals and copy buttons
+    styles/global.css        tokens, type scale, buttons and motion
+  public/media/
+    aurora.mp4, aurora.webp  dither source and still frame
+    shots/                   product screenshots
+```
 
-- `src/layouts/Base.astro` owns the mark, the SVG mask and the timeline.
-- The reveal grows the mask along the same path as `public/shipper.svg`, so the
-  silhouette is exact and no second asset is requested.
-- The end scale is measured from the viewport, which keeps every corner covered on
-  phones as well as desktops.
-- Runs on `/` only, once per tab. The flag is `shipper-intro` in `sessionStorage`.
-  Append `?intro` to replay it without clearing storage.
-- Skipped for `prefers-reduced-motion: reduce`, Save-Data, a URL hash, and every
-  page except the homepage. Without JavaScript the page loads normally.
+## Imagery
+
+Footage follows the brand imagery rules in `brand/README.md`: calm nature from
+Pixabay, shown through an 8 by 8 Bayer dither where each dot keeps its color.
+`Dither.tsx` does this live in WebGL from a 256 by 144 clip, so the page never
+loads full-size video. The pointer lights up nearby dots and a click sends a
+ripple. Clips play only while visible, and reduced motion shows the still frame.
+
+To add a clip, crop it to 16:9, shrink it to 256 by 144, loop it forward and back,
+and save the first frame as WebP:
+
+```sh
+ffmpeg -ss 0.3 -t 8 -i source.mp4 -filter_complex "[0:v]fps=24,scale=256:144:force_original_aspect_ratio=increase,crop=256:144,split[a][b];[b]reverse[r];[a][r]concat=n=2:v=1[v]" -map "[v]" -an -c:v libx264 -crf 24 -pix_fmt yuv420p -movflags +faststart public/media/name.mp4
+ffmpeg -i public/media/name.mp4 -frames:v 1 -c:v libwebp -quality 85 public/media/name.webp
+```
+
+Credit the source in `THIRD_PARTY_NOTICES.md`.
+
+## Motion
+
+- Elements with `data-reveal` ease in once as they scroll into view. Without
+  JavaScript, or with reduced motion, they are visible from the start.
+- The screenshot tour rotates until someone picks a tab.
+- There is no intro animation. The page paints on the first frame.
 
 ## SEO
 
@@ -93,74 +116,8 @@ moves, only the mask boundary.
   Twitter card and SoftwareApplication JSON-LD.
 - `public/og.png` is the 1200 x 630 social preview.
 - `public/robots.txt` and `src/pages/sitemap.xml.ts` expose the production site.
-- `/v/*` and `/variants` are noindex lab routes. The homepage is the only URL in
-  the sitemap.
+- The homepage and the documentation pages are the URLs in the sitemap.
 - The favicon is the same rounded-square Shipper mark used by the dashboard.
-
-## Routes
-
-| Route | Purpose |
-| --- | --- |
-| `/` | The final composition, same as `/v/03` |
-| `/v/01` to `/v/10` | Ten complete landing pages |
-| `/variants` | Page index and the variant matrix |
-| `/variants/nav` | Six navigation variants |
-| `/variants/hero` | Six hero variants |
-| `/variants/proof` | Six outcome and proof variants |
-| `/variants/product` | Six console showcase variants |
-| `/variants/deploy` | Six how-it-works variants |
-| `/variants/agents` | Six agent-access variants |
-| `/variants/system` | Six reliability variants |
-| `/variants/pricing` | Six ownership and pricing variants |
-| `/variants/faq` | Six FAQ variants |
-| `/variants/cta` | Six closing variants |
-| `/variants/footer` | Six footer variants |
-
-Every page combines one variant from each of the 11 groups. The combination table
-lives in `src/data/variants.ts`.
-
-## Page combinations
-
-| Page | Name | Direction |
-| --- | --- | --- |
-| 01 | Launch | Flagship split hero, outcomes, console bento, three-step deploy, agent path, reliability, and the free self-hosted offer |
-| 02 | Split | Dual-column hero, included features, sticky failure proof, one-command install, agent workflow, and a cost breakdown |
-| 03 | Cinematic | Final route. Full-bleed product hero, no-DevOps objection handling, no-outage proof, source map, and the framed ownership close |
-| 04 | Command | Command-first hero, source strip, release receipts, fast deploy, plain-English agents, and a quiet close |
-| 05 | Owned | Ownership-led hero, what-you-keep proof, everyday console, no-stack deploy, scoped agent keys, and a $0 price card |
-| 06 | Agent | Agent-first hero, launch checklist, screen gallery, review-before-deploy, no-SSH agent path, and a terminal close |
-| 07 | Signal | Agent hero with source proof, everyday console, source matrix, plain-English agents, and an ownership receipt |
-| 08 | Receipts | Ownership hero with public receipts, failure proof, release receipts, no-stack deploy, and agent guardrails |
-| 09 | Night Shift | Split hero, launch checklist, no-outage proof, review-before-deploy, scoped keys, and a cost breakdown |
-| 10 | Open Exit | Command hero, included features, everyday console, one-command install, no-SSH agents, and a quiet close |
-
-## Structure
-
-```text
-landing/
-  src/
-    components/
-      nav/Nav.tsx            6 navigation variants
-      sections/Hero.tsx      6 hero variants
-      sections/Proof.tsx     6 outcome variants
-      sections/Product.tsx   6 console variants
-      sections/Deploy.tsx    6 how-it-works variants
-      sections/Agents.tsx    6 agent-access variants
-      sections/System.tsx    6 reliability variants
-      sections/Pricing.tsx   6 ownership and pricing variants
-      sections/Faq.tsx       6 FAQ variants
-      sections/Cta.tsx       6 closing variants
-      sections/Footer.tsx    6 footer variants
-      ui/                    coss UI primitives
-      primitives.tsx         shared frames, commands, metrics, ASCII field
-      PageBody.astro         page composition
-    data/variants.ts         combinations, labels, variant index
-    pages/v/[id].astro       ten landing pages
-    pages/variants/*         variant gallery
-    styles/global.css        tokens, type scale, texture, motion
-  public/
-    shots/                   product screenshots
-```
 
 ## Copy and conversion rules
 
@@ -176,26 +133,12 @@ landing/
   available trust signals.
 - No stack internals in sales copy. Docker, Compose, and Dockerfiles appear only
   because the reader's own project uses them.
-- No font below 14px. Display hierarchy does the work, not micro-labels.
+- Body copy stays at 14px or larger. Only the console mock-ups use console sizes.
 - No eyebrows above section headlines, no helper text under CTAs, no decorative
   labels. If a section needs explanation, the headline or layout changes.
 
-## Visual system
-
-- Near-black surfaces, off-white type, signal green states.
-- Geist for display, Inter for body, Geist Mono for commands and numbers.
-- Hairline grids, browser frames, release rails, sparklines, and topology.
-- ASCII fields and a fixed film grain provide texture without another asset request.
-- CSS motion only, with reduced-motion fallbacks. Hero content enters once; nothing
-  animates continuously except the deploy pulse, the floating deploy card, and the
-  source marquee. The only scripted motion is the first-visit mark reveal.
-
 ## Screenshots
 
-The product shots come from the repository gallery at
-`.shipper/ui-gallery/round-16`. To refresh them, run the app gallery capture and
-copy the relevant PNGs into `landing/public/shots` under the same names. The
-documentation site keeps its own copies in `landing/docs/public/shots` from the
-same gallery so the two surfaces can change independently.
-
-Third-party licenses are listed in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+`public/media/shots` holds WebP copies of the README screenshots in
+`.github/assets`. Refresh them from the same capture, at 1440 by 900. The
+documentation site keeps its own copies in `docs/public/shots`.
