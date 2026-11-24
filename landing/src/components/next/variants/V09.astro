@@ -1,0 +1,63 @@
+---
+// Ownership: an honest side by side of renting a platform and running your own.
+import Dither from "../Dither";
+import Closing from "../Closing.astro";
+import { Nav, InstallBar, Ctas, FeatureGrid, Heading, Reveal } from "../parts";
+import { ServerWidget, PipelineWidget } from "../widgets";
+
+const rows = [
+  ["What you pay", "Per seat, per build minute and per gigabyte", "The server you choose, nothing on top"],
+  ["Where your data lives", "On the provider's infrastructure", "On your server and your storage"],
+  ["How many apps", "Whatever the plan tier allows", "Whatever the server can run"],
+  ["Databases", "Often billed as a separate product", "Seven engines included"],
+  ["If you stop using it", "Migrate everything somewhere else", "Your containers keep running"],
+];
+---
+
+<Nav />
+<section class="relative isolate overflow-hidden">
+  <div class="absolute inset-0 -z-10"><Dither client:load src="woods" fade="center" fadeFrom={0.35} fadeTo={1.05} exposure={0.85} /></div>
+  <div class="wrap flex flex-col items-center py-28 text-center md:py-40">
+    <Reveal kind="blur"><h1 class="t-hero max-w-[860px]">Everything a hosting platform gives you, for the price of a server</h1></Reveal>
+    <Reveal d={1}><p class="t-lead mx-auto mt-6 max-w-[600px]">Shipper is free, open source software that turns your own Linux server into a platform for apps, databases and self-hosted services.</p></Reveal>
+    <Reveal d={2} className="mt-9 flex w-full justify-center"><InstallBar /></Reveal>
+    <Reveal d={3} className="mt-4"><Ctas center /></Reveal>
+  </div>
+</section>
+
+<section class="wrap py-20 md:py-28">
+  <Heading title="What changes when the platform is yours" />
+  <Reveal kind="scale" d={1} className="mt-12 overflow-hidden rounded-[16px] border border-line">
+    <table class="w-full border-collapse text-left text-[15px]">
+      <thead class="bg-bg-2 text-[13px] text-mute">
+        <tr><th class="w-[26%] px-5 py-4 font-medium"></th><th class="px-5 py-4 font-medium">Renting a platform</th><th class="px-5 py-4 font-medium text-ink">Shipper on your server</th></tr>
+      </thead>
+      <tbody>
+        {rows.map(([label, rent, own]) => (
+          <tr class="border-t border-line">
+            <th class="px-5 py-4 align-top font-medium text-ink">{label}</th>
+            <td class="px-5 py-4 align-top text-mute">{rent}</td>
+            <td class="px-5 py-4 align-top text-ink"><span class="mr-2 inline-block size-1.5 -translate-y-0.5 rounded-full bg-green"></span>{own}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Reveal>
+</section>
+
+<section class="wrap grid items-center gap-12 py-20 md:grid-cols-[0.9fr_1.1fr] md:py-28">
+  <Heading title="See how far one server goes" body="Add apps, databases and services to a 4 GB server and watch the memory. Click any block to remove it." />
+  <Reveal kind="scale" d={1}><ServerWidget client:visible /></Reveal>
+</section>
+
+<section class="wrap py-20 md:py-28" id="features">
+  <Heading title="Without giving up the convenience" body="Self-hosting should not mean rebuilding the platform yourself. These come with every install." />
+  <div class="mt-14"><FeatureGrid keys={["deploy", "releases", "https", "databases", "backups", "agents"]} /></div>
+</section>
+
+<section class="wrap grid items-center gap-12 pb-24 md:grid-cols-[1.1fr_0.9fr]">
+  <Reveal kind="scale" className="order-2 md:order-1"><PipelineWidget client:visible /></Reveal>
+  <div class="order-1 md:order-2"><Heading title="And the safety net" body="Every release is built and health checked before it takes traffic, so a mistake stays a failed deploy and never becomes an outage." /></div>
+</section>
+
+<Closing media="woods" />

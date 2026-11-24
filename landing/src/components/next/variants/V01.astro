@@ -1,0 +1,47 @@
+---
+// Horizon: full-bleed dithered sky, centered headline, product overlapping the fold.
+import Dither from "../Dither";
+import Closing from "../Closing.astro";
+import { Nav, InstallBar, Ctas, Shot, LogoMarquee, FeatureGrid, Heading, Reveal } from "../parts";
+import { PipelineWidget, RouterWidget, LibraryWidget } from "../widgets";
+---
+
+<div class="relative isolate">
+  <Nav tone="clear" />
+  <section class="wrap flex flex-col items-center pt-24 text-center md:pt-32">
+    <Reveal kind="blur"><h1 class="t-hero max-w-[860px]">Deploy apps to your own server</h1></Reveal>
+    <Reveal d={1}><p class="t-lead mx-auto mt-6 max-w-[600px] !text-ink-2">Shipper turns a Linux server into a hosting platform. Deploy apps, databases and self-hosted services with HTTPS, rollbacks and backups built in.</p></Reveal>
+    <Reveal d={2} className="mt-10 flex w-full justify-center"><InstallBar size="lg" /></Reveal>
+    <Reveal d={3} className="mt-5"><Ctas center /></Reveal>
+  </section>
+  <div class="relative mt-20 md:mt-24">
+    <div class="absolute inset-x-0 -top-24 bottom-1/4 -z-10 md:-top-40">
+      <Dither client:load src="clouds" fade="top" fadeFrom={0.0} fadeTo={0.5} focus={[0.5, 0.5]} exposure={0.8} saturation={1.05} />
+    </div>
+    <Reveal kind="scale" d={4} className="wrap"><Shot name="applications" alt="Applications in the Shipper dashboard" eager /></Reveal>
+  </div>
+</div>
+
+<section class="py-16 md:py-20"><LogoMarquee /></section>
+
+<section class="wrap py-20 md:py-28" id="features">
+  <Heading title="Everything a hosting platform does, on a server you own" body="Shipper covers the work between a repository and a live site, and keeps your apps, databases and backups on your own machine." />
+  <div class="mt-14"><FeatureGrid keys={["deploy", "releases", "https", "databases", "library", "backups"]} /></div>
+</section>
+
+<section class="wrap grid items-center gap-12 py-20 md:grid-cols-[0.9fr_1.1fr] md:py-28">
+  <Heading title="A broken build never reaches your users" body="Every deploy is built and health checked before it takes traffic. Flip the switch and deploy to see what happens when the build fails." />
+  <Reveal kind="scale" d={1}><PipelineWidget client:visible /></Reveal>
+</section>
+
+<section class="wrap grid items-center gap-12 py-20 md:grid-cols-[1.1fr_0.9fr] md:py-28">
+  <Reveal kind="scale" className="order-2 md:order-1"><RouterWidget client:visible /></Reveal>
+  <div class="order-1 md:order-2"><Heading title="Redeploy while traffic keeps flowing" body="Shipper's proxy moves requests to the new release once it is healthy, then retires the old one. Click an app to try it." /></div>
+</section>
+
+<section class="wrap py-20 md:py-28">
+  <Heading center title="365 services, ready to deploy" body="Search the library, pick a service and deploy it with its secrets generated for you." />
+  <Reveal kind="scale" d={2} className="mt-12"><LibraryWidget client:visible /></Reveal>
+</section>
+
+<Closing media="sunset" />

@@ -1,0 +1,53 @@
+---
+// Landscape: an editorial full-height video hero, then calm, wide sections.
+import Dither from "../Dither";
+import Closing from "../Closing.astro";
+import { Nav, InstallBar, Ctas, Facts, Shot, Heading, Reveal, feature } from "../parts";
+import { RouterWidget, LibraryWidget } from "../widgets";
+---
+
+<section class="relative isolate flex min-h-[100svh] flex-col">
+  <div class="absolute inset-0 -z-10">
+    <Dither client:load src="peak" fade="bottom" fadeFrom={0.45} fadeTo={0.95} exposure={0.9} focus={[0.6, 0.3]} />
+    <div class="absolute inset-x-0 bottom-0 h-[70%] bg-gradient-to-t from-bg via-bg/85 to-transparent md:hidden"></div>
+  </div>
+  <Nav tone="clear" wide />
+  <div class="mx-auto mt-auto w-full max-w-[1440px] px-6 pb-16 md:pb-24">
+    <Reveal kind="blur"><h1 class="t-hero max-w-[760px] !text-[clamp(44px,6.4vw,88px)]">Hosting you own, from the first deploy</h1></Reveal>
+    <Reveal d={1}><p class="t-lead mt-6 max-w-[540px]">Shipper deploys your apps, databases and services to your own server, with HTTPS, rollbacks and backups included.</p></Reveal>
+    <Reveal d={2} className="mt-9 flex flex-col gap-4 lg:flex-row lg:items-center"><InstallBar /><Ctas /></Reveal>
+  </div>
+</section>
+
+<section class="mx-auto max-w-[1440px] px-6 py-8"><Facts /></section>
+
+<section class="mx-auto max-w-[1440px] px-6 py-20 md:py-28" id="features">
+  <div class="grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:items-end">
+    <Heading title={feature("releases").title} body={feature("releases").body} />
+    <Reveal kind="scale" d={1}><Shot name="releases" alt="A failed deployment next to the release that is still serving" /></Reveal>
+  </div>
+</section>
+
+<section class="mx-auto max-w-[1440px] px-6 py-20 md:py-28">
+  <div class="grid gap-x-16 gap-y-12 md:grid-cols-3">
+    {(["deploy", "https", "databases"] as const).map((k, i) => (
+      <Reveal d={i}>
+        <div class="h-px bg-line" />
+        <h3 class="t-h3 mt-6">{feature(k).title}</h3>
+        <p class="t-body mt-3">{feature(k).body}</p>
+      </Reveal>
+    ))}
+  </div>
+</section>
+
+<section class="mx-auto grid max-w-[1440px] items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-28">
+  <Heading title="Releases change without dropping a request" body="The proxy switches traffic once the new release is healthy. Click any app to redeploy it and watch the counter." />
+  <Reveal kind="scale" d={1}><RouterWidget client:visible /></Reveal>
+</section>
+
+<section class="mx-auto max-w-[1440px] px-6 py-20 md:py-28">
+  <Heading title={feature("library").title} body={feature("library").body} />
+  <Reveal kind="scale" d={2} className="mt-12"><LibraryWidget client:visible /></Reveal>
+</section>
+
+<Closing media="valley" />

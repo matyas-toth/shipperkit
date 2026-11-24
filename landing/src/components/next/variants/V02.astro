@@ -1,0 +1,52 @@
+---
+// Split: the brand image layout as a hero, then alternating rows with live widgets.
+import Dither from "../Dither";
+import Closing from "../Closing.astro";
+import { Nav, InstallBar, Ctas, Reveal, FeatureIcon } from "../parts";
+import { StatusWidget, PipelineWidget, RollbackWidget, DomainWidget, DatabaseWidget, BackupWidget, AgentWidget } from "../widgets";
+
+const rows = [
+  { k: "deploy", title: "Deploy from a repository, a folder or an image", body: "Paste a Git URL, connect GitHub, upload a folder, or run an image, Dockerfile or Compose file. Every push to your branch deploys again.", w: "pipeline" },
+  { k: "https", title: "HTTPS the moment a domain points at you", body: "Add a domain and Shipper issues the certificate, renews it and redirects plain HTTP. Type your own domain to see the steps.", w: "domain" },
+  { k: "releases", title: "Any earlier release is one click away", body: "Failed builds stay offline and every healthy release is kept, so going back is a restore and not a rebuild.", w: "rollback" },
+  { k: "databases", title: "Databases with the connection string ready", body: "PostgreSQL, MySQL, MariaDB, MongoDB, Redis, ClickHouse and SQLite stay on the private network until you give them a domain.", w: "database" },
+  { k: "backups", title: "Backups on a schedule, restores as a copy", body: "Send database and volume backups to the server or S3-compatible storage, then restore any of them next to the original.", w: "backup" },
+  { k: "agents", title: "Your coding agent can ship too", body: "Scoped tokens give the CLI and your agents deploy, logs and diagnosis without an SSH key or a browser session.", w: "agent" },
+] as const;
+---
+
+<Nav />
+<section class="wrap grid items-stretch gap-10 pb-16 pt-12 md:grid-cols-[1fr_1.05fr] md:pb-24 md:pt-16">
+  <div class="flex flex-col justify-center py-6">
+    <Reveal kind="blur"><h1 class="t-hero">Your apps, databases and services on one server</h1></Reveal>
+    <Reveal d={1}><p class="t-lead mt-6 max-w-[540px]">Shipper is a self-hosted platform for deploying to the server you already pay for, with HTTPS, rollbacks and backups built in.</p></Reveal>
+    <Reveal d={2} className="mt-9"><InstallBar /></Reveal>
+    <Reveal d={3} className="mt-4"><Ctas /></Reveal>
+  </div>
+  <Reveal kind="scale" d={1} className="relative isolate min-h-[520px] overflow-hidden rounded-[18px] border border-line">
+    <Dither client:load src="hills" focus={[0.5, 0.45]} exposure={0.95} />
+    <div class="absolute inset-x-5 bottom-5 sm:inset-x-8 sm:bottom-8"><StatusWidget client:load /></div>
+  </Reveal>
+</section>
+
+<section id="features" class="border-t border-line">
+  {rows.map((row, i) => (
+    <div class="wrap grid items-center gap-10 border-b border-line py-20 last:border-b-0 md:grid-cols-2 md:gap-16 md:py-24">
+      <div class:list={[i % 2 ? "md:order-2" : ""]}>
+        <Reveal><span class="grid size-10 place-items-center rounded-[10px] border border-line bg-surface text-ink-2"><FeatureIcon k={row.k} /></span></Reveal>
+        <Reveal d={1}><h2 class="t-h2 mt-6 !text-[clamp(26px,2.6vw,36px)]">{row.title}</h2></Reveal>
+        <Reveal d={2}><p class="t-lead mt-4 max-w-[480px] !text-[17px]">{row.body}</p></Reveal>
+      </div>
+      <Reveal kind="scale" d={1} className={i % 2 ? "md:order-1" : ""}>
+        {row.w === "pipeline" && <PipelineWidget client:visible />}
+        {row.w === "domain" && <DomainWidget client:visible />}
+        {row.w === "rollback" && <RollbackWidget client:visible />}
+        {row.w === "database" && <DatabaseWidget client:visible />}
+        {row.w === "backup" && <BackupWidget client:visible />}
+        {row.w === "agent" && <AgentWidget client:visible />}
+      </Reveal>
+    </div>
+  ))}
+</section>
+
+<Closing media="hills" />

@@ -1,0 +1,31 @@
+---
+import NextBase from "@/layouts/NextBase.astro";
+import Dither from "@/components/next/Dither";
+import { Wordmark } from "@/components/next/parts";
+import { NEXT_VARIANTS } from "@/data/next-variants";
+---
+
+<NextBase noindex title="Shipper landing variants">
+  <div class="wrap py-14">
+    <div class="flex items-center justify-between gap-4">
+      <Wordmark />
+      <span class="text-[14px] text-mute">{NEXT_VARIANTS.length} landing pages</span>
+    </div>
+    <ul class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {NEXT_VARIANTS.map((v, i) => (
+        <li data-reveal style={`--d:${i % 3}`}>
+          <a href={`/next/${v.id}/`} class="group block overflow-hidden rounded-[14px] border border-line bg-surface transition-colors hover:border-white/20">
+            <div class="relative aspect-[16/9] overflow-hidden">
+              <Dither client:visible src={v.media} still cell={8} gap={1} fade="bottom" fadeFrom={0} fadeTo={0.7} interactive={false} />
+              <span class="t-mono absolute left-4 top-4 text-[13px] text-ink">{v.id}</span>
+            </div>
+            <div class="p-5">
+              <div class="t-h3">{v.name}</div>
+              <p class="t-body mt-1.5 !text-[14px]">{v.note}</p>
+            </div>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</NextBase>

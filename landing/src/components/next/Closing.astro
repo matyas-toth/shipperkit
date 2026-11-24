@@ -1,0 +1,33 @@
+---
+import Dither from "./Dither";
+import { Faq, Footer, InstallBar, Ctas, Reveal } from "./parts";
+
+interface Props {
+  media?: string;
+  title?: string;
+  faq?: boolean;
+  faqColumns?: boolean;
+  round?: boolean;
+}
+const { media = "sunset", title = "Install Shipper on your server", faq = true, faqColumns = false, round = false } = Astro.props;
+---
+
+{faq && (
+  <section class="wrap py-24 md:py-32" id="faq">
+    <div class:list={["grid gap-12", faqColumns ? "" : "md:grid-cols-[1fr_1.6fr]"]}>
+      <Reveal><h2 class="t-h2">Questions</h2></Reveal>
+      <Faq columns={faqColumns} />
+    </div>
+  </section>
+)}
+
+<section class="relative isolate overflow-hidden border-t border-line" id="install">
+  <Dither client:visible src={media} fade="top" fadeFrom={0.0} fadeTo={0.75} clear={0.36} clearAt={[0.5, 0.42]} round={round} exposure={0.85} />
+  <div class="pointer-events-none relative wrap flex min-h-[520px] flex-col items-center justify-center py-28 text-center">
+    <Reveal kind="blur"><h2 class="t-h2 max-w-[760px]">{title}</h2></Reveal>
+    <Reveal d={1} className="pointer-events-auto mt-8 flex w-full justify-center"><InstallBar size="lg" /></Reveal>
+    <Reveal d={2} className="pointer-events-auto mt-5"><Ctas center /></Reveal>
+  </div>
+</section>
+
+<Footer />

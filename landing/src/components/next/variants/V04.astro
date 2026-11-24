@@ -1,0 +1,64 @@
+---
+// Platform: the corporate take. Facts first, live status, capability bento, security.
+import Dither from "../Dither";
+import Closing from "../Closing.astro";
+import { Nav, Ctas, Facts, Heading, Reveal, FeatureIcon, feature } from "../parts";
+import { StatusWidget, PipelineWidget, DomainWidget, DatabaseWidget, BackupWidget, AgentWidget } from "../widgets";
+
+const security = [
+  ["teams", "Roles for every teammate", "Admin, Developer and Viewer roles decide who can deploy, change settings or only read."],
+  ["https", "Sign-in you already use", "Google, GitHub and Discord sign-in, plus two-factor authentication for every account."],
+  ["databases", "Private by default", "Databases stay on the private network until you give one a public domain."],
+  ["agents", "Scoped tokens", "Tokens for the CLI and agents are limited to the actions and apps you choose."],
+  ["backups", "Encrypted recovery", "Recover the whole instance on a new server from an encrypted archive."],
+  ["updates", "Updates without downtime", "Update from the dashboard while your applications keep serving traffic."],
+] as const;
+---
+
+<Nav />
+<section class="wrap grid items-center gap-12 pb-20 pt-16 md:grid-cols-[1fr_1fr] md:pb-28 md:pt-24">
+  <div>
+    <Reveal><div class="flex flex-wrap gap-2"><span class="chip"><span class="dot" />Version 1.0</span><span class="chip">Ubuntu and Debian</span><span class="chip">x86-64 and ARM64</span></div></Reveal>
+    <Reveal d={1} kind="blur"><h1 class="t-hero mt-7">The hosting platform that runs on your own server</h1></Reveal>
+    <Reveal d={2}><p class="t-lead mt-6 max-w-[540px]">Shipper gives your team deployments, domains, databases and backups on infrastructure you control, with no seat or usage pricing.</p></Reveal>
+    <Reveal d={3} className="mt-9"><Ctas /></Reveal>
+  </div>
+  <Reveal kind="scale" d={2} className="relative isolate overflow-hidden rounded-[18px] border border-line p-5 sm:p-10">
+    <Dither client:load src="lake" exposure={0.85} />
+    <div class="relative"><StatusWidget client:load /></div>
+  </Reveal>
+</section>
+
+<section class="border-y border-line bg-bg-2"><div class="wrap py-4"><Facts /></div></section>
+
+<section class="wrap py-20 md:py-28" id="features">
+  <Heading title="One platform for the whole lifecycle" body="From the first deploy to the restore you hope you never need, each part is built in and works the same way." />
+  <div class="mt-14 grid gap-4 md:grid-cols-6">
+    <Reveal kind="scale" className="md:col-span-4"><div class="flex h-full flex-col gap-5 rounded-[16px] border border-line bg-bg-2 p-5 sm:p-6"><div><h3 class="t-h3">{feature("releases").title}</h3><p class="t-body mt-2 !text-[15px]">{feature("releases").body}</p></div><PipelineWidget client:visible /></div></Reveal>
+    <Reveal kind="scale" d={1} className="md:col-span-2"><div class="flex h-full flex-col gap-5 rounded-[16px] border border-line bg-bg-2 p-5 sm:p-6"><div><h3 class="t-h3">{feature("https").title}</h3><p class="t-body mt-2 !text-[15px]">Certificates are issued and renewed for you.</p></div><DomainWidget client:visible /></div></Reveal>
+    <Reveal kind="scale" className="md:col-span-3"><div class="flex h-full flex-col gap-5 rounded-[16px] border border-line bg-bg-2 p-5 sm:p-6"><div><h3 class="t-h3">{feature("databases").title}</h3><p class="t-body mt-2 !text-[15px]">Seven engines with rotation and backups.</p></div><DatabaseWidget client:visible /></div></Reveal>
+    <Reveal kind="scale" d={1} className="md:col-span-3"><div class="flex h-full flex-col gap-5 rounded-[16px] border border-line bg-bg-2 p-5 sm:p-6"><div><h3 class="t-h3">{feature("backups").title}</h3><p class="t-body mt-2 !text-[15px]">To the server or any S3-compatible storage.</p></div><BackupWidget client:visible /></div></Reveal>
+  </div>
+</section>
+
+<section class="border-y border-line bg-bg-2">
+  <div class="wrap py-20 md:py-28">
+    <Heading title="Security and access built in" body="Control who can do what, keep data private and recover from the worst day without a support ticket." />
+    <ul class="mt-14 grid gap-x-10 gap-y-12 md:grid-cols-3">
+      {security.map(([k, title, body], i) => (
+        <Reveal as="li" d={i % 3}>
+          <FeatureIcon k={k} className="size-5 text-ink-2" />
+          <h3 class="t-h3 mt-4 !text-[17px]">{title}</h3>
+          <p class="t-body mt-2 !text-[15px]">{body}</p>
+        </Reveal>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<section class="wrap grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
+  <Heading title="Automation without handing over SSH" body={feature("agents").body} />
+  <Reveal kind="scale" d={1}><AgentWidget client:visible initial="doctor" /></Reveal>
+</section>
+
+<Closing media="lake" faqColumns />

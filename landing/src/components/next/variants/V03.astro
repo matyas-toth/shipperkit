@@ -1,0 +1,36 @@
+---
+// Console: tabbed product tour over real screenshots on a dithered aurora band.
+import Dither from "../Dither";
+import Closing from "../Closing.astro";
+import { Nav, InstallBar, Ctas, Facts, FeatureGrid, Heading, Reveal } from "../parts";
+import { ShotTabs, AgentWidget } from "../widgets";
+---
+
+<Nav />
+<section class="wrap pt-20 text-center md:pt-28">
+  <Reveal kind="blur"><h1 class="t-hero mx-auto max-w-[900px]">The hosting platform you install on your own server</h1></Reveal>
+  <Reveal d={1}><p class="t-lead mx-auto mt-6 max-w-[620px]">Deploy apps, databases and self-hosted services with automatic HTTPS, safe releases and scheduled backups. Free and open source.</p></Reveal>
+  <Reveal d={2} className="mt-9 flex justify-center"><InstallBar /></Reveal>
+  <Reveal d={3} className="mt-4"><Ctas center /></Reveal>
+</section>
+
+<section class="relative isolate mt-20 py-16 md:mt-24 md:py-24">
+  <div class="absolute inset-0 -z-10">
+    <Dither client:load src="aurora" fade="edges" fadeFrom={0.55} fadeTo={1} exposure={1.1} saturation={1.2} />
+  </div>
+  <div class="wrap"><Reveal kind="scale"><ShotTabs client:load /></Reveal></div>
+</section>
+
+<section class="wrap border-b border-line py-8"><Facts /></section>
+
+<section class="wrap py-20 md:py-28" id="features">
+  <Heading title="What you get on day one" body="Everything below ships in the free, MIT licensed release. There is no paid tier holding parts of it back." />
+  <div class="mt-14"><FeatureGrid keys={["deploy", "releases", "https", "databases", "library", "backups", "ops", "teams"]} cols={4} /></div>
+</section>
+
+<section class="wrap grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
+  <Heading title="The same actions from your terminal" body="The shipper CLI deploys, reads logs, diagnoses failures and restarts apps with a scoped token. Pick a command to run it." />
+  <Reveal kind="scale" d={1}><AgentWidget client:visible /></Reveal>
+</section>
+
+<Closing media="aurora" />

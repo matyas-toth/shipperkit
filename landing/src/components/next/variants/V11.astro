@@ -1,0 +1,37 @@
+---
+// Night: round-dot aurora, centered and quiet, with the traffic router as the centerpiece.
+import Dither from "../Dither";
+import Closing from "../Closing.astro";
+import { Nav, InstallBar, Ctas, FeatureGrid, Heading, Reveal } from "../parts";
+import { RouterWidget, RollbackWidget } from "../widgets";
+---
+
+<div class="relative isolate">
+  <div class="absolute inset-x-0 top-0 -z-10 h-[760px]">
+    <Dither client:load src="aurora-stars" round cell={10} gap={3} fade="bottom" fadeFrom={0.05} fadeTo={0.7} clear={0.36} clearAt={[0.5, 0.45]} exposure={1.2} saturation={1.25} />
+  </div>
+  <Nav tone="clear" />
+  <section class="wrap flex flex-col items-center pb-20 pt-32 text-center md:pt-44">
+    <Reveal kind="blur"><h1 class="t-hero max-w-[820px]">Your own server, run like a hosting platform</h1></Reveal>
+    <Reveal d={1}><p class="t-lead mx-auto mt-6 max-w-[560px]">Shipper builds, checks and serves your apps with HTTPS, keeps every healthy release, and backs up your data on a schedule.</p></Reveal>
+    <Reveal d={2} className="mt-9 flex w-full justify-center"><InstallBar /></Reveal>
+    <Reveal d={3} className="mt-4"><Ctas center /></Reveal>
+  </section>
+</div>
+
+<section class="wrap py-16 md:py-24">
+  <Reveal kind="scale" className="mx-auto max-w-[960px]"><RouterWidget client:visible /></Reveal>
+  <Reveal d={1}><p class="t-body mx-auto mt-6 max-w-[560px] text-center">Click an app to redeploy it. The proxy moves traffic to the new release once it is healthy, so nobody sees a gap.</p></Reveal>
+</section>
+
+<section class="wrap py-20 md:py-28" id="features">
+  <Heading center title="Everything included" />
+  <div class="mt-14"><FeatureGrid keys={["deploy", "releases", "https", "databases", "library", "backups", "agents", "ops", "teams"]} boxed={false} /></div>
+</section>
+
+<section class="wrap grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
+  <Heading title="Every healthy release, kept" body="Restore any earlier release in a couple of seconds. Failed builds are kept for their logs but can never go live." />
+  <Reveal kind="scale" d={1}><RollbackWidget client:visible /></Reveal>
+</section>
+
+<Closing media="aurora-stars" round />
