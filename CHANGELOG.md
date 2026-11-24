@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0-rc.42](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.41...v1.0.0-rc.42) (2026-11-24)
+
+
+### Features
+
+* install on Debian 12/13 and Ubuntu 22.04, on x86-64 and ARM64 ([#104](https://github.com/matyas-toth/shipperkit/issues/104)) ([a88dc9c](https://github.com/matyas-toth/shipperkit/commit/a88dc9c4c1ee6d368f2ee4ff9e86d1bd402c70ac))
+
 ## [1.0.0-rc.41](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.40...v1.0.0-rc.41) (2026-11-23)
 
 
