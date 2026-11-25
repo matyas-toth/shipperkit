@@ -51,6 +51,19 @@ type DetailResponse = { application: Application; activeDeployment?: Deployment;
 
 const terminal = new Set(["succeeded", "failed", "interrupted", "cancelled"]);
 
+// The stored state only reflects containers, so an application that is still
+// building has none yet. Lead with the operation in progress, as the dashboard does.
+export function applicationState(app: Application) {
+  const latest = app.latestDeployment;
+  if (latest && !terminal.has(latest.state)) return latest.state;
+  if (app.desiredState === "stopped") return "stopped";
+  if (!app.activeDeploymentId && latest?.state === "cancelled") return "created";
+  if (!app.activeDeploymentId && latest?.state === "failed") return "failed";
+  if (!app.activeDeploymentId && app.state === "missing") return "not deployed";
+  if (app.state === "missing") return "unavailable";
+  return app.state || "unknown";
+}
+
 export function primaryDomain(app: Application) {
   const domains = app.domains || [];
   return domains.find(domain => domain.primary) || domains[0] || (app.config?.domain ? { hostname: app.config.domain, https: app.config.https ?? false } : undefined);
@@ -96,10 +109,10 @@ export async function showApps(client: Client, json = false) {
     const latest = app.latestDeployment;
     return [
       app.name,
-      statusText(app.desiredState === "stopped" ? "stopped" : app.state || "unknown"),
+      statusText(applicationState(app)),
       domain?.hostname || "no domain",
       app.method || app.sourceKind || "unknown",
-      latest ? `${relativeTime(latest.finishedAt || latest.createdAt)}` : "never",
+      !latest ? "never" : terminal.has(latest.state) ? relativeTime(latest.finishedAt || latest.createdAt) : "in progress",
     ];
   });
   process.stdout.write(table(["Name", "Status", "Domain", "Method", "Deployed"], rows) + "\n");
@@ -119,7 +132,7 @@ export async function showApp(client: Client, reference: string, json = false) {
     : application.sourceKind || "unknown";
   const release = detail.activeDeployment;
   process.stdout.write(heading(application.name) + "  " + muted(application.id) + "\n");
-  process.stdout.write(statusText(application.desiredState === "stopped" ? "stopped" : application.state || "unknown") + "\n\n");
+  process.stdout.write(statusText(applicationState({ ...application, latestDeployment: application.latestDeployment ?? app.latestDeployment })) + "\n\n");
   const details: Array<[string, string]> = [
     ["Domain", domains],
     ["Source", source],

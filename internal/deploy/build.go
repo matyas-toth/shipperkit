@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/containerd/errdefs"
@@ -83,7 +84,13 @@ func (r *DockerRuntime) dockerCommand(ctx context.Context, arguments, environmen
 	}
 	return nil
 }
+
+// builderSetup keeps parallel builds from creating the shared builder twice.
+var builderSetup sync.Mutex
+
 func (r *DockerRuntime) EnsureBuilder(ctx context.Context, log func(string)) error {
+	builderSetup.Lock()
+	defer builderSetup.Unlock()
 	name := r.builderName()
 	cache := name + "-cache"
 	labels := r.labels("", "")

@@ -41,3 +41,30 @@ test('open prints the configured protocol and primary domain through the real CL
     assert.equal(result.stdout.trim(), scenario.expected);
   }
 });
+
+test('apps shows the operation in progress instead of a missing container', async t => {
+  const directory = temporary(t, 'shipper-application-state-');
+  const now = Math.floor(Date.now() / 1000);
+  const items = [
+    { id: 'blog', name: 'Blog', state: 'missing', latestDeployment: { id: 'd1', operation: 'deploy', state: 'building', createdAt: now - 11 } },
+    { id: 'store', name: 'Store', state: 'missing', activeDeploymentId: 'd2', latestDeployment: { id: 'd2', operation: 'deploy', state: 'succeeded', createdAt: now - 90, finishedAt: now - 60 } },
+    { id: 'draft', name: 'Draft', state: 'missing' },
+  ];
+  const server = http.createServer((request, response) => {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({ items }));
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const { stdout } = await promisify(execFile)(process.execPath, [join(__dirname, '..', 'dist', 'index.js'), 'apps'], {
+    env: { ...process.env, NO_COLOR: '1', SHIPPER_URL: `http://127.0.0.1:${server.address().port}`, SHIPPER_TOKEN: 'a'.repeat(64), SHIPPER_CONFIG: join(directory, 'config.json') },
+    timeout: 10000,
+    windowsHide: true,
+  });
+  const row = name => stdout.split('\n').find(line => line.includes(name)) || '';
+  assert.match(row('Blog'), /building/);
+  assert.match(row('Blog'), /in progress/);
+  assert.match(row('Store'), /unavailable/);
+  assert.match(row('Draft'), /not deployed/);
+  assert.doesNotMatch(stdout, /missing/);
+});

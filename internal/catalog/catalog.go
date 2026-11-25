@@ -152,6 +152,7 @@ func Parse(data []byte) (*Catalog, error) {
 			return nil, errors.New("catalog manifest has an invalid service id")
 		}
 		seen[service.ID] = true
+		service.Category = normalizeCategory(service.Category)
 		if service.Name == "" || service.Compose == "" || service.MainService == "" {
 			return nil, fmt.Errorf("catalog service %s is incomplete", service.ID)
 		}
@@ -164,6 +165,29 @@ func Parse(data []byte) (*Catalog, error) {
 		catalog.byID[catalog.Services[i].ID] = &catalog.Services[i]
 	}
 	return catalog, nil
+}
+
+// categoryAliases folds the upstream templates' one-off and overlapping
+// categories into the set the library shows, keyed by lowercase name.
+var categoryAliases = map[string]string{
+	"devtools": "Developer tools", "developer tools": "Developer tools", "development": "Developer tools", "ci": "Developer tools",
+	"database": "Databases", "databases": "Databases",
+	"mcp": "AI", "api": "AI", "ai": "AI",
+	"proxy": "Networking", "vpn": "Networking", "networking": "Networking",
+	"mail": "Email", "email": "Email",
+	"communication": "Messaging", "documentation": "Productivity",
+	"family": "Other", "health": "Other", "": "Other",
+	"cms": "CMS", "rss": "RSS",
+}
+
+func normalizeCategory(raw string) string {
+	// A few templates list several categories; the first one is the primary.
+	name, _, _ := strings.Cut(raw, ",")
+	name = strings.TrimSpace(name)
+	if alias, ok := categoryAliases[strings.ToLower(name)]; ok {
+		return alias
+	}
+	return strings.ToUpper(name[:1]) + name[1:]
 }
 
 func Embedded() *Catalog {

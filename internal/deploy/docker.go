@@ -707,8 +707,16 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 				target = composeAlias(d.ApplicationID, info.Container.Config.Labels["com.docker.compose.service"])
 			}
 			out, probeError := r.probeHTTP(deadline, target, ReleasePort(d), target, healthPath)
+			if deadline.Err() != nil {
+				// The startup window closed mid-probe. The interrupted exec stream's
+				// error says nothing about the application, so keep the last real answer.
+				if last == nil {
+					last = fmt.Errorf("Nothing answered on port %d", ReleasePort(d))
+				}
+				break
+			}
 			e = probeError
-			if e != nil && deadline.Err() == nil {
+			if e != nil {
 				// The probe's own exit status means nothing to the reader.
 				e = fmt.Errorf("Nothing answered on port %d", ReleasePort(d))
 				// Nobody chose this port. Once the application has had a moment to
@@ -731,7 +739,7 @@ func (r *DockerRuntime) Healthy(ctx context.Context, d store.Deployment) error {
 					if healthyStatus(code, healthPath) && (info.Container.State.Health == nil || string(info.Container.State.Health.Status) != "unhealthy") {
 						return nil
 					}
-					e = fmt.Errorf("Health endpoint returned HTTP %d", code)
+					e = fmt.Errorf("%s returned HTTP %d", healthPath, code)
 				} else {
 					e = errors.New("The health endpoint did not return an HTTP response")
 				}

@@ -98,8 +98,10 @@ up; it never queues a burst of every missed interval. A stopped application does
 not launch scheduled jobs. An idempotency key per task and scheduled instant
 prevents duplicate queue insertion. Editing a schedule recalculates its next run.
 
-One leased worker processes deployment and task operations serially. Long tasks
-can delay other operations. Schedules are checked while the worker is available,
+One leased worker processes deployment and task operations. Each application's
+operations run one at a time and in order, and up to three applications run at
+once, so a long task or build delays only its own application. Backups and
+maintenance wait until no operation is running. Schedules are checked while the worker is available,
 with the selected missed-run policy applied afterward. There are at most 64 saved
 tasks per application and the UI returns the newest 100 run records.
 

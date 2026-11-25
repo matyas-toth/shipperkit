@@ -568,6 +568,12 @@ func (s *Server) redeploy(w http.ResponseWriter, r *http.Request) {
 		}
 		old.AutoDeploy = current.Config.AutoDeploy
 		plan := deploy.PlanChanges(old, a.Config)
+		if plan.Operation == "none" {
+			// A failed change stays saved while the previous release keeps serving.
+			// Reverting it matches the serving release, but the saved configuration
+			// still differs and is what the next deploy uses, so review against that.
+			plan = deploy.PlanChanges(current.Config, a.Config)
+		}
 		plan.Revision = s.db.ChangeRevision(current, a)
 		s.json(w, 200, plan)
 		return

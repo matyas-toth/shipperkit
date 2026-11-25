@@ -61,6 +61,17 @@ func TestEmbeddedCatalogIsComplete(t *testing.T) {
 	if len(index.Categories) < 10 {
 		t.Fatalf("expected categories, got %d", len(index.Categories))
 	}
+	// Every category groups several services and reads as a label, not template data.
+	for _, category := range index.Categories {
+		if category.Count < 2 || strings.ContainsAny(category.Name, ",") || category.Name != strings.TrimSpace(category.Name) {
+			t.Errorf("category %q (%d) should be folded into another", category.Name, category.Count)
+		}
+	}
+	for raw, want := range map[string]string{"Database,observability,developer Tools": "Databases", "Mcp": "AI", "Devtools": "Developer tools", "Vpn": "Networking", "Mail": "Email", "": "Other", "homelab": "Homelab"} {
+		if got := normalizeCategory(raw); got != want {
+			t.Errorf("normalizeCategory(%q) = %q, want %q", raw, got, want)
+		}
+	}
 }
 
 func TestManagerRefreshAndCache(t *testing.T) {

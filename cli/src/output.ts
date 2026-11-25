@@ -31,8 +31,8 @@ export function statusText(value: string) {
   if (["running", "succeeded", "healthy", "deployed", "ready"].includes(state)) return colors.green(`${dot} ${value}`);
   if (["failed", "unavailable", "error", "missing", "cancelled"].includes(state)) return colors.red(`${dot} ${value}`);
   if (["degraded", "warning", "unknown", "interrupted"].includes(state)) return colors.yellow(`${dot} ${value}`);
-  if (["queued", "building", "cloning", "packaging", "starting", "checking", "promoting", "operating", "pending"].includes(state)) return colors.yellow(`${dot} ${value}`);
-  if (["stopped", "exited", "idle"].includes(state)) return colors.dim(`${dot} ${value}`);
+  if (["queued", "building", "cloning", "packaging", "pulling", "starting", "checking", "promoting", "operating", "routing", "before_deploy", "deleting", "pending"].includes(state)) return colors.yellow(`${dot} ${value}`);
+  if (["stopped", "exited", "idle", "created", "not deployed"].includes(state)) return colors.dim(`${dot} ${value}`);
   return `${dot} ${value}`;
 }
 

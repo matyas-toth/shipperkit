@@ -108,6 +108,21 @@ func TestTaskAPIAndReviewedConfiguration(t *testing.T) {
 	applied, _ = db.Deployment(ctx, applied.ID)
 	applied.State = "failed"
 	db.SaveDeployment(ctx, applied)
+	// A failed health path change stays saved while the old release serves.
+	// Reverting it matches the serving release but must still be reviewable.
+	broken := c
+	broken.HealthPath = "/healthz"
+	db.SaveConfig(ctx, a.ID, broken)
+	reverted := store.PublicConfig(c)
+	reverted.HealthPath = "/"
+	code, raw = request("/applications/app/changes", map[string]any{"config": reverted})
+	if code != 200 {
+		t.Fatal(code, string(raw))
+	}
+	json.Unmarshal(raw, &plan)
+	if plan.Operation == "none" || !strings.Contains(strings.Join(plan.Changes, ","), "Health check") {
+		t.Fatal("revert of a saved change was reported as no change", plan)
+	}
 	task := store.Task{Name: "Cleanup", Enabled: true, Command: store.Command{Argv: []string{"/cleanup"}}, Schedule: "0 3 * * *", Timezone: "Europe/Budapest", Overlap: "queue", Missed: "once"}
 	code, raw = request("/applications/app/tasks", task)
 	if code != 200 {

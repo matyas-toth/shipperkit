@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"shipper/internal/auth"
@@ -28,7 +29,13 @@ type Worker struct {
 	Refresh     func()
 	Operations  func(context.Context)
 	Maintenance func(context.Context) bool
+	// proxy serializes proxy setup and route writes, which every application shares.
+	proxy sync.Mutex
 }
+
+// parallelDeployments bounds how many applications deploy at once. Each
+// application's own operations still run one at a time and in order.
+const parallelDeployments = 3
 
 func NewWorker(db *store.Store, r Runtime, hub *events.Hub, dir string) *Worker {
 	return &Worker{DB: db, Runtime: r, Source: ConnectedSource{DB: db, GitHub: gitprovider.New()}, Hub: hub, DataDir: dir, wake: make(chan struct{}, 1)}
@@ -71,6 +78,7 @@ func (w *Worker) Run(ctx context.Context) {
 func (w *Worker) runOwned(ctx context.Context, owner string) {
 	work, stop := context.WithCancel(ctx)
 	defer stop()
+	var inflight sync.WaitGroup
 	var operationsDone chan struct{}
 	if w.Operations != nil {
 		operationsDone = make(chan struct{})
@@ -96,6 +104,8 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 	}()
 	defer func() {
 		stop()
+		// A deployment stops at its next durable stage and resumes after the lease returns.
+		inflight.Wait()
 		<-heartbeatDone
 		if operationsDone != nil {
 			<-operationsDone
@@ -124,6 +134,8 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 	}
 	tick := time.NewTicker(time.Second)
 	defer tick.Stop()
+	running := map[string]bool{}
+	finished := make(chan string, parallelDeployments)
 	initialized := false
 	contact := ""
 	for work.Err() == nil {
@@ -154,7 +166,7 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 			}
 			if hasActive || len(pending) > 0 {
 				initCtx, cancel := context.WithTimeout(work, 3*time.Minute)
-				e = w.Runtime.Ensure(initCtx)
+				e = w.ensure(initCtx)
 				if e == nil {
 					if naming, ok := w.Runtime.(interface {
 						ReconcileName(context.Context, store.Deployment) error
@@ -186,19 +198,43 @@ func (w *Worker) runOwned(ctx context.Context, owner string) {
 		w.ScheduleBackups(work)
 		w.scheduled(work)
 		w.triggered(work)
-		if len(pending) > 0 {
-			w.process(work, pending[0])
-			continue
+		// One slow build must not hold up every other application. Start the
+		// oldest queued operation of each application that is not already busy.
+		seen := map[string]bool{}
+		for _, d := range pending {
+			key := d.ApplicationID
+			if key == "" {
+				key = d.ID
+			}
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			if running[key] || len(running) >= parallelDeployments {
+				continue
+			}
+			running[key] = true
+			inflight.Add(1)
+			go func(d store.Deployment, key string) {
+				defer inflight.Done()
+				defer func() { finished <- key }()
+				w.process(work, d)
+			}(d, key)
 		}
-		if w.ProcessBackup(work) {
-			continue
-		}
-		if w.Maintenance != nil && w.Maintenance(work) {
-			continue
+		// Backups and maintenance still wait until no deployment is running.
+		if len(pending) == 0 && len(running) == 0 {
+			if w.ProcessBackup(work) {
+				continue
+			}
+			if w.Maintenance != nil && w.Maintenance(work) {
+				continue
+			}
 		}
 		select {
 		case <-work.Done():
 			return
+		case key := <-finished:
+			delete(running, key)
 		case <-w.wake:
 		case <-tick.C:
 		}
@@ -252,7 +288,14 @@ func (w *Worker) stage(ctx context.Context, d *store.Deployment, state string) e
 	w.changed()
 	return nil
 }
+func (w *Worker) ensure(ctx context.Context) error {
+	w.proxy.Lock()
+	defer w.proxy.Unlock()
+	return w.Runtime.Ensure(ctx)
+}
 func (w *Worker) routes(ctx context.Context, exclude string, override *store.Deployment) error {
+	w.proxy.Lock()
+	defer w.proxy.Unlock()
 	apps, e := w.DB.Applications(ctx)
 	if e != nil {
 		return e
@@ -326,7 +369,7 @@ func (w *Worker) process(parent context.Context, d store.Deployment) {
 				}
 			}
 		}
-		if e := w.Runtime.Ensure(ctx); e != nil {
+		if e := w.ensure(ctx); e != nil {
 			return fmt.Errorf("Proxy setup failed: %w", e)
 		}
 		if strings.HasPrefix(d.Operation, "service_") {

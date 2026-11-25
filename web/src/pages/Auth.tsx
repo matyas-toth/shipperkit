@@ -138,7 +138,6 @@ export default function AuthPage(props: { setup: boolean; onAuthenticated: (sess
       <header class="auth-card-head">
         <span class="auth-badge"><Icon name={restoreMode() ? "upload" : props.setup ? "deploy" : "key"} /></span>
         <h1>{restoreMode() ? "Load a save." : props.setup ? "Begin the journey." : "Welcome back aboard."}</h1>
-        <p class="auth-lede">{restoreMode() ? "Bring an installation back from its archive and recovery key." : props.setup ? "Claim this Shipper instance and give your applications a place to land." : "Your applications kept sailing while you were away."}</p>
       </header>
       <Show when={callbackError()}><ErrorNotice message={callbackError()} /></Show>
       <Show when={restoring()} fallback={
@@ -220,7 +219,6 @@ export default function AuthPage(props: { setup: boolean; onAuthenticated: (sess
           <p>Restoring Shipper and restarting the dashboard. Keep this page open.</p>
         </div>
       </Show>
-      <Show when={!props.setup}><p class="auth-foot">Need access? Ask your Shipper administrator.</p></Show>
       <Show when={props.setup}>
         <a class="auth-docs-link" href={docs("install/")} target="_blank" rel="noreferrer">Installation guide</a>
       </Show>

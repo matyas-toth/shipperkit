@@ -20,9 +20,10 @@ type Props = {
 
 const categoryIcons: Record<string, IconName> = {
   Automation: "deploy", AI: "deploy", Analytics: "sliders", Auth: "lock", Backend: "code",
-  CMS: "edit", Databases: "database", Devtools: "terminal", Git: "git", Media: "eye",
+  CMS: "edit", Databases: "database", "Developer tools": "terminal", Git: "git", Media: "eye",
   Messaging: "plug", Monitoring: "clock", Productivity: "check", Security: "shield",
   Storage: "folder", Finance: "sliders", RSS: "plug", Featured: "layers", Other: "box",
+  Networking: "globe", Email: "mail", Helpdesk: "users", Search: "search",
 };
 
 function iconFor(category: string): IconName { return categoryIcons[category] ?? "box"; }
