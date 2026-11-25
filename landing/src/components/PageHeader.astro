@@ -1,0 +1,27 @@
+---
+/* The top of a listing or article page: an optional way back, the title,
+   and an optional action on the right such as an RSS link. */
+
+interface Props {
+  title: string;
+  back?: { label: string; href: string };
+  meta?: string;
+  narrow?: boolean;
+}
+
+const { title, back, meta, narrow = false } = Astro.props;
+---
+
+<header class:list={["wrap pt-14 md:pt-24", narrow && "!max-w-[768px]"]}>
+  {back && (
+    <a href={back.href} class="inline-flex items-center gap-1.5 text-[14px] text-mute transition-colors hover:text-ink">
+      <svg viewBox="0 0 16 16" class="size-3.5" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg>
+      {back.label}
+    </a>
+  )}
+  <div class:list={["flex flex-wrap items-end justify-between gap-6", back && "mt-6"]}>
+    <h1 class="t-hero max-w-[860px] !text-[clamp(36px,4.6vw,60px)]">{title}</h1>
+    <slot name="action" />
+  </div>
+  {meta && <p class="t-mono mt-6 text-[13px] text-mute">{meta}</p>}
+</header>

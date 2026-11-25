@@ -73,17 +73,62 @@ one-liner always resolves to the newest Main installer. The landing itself uses
 landing/
   src/
     pages/index.astro        the homepage
+    pages/blog/              blog index, posts and /blog/rss.xml
+    pages/vs/                comparison index and pages
+    pages/changelog/         changelog, one page per release and /changelog/rss.xml
+    pages/llms.txt.ts        llms.txt generated from the docs, features and content
+    content/                 MDX for the blog, comparisons and changelog
+    content.config.ts        frontmatter schemas for each collection
+    lib/content.ts           what is published and in which order
     components/Home.astro    the page composition
     components/Closing.astro questions, final install section and footer
     components/parts.tsx     static parts: nav, install bar, features, FAQ, footer, copy
     components/widgets.tsx   interactive islands: the screenshot tour and the CLI
     components/Dither.tsx    WebGL dither for the brand footage
     layouts/Base.astro       head, SEO, scroll reveals and copy buttons
+    layouts/Page.astro       nav, page, then the homepage's install section and footer
     styles/global.css        tokens, type scale, buttons and motion
   public/media/
     aurora.mp4, aurora.webp  dither source and still frame
     shots/                   product screenshots
 ```
+
+## Content
+
+Blog posts, comparisons and changelog entries are MDX files in `src/content/`.
+The file name is the URL. Every page ends with the same install section and
+footer as the homepage through `layouts/Page.astro`, and new entries reach the
+sitemap, the RSS feeds and `/llms.txt` without further changes. `draft: true`
+shows an entry in `npm run dev` and leaves it out of builds.
+
+| Collection | File | Frontmatter |
+| --- | --- | --- |
+| Blog | `content/blog/<slug>.mdx` | `title`, `description`, `date`, optional `author` |
+| Comparison | `content/compare/<slug>.mdx` | `name`, `description`, `checked`, `order`, `rows`, `sources` |
+| Changelog | `content/changelog/<version>.mdx` | `version`, `date`, `title`, `description` |
+
+### Comparisons
+
+Compare honestly. Every claim about another product needs a source in
+`sources`, and `checked` is the day those pages were read. Say plainly where the
+other product is the better choice. Re-check the facts when either product
+changes in a way the table covers.
+
+### Changelog posts
+
+release-please writes `CHANGELOG.md` on every release. Start a post from it:
+
+```sh
+npm run changelog                  # the newest release
+npm run changelog -- 1.0.0-rc.42   # one release
+npm run changelog -- --missing     # releases without a post
+```
+
+The script creates `content/changelog/<version>.mdx` as a draft with the raw
+release notes in a comment. Read the linked pull requests, write what changed
+for the people who run Shipper, fill in `title` and `description`, and remove
+`draft: true`. Releases without a post stay on GitHub, which the changelog
+links to.
 
 ## Imagery
 
@@ -116,7 +161,8 @@ Credit the source in `THIRD_PARTY_NOTICES.md`.
   Twitter card and SoftwareApplication JSON-LD.
 - `public/og.png` is the 1200 x 630 social preview.
 - `public/robots.txt` and `src/pages/sitemap.xml.ts` expose the production site.
-- The homepage and the documentation pages are the URLs in the sitemap.
+- The sitemap lists the homepage, the documentation, every comparison, blog post
+  and changelog entry. `/llms.txt` lists the same pages for language models.
 - The favicon is the same rounded-square Shipper mark used by the dashboard.
 
 ## Copy and conversion rules

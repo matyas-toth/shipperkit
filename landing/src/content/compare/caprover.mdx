@@ -1,0 +1,61 @@
+---
+name: CapRover
+description: ShipperKit and CapRover both run on a 1 GiB server and deploy apps with one-click templates. Here is how they differ in proxy, clustering, databases, backups and releases.
+checked: 2026-11-25
+order: 3
+rows:
+  - label: License
+    shipper: MIT
+    them: Apache 2.0
+  - label: Minimum server
+    shipper: 1 GiB RAM on Ubuntu or Debian, x86-64 or ARM64
+    them: 1 GiB RAM, 5 GiB disk, amd64 or arm64
+  - label: DNS
+    shipper: Any domain per app, no wildcard needed
+    them: A wildcard DNS record for the root domain
+  - label: Proxy
+    shipper: Traefik with Let's Encrypt
+    them: nginx with a customizable template and Let's Encrypt
+  - label: Servers
+    shipper: The server Shipper is installed on
+    them: Docker Swarm with worker nodes
+  - label: Builds
+    shipper: Railpack, Dockerfile, static, Compose, images and local folders
+    them: captain-definition or Dockerfile, images, tar archives, and Compose with prebuilt images
+  - label: Databases
+    shipper: Seven engines with connection strings and credential rotation
+    them: Through one-click apps
+  - label: Backups
+    shipper: Scheduled database and volume backups to the server or S3
+    them: Not listed among its features
+  - label: Rollbacks
+    shipper: Restores the recorded image and settings of any earlier release
+    them: Pick a previous deployment while its image still exists
+  - label: One-click services
+    shipper: "365"
+    them: 300+
+sources:
+  - https://caprover.com
+  - https://caprover.com/docs/get-started
+  - https://github.com/caprover/caprover
+---
+
+CapRover has been a dependable way to turn a small VPS into a Heroku-like platform for years, and it runs on the same 1 GiB servers Shipper does. The main differences are in what happens around a deploy: Shipper manages databases and backups as first-class parts of an application, and it checks every release before routing traffic to it.
+
+## Choose ShipperKit if
+
+- **Your databases need backups.** Shipper runs native dumps for PostgreSQL, MySQL, MariaDB and MongoDB, and cold archives for other engines and volumes, on a schedule, locally and to S3. Restores always create a copy.
+- **You don't want a wildcard domain.** Each application gets the domains you give it, with HTTPS issued and renewed automatically.
+- **You want Compose files that build.** Shipper builds Compose services from source and finishes every build before it updates the running stack.
+- **Releases have to fail safely.** A failed health check never takes traffic, and every release records what actually ran.
+- **You need teammates.** Admin, Developer and Viewer roles, Google, GitHub and Discord sign-in, and two-factor authentication are built in.
+
+## Choose CapRover if
+
+- **You want to add worker nodes** to a Docker Swarm cluster.
+- **You prefer nginx** and want to edit its configuration template directly.
+- **You already have captain-definition files** and a workflow built around them.
+
+## Moving from CapRover
+
+Apps with a Dockerfile move as they are. Point Shipper at the same repository, deploy, restore your database dumps as new databases, and switch DNS when each app checks out. The [move an existing app](/docs/move-an-app/) guide walks through the order.

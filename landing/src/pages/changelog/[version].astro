@@ -1,0 +1,33 @@
+---
+import { render } from "astro:content";
+import Page from "@/layouts/Page.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import { releases, formatDate, SITE } from "@/lib/content";
+import { LINKS } from "@/components/parts";
+
+export async function getStaticPaths() {
+  return (await releases()).map((entry) => ({ params: { version: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: `Shipper ${entry.data.version}: ${entry.data.title}`,
+  description: entry.data.description,
+  datePublished: entry.data.date.toISOString(),
+  publisher: { "@type": "Organization", name: "ShipperKit", url: SITE },
+  mainEntityOfPage: `${SITE}/changelog/${entry.id}/`,
+};
+---
+
+<Page title={`${entry.data.title} | Shipper ${entry.data.version}`} description={entry.data.description} type="article" published={entry.data.date} schema={schema}>
+  <article>
+    <PageHeader title={entry.data.title} back={{ label: "Changelog", href: "/changelog/" }} meta={`${entry.data.version} · ${formatDate(entry.data.date)}`} narrow />
+    <div class="wrap !max-w-[768px] pb-24 pt-10 md:pb-32 md:pt-14">
+      <div class="prose"><Content /></div>
+      <a href={`${LINKS.releases}/tag/v${entry.data.version}`} class="btn btn-ghost mt-12">Release on GitHub</a>
+    </div>
+  </article>
+</Page>

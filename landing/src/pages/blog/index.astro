@@ -1,0 +1,26 @@
+---
+import Page from "@/layouts/Page.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Rss from "@/components/Rss.astro";
+import { posts, formatDate, isoDate } from "@/lib/content";
+
+const entries = await posts();
+---
+
+<Page title="Blog | ShipperKit" description="How Shipper works, what we learn running it, and guides for hosting on your own server.">
+  <PageHeader title="Blog">
+    <Rss slot="action" href="/blog/rss.xml" />
+  </PageHeader>
+  <section class="wrap pb-24 pt-12 md:pb-32 md:pt-16">
+    <ol class="border-t border-line">
+      {entries.map((post) => (
+        <li class="border-b border-line">
+          <a href={`/blog/${post.id}/`} class="group grid gap-2 py-7 md:grid-cols-[180px_1fr] md:gap-10 md:py-9">
+            <time datetime={isoDate(post.data.date)} class="t-mono pt-1 text-[13px] text-mute">{formatDate(post.data.date)}</time>
+            <h2 class="t-h3 max-w-[760px] !text-[22px] text-ink-2 transition-colors group-hover:text-ink md:!text-[26px]">{post.data.title}</h2>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </section>
+</Page>

@@ -1,0 +1,40 @@
+---
+title: A failed deploy should never take your site down
+description: How Shipper builds, checks and promotes a release, why the previous release keeps serving when something breaks, and what a rollback does and doesn't undo.
+date: 2026-11-25
+---
+
+The worst moment in self-hosting is pushing a change and watching the site go blank while you scroll through a build log. Shipper is built so that moment doesn't happen. A new release has to prove it works before it receives traffic, and until it does, the release you already had keeps serving.
+
+## What happens when you deploy
+
+Every deploy becomes a release that moves through the same stages: `queued`, `building`, `starting`, `checking`, `promoting`, and finally `succeeded` or `failed`. Your current release keeps answering requests the whole time.
+
+1. **Build.** Shipper fetches the exact commit, or takes your uploaded folder or image, and builds it with a Dockerfile, Railpack or the static builder. A build error stops here, and nothing about the running application has changed.
+2. **Start.** The new container starts next to the old one, with the environment, volumes and limits you configured.
+3. **Check.** Shipper waits for the application to answer its health path, or for the process to stay up if it's a worker that doesn't serve HTTP. The default deadline is 45 seconds, and a healthy app is promoted as soon as it answers, so the deadline isn't a fixed delay.
+4. **Promote.** Only now does the router switch traffic to the new release. An optional drain delay keeps the old container alive for a moment so open requests can finish.
+
+If any stage fails, the release is marked `failed` with the stage and the message that broke it, and the previous release is still the one serving. You read the error next to a working site instead of during an outage.
+
+## A release records what actually ran
+
+A release is more than an image tag. Shipper records the commit or upload it came from, the build method, the image that served traffic, a snapshot of the runtime settings and, for Compose, every service and its route. Secrets stay encrypted in that snapshot and never show up in the log.
+
+That record is what makes a rollback honest. **Restore release** creates a new deployment from the recorded image and settings of an earlier release. It doesn't fetch the branch again and hope it still builds the same thing. If the recorded image is gone, Shipper refuses the restore instead of quietly deploying something different.
+
+## What a rollback doesn't undo
+
+Data moves forward even when code moves back. Persistent volumes and database schemas are not rolled back, because doing that silently would throw away writes your users made since the deploy. If a release ran a migration, check that the older code can still read the newer schema before you restore it.
+
+Deploy hooks that already ran, such as a migration in a before-deploy command, are skipped during a restore. Before-start commands still run whenever a container actually starts.
+
+## Compose works differently
+
+A Compose application is a set of services that share state, so Shipper doesn't run two copies side by side. It finishes every build first and only then updates the running stack, so a failed build leaves the stack alone. If the updated stack fails to come up, Shipper attempts to bring back the previous pinned configuration, and your named volumes are kept either way. Expect a short interruption during a Compose update, which is how Compose itself behaves.
+
+## Try it on a broken commit
+
+The quickest way to trust this is to break something on purpose. Deploy an app, push a commit with a bad health path or a failing build, and watch the old release keep serving while the new one shows exactly where it stopped. Then fix the commit, or pick an earlier release under **Deployments** and restore it.
+
+The [releases](/docs/releases/) and [rollbacks](/docs/rollbacks/) docs cover every field and edge case.

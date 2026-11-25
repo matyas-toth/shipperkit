@@ -1,0 +1,24 @@
+---
+version: 1.0.0-rc.42
+date: 2026-11-24
+title: Debian, Ubuntu 22.04 and ARM64 servers
+description: The installer now accepts Ubuntu 22.04 and 24.04 and Debian 12 and 13, on x86-64 or ARM64, and releases ship a multi-architecture image.
+---
+
+Until this release the installer only accepted Ubuntu 24.04 on x86-64. That ruled out Debian, which is what a lot of self-hosters run, and every ARM machine, from a Raspberry Pi to Hetzner's CAX servers and Oracle's free Ampere tier.
+
+## Supported servers
+
+The installer now runs on Ubuntu 22.04 and 24.04 and Debian 12 and 13, on `amd64` or `arm64`. Anything else stops with a message that lists what is supported. The install plan shows the detected system and architecture before anything changes.
+
+```sh
+curl -fsSL https://shipperkit.dev/install.sh | sudo bash
+```
+
+## One image for both architectures
+
+Releases now publish a single image for `linux/amd64` and `linux/arm64`, so Docker pulls the right one for your server. The Go control plane cross-compiles instead of building under emulation, which keeps release builds quick.
+
+## Good to know
+
+Older releases were x86-64 only, so pinning `--version` to a release before this one fails on ARM. Raspberry Pi OS 64-bit reports itself as Debian 12 and should pass the same checks, but we haven't tested it on a Pi yet. If you try it, tell us how it went on [Discord](https://discord.shipperkit.dev).

@@ -1,0 +1,48 @@
+---
+title: Backups you can restore without overwriting anything
+description: Shipper protects the instance and your application data separately, restores every backup as a copy, and keeps the key that decrypts it off the server.
+date: 2026-11-25
+---
+
+A backup you have never restored is a hope. The usual way to find out it doesn't work is during an outage, while restoring over the only copy of the data you still had. Shipper is designed around two rules that avoid that. A restore never overwrites existing data, and the key that decrypts your backups never has to live only on the server.
+
+## Two kinds of backup
+
+Shipper keeps two separate kinds of protection, because they fail in different ways.
+
+- **Instance recovery** protects Shipper itself: its database, applications, releases, settings, credentials, domains and certificate state. It's what you need when the whole server is gone.
+- **Application data plans** protect the databases and volumes of one application or Compose service. They're what you need when someone drops a table.
+
+An instance archive deliberately leaves out Docker images, build caches and application volumes. Releases rebuild the first two and data plans cover the third, which keeps the archive small enough to run often.
+
+## Native dumps for each database
+
+Each engine is backed up with its own tools, running inside the database's container against its private address:
+
+| Engine | How it's captured |
+| --- | --- |
+| PostgreSQL | `pg_dump` custom archive, a consistent snapshot |
+| MySQL and MariaDB | Native SQL dump under a global read lock |
+| MongoDB | `mongodump` gzip archive |
+| ClickHouse, SQLite and Redis | Cold archive of the data volume |
+| Any named volume | Cold archive with ownership and permissions kept |
+
+Schedules use the same picker as scheduled tasks, with a cron expression and a preview of the next three runs in your timezone. Retention only removes old copies after a new backup succeeds, so a run of failures never empties your history.
+
+## Restore makes a copy
+
+Restoring a database backup needs a new database name, and Shipper creates it next to the current one. It then runs a create, insert and select check in the copy, so you know the restored database accepts writes. Point a staging app at it, look around, and switch over when you're sure. An existing database or an attached volume is never replaced, so a mistaken restore can't destroy the data you still have.
+
+An instance restore works the same way. It runs into an empty directory on a fresh install, and you move the result into place yourself once it finishes.
+
+## The key lives somewhere else
+
+Instance archives are encrypted with [age](https://age-encryption.org). When you set up recovery, download the recovery key and keep it in a password manager, away from both the server and the backup bucket. Shipper keeps an encrypted copy on the instance for convenience, but if the server is lost, the key you downloaded is what opens the archive.
+
+## Get a copy off the server
+
+A backup on the same disk doesn't survive losing the server. Add any S3-compatible destination, ideally with a different provider than your server, and each plan keeps its local copy and uploads another. That gives you three copies on two kinds of storage with one of them off-site, and Shipper records failed and overdue backups under **System → Notifications** so a silent gap doesn't last.
+
+Then do the part most people skip and restore one. Pick a database, restore it as a copy, and query it. It takes a few minutes, and afterwards you know the backup works.
+
+The [backups](/docs/backups/), [off-server storage](/docs/off-server-storage/) and [restore](/docs/restore/) docs walk through each step.

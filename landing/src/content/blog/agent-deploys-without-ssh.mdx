@@ -1,0 +1,49 @@
+---
+title: Let your coding agent deploy without your SSH key
+description: Scoped, expiring tokens and a CLI with JSON output let an agent deploy, read logs and diagnose failures on your server without root access.
+date: 2026-11-25
+---
+
+Coding agents are good at writing a Dockerfile, reading a stack trace and trying again. Most of them get stuck once the code has to run somewhere real, because the usual answer is to hand them an SSH key with root on your server. Shipper gives them a much narrower door.
+
+## A token that can do one job
+
+An operation token is a machine credential for Shipper's API. It never becomes a dashboard login, it always expires, and it carries only the capabilities you pick:
+
+| Capability | What it allows |
+| --- | --- |
+| `read` | Applications, releases, observations and system facts |
+| `logs` | Deployment and runtime logs, on top of read |
+| `deploy` | Plan, deploy, route, roll back, cancel and retry |
+| `execute` | Run saved tasks |
+| `secrets` | Reveal saved secret values |
+| `destructive` | Delete applications, with a named confirmation |
+
+You can also scope a token to a single application. A token for one app with `read`, `logs` and `deploy` can ship that app and read why it failed. It can't see other applications, reveal secrets or delete anything. Shipper stores only a hash, shows the value once, and you can revoke it from **System → Access tokens** at any time.
+
+## The CLI speaks JSON
+
+The `shipper` CLI exposes the same actions as the dashboard, and every command has a `--json` form. Success prints one JSON document, and failure prints a JSON error on stderr with exit code `1`. That's the contract an agent needs to act on results instead of guessing from text.
+
+```sh
+export SHIPPER_URL="https://shipper.example.com"
+export SHIPPER_TOKEN="shipper_..."
+
+shipper deploy . --app store --json
+shipper logs store --lines 100 --json
+shipper doctor store --json
+```
+
+`shipper deploy .` packages the current folder and leaves out `.git`, `node_modules`, `.env` files, private keys and credential files such as `.npmrc`. An agent can deploy what it just built without uploading your secrets along with it.
+
+## Diagnosis instead of guesswork
+
+When something breaks, `shipper doctor` compares what should be running with the release that is serving and the latest operation, and points at the layer that failed, whether that's the build, startup, routing or storage. An agent can read that, fetch only the logs for the failed operation, change the code and deploy again. Your users keep getting the last good release the whole time, because a failed deploy never goes live.
+
+For anything the CLI doesn't wrap yet, `shipper api` calls the same `/api/v1` routes the dashboard uses, with the same token and the same permission checks.
+
+## Where the boundary is
+
+A token with `deploy` can run code on your server, because building a Dockerfile runs code. Shipper isn't a sandbox for hostile workloads, so give tokens to agents you'd already trust to push to your repository. Use the smallest scope that does the job and a short expiry, and create one token per agent or CI job so you can revoke one without breaking the others.
+
+The [API and agent tokens](/docs/tokens/) docs list every capability and route, and the [CLI reference](https://github.com/matyas-toth/shipperkit/blob/master/cli/README.md) covers installation and sign-in.

@@ -1,0 +1,66 @@
+---
+name: Kamal
+description: Kamal deploys containers from your laptop over SSH, and ShipperKit runs a platform on the server. Here is how the two approaches compare for databases, backups and teams.
+checked: 2026-11-25
+order: 5
+rows:
+  - label: License
+    shipper: MIT
+    them: MIT
+  - label: Where it runs
+    shipper: On your server, as a dashboard, CLI and API
+    them: On your machine or CI, talking to servers over SSH
+  - label: Configuration
+    shipper: The dashboard, the CLI or the API
+    them: config/deploy.yml in your repository
+  - label: Servers
+    shipper: The server Shipper is installed on
+    them: Any number, with a load balancer in front for several
+  - label: Builds
+    shipper: Railpack, Dockerfile, static, Compose, images and local folders
+    them: A Dockerfile, built locally or remotely and pushed to a registry
+  - label: Proxy and HTTPS
+    shipper: Traefik, with Let's Encrypt for every domain
+    them: kamal-proxy, with Let's Encrypt on a single server
+  - label: Databases
+    shipper: Seven engines managed from the dashboard
+    them: Accessories, which are not updated on deploy
+  - label: Backups
+    shipper: Scheduled dumps and volume archives, locally and to S3
+    them: Up to you
+  - label: Rollbacks
+    shipper: Restore any recorded release from the dashboard or CLI
+    them: kamal rollback to a retained container version
+  - label: Team access
+    shipper: Roles, sign-in providers and two-factor authentication
+    them: Whoever has SSH access and the registry credentials
+sources:
+  - https://kamal-deploy.org
+  - https://github.com/basecamp/kamal
+  - https://kamal-deploy.org/docs/installation/
+  - https://kamal-deploy.org/docs/configuration/overview/
+  - https://kamal-deploy.org/docs/configuration/proxy/
+  - https://kamal-deploy.org/docs/configuration/accessories/
+  - https://kamal-deploy.org/docs/configuration/docker-registry/
+  - https://kamal-deploy.org/docs/commands/rollback/
+---
+
+Kamal and Shipper solve the same problem from opposite ends. Kamal is a deploy tool. It runs where you are, connects to your servers over SSH and leaves nothing behind except containers and its proxy. Shipper is a platform. It lives on the server and keeps track of applications, databases, domains, backups and the people who can change them.
+
+## Choose ShipperKit if
+
+- **You want databases looked after.** Shipper creates them, gives you a connection string, rotates credentials and backs them up on a schedule. In Kamal, a database is an accessory you run and protect yourself.
+- **More than one person deploys.** Teammates sign in with their own accounts and roles instead of sharing SSH keys and registry credentials.
+- **You'd rather not run a registry.** Shipper builds on the server, so a push to your branch deploys without pushing images anywhere.
+- **You host more than your own app.** The Service Library deploys n8n, Grafana, Uptime Kuma and 360 more services with their secrets generated.
+- **You want to see what is running** in a dashboard with logs, a terminal and every release.
+
+## Choose Kamal if
+
+- **You deploy one app to several servers** behind a load balancer.
+- **You want configuration in the repository** and nothing extra running on the server.
+- **You're on Rails**, where Kamal is the default and the community knows it well.
+
+## Moving from Kamal
+
+Your Dockerfile works in Shipper unchanged. Create an application from the same repository, copy the environment from your `.env` or secrets into Shipper's environment editor, restore your database dump as a new managed database, and switch DNS when it checks out. The [move an existing app](/docs/move-an-app/) guide walks through the order.

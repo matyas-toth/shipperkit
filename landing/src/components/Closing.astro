@@ -1,6 +1,7 @@
 ---
 import Dither from "./Dither";
-import { Faq, Footer, InstallBar, Ctas, Reveal } from "./parts";
+import { Faq, Footer, InstallBar, Ctas, Reveal, type CompareLink } from "./parts";
+import { comparisons } from "@/lib/content";
 
 interface Props {
   media?: string;
@@ -9,7 +10,8 @@ interface Props {
   faqColumns?: boolean;
   round?: boolean;
 }
-const { media = "sunset", title = "Install Shipper on your server", faq = true, faqColumns = false, round = false } = Astro.props;
+const { media = "aurora", title = "Install Shipper on your server", faq = true, faqColumns = false, round = false } = Astro.props;
+const compare: CompareLink[] = (await comparisons()).map((entry) => [entry.data.name, `/vs/${entry.id}/`]);
 ---
 
 {faq && (
@@ -30,4 +32,4 @@ const { media = "sunset", title = "Install Shipper on your server", faq = true, 
   </div>
 </section>
 
-<Footer />
+<Footer compare={compare} />

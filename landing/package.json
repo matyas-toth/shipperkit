@@ -11,11 +11,14 @@
     "preview": "astro preview",
     "preview:docs": "astro preview --config docs.astro.config.mjs",
     "check": "astro check",
-    "check:docs": "astro check --config docs.astro.config.mjs"
+    "check:docs": "astro check --config docs.astro.config.mjs",
+    "changelog": "node scripts/changelog.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.8",
+    "@astrojs/mdx": "^8.1.6",
     "@astrojs/react": "^7.1.4",
+    "@astrojs/rss": "^4.0.19",
     "@astrojs/starlight": "^0.42.10",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.2.8",

@@ -1,0 +1,64 @@
+---
+name: Dokku
+description: ShipperKit and Dokku both give one server a Heroku-style workflow under the MIT license. Here is how a dashboard-first platform compares with a git push CLI.
+checked: 2026-11-25
+order: 4
+rows:
+  - label: License
+    shipper: MIT, with no paid tier
+    them: MIT, plus Dokku Pro, a paid web UI
+  - label: Supported servers
+    shipper: Ubuntu 22.04 and 24.04, Debian 12 and 13, x86-64 or ARM64
+    them: Ubuntu 22.04, 24.04 and 26.04, Debian 12 and 13, amd64 or arm64
+  - label: Interface
+    shipper: Web dashboard, CLI and REST API
+    them: CLI over SSH, with deploys by git push
+  - label: Builds
+    shipper: Railpack, Dockerfile, static, Compose, images and local folders
+    them: Heroku buildpacks and Dockerfiles, among other builders
+  - label: Proxy and HTTPS
+    shipper: Traefik, with Let's Encrypt built in
+    them: nginx by default, with Let's Encrypt through an official plugin
+  - label: Databases
+    shipper: Seven engines managed from the dashboard
+    them: Official plugins per engine, such as dokku-postgres
+  - label: Backups
+    shipper: Scheduled dumps and volume archives, locally and to S3, for every engine
+    them: Backup commands in each database plugin
+  - label: Zero-downtime deploys
+    shipper: Health-checked by default, with the previous release serving until it passes
+    them: Health checks you configure, which can be disabled
+  - label: Team access
+    shipper: Admin, Developer and Viewer roles with Google, GitHub and Discord sign-in
+    them: SSH keys
+sources:
+  - https://dokku.com
+  - https://github.com/dokku/dokku
+  - https://pro.dokku.com/
+  - https://dokku.com/docs/networking/proxy-management/
+  - https://dokku.com/docs/deployment/builders/dockerfiles/
+  - https://dokku.com/docs/deployment/zero-downtime-deploys/
+  - https://github.com/dokku/dokku-letsencrypt
+  - https://github.com/dokku/dokku-postgres
+---
+
+Dokku is the original "your own Heroku on one server", and it's still excellent if you live in a terminal. Shipper shares its scope of one server and its MIT license, but it's built around a dashboard, so a teammate who has never opened an SSH session can still deploy, read logs and restore a backup.
+
+## Choose ShipperKit if
+
+- **You want a dashboard without paying for one.** Every screen in Shipper is part of the MIT release, including roles, sign-in providers and two-factor authentication.
+- **You want databases, HTTPS and backups without assembling plugins.** They're part of Shipper itself and share one model and one place in the dashboard.
+- **Your team doesn't all use SSH.** People sign in with email, Google, GitHub or Discord and get the role you give them.
+- **You deploy Compose stacks or ready-made services.** Shipper builds Compose files from source and has 365 one-click services.
+- **Your coding agent deploys for you** with a token scoped to one application, instead of an SSH key.
+
+## Choose Dokku if
+
+- **You want git push to be the whole interface**, and a CLI is all you need.
+- **You rely on Heroku buildpacks** or a Procfile workflow you already have.
+- **You want to pick your proxy**, since Dokku supports nginx, Caddy, HAProxy, OpenResty and Traefik.
+- **You value a very long track record** and a large plugin ecosystem.
+
+## Moving from Dokku
+
+Apps with a Dockerfile move as they are, and many buildpack apps build with Railpack without changes. Install Shipper on a fresh server, deploy from the same repository, restore your database dumps as new databases, and switch DNS when each app checks out. The [move an existing app](/docs/move-an-app/) guide walks through the order.

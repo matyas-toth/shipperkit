@@ -1,0 +1,33 @@
+---
+import { render } from "astro:content";
+import Page from "@/layouts/Page.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Rss from "@/components/Rss.astro";
+import { releases, formatDate, isoDate } from "@/lib/content";
+import { LINKS } from "@/components/parts";
+
+const entries = await Promise.all((await releases()).map(async (entry) => ({ entry, Content: (await render(entry)).Content })));
+---
+
+<Page title="Changelog | ShipperKit" description="What changed in each Shipper release.">
+  <PageHeader title="Changelog">
+    <Rss slot="action" href="/changelog/rss.xml" />
+  </PageHeader>
+  <section class="wrap pb-24 pt-12 md:pb-32 md:pt-16">
+    <ol class="border-t border-line">
+      {entries.map(({ entry, Content }) => (
+        <li id={entry.data.version} class="grid scroll-mt-24 gap-6 border-b border-line py-12 md:grid-cols-[220px_1fr] md:gap-10 md:py-16">
+          <div class="md:sticky md:top-24 md:self-start">
+            <a href={`/changelog/${entry.id}/`} class="t-mono text-[15px] text-ink hover:text-green">{entry.data.version}</a>
+            <time datetime={isoDate(entry.data.date)} class="t-mono mt-1.5 block text-[13px] text-mute">{formatDate(entry.data.date)}</time>
+          </div>
+          <article class="min-w-0 max-w-[720px]">
+            <h2 class="t-h2 !text-[clamp(26px,2.6vw,34px)]"><a href={`/changelog/${entry.id}/`} class="hover:text-white">{entry.data.title}</a></h2>
+            <div class="prose mt-6"><Content /></div>
+          </article>
+        </li>
+      ))}
+    </ol>
+    <a href={LINKS.releases} class="btn btn-ghost mt-12">Earlier releases on GitHub</a>
+  </section>
+</Page>

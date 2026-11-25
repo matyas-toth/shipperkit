@@ -1,0 +1,25 @@
+---
+import Base from "./Base.astro";
+import Closing from "@/components/Closing.astro";
+import { Nav } from "@/components/parts";
+
+/* Every page outside the homepage: the site nav, the page, then the same
+   install band and footer the homepage ends with. */
+
+interface Props {
+  title: string;
+  description: string;
+  type?: "website" | "article";
+  published?: Date;
+  schema?: Record<string, unknown>;
+  closing?: string;
+}
+
+const { closing, ...meta } = Astro.props;
+---
+
+<Base {...meta}>
+  <Nav />
+  <slot />
+  <Closing faq={false} title={closing} />
+</Base>

@@ -1,0 +1,64 @@
+---
+name: Dokploy
+description: ShipperKit and Dokploy both deploy apps and databases with Traefik and Docker. Here is how they differ in licensing, server size, clustering, releases and backups.
+checked: 2026-11-25
+order: 2
+rows:
+  - label: License
+    shipper: MIT, with no paid tier
+    them: Apache 2.0 outside its proprietary directories, plus Cloud plans and an Enterprise license
+  - label: Minimum server
+    shipper: 1 GiB RAM on Ubuntu or Debian, x86-64 or ARM64
+    them: 2 GB RAM and 30 GB of disk
+  - label: Servers
+    shipper: The server Shipper is installed on
+    them: Multiple servers and Docker Swarm
+  - label: Builds
+    shipper: Railpack, Dockerfile, static, Compose, images and local folders
+    them: Nixpacks, Railpack, Heroku and Paketo buildpacks, static, Dockerfile and Compose
+  - label: Pull request previews
+    shipper: Not yet
+    them: Yes, for GitHub
+  - label: Databases
+    shipper: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, ClickHouse and SQLite
+    them: PostgreSQL, MySQL, MariaDB, MongoDB, Redis and libSQL
+  - label: Restores
+    shipper: Always into a new copy, never over existing data
+    them: Scheduled backups to S3-compatible storage
+  - label: Roles
+    shipper: Admin, Developer and Viewer for everyone
+    them: Owner, Admin and Member on paid plans, custom roles and SSO on Enterprise
+  - label: Automation
+    shipper: CLI with JSON output, REST API and scoped tokens
+    them: REST API, CLI, MCP server and TypeScript SDK
+  - label: Notifications
+    shipper: Webhook and email
+    them: Slack, Discord, Telegram, email, webhooks and more
+sources:
+  - https://dokploy.com
+  - https://dokploy.com/pricing
+  - https://docs.dokploy.com/docs/core
+  - https://docs.dokploy.com/docs/core/installation
+  - https://github.com/Dokploy/dokploy/blob/canary/LICENSE.MD
+---
+
+Dokploy and Shipper look alike at first: both put Traefik in front of Docker and give you a dashboard for apps, databases and domains. They differ in where they are headed. Dokploy grows toward clusters, teams and a commercial cloud. Shipper stays focused on one server and on making releases, backups and restores hard to get wrong.
+
+## Choose ShipperKit if
+
+- **You want everything under one permissive license.** Shipper is MIT licensed with no proprietary directories, paid plans or enterprise keys. Roles, sign-in providers and two-factor authentication are in the free release.
+- **Your server is small.** Shipper installs on 1 GiB of RAM, on x86-64 or ARM64.
+- **Releases have to fail safely.** A failed build or health check never takes traffic, and a rollback restores the exact image and settings that ran before.
+- **You want restores you can't get wrong.** Database and volume restores always create a copy, and the instance itself can be recovered from an encrypted archive.
+- **Your coding agent deploys for you** with a token limited to one application and the actions it needs.
+
+## Choose Dokploy if
+
+- **You need several servers or Docker Swarm** for replicas and placement.
+- **You rely on pull request previews**, buildpacks or Nixpacks.
+- **You want a hosted option**, an MCP server, an SDK or many notification channels.
+- **Your organization needs SAML or custom roles**, and an enterprise license is fine.
+
+## Moving from Dokploy
+
+Applications built from a Dockerfile, Compose file or image move as they are. Install Shipper on a fresh server, deploy each app from the same source, restore database dumps as new databases, and switch DNS when each one checks out. The [move an existing app](/docs/move-an-app/) guide walks through the order.

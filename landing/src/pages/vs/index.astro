@@ -1,0 +1,23 @@
+---
+import Page from "@/layouts/Page.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import { comparisons } from "@/lib/content";
+
+const entries = await comparisons();
+---
+
+<Page title="Compare ShipperKit | Self-hosted PaaS alternatives" description="How Shipper compares with Coolify, Dokploy, CapRover, Dokku and Kamal for hosting apps on your own server.">
+  <PageHeader title="Compare ShipperKit" />
+  <section class="wrap pb-24 pt-12 md:pb-32 md:pt-16">
+    <ul class="grid gap-px overflow-hidden rounded-[14px] border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+      {entries.map((entry) => (
+        <li class="bg-bg">
+          <a href={`/vs/${entry.id}/`} class="group flex h-full items-center justify-between gap-4 p-7 transition-colors hover:bg-white/[0.03]">
+            <span class="t-h3">ShipperKit vs {entry.data.name}</span>
+            <svg viewBox="0 0 16 16" class="size-4 shrink-0 text-mute transition-transform group-hover:translate-x-0.5 group-hover:text-ink" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" /></svg>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Page>

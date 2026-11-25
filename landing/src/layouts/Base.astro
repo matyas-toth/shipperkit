@@ -5,12 +5,20 @@ interface Props {
   title?: string;
   description?: string;
   noindex?: boolean;
+  /** "article" for blog posts and changelog entries. */
+  type?: "website" | "article";
+  published?: Date;
+  /** Replaces the default SoftwareApplication structured data. */
+  schema?: Record<string, unknown>;
 }
 
 const {
   title = "ShipperKit: Deploy apps to your own server",
   description = "Shipper turns a Linux server into a hosting platform. Deploy apps, databases and self-hosted services with HTTPS, rollbacks and backups built in.",
   noindex = false,
+  type = "website",
+  published,
+  schema,
 } = Astro.props;
 const site = Astro.site ?? new URL("https://shipperkit.dev");
 const canonical = new URL(Astro.url.pathname, site);
@@ -29,6 +37,7 @@ const structuredData = {
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   sameAs: ["https://github.com/matyas-toth/shipperkit"],
 };
+const jsonLd = schema ?? structuredData;
 ---
 
 <!doctype html>
@@ -45,11 +54,14 @@ const structuredData = {
     <link rel="icon" type="image/svg+xml" sizes="any" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <link rel="alternate" type="application/rss+xml" title="ShipperKit blog" href="/blog/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title="ShipperKit changelog" href="/changelog/rss.xml" />
     <meta property="og:site_name" content="Shipper" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={type} />
+    {published && <meta property="article:published_time" content={published.toISOString()} />}
     <meta property="og:url" content={canonical.href} />
     <meta property="og:image" content={image.href} />
     <meta property="og:image:width" content="1200" />
@@ -60,7 +72,7 @@ const structuredData = {
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image.href} />
     <title>{title}</title>
-    <script type="application/ld+json" is:inline set:html={JSON.stringify(structuredData)} />
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(jsonLd)} />
     <script is:inline>document.documentElement.classList.add("js");</script>
   </head>
   <body>

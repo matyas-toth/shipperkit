@@ -6,6 +6,9 @@ import type { ReactNode } from "react";
 export const LINKS = {
   docs: "/docs/",
   install: "/docs/install/",
+  blog: "/blog/",
+  changelog: "/changelog/",
+  compare: "/vs/",
   github: "https://github.com/matyas-toth/shipperkit",
   discord: "https://discord.shipperkit.dev",
   releases: "https://github.com/matyas-toth/shipperkit/releases",
@@ -99,9 +102,10 @@ export function GitHubIcon({ className = "size-4" }: { className?: string }) {
 }
 
 const navLinks = [
-  ["Features", "#features"],
+  ["Features", "/#features"],
   ["Docs", LINKS.docs],
-  ["Changelog", LINKS.releases],
+  ["Blog", LINKS.blog],
+  ["Changelog", LINKS.changelog],
   ["Discord", LINKS.discord],
 ] as const;
 
@@ -247,16 +251,20 @@ export function Faq({ columns = false }: { columns?: boolean }) {
   );
 }
 
-export function Footer() {
+/** Comparison pages for the footer, as [name, href]. Closing.astro reads them from the content collection. */
+export type CompareLink = [string, string];
+
+export function Footer({ compare = [] }: { compare?: CompareLink[] }) {
   const cols: [string, [string, string][]][] = [
-    ["Product", [["Features", "#features"], ["Documentation", LINKS.docs], ["Install guide", LINKS.install], ["Changelog", LINKS.releases]]],
-    ["Community", [["Discord", LINKS.discord], ["GitHub", LINKS.github], ["Report an issue", `${LINKS.github}/issues`]]],
+    ["Product", [["Features", "/#features"], ["Documentation", LINKS.docs], ["Install guide", LINKS.install], ["Changelog", LINKS.changelog], ["Blog", LINKS.blog]]],
+    ...(compare.length ? [["Compare", compare.map(([name, href]) => [`vs ${name}`, href] as [string, string])] as [string, [string, string][]]] : []),
+    ["Community", [["Discord", LINKS.discord], ["GitHub", LINKS.github], ["Releases", LINKS.releases], ["Report an issue", `${LINKS.github}/issues`]]],
     ["Project", [["MIT license", LINKS.license], ["Security policy", LINKS.security]]],
   ];
   return (
     <footer className="border-t border-line">
-      <div className="wrap grid gap-12 py-16 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-        <div>
+      <div className={`wrap grid grid-cols-2 gap-x-8 gap-y-12 py-16 ${cols.length > 3 ? "md:grid-cols-[1.4fr_repeat(4,1fr)]" : "md:grid-cols-[1.4fr_repeat(3,1fr)]"}`}>
+        <div className="col-span-2 md:col-span-1">
           <Wordmark />
           <p className="mt-4 max-w-[280px] text-[14px] text-mute">Deploy apps, databases and self-hosted services to your own server.</p>
         </div>

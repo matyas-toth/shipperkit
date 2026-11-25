@@ -1,0 +1,26 @@
+---
+version: 1.0.0-rc.43
+date: 2026-11-25
+title: Parallel deploys and clearer health checks
+description: Up to three applications now deploy at once, failed health checks name the real reason, and reverting a broken change works the first time.
+---
+
+We recorded the launch videos against a real install and wrote down everything a new user would trip over in their first ten minutes. This release fixes those before 1.0.
+
+## One slow build no longer blocks everything
+
+Shipper used to run one deploy at a time across the whole server, so a new database could wait more than ten minutes behind somebody else's build. Up to three applications now deploy at once. Each application still runs its own operations one at a time and in order, and backups and maintenance still wait until nothing else is running.
+
+## Health checks say what actually failed
+
+When the startup window closed in the middle of a probe, the error could read `file has already been closed` instead of the real answer. The message now keeps the last response and names the path, for example `/healthz returned HTTP 404`.
+
+## Reverting a failed change
+
+If a new health path failed and you set it back to `/`, the review showed "No changes" and kept Apply disabled while redeploys kept using the broken path. The review now compares against the saved configuration when your change matches the serving release, so the revert applies.
+
+## Also in this release
+
+- `shipper apps` shows the operation in progress for applications that are still building, instead of `missing`.
+- Service Library categories fold into 23 groups, so one-off upstream labels no longer get their own section.
+- The homepage is new, with a product tour you can click through and the install command at the top.

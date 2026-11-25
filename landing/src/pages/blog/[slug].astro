@@ -1,0 +1,34 @@
+---
+import { render } from "astro:content";
+import Page from "@/layouts/Page.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import { posts, formatDate, SITE } from "@/lib/content";
+
+export async function getStaticPaths() {
+  return (await posts()).map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const url = `${SITE}/blog/${post.id}/`;
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  headline: post.data.title,
+  description: post.data.description,
+  datePublished: post.data.date.toISOString(),
+  author: { "@type": "Person", name: post.data.author },
+  publisher: { "@type": "Organization", name: "ShipperKit", url: SITE },
+  mainEntityOfPage: url,
+  image: `${SITE}/og.png`,
+};
+---
+
+<Page title={`${post.data.title} | ShipperKit`} description={post.data.description} type="article" published={post.data.date} schema={schema}>
+  <article>
+    <PageHeader title={post.data.title} back={{ label: "Blog", href: "/blog/" }} meta={`${formatDate(post.data.date)} · ${post.data.author}`} narrow />
+    <div class="wrap !max-w-[768px] pb-24 pt-10 md:pb-32 md:pt-14">
+      <div class="prose"><Content /></div>
+    </div>
+  </article>
+</Page>

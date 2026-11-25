@@ -1,0 +1,70 @@
+---
+name: Coolify
+description: ShipperKit and Coolify both turn your server into a hosting platform. Here is how they differ in size, scope, releases, backups and multi-server support.
+checked: 2026-11-25
+order: 1
+rows:
+  - label: License
+    shipper: MIT, with no paid tier
+    them: Apache 2.0 when self-hosted, plus Coolify Cloud from $5 a month
+  - label: Minimum server
+    shipper: 1 GiB RAM on Ubuntu or Debian, x86-64 or ARM64
+    them: 2 CPU cores and 2 GB RAM on Linux, amd64 or arm64
+  - label: Control plane
+    shipper: One Go service with SQLite
+    them: Laravel with PostgreSQL and Redis
+  - label: Servers
+    shipper: The server Shipper is installed on
+    them: Unlimited servers over SSH
+  - label: Builds
+    shipper: Railpack, Dockerfile, static, Compose, images and local folders
+    them: Nixpacks, Railpack, Dockerfile, Compose, static and images
+  - label: Pull request previews
+    shipper: Not yet
+    them: Yes
+  - label: Databases
+    shipper: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, ClickHouse and SQLite
+    them: PostgreSQL, MySQL, MariaDB, MongoDB, Redis, KeyDB, Dragonfly and ClickHouse
+  - label: Restores
+    shipper: Always into a new copy, never over existing data
+    them: Scheduled backups to S3-compatible storage
+  - label: One-click services
+    shipper: 365, generated from Coolify's templates
+    them: 360+
+  - label: Sign-in
+    shipper: Email, Google, GitHub and Discord, with TOTP
+    them: GitHub, GitLab, Google, Azure, Authentik and more
+  - label: Automation
+    shipper: CLI with JSON output, REST API and scoped tokens
+    them: REST API, CLI and an MCP server
+sources:
+  - https://coolify.io
+  - https://coolify.io/pricing
+  - https://coolify.io/docs/start-with-self-hosted
+  - https://github.com/coollabsio/coolify
+---
+
+Coolify is the best-known self-hosted PaaS, and for good reason. It covers more ground than Shipper does today: many servers, pull request previews, more Git providers and more notification channels. Shipper is deliberately smaller. It runs one server well, asks for fewer decisions along the way, and puts most of its effort into what happens when a deploy or a disk goes wrong.
+
+## Choose ShipperKit if
+
+- **You run one server and want it to stay light.** Shipper is a single Go service with SQLite and Traefik, and it installs on a 1 GiB machine. Coolify asks for 2 GB of RAM and runs its own PostgreSQL and Redis.
+- **You want fewer concepts.** In Shipper the application is the main object. You don't create a project, an environment and a destination before your first deploy.
+- **Releases have to fail safely.** A failed build or health check never takes traffic, and every release records the image and settings that actually ran, so a rollback restores exactly that instead of rebuilding a branch.
+- **You want restores you can't get wrong.** Database and volume restores always create a copy, and instance archives are encrypted with a recovery key you keep off the server.
+- **Your coding agent deploys for you.** Tokens can be limited to one application and a few capabilities, and every CLI command has a `--json` form.
+
+## Choose Coolify if
+
+- **You manage several servers** from one dashboard, or need separate build servers.
+- **You rely on pull request previews**, GitLab or other Git providers, or existing Nixpacks configurations.
+- **You want an MCP server**, more notification channels such as Slack and Telegram, or a hosted control plane through Coolify Cloud.
+- **You need KeyDB or Dragonfly** as managed databases.
+
+## About the Service Library
+
+Shipper's Service Library is generated from Coolify's open source service templates under the Apache 2.0 license, and we credit them in our [third-party notices](https://github.com/matyas-toth/shipperkit/blob/master/THIRD_PARTY_NOTICES.md). Each template is converted to Shipper's application model, with its secrets generated on deploy.
+
+## Moving from Coolify
+
+Your applications are Docker images, Dockerfiles or Compose files, so they move without rewrites. Install Shipper on a fresh server, deploy each app from the same repository, restore your database dumps as new databases, and switch DNS when each one checks out. The [move an existing app](/docs/move-an-app/) guide walks through the order.
