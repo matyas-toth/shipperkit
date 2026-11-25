@@ -1,0 +1,1 @@
+ghcr.io/matyas-toth/shipperkit@sha256:cc5401fce7e526f2cefb27633f7d7e6492be23f8505c939226a1a1043d38bb52
