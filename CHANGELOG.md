@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0-rc.43](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.42...v1.0.0-rc.43) (2026-11-25)
+
+
+### Features
+
+* **landing:** new homepage with dithered imagery and interactive product tour ([#107](https://github.com/matyas-toth/shipperkit/issues/107)) ([efe8bdb](https://github.com/matyas-toth/shipperkit/commit/efe8bdb494c1929c61144c2b7f78c60ae83aae4e))
+
+
+### Bug Fixes
+
+* smooth the rough edges a first-time user hits before 1.0 ([#109](https://github.com/matyas-toth/shipperkit/issues/109)) ([0381ce9](https://github.com/matyas-toth/shipperkit/commit/0381ce91e5cee7435147ef002303e8521a9af33a))
+
 ## [1.0.0-rc.42](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.41...v1.0.0-rc.42) (2026-11-24)
 
 
