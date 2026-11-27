@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0-rc.44](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.43...v1.0.0-rc.44) (2026-11-27)
+
+
+### Features
+
+* **landing:** add a blog, comparison pages and an MDX changelog ([#110](https://github.com/matyas-toth/shipperkit/issues/110)) ([d24df3d](https://github.com/matyas-toth/shipperkit/commit/d24df3da8dd5bc8b3bda28fa68cac139de5195af))
+
+
+### Bug Fixes
+
+* stop blaming memory for builds Shipper stopped itself ([#112](https://github.com/matyas-toth/shipperkit/issues/112)) ([3bc9cef](https://github.com/matyas-toth/shipperkit/commit/3bc9cefb2a909c2f162092631b9d558442a54bcc))
+
 ## [1.0.0-rc.43](https://github.com/matyas-toth/shipperkit/compare/v1.0.0-rc.42...v1.0.0-rc.43) (2026-11-25)
 
 
