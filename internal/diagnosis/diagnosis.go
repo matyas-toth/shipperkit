@@ -116,6 +116,20 @@ func deploymentStage(logs []store.LogLine) string {
 	return stage
 }
 
+// deploymentLimit matches the deploy worker's limit for one deployment.
+const deploymentLimit = 30 * time.Minute
+
+// killedProcess explains a "signal: killed" line, which Shipper's own build and clone limits also produce.
+func killedProcess(logs []store.LogLine, d store.Deployment, i int) causeMatch {
+	if d.StartedAt > 0 && d.FinishedAt-d.StartedAt >= int64(deploymentLimit/time.Second) {
+		return causeMatch{Code: "build_failed", Summary: "The deployment hit its 30 minute limit.", Confidence: "high", Index: i}
+	}
+	if deploymentStage(logs[:i+1]) == "cloning" {
+		return causeMatch{Code: "build_failed", Summary: "The Git clone hit its time or size limit.", Confidence: "medium", Index: i}
+	}
+	return causeMatch{Code: "build_failed", Summary: "A build process was killed.", Confidence: "medium", Index: i}
+}
+
 func classifyFailure(logs []store.LogLine, d store.Deployment) causeMatch {
 	for i := len(logs) - 1; i >= 0; i-- {
 		line := strings.ToLower(logs[i].Line)
@@ -134,8 +148,10 @@ func classifyFailure(logs []store.LogLine, d store.Deployment) causeMatch {
 			return causeMatch{Code: "disk_pressure", Summary: "The host ran out of disk space.", Confidence: "high", Index: i}
 		case strings.Contains(line, "port is already allocated") || strings.Contains(line, "address already in use"):
 			return causeMatch{Code: "port_mismatch", Summary: "A service could not bind its port.", Confidence: "high", Index: i}
-		case strings.Contains(line, "oom") || strings.Contains(line, "signal: killed"):
+		case strings.Contains(line, "out of memory"):
 			return causeMatch{Code: "oom_killed", Summary: "A container was killed for using too much memory.", Confidence: "high", Index: i}
+		case strings.Contains(line, "signal: killed"):
+			return killedProcess(logs, d, i)
 		case strings.Contains(line, "permission denied"):
 			return causeMatch{Code: "permission_denied", Summary: "A file or directory could not be accessed.", Confidence: "medium", Index: i}
 		}

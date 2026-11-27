@@ -10,11 +10,13 @@ import (
 
 func TestClassifyFailureRecognisesCommonSignatures(t *testing.T) {
 	tests := []struct {
-		name  string
-		logs  []store.LogLine
-		state string
-		code  string
-		conf  string
+		name       string
+		logs       []store.LogLine
+		deployment store.Deployment
+		state      string
+		code       string
+		conf       string
+		summary    string
 	}{
 		{
 			name:  "healthcheck",
@@ -51,12 +53,45 @@ func TestClassifyFailureRecognisesCommonSignatures(t *testing.T) {
 			logs:  []store.LogLine{{Step: "starting", Line: "something went wrong"}},
 			state: "failed", code: "unknown", conf: "low",
 		},
+		{
+			name:  "node heap out of memory",
+			logs:  []store.LogLine{{Step: "building", Line: "FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory"}},
+			state: "failed", code: "oom_killed", conf: "high",
+		},
+		{
+			name:  "words containing oom",
+			logs:  []store.LogLine{{Step: "starting", Line: "user joined room 4 after zoom call"}},
+			state: "failed", code: "unknown", conf: "low",
+		},
+		{
+			name:       "deployment limit",
+			logs:       []store.LogLine{{Step: "building", Line: "#30 33.54   Creating an optimized production build ..."}, {Step: "failed", Line: "Build client failed: signal: killed; check the build output above"}},
+			deployment: store.Deployment{StartedAt: 1795586772, FinishedAt: 1795586772 + 1804},
+			state:      "failed", code: "build_failed", conf: "high", summary: "The deployment hit its 30 minute limit.",
+		},
+		{
+			name:       "clone limit",
+			logs:       []store.LogLine{{Step: "cloning", Line: "Updating files:  35% (34088/97393)"}, {Step: "failed", Line: "Git clone failed: signal: killed"}},
+			deployment: store.Deployment{StartedAt: 1795600000, FinishedAt: 1795600031},
+			state:      "failed", code: "build_failed", conf: "medium", summary: "The Git clone hit its time or size limit.",
+		},
+		{
+			name:       "killed just under the deployment limit",
+			logs:       []store.LogLine{{Step: "failed", Line: "Build client failed: signal: killed; check the build output above"}},
+			deployment: store.Deployment{StartedAt: 1795600000, FinishedAt: 1795600000 + 1799},
+			state:      "failed", code: "build_failed", conf: "medium", summary: "A build process was killed.",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := classifyFailure(test.logs, store.Deployment{State: test.state})
+			d := test.deployment
+			d.State = test.state
+			result := classifyFailure(test.logs, d)
 			if result.Code != test.code || result.Confidence != test.conf {
 				t.Fatalf("got %s/%s, want %s/%s", result.Code, result.Confidence, test.code, test.conf)
+			}
+			if test.summary != "" && result.Summary != test.summary {
+				t.Fatalf("got summary %q, want %q", result.Summary, test.summary)
 			}
 		})
 	}
